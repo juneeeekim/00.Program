@@ -1,1 +1,213 @@
-hello
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ✏️ 브라우저 탭에 표시될 제목 -->
+    <title>AiAutoBot- Going to make it simple</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- 🧭 플로팅 목차 컨테이너 (데스크톱 우측에 표시) -->
+    <div id="floating-toc-container">
+        <nav id="side-nav">
+            <ul>
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#capabilities">Capabilities</a></li>
+                <li><a href="#resources">Resources</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 📱 스티키 헤더 (상단 고정) -->
+    <header>
+        <div class="header-left">
+            <!-- ✏️ 로고 영역 - 여기서 브랜드명 수정 -->
+            <div class="logo">
+                <span class="logo-icon">🤖</span> <!-- 로고 아이콘 -->
+                <span class="logo-text">AiAutoBot</span> <!-- 브랜드명 -->
+                <span class="preview-badge">Operating</span> <!-- 배지 (삭제 가능) -->
+            </div>
+        </div>
+        <div class="header-right">
+            <!-- 🖥️ 데스크톱 네비게이션 메뉴 -->
+            <nav class="desktop-nav">
+                <a href="#changelog">CHANGELOG</a> <!-- 메뉴 1 -->
+                <a href="#pricing">PRICING</a> <!-- 메뉴 2 -->
+                <a href="#docs">DOCS</a> <!-- 메뉴 3 -->
+                <a href="#resources" class="dropdown-trigger">RESOURCES ▼</a> <!-- 메뉴 4 -->
+                <a href="#waitlist" class="join-waitlist-btn">JOIN WAITLIST</a> <!-- CTA 버튼 -->
+            </nav>
+            <!-- 📱 모바일 햄버거 메뉴 버튼 -->
+            <button class="mobile-menu-toggle">☰</button>
+        </div>
+    </header>
+
+    <!-- 📱 모바일 네비게이션 오버레이 (햄버거 메뉴 클릭시 표시) -->
+    <div class="mobile-nav-overlay">
+        <nav>
+            <!-- ⚠️ 데스크톱 메뉴와 동일하게 유지해야 함 -->
+            <a href="#changelog">CHANGELOG</a>
+            <a href="#pricing">PRICING</a>
+            <a href="#docs">DOCS</a>
+            <a href="#resources">RESOURCES</a>
+            <a href="#waitlist" class="join-waitlist-btn">JOIN WAITLIST</a>
+        </nav>
+    </div>
+
+    <!-- 📄 메인 콘텐츠 -->
+    <main>
+        <!-- 🎯 히어로 섹션 (첫 화면 메인 영역) -->
+        <section id="hero" class="main-hero">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <!-- ✏️ 소개 텍스트 -->
+                    <p class="intro-text">Introducing Kiro ›</p>
+                    <!-- ✏️ 메인 제목 (가장 중요한 메시지) -->
+                    <h1>Make it easy<br>with a routine that's annoying</h1>
+                    <!-- ✏️ 설명 텍스트 -->
+                    <p class="hero-description">
+                        AiAutoBot is a program that replaces the very trivial 
+                        but troublesome tasks that are repeated in computer tasks
+                    </p>
+                    <!-- 🔘 액션 버튼들 -->
+                    <div class="hero-buttons">
+                        <button class="btn-primary">Join Waitlist</button> <!-- 주 버튼 -->
+                        <button class="btn-secondary">Watch Demo</button> <!-- 보조 버튼 -->
+                    </div>
+                </div>
+                <!-- 🖼️ 시각적 요소 (오른쪽 영역) -->
+                <div class="hero-visual">
+                    <div class="ide-preview">
+                        <!-- ✏️ 여기에 제품 이미지나 동영상 추가 가능 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 💡 기능 소개 섹션 (섹션 ID: features) -->
+        <section id="features" class="section-intro">
+            <div class="content-container">
+                <!-- ✏️ 섹션 제목 -->
+                <h2>Tame complexity with spec-driven development</h2>
+                <!-- 📋 기능 카드들 (3개 카드 그리드) -->
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <!-- ✏️ 기능 설명 1 -->
+                        <h3>Kiro turns your prompt into clear requirements, system design, and discrete tasks.</h3>
+                    </div>
+                    <div class="feature-card">
+                        <!-- ✏️ 기능 설명 2 -->
+                        <h3>Collaborate with Kiro on your specs and architecture.</h3>
+                    </div>
+                    <div class="feature-card">
+                        <!-- ✏️ 기능 설명 3 -->
+                        <h3>Kiro agents implement the spec while keeping you in control.</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⚙️ 핵심 기능 섹션 (섹션 ID: capabilities) -->
+        <section id="capabilities">
+            <div class="content-container">
+                <!-- ✏️ 섹션 제목 -->
+                <h2>Core capabilities</h2>
+                <!-- ✏️ 섹션 부제목 -->
+                <p class="section-subtitle">Learn about Kiro's core feature set.</p>
+
+                <!-- 🎴 기능 카드 그리드 (6개 카드) -->
+                <div class="capabilities-grid">
+                    <!-- ✏️ 카드 1: Specs -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Specs</h3>
+                            <p>Plan and build features using structured specifications.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 카드 2: Hooks -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Hooks</h3>
+                            <p>Automate repetitive tasks with intelligent triggers.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 카드 3: Agentic chat -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Agentic chat</h3>
+                            <p>Build features through natural conversation with AI.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 카드 4: Steering -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Steering</h3>
+                            <p>Guide AI with custom rules and context.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 카드 5: MCP Servers -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>MCP Servers</h3>
+                            <p>Connect external tools and data sources.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 카드 6: Privacy First -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Privacy First</h3>
+                            <p>Keep code secure with privacy controls.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📚 학습 리소스 섹션 (섹션 ID: resources) -->
+        <section id="resources">
+            <div class="content-container">
+                <!-- ✏️ 섹션 제목 -->
+                <h2>Learning resources</h2>
+                <!-- ✏️ 섹션 부제목 -->
+                <p class="section-subtitle">Master Kiro through hands-on tutorials and comprehensive documentation.</p>
+
+                <!-- 📖 리소스 카드 그리드 (2개 카드) -->
+                <div class="resources-grid">
+                    <!-- ✏️ 리소스 카드 1 -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Your first project</h3>
+                            <p>A quick overview of how to use Kiro's feature set.</p>
+                        </div>
+                    </div>
+
+                    <!-- ✏️ 리소스 카드 2 -->
+                    <div class="content-panel">
+                        <div class="panel-content">
+                            <h3>Interactive Tutorial</h3>
+                            <p>Build a real project while learning Kiro's features through our step-based tutorial.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 플로팅 요소들 -->
+    <div class="floating-element chat-widget">
+        <button class="chat-toggle">💬</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
