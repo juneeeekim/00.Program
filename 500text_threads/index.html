@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500자 미만 글 작성기</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 500자 미만 글 작성기</h1>
+            <p class="subtitle">간단하고 깔끔한 글 작성 도구</p>
+        </header>
+        
+        <main>
+            <div class="writing-container">
+                <!-- 왼쪽 창: 레퍼런스 글 -->
+                <div class="writing-panel left-panel">
+                    <div class="panel-header">
+                        <h3>📖 레퍼런스 글</h3>
+                        <div class="character-counter">
+                            <span id="ref-current-count">0</span>
+                            <span class="separator">/</span>
+                            <span id="ref-max-count">500</span>
+                            <span class="unit">자</span>
+                        </div>
+                    </div>
+                    
+                    <textarea 
+                        id="ref-text-input" 
+                        placeholder="참고할 레퍼런스 글을 입력하세요..."
+                        maxlength="500"
+                    ></textarea>
+                    
+                    <div class="progress-bar">
+                        <div id="ref-progress-fill" class="progress-fill"></div>
+                    </div>
+                    
+                    <div class="panel-controls">
+                        <button id="ref-clear-btn" class="btn btn-secondary">지우기</button>
+                        <button id="ref-save-btn" class="btn btn-primary">저장</button>
+                        <button id="ref-download-btn" class="btn btn-success">TXT 다운로드</button>
+                    </div>
+                </div>
+                
+                <!-- 오른쪽 창: 수정/작성 글 -->
+                <div class="writing-panel right-panel">
+                    <div class="panel-header">
+                        <h3>✏️ 수정/작성 글</h3>
+                        <div class="character-counter">
+                            <span id="edit-current-count">0</span>
+                            <span class="separator">/</span>
+                            <span id="edit-max-count">500</span>
+                            <span class="unit">자</span>
+                        </div>
+                    </div>
+                    
+                    <textarea 
+                        id="edit-text-input" 
+                        placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
+                        maxlength="500"
+                    ></textarea>
+                    
+                    <div class="progress-bar">
+                        <div id="edit-progress-fill" class="progress-fill"></div>
+                    </div>
+                    
+                    <div class="panel-controls">
+                        <button id="edit-clear-btn" class="btn btn-secondary">지우기</button>
+                        <button id="edit-save-btn" class="btn btn-primary">저장</button>
+                        <button id="edit-download-btn" class="btn btn-success">TXT 다운로드</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 임시 저장 상태 -->
+            <div class="temp-save-status" id="temp-save-status">
+                <span id="temp-save-indicator">💾</span>
+                <span id="temp-save-text">임시 저장됨</span>
+            </div>
+            
+            <!-- 저장된 글 목록 -->
+            <div class="saved-texts" id="saved-texts">
+                <h3>저장된 글</h3>
+                <div id="saved-list"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
