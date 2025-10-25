@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuthConfig 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4285f4;
+            padding-bottom: 10px;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        .success { border-left: 4px solid #34a853; }
+        .error { border-left: 4px solid #ea4335; }
+        .warning { border-left: 4px solid #fbbc04; }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 AuthConfig 클래스 테스트</h1>
+    
+    <div class="test-section">
+        <h2>1. 환경 감지 테스트</h2>
+        <button onclick="testEnvironmentDetection()">환경 감지 실행</button>
+        <div id="env-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Client ID 검증 테스트</h2>
+        <button onclick="testValidation()">검증 실행</button>
+        <div id="validation-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 설정 안내 생성 테스트</h2>
+        <button onclick="testSetupInstructions()">안내 생성</button>
+        <div id="instructions-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 환경별 설정 테스트</h2>
+        <button onclick="testEnvironmentConfig()">설정 확인</button>
+        <div id="config-result" class="result"></div>
+    </div>
+
+    <script src="config/auth-config.js"></script>
+    <script>
+        function testEnvironmentDetection() {
+            const config = new AuthConfig();
+            const result = `
+환경 감지 결과:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 개발 환경: ${config.isDevelopment ? '✅ Yes' : '❌ No'}
+• 프로토콜: ${config.protocol}
+• 호스트명: ${config.hostname}
+• 포트: ${config.port || '(기본)'}
+• 전체 원본: ${window.location.origin}
+
+감지 로직:
+• localhost 확인: ${window.location.hostname === 'localhost'}
+• 127.0.0.1 확인: ${window.location.hostname === '127.0.0.1'}
+• file:// 프로토콜: ${window.location.protocol === 'file:'}
+            `;
+            
+            document.getElementById('env-result').textContent = result;
+            document.getElementById('env-result').className = 'result success';
+        }
+        
+        function testValidation() {
+            const config = new AuthConfig();
+            const isValid = config.validateGoogleConfig();
+            const error = config.getValidationError();
+            
+            let result = `
+검증 결과:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 전체 검증: ${isValid ? '✅ 통과' : '❌ 실패'}
+• Client ID: ${config.GOOGLE_CLIENT_ID}
+            `;
+            
+            if (error) {
+                result += `
+• 오류 유형: ${error.error}
+• 오류 메시지: ${error.message}
+
+구체적인 안내:
+${error.instructions}
+                `;
+            }
+            
+            document.getElementById('validation-result').textContent = result;
+            document.getElementById('validation-result').className = isValid ? 'result success' : 'result error';
+        }
+        
+        function testSetupInstructions() {
+            const config = new AuthConfig();
+            const instructions = config.getSetupInstructions();
+            
+            document.getElementById('instructions-result').textContent = instructions;
+            document.getElementById('instructions-result').className = 'result warning';
+        }
+        
+        function testEnvironmentConfig() {
+            const config = new AuthConfig();
+            const envConfig = config.getEnvironmentConfig();
+            
+            const result = `
+환경별 설정:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• 환경: ${envConfig.environment}
+• 프로토콜: ${envConfig.protocol}
+• 호스트: ${envConfig.hostname}
+• 포트: ${envConfig.port || '(기본)'}
+• 원본: ${envConfig.origin}
+• Client ID: ${envConfig.clientId}
+• 스코프: ${envConfig.scopes.join(', ')}
+• 유효성: ${envConfig.isValid ? '✅ 유효' : '❌ 무효'}
+• 리디렉션 URI: ${envConfig.redirectUri}
+
+허용된 원본:
+${envConfig.allowedOrigins.map(origin => '  • ' + origin).join('\n')}
+            `;
+            
+            document.getElementById('config-result').textContent = result;
+            document.getElementById('config-result').className = 'result success';
+        }
+        
+        // 페이지 로드 시 자동 실행
+        window.addEventListener('load', () => {
+            console.log('✅ AuthConfig 테스트 페이지 로드 완료');
+            console.log('각 테스트 버튼을 클릭하여 기능을 확인하세요.');
+        });
+    </script>
+</body>
+</html>

@@ -1,19 +1,84 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>500자 미만 글 작성기</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>📝 500자 미만 글 작성기</h1>
             <p class="subtitle">간단하고 깔끔한 글 작성 도구</p>
+
+            <!-- 사용자 인증 섹션 -->
+            <div class="user-auth-section" id="user-auth-section">
+                <!-- 인증 오류 표시 영역 -->
+                <div class="auth-error-container" id="auth-error-container" style="display: none;">
+                    <div class="auth-error-message">
+                        <span class="error-icon">⚠️</span>
+                        <div class="error-content">
+                            <h4 id="auth-error-title">인증 오류</h4>
+                            <p id="auth-error-message"></p>
+                            <button id="auth-error-dismiss" class="btn btn-small">확인</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 로딩 표시기 -->
+                <div class="auth-loading" id="auth-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p id="auth-loading-message">로그인 중...</p>
+                </div>
+
+                <div class="login-form" id="login-form">
+                    <h3>🔐 안전한 로그인</h3>
+
+                    <!-- Google 로그인 버튼 -->
+                    <div class="google-login-section">
+                        <button id="google-login-btn" class="btn btn-google">
+                            <span class="google-icon">🔍</span>
+                            <span id="google-login-text">Google로 로그인</span>
+                        </button>
+                        <p class="google-note" id="google-login-note">Google 계정으로 안전하게 로그인하세요</p>
+                        
+                        <!-- Google 로그인 상태 표시 -->
+                        <div class="google-status" id="google-status" style="display: none;">
+                            <span class="status-icon" id="google-status-icon">⚠️</span>
+                            <span class="status-text" id="google-status-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- 구분선 -->
+                    <div class="auth-divider">
+                        <span>또는</span>
+                    </div>
+
+                    <!-- 기존 사용자명 로그인 (폴백) -->
+                    <div class="legacy-login-section">
+                        <div class="auth-input-group">
+                            <input type="text" id="username-input" placeholder="사용자명을 입력하세요" maxlength="20">
+                            <button id="login-btn" class="btn btn-secondary">기존 방식 로그인</button>
+                        </div>
+                        <p class="auth-note">기존 사용자명으로 로그인 (보안 수준 낮음)</p>
+                    </div>
+                </div>
+
+                <div class="user-info" id="user-info" style="display: none;">
+                    <div class="user-welcome">
+                        <span class="user-icon">👤</span>
+                        <span class="username-display" id="username-display"></span>
+                        <span class="user-provider" id="user-provider"></span>
+                        <button id="logout-btn" class="btn btn-secondary">로그아웃</button>
+                    </div>
+                </div>
+            </div>
         </header>
-        
-        <main>
+
+        <main id="main-content" style="display: none;">
             <div class="writing-container">
                 <!-- 왼쪽 창: 레퍼런스 글 -->
                 <div class="writing-panel left-panel">
@@ -26,24 +91,20 @@
                             <span class="unit">자</span>
                         </div>
                     </div>
-                    
-                    <textarea 
-                        id="ref-text-input" 
-                        placeholder="참고할 레퍼런스 글을 입력하세요..."
-                        maxlength="500"
-                    ></textarea>
-                    
+
+                    <textarea id="ref-text-input" placeholder="참고할 레퍼런스 글을 입력하세요..." maxlength="500"></textarea>
+
                     <div class="progress-bar">
                         <div id="ref-progress-fill" class="progress-fill"></div>
                     </div>
-                    
+
                     <div class="panel-controls">
                         <button id="ref-clear-btn" class="btn btn-secondary">지우기</button>
                         <button id="ref-save-btn" class="btn btn-primary">저장</button>
                         <button id="ref-download-btn" class="btn btn-success">TXT 다운로드</button>
                     </div>
                 </div>
-                
+
                 <!-- 오른쪽 창: 수정/작성 글 -->
                 <div class="writing-panel right-panel">
                     <div class="panel-header">
@@ -55,17 +116,13 @@
                             <span class="unit">자</span>
                         </div>
                     </div>
-                    
-                    <textarea 
-                        id="edit-text-input" 
-                        placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
-                        maxlength="500"
-                    ></textarea>
-                    
+
+                    <textarea id="edit-text-input" placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..." maxlength="500"></textarea>
+
                     <div class="progress-bar">
                         <div id="edit-progress-fill" class="progress-fill"></div>
                     </div>
-                    
+
                     <div class="panel-controls">
                         <button id="edit-clear-btn" class="btn btn-secondary">지우기</button>
                         <button id="edit-save-btn" class="btn btn-primary">저장</button>
@@ -73,13 +130,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 임시 저장 상태 -->
             <div class="temp-save-status" id="temp-save-status">
                 <span id="temp-save-indicator">💾</span>
                 <span id="temp-save-text">임시 저장됨</span>
             </div>
-            
+
             <!-- 저장된 글 목록 -->
             <div class="saved-texts" id="saved-texts">
                 <h3>저장된 글</h3>
@@ -87,8 +144,33 @@
             </div>
         </main>
     </div>
-    
-    <script src="script.js"></script>
-</body>
-</html>
 
+    <!-- 
+        스크립트 로딩 순서 (중요):
+        1. 설정 파일 (AuthConfig) - 환경 감지 및 검증
+        2. 활동 로거 (ActivityLogger) - 로깅 시스템
+        3. Google 인증 관리자 (GoogleAuthManager) - OAuth 처리
+        4. 데이터 마이그레이션 관리자 (DataMigrationManager) - 데이터 이전
+        5. 메인 애플리케이션 (DualTextWriter) - 전체 통합
+    -->
+    
+    <!-- 1. 설정 파일 (필수 - 가장 먼저 로드) -->
+    <script src="config/auth-config.js"></script>
+    
+    <!-- 2. 활동 로거 (독립적 모듈) -->
+    <script src="js/activity-logger.js"></script>
+    
+    <!-- 3. Google 인증 관리자 (AuthConfig 의존) -->
+    <script src="js/google-auth-manager.js"></script>
+    
+    <!-- 4. 데이터 마이그레이션 관리자 (AuthConfig 의존) -->
+    <script src="js/data-migration-manager.js"></script>
+
+    <!-- 5. 메인 애플리케이션 (모든 모듈 의존) -->
+    <script src="script.js"></script>
+    
+    <!-- Google Identity Services (동적 로드) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+
+</html>
