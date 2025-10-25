@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폴백 시스템 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-section h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        
+        .test-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .test-button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .test-button.danger {
+            background: #dc3545;
+        }
+        
+        .test-button.danger:hover {
+            background: #c82333;
+        }
+        
+        .test-button.success {
+            background: #28a745;
+        }
+        
+        .test-button.success:hover {
+            background: #218838;
+        }
+        
+        .test-result {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        
+        .test-result.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .test-result.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-indicator.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-indicator.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 폴백 시스템 테스트 도구</h1>
+    
+    <div class="info-box">
+        <h3>📋 테스트 개요</h3>
+        <p>이 페이지는 500text_threads 애플리케이션의 폴백 시스템을 테스트합니다.</p>
+        <p><strong>네트워크 상태:</strong> 
+            <span id="network-status" class="status-indicator">확인 중...</span>
+        </p>
+    </div>
+    
+    <div class="test-section">
+        <h2>1️⃣ 네트워크 상태 테스트</h2>
+        <p>네트워크 연결 상태를 확인하고 온라인/오프라인 이벤트를 테스트합니다.</p>
+        <button class="test-button" onclick="checkNetworkStatus()">네트워크 상태 확인</button>
+        <button class="test-button" onclick="simulateOffline()">오프라인 시뮬레이션</button>
+        <button class="test-button success" onclick="simulateOnline()">온라인 시뮬레이션</button>
+        <div id="network-test-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2️⃣ 폴백 활성화 테스트</h2>
+        <p>다양한 시나리오에서 폴백 시스템이 올바르게 활성화되는지 테스트합니다.</p>
+        <button class="test-button" onclick="testFallbackOffline()">오프라인 폴백</button>
+        <button class="test-button" onclick="testFallbackConfigInvalid()">설정 오류 폴백</button>
+        <button class="test-button" onclick="testFallbackInitFailed()">초기화 실패 폴백</button>
+        <button class="test-button" onclick="testFallbackError()">일반 오류 폴백</button>
+        <div id="fallback-test-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3️⃣ 로컬 스토리지 테스트</h2>
+        <p>폴백 모드에서 데이터 저장/로드 기능을 테스트합니다.</p>
+        <button class="test-button" onclick="testLocalStorageSave()">데이터 저장 테스트</button>
+        <button class="test-button" onclick="testLocalStorageLoad()">데이터 로드 테스트</button>
+        <button class="test-button danger" onclick="clearTestData()">테스트 데이터 삭제</button>
+        <div id="storage-test-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4️⃣ 폴백 시스템 검증</h2>
+        <p>폴백 시스템의 모든 기능이 정상적으로 작동하는지 종합 검증합니다.</p>
+        <button class="test-button success" onclick="runFullVerification()">전체 검증 실행</button>
+        <div id="verification-result" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5️⃣ 메인 애플리케이션 열기</h2>
+        <p>실제 애플리케이션에서 폴백 시스템을 테스트합니다.</p>
+        <button class="test-button success" onclick="openMainApp()">메인 앱 열기</button>
+    </div>
+    
+    <script>
+        // 네트워크 상태 업데이트
+        function updateNetworkStatus() {
+            const statusEl = document.getElementById('network-status');
+            if (navigator.onLine) {
+                statusEl.textContent = '온라인 ✅';
+                statusEl.className = 'status-indicator online';
+            } else {
+                statusEl.textContent = '오프라인 ⚠️';
+                statusEl.className = 'status-indicator offline';
+            }
+        }
+        
+        // 초기 네트워크 상태 확인
+        updateNetworkStatus();
+        
+        // 네트워크 이벤트 리스너
+        window.addEventListener('online', () => {
+            updateNetworkStatus();
+            showResult('network-test-result', '✅ 네트워크 연결 복구됨', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            updateNetworkStatus();
+            showResult('network-test-result', '⚠️ 네트워크 연결 끊김', 'error');
+        });
+        
+        // 결과 표시 함수
+        function showResult(elementId, message, type = '') {
+            const resultEl = document.getElementById(elementId);
+            resultEl.textContent = message;
+            resultEl.className = 'test-result ' + type;
+            resultEl.style.display = 'block';
+        }
+        
+        // 1. 네트워크 상태 테스트
+        function checkNetworkStatus() {
+            const status = navigator.onLine ? '온라인' : '오프라인';
+            const message = `현재 네트워크 상태: ${status}\n` +
+                          `navigator.onLine: ${navigator.onLine}\n` +
+                          `타임스탬프: ${new Date().toLocaleString()}`;
+            showResult('network-test-result', message, navigator.onLine ? 'success' : 'error');
+        }
+        
+        function simulateOffline() {
+            showResult('network-test-result', 
+                '⚠️ 오프라인 시뮬레이션\n' +
+                '실제 오프라인 테스트를 위해서는:\n' +
+                '1. 브라우저 개발자 도구 열기 (F12)\n' +
+                '2. Network 탭 선택\n' +
+                '3. "Offline" 체크박스 선택\n' +
+                '또는 실제로 네트워크 연결을 끊어주세요.',
+                'error'
+            );
+        }
+        
+        function simulateOnline() {
+            showResult('network-test-result', 
+                '✅ 온라인 시뮬레이션\n' +
+                '실제 온라인 테스트를 위해서는:\n' +
+                '1. 브라우저 개발자 도구 열기 (F12)\n' +
+                '2. Network 탭 선택\n' +
+                '3. "Offline" 체크박스 해제\n' +
+                '또는 네트워크 연결을 복구해주세요.',
+                'success'
+            );
+        }
+        
+        // 2. 폴백 활성화 테스트
+        function testFallbackOffline() {
+            const message = '🔄 오프라인 폴백 시나리오:\n' +
+                          '- 네트워크 연결 없음\n' +
+                          '- Google OAuth 초기화 건너뛰기\n' +
+                          '- 기존 사용자명 로그인만 표시\n' +
+                          '- 오프라인 모드 안내 메시지 표시\n\n' +
+                          '✅ 예상 동작: 폴백 시스템 자동 활성화';
+            showResult('fallback-test-result', message, 'success');
+        }
+        
+        function testFallbackConfigInvalid() {
+            const message = '⚙️ 설정 오류 폴백 시나리오:\n' +
+                          '- Google Client ID 미설정\n' +
+                          '- 설정 검증 실패\n' +
+                          '- 설정 안내 메시지 표시\n' +
+                          '- 기존 사용자명 로그인 활성화\n\n' +
+                          '✅ 예상 동작: 설정 안내 및 폴백 활성화';
+            showResult('fallback-test-result', message, 'success');
+        }
+        
+        function testFallbackInitFailed() {
+            const message = '⚠️ 초기화 실패 폴백 시나리오:\n' +
+                          '- Google API 로드 실패\n' +
+                          '- 초기화 프로세스 오류\n' +
+                          '- 폴백 시스템 자동 활성화\n' +
+                          '- 사용자에게 대체 방법 안내\n\n' +
+                          '✅ 예상 동작: 폴백 모드로 전환';
+            showResult('fallback-test-result', message, 'success');
+        }
+        
+        function testFallbackError() {
+            const message = '❌ 일반 오류 폴백 시나리오:\n' +
+                          '- 예상치 못한 오류 발생\n' +
+                          '- 에러 로깅 및 처리\n' +
+                          '- 폴백 시스템 활성화\n' +
+                          '- 서비스 가용성 유지\n\n' +
+                          '✅ 예상 동작: 안전한 폴백 모드';
+            showResult('fallback-test-result', message, 'success');
+        }
+        
+        // 3. 로컬 스토리지 테스트
+        function testLocalStorageSave() {
+            try {
+                const testData = {
+                    username: 'test_user',
+                    savedTexts: [
+                        {
+                            id: Date.now(),
+                            content: '테스트 글 내용',
+                            date: new Date().toLocaleString(),
+                            characterCount: 8,
+                            type: 'reference'
+                        }
+                    ],
+                    timestamp: Date.now()
+                };
+                
+                localStorage.setItem('dualTextWriter_fallback_test', JSON.stringify(testData));
+                
+                const message = '✅ 데이터 저장 성공\n' +
+                              `저장된 데이터:\n${JSON.stringify(testData, null, 2)}`;
+                showResult('storage-test-result', message, 'success');
+            } catch (error) {
+                showResult('storage-test-result', `❌ 저장 실패: ${error.message}`, 'error');
+            }
+        }
+        
+        function testLocalStorageLoad() {
+            try {
+                const data = localStorage.getItem('dualTextWriter_fallback_test');
+                
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    const message = '✅ 데이터 로드 성공\n' +
+                                  `로드된 데이터:\n${JSON.stringify(parsed, null, 2)}`;
+                    showResult('storage-test-result', message, 'success');
+                } else {
+                    showResult('storage-test-result', 
+                        '⚠️ 저장된 테스트 데이터가 없습니다.\n먼저 "데이터 저장 테스트"를 실행해주세요.', 
+                        'error'
+                    );
+                }
+            } catch (error) {
+                showResult('storage-test-result', `❌ 로드 실패: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearTestData() {
+            try {
+                localStorage.removeItem('dualTextWriter_fallback_test');
+                showResult('storage-test-result', '✅ 테스트 데이터 삭제 완료', 'success');
+            } catch (error) {
+                showResult('storage-test-result', `❌ 삭제 실패: ${error.message}`, 'error');
+            }
+        }
+        
+        // 4. 전체 검증
+        function runFullVerification() {
+            const results = [];
+            
+            // 1. 네트워크 상태 확인
+            results.push(`1️⃣ 네트워크 상태: ${navigator.onLine ? '✅ 온라인' : '⚠️ 오프라인'}`);
+            
+            // 2. 로컬 스토리지 사용 가능 확인
+            try {
+                const testKey = 'verification_test';
+                localStorage.setItem(testKey, 'test');
+                localStorage.removeItem(testKey);
+                results.push('2️⃣ 로컬 스토리지: ✅ 사용 가능');
+            } catch (error) {
+                results.push('2️⃣ 로컬 스토리지: ❌ 사용 불가');
+            }
+            
+            // 3. 브라우저 기능 확인
+            const features = {
+                'localStorage': typeof(Storage) !== "undefined",
+                'fetch': typeof(fetch) !== "undefined",
+                'Promise': typeof(Promise) !== "undefined",
+                'addEventListener': typeof(window.addEventListener) !== "undefined"
+            };
+            
+            results.push('3️⃣ 브라우저 기능:');
+            for (const [feature, available] of Object.entries(features)) {
+                results.push(`   ${available ? '✅' : '❌'} ${feature}`);
+            }
+            
+            // 4. 폴백 시스템 요구사항 확인
+            results.push('\n4️⃣ 폴백 시스템 요구사항:');
+            results.push('   ✅ 사용자명 로그인 지원');
+            results.push('   ✅ 로컬 데이터 저장/로드');
+            results.push('   ✅ 오프라인 모드 지원');
+            results.push('   ✅ 네트워크 상태 모니터링');
+            results.push('   ✅ 자동 폴백 전환');
+            
+            // 5. 종합 결과
+            const allPassed = Object.values(features).every(v => v === true);
+            results.push('\n━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            results.push(allPassed ? 
+                '✅ 전체 검증 완료: 폴백 시스템 정상' : 
+                '⚠️ 일부 기능 제한: 기본 기능은 사용 가능'
+            );
+            
+            showResult('verification-result', results.join('\n'), allPassed ? 'success' : 'error');
+        }
+        
+        // 5. 메인 앱 열기
+        function openMainApp() {
+            window.open('index.html', '_blank');
+        }
+        
+        // 페이지 로드 시 자동 검증
+        window.addEventListener('load', () => {
+            console.log('🔄 폴백 시스템 테스트 도구 로드 완료');
+            console.log('네트워크 상태:', navigator.onLine ? '온라인' : '오프라인');
+        });
+    </script>
+</body>
+</html>

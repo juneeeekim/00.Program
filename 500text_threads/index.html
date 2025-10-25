@@ -160,13 +160,19 @@
     <!-- 2. 활동 로거 (독립적 모듈) -->
     <script src="js/activity-logger.js"></script>
     
-    <!-- 3. Google 인증 관리자 (AuthConfig 의존) -->
+    <!-- 3. 보안 유틸리티 (독립적 모듈) -->
+    <script src="js/security-utils.js"></script>
+    
+    <!-- 4. 에러 핸들러 (ActivityLogger 의존) -->
+    <script src="js/error-handler.js"></script>
+    
+    <!-- 5. Google 인증 관리자 (AuthConfig, ErrorHandler 의존) -->
     <script src="js/google-auth-manager.js"></script>
     
-    <!-- 4. 데이터 마이그레이션 관리자 (AuthConfig 의존) -->
+    <!-- 6. 데이터 마이그레이션 관리자 (AuthConfig 의존) -->
     <script src="js/data-migration-manager.js"></script>
 
-    <!-- 5. 메인 애플리케이션 (모든 모듈 의존) -->
+    <!-- 7. 메인 애플리케이션 (모든 모듈 의존) -->
     <script src="script.js"></script>
     
     <!-- Google Identity Services (동적 로드) -->

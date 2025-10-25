@@ -61,6 +61,11 @@ class AuthConfig {
         }
     }
     
+    // Client ID 가져오기 (외부에서 사용)
+    getClientId() {
+        return this.GOOGLE_CLIENT_ID;
+    }
+    
     // 폴백 설정 옵션
     getFallbackConfig() {
         return {
@@ -107,20 +112,10 @@ class AuthConfig {
         };
     }
     
-    // 프로덕션 환경 HTTPS 검증
-    validateProductionEnvironment() {
-        if (!this.isDevelopment && this.protocol !== 'https:') {
-            return {
-                valid: false,
-                error: 'HTTPS_REQUIRED',
-                message: '프로덕션 환경에서는 HTTPS가 필수입니다.'
-            };
-        }
-        return { valid: true };
-    }
+
     
-    // Google Client ID 형식 검증
-    validateClientIdFormat() {
+    // 1단계: 플레이스홀더 검증
+    validatePlaceholder() {
         const clientId = this.GOOGLE_CLIENT_ID;
         
         // 플레이스홀더 값 확인
@@ -141,6 +136,13 @@ class AuthConfig {
             };
         }
         
+        return { valid: true };
+    }
+    
+    // 2단계: Google Client ID 형식 검증
+    validateClientIdFormat() {
+        const clientId = this.GOOGLE_CLIENT_ID;
+        
         // Google Client ID 형식 검증 (.googleusercontent.com으로 끝나야 함)
         if (!clientId.endsWith('.googleusercontent.com')) {
             return {
@@ -153,32 +155,52 @@ class AuthConfig {
         return { valid: true };
     }
     
-    // 포괄적인 Google OAuth 설정 검증
+    // 3단계: 프로덕션 환경 HTTPS 검증
+    validateEnvironment() {
+        if (!this.isDevelopment && this.protocol !== 'https:') {
+            return {
+                valid: false,
+                error: 'HTTPS_REQUIRED',
+                message: '프로덕션 환경에서는 HTTPS가 필수입니다.'
+            };
+        }
+        return { valid: true };
+    }
+    
+    // 포괄적인 Google OAuth 설정 검증 (3단계 검증 시스템)
     validateGoogleConfig() {
         // 캐시된 결과가 있으면 반환
         if (this.validationResult !== null) {
             return this.validationResult.valid;
         }
         
-        // 프로덕션 환경 검증
-        const envValidation = this.validateProductionEnvironment();
-        if (!envValidation.valid) {
-            this.validationResult = envValidation;
-            console.error('❌ 환경 검증 실패:', envValidation.message);
+        // 1단계: 플레이스홀더 검증
+        const placeholderValidation = this.validatePlaceholder();
+        if (!placeholderValidation.valid) {
+            this.validationResult = placeholderValidation;
+            console.warn('⚠️ [1단계] 플레이스홀더 검증 실패:', placeholderValidation.message);
             return false;
         }
         
-        // Client ID 형식 검증
+        // 2단계: 형식 검증
         const formatValidation = this.validateClientIdFormat();
         if (!formatValidation.valid) {
             this.validationResult = formatValidation;
-            console.warn('⚠️ Client ID 검증 실패:', formatValidation.message);
+            console.error('❌ [2단계] Client ID 형식 검증 실패:', formatValidation.message);
+            return false;
+        }
+        
+        // 3단계: 환경 검증
+        const envValidation = this.validateEnvironment();
+        if (!envValidation.valid) {
+            this.validationResult = envValidation;
+            console.error('❌ [3단계] 환경 검증 실패:', envValidation.message);
             return false;
         }
         
         // 모든 검증 통과
         this.validationResult = { valid: true };
-        console.log('✅ Google OAuth 설정 검증 완료');
+        console.log('✅ Google OAuth 설정 검증 완료 (3단계 모두 통과)');
         return true;
     }
     
@@ -282,7 +304,24 @@ Google Client ID 형식이 올바르지 않습니다.
         return window.location.origin + '/callback';
     }
     
-    // 포괄적인 설정 안내 생성기
+    // 동적 설정 안내 메시지 생성 (간단 버전)
+    generateSetupInstructions() {
+        const config = this.getEnvironmentConfig();
+        const validationError = this.getValidationError();
+        
+        if (!validationError) {
+            return '✅ Google OAuth 설정이 완료되었습니다.';
+        }
+        
+        let message = `⚠️ Google OAuth 설정이 필요합니다.\n\n`;
+        message += `현재 환경: ${config.environment === 'development' ? '개발' : '프로덕션'}\n`;
+        message += `오류: ${validationError.message}\n\n`;
+        message += `해결 방법:\n${validationError.instructions}`;
+        
+        return message;
+    }
+    
+    // 포괄적인 설정 안내 생성기 (상세 버전)
     getSetupInstructions() {
         const config = this.getEnvironmentConfig();
         const validationError = this.getValidationError();

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보안 기능 테스트</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .output {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 보안 기능 테스트</h1>
+    <p>Task 8: 보안 강화 - XSS 방지 및 데이터 검증 테스트</p>
+
+    <!-- XSS 방지 테스트 -->
+    <div class="test-section">
+        <h2>8.1 XSS 방지 테스트</h2>
+        
+        <div class="test-case">
+            <h3>테스트 1: HTML 이스케이프</h3>
+            <p>악의적인 스크립트가 포함된 텍스트를 안전하게 처리하는지 확인</p>
+            <button onclick="testHtmlEscape()">테스트 실행</button>
+            <div id="test1-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 2: 사용자 이름 안전 처리</h3>
+            <p>사용자 이름에 특수 문자가 포함된 경우 안전하게 처리하는지 확인</p>
+            <button onclick="testUserNameSanitization()">테스트 실행</button>
+            <div id="test2-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 3: 이메일 안전 처리</h3>
+            <p>이메일 주소를 안전하게 표시하는지 확인</p>
+            <button onclick="testEmailSanitization()">테스트 실행</button>
+            <div id="test3-result"></div>
+        </div>
+    </div>
+
+    <!-- 데이터 검증 테스트 -->
+    <div class="test-section">
+        <h2>8.2 데이터 검증 테스트</h2>
+        
+        <div class="test-case">
+            <h3>테스트 4: 이메일 형식 검증</h3>
+            <p>다양한 이메일 형식의 유효성을 검증</p>
+            <button onclick="testEmailValidation()">테스트 실행</button>
+            <div id="test4-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 5: 사용자 데이터 검증</h3>
+            <p>로컬 스토리지에서 로드한 사용자 데이터의 필수 필드 검증</p>
+            <button onclick="testUserDataValidation()">테스트 실행</button>
+            <div id="test5-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 6: 저장된 텍스트 검증</h3>
+            <p>저장된 텍스트 배열의 유효성 검증</p>
+            <button onclick="testSavedTextsValidation()">테스트 실행</button>
+            <div id="test6-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 7: 안전한 스토리지 로드</h3>
+            <p>로컬 스토리지에서 데이터를 안전하게 로드하는지 확인</p>
+            <button onclick="testSafeStorageLoad()">테스트 실행</button>
+            <div id="test7-result"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>테스트 8: 사용자명 검증</h3>
+            <p>사용자명의 유효성을 검증 (길이, 특수문자 등)</p>
+            <button onclick="testUsernameValidation()">테스트 실행</button>
+            <div id="test8-result"></div>
+        </div>
+    </div>
+
+    <!-- 통합 테스트 -->
+    <div class="test-section">
+        <h2>통합 테스트</h2>
+        <button onclick="runAllTests()" style="background: #2196F3;">모든 테스트 실행</button>
+        <button onclick="clearResults()" style="background: #f44336;">결과 초기화</button>
+    </div>
+
+    <!-- 스크립트 로드 -->
+    <script src="js/security-utils.js"></script>
+    <script src="js/activity-logger.js"></script>
+
+    <script>
+        const securityUtils = new SecurityUtils();
+        let testResults = [];
+
+        function showResult(elementId, success, message, details = '') {
+            const element = document.getElementById(elementId);
+            const className = success ? 'success' : 'error';
+            const icon = success ? '✅' : '❌';
+            
+            element.innerHTML = `
+                <div class="test-result ${className}">
+                    <strong>${icon} ${message}</strong>
+                    ${details ? `<div class="output">${details}</div>` : ''}
+                </div>
+            `;
+            
+            testResults.push({ test: elementId, success, message });
+        }
+
+        // 테스트 1: HTML 이스케이프
+        function testHtmlEscape() {
+            const maliciousInputs = [
+                '<script>alert("XSS")</script>',
+                '<img src=x onerror="alert(1)">',
+                '<a href="javascript:alert(1)">Click</a>',
+                '"><script>alert(String.fromCharCode(88,83,83))</script>'
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            maliciousInputs.forEach((input, index) => {
+                const escaped = securityUtils.escapeHtml(input);
+                const isEscaped = !escaped.includes('<script') && !escaped.includes('onerror');
+                
+                details += `테스트 ${index + 1}:\n`;
+                details += `입력: ${input}\n`;
+                details += `출력: ${escaped}\n`;
+                details += `결과: ${isEscaped ? '✅ 안전하게 이스케이프됨' : '❌ 이스케이프 실패'}\n\n`;
+                
+                if (!isEscaped) allPassed = false;
+            });
+
+            showResult('test1-result', allPassed, 
+                allPassed ? 'HTML 이스케이프 테스트 통과' : 'HTML 이스케이프 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 2: 사용자 이름 안전 처리
+        function testUserNameSanitization() {
+            const testNames = [
+                { input: 'John Doe', expected: 'John Doe' },
+                { input: '<script>alert("XSS")</script>', expected: '&lt;script&gt;alert("XSS")&lt;/script&gt;' },
+                { input: 'A'.repeat(60), expected: 'A'.repeat(47) + '...' },
+                { input: null, expected: '알 수 없는 사용자' }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testNames.forEach((test, index) => {
+                const result = securityUtils.sanitizeUserName(test.input);
+                const passed = result === test.expected || (test.input && test.input.length > 50 && result.endsWith('...'));
+                
+                details += `테스트 ${index + 1}:\n`;
+                details += `입력: ${test.input}\n`;
+                details += `출력: ${result}\n`;
+                details += `결과: ${passed ? '✅ 통과' : '❌ 실패'}\n\n`;
+                
+                if (!passed) allPassed = false;
+            });
+
+            showResult('test2-result', allPassed,
+                allPassed ? '사용자 이름 안전 처리 테스트 통과' : '사용자 이름 안전 처리 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 3: 이메일 안전 처리
+        function testEmailSanitization() {
+            const testEmails = [
+                { input: 'user@example.com', valid: true },
+                { input: '<script>alert("XSS")</script>@example.com', valid: false },
+                { input: 'test@test.com', valid: true }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testEmails.forEach((test, index) => {
+                const result = securityUtils.sanitizeEmail(test.input);
+                const isEscaped = !result.includes('<script');
+                
+                details += `테스트 ${index + 1}:\n`;
+                details += `입력: ${test.input}\n`;
+                details += `출력: ${result}\n`;
+                details += `결과: ${isEscaped ? '✅ 안전하게 처리됨' : '❌ 처리 실패'}\n\n`;
+                
+                if (!isEscaped) allPassed = false;
+            });
+
+            showResult('test3-result', allPassed,
+                allPassed ? '이메일 안전 처리 테스트 통과' : '이메일 안전 처리 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 4: 이메일 형식 검증
+        function testEmailValidation() {
+            const testCases = [
+                { email: 'user@example.com', expected: true },
+                { email: 'test.user@example.co.kr', expected: true },
+                { email: 'invalid-email', expected: false },
+                { email: '@example.com', expected: false },
+                { email: 'user@', expected: false },
+                { email: '', expected: false },
+                { email: null, expected: false }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testCases.forEach((test, index) => {
+                const result = securityUtils.isValidEmail(test.email);
+                const passed = result === test.expected;
+                
+                details += `테스트 ${index + 1}:\n`;
+                details += `이메일: ${test.email}\n`;
+                details += `예상: ${test.expected}, 결과: ${result}\n`;
+                details += `결과: ${passed ? '✅ 통과' : '❌ 실패'}\n\n`;
+                
+                if (!passed) allPassed = false;
+            });
+
+            showResult('test4-result', allPassed,
+                allPassed ? '이메일 형식 검증 테스트 통과' : '이메일 형식 검증 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 5: 사용자 데이터 검증
+        function testUserDataValidation() {
+            const testCases = [
+                {
+                    name: '유효한 데이터',
+                    data: { email: 'user@example.com', provider: 'google', name: 'John Doe' },
+                    expected: true
+                },
+                {
+                    name: '이메일 누락',
+                    data: { provider: 'google', name: 'John Doe' },
+                    expected: false
+                },
+                {
+                    name: '잘못된 이메일 형식',
+                    data: { email: 'invalid-email', provider: 'google' },
+                    expected: false
+                },
+                {
+                    name: '잘못된 provider',
+                    data: { email: 'user@example.com', provider: 'invalid' },
+                    expected: false
+                },
+                {
+                    name: 'null 데이터',
+                    data: null,
+                    expected: false
+                }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testCases.forEach((test, index) => {
+                const result = securityUtils.validateUserData(test.data);
+                const passed = result.valid === test.expected;
+                
+                details += `테스트 ${index + 1}: ${test.name}\n`;
+                details += `데이터: ${JSON.stringify(test.data)}\n`;
+                details += `예상: ${test.expected}, 결과: ${result.valid}\n`;
+                if (!result.valid) {
+                    details += `오류: ${result.errors.join(', ')}\n`;
+                }
+                details += `결과: ${passed ? '✅ 통과' : '❌ 실패'}\n\n`;
+                
+                if (!passed) allPassed = false;
+            });
+
+            showResult('test5-result', allPassed,
+                allPassed ? '사용자 데이터 검증 테스트 통과' : '사용자 데이터 검증 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 6: 저장된 텍스트 검증
+        function testSavedTextsValidation() {
+            const testCases = [
+                {
+                    name: '유효한 배열',
+                    data: [
+                        { id: 1, content: 'Test', date: '2025-01-01', type: 'reference' },
+                        { id: 2, content: 'Test 2', date: '2025-01-02', type: 'edit' }
+                    ],
+                    expected: true
+                },
+                {
+                    name: '필수 필드 누락',
+                    data: [
+                        { id: 1, content: 'Test' }
+                    ],
+                    expected: false
+                },
+                {
+                    name: '잘못된 타입',
+                    data: [
+                        { id: 1, content: 'Test', date: '2025-01-01', type: 'invalid' }
+                    ],
+                    expected: false
+                },
+                {
+                    name: '배열이 아님',
+                    data: { id: 1, content: 'Test' },
+                    expected: false
+                }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testCases.forEach((test, index) => {
+                const result = securityUtils.validateSavedTexts(test.data);
+                const passed = result.valid === test.expected;
+                
+                details += `테스트 ${index + 1}: ${test.name}\n`;
+                details += `예상: ${test.expected}, 결과: ${result.valid}\n`;
+                if (!result.valid) {
+                    details += `오류: ${result.errors.slice(0, 3).join(', ')}\n`;
+                }
+                details += `결과: ${passed ? '✅ 통과' : '❌ 실패'}\n\n`;
+                
+                if (!passed) allPassed = false;
+            });
+
+            showResult('test6-result', allPassed,
+                allPassed ? '저장된 텍스트 검증 테스트 통과' : '저장된 텍스트 검증 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 7: 안전한 스토리지 로드
+        function testSafeStorageLoad() {
+            const testKey = 'test_security_storage';
+            
+            // 테스트 데이터 저장
+            const testData = { email: 'test@example.com', provider: 'google' };
+            localStorage.setItem(testKey, JSON.stringify(testData));
+            
+            // 안전한 로드 테스트
+            const loaded = securityUtils.safeLoadFromStorage(
+                testKey,
+                null,
+                (data) => securityUtils.validateUserData(data)
+            );
+            
+            const passed = loaded !== null && loaded.email === 'test@example.com';
+            
+            // 정리
+            localStorage.removeItem(testKey);
+            
+            let details = `저장된 데이터: ${JSON.stringify(testData)}\n`;
+            details += `로드된 데이터: ${JSON.stringify(loaded)}\n`;
+            details += `결과: ${passed ? '✅ 안전하게 로드됨' : '❌ 로드 실패'}`;
+            
+            showResult('test7-result', passed,
+                passed ? '안전한 스토리지 로드 테스트 통과' : '안전한 스토리지 로드 테스트 실패',
+                details
+            );
+        }
+
+        // 테스트 8: 사용자명 검증
+        function testUsernameValidation() {
+            const testCases = [
+                { username: 'john_doe', expected: true },
+                { username: '홍길동', expected: true },
+                { username: 'user123', expected: true },
+                { username: 'a', expected: false }, // 너무 짧음
+                { username: 'A'.repeat(51), expected: false }, // 너무 김
+                { username: 'user@name', expected: false }, // 특수문자
+                { username: '', expected: false },
+                { username: null, expected: false }
+            ];
+
+            let allPassed = true;
+            let details = '';
+
+            testCases.forEach((test, index) => {
+                const result = securityUtils.validateUsername(test.username);
+                const passed = result.valid === test.expected;
+                
+                details += `테스트 ${index + 1}:\n`;
+                details += `사용자명: ${test.username}\n`;
+                details += `예상: ${test.expected}, 결과: ${result.valid}\n`;
+                if (!result.valid) {
+                    details += `오류: ${result.error}\n`;
+                }
+                details += `결과: ${passed ? '✅ 통과' : '❌ 실패'}\n\n`;
+                
+                if (!passed) allPassed = false;
+            });
+
+            showResult('test8-result', allPassed,
+                allPassed ? '사용자명 검증 테스트 통과' : '사용자명 검증 테스트 실패',
+                details
+            );
+        }
+
+        // 모든 테스트 실행
+        function runAllTests() {
+            testResults = [];
+            testHtmlEscape();
+            testUserNameSanitization();
+            testEmailSanitization();
+            testEmailValidation();
+            testUserDataValidation();
+            testSavedTextsValidation();
+            testSafeStorageLoad();
+            testUsernameValidation();
+            
+            setTimeout(() => {
+                const totalTests = testResults.length;
+                const passedTests = testResults.filter(r => r.success).length;
+                alert(`테스트 완료!\n통과: ${passedTests}/${totalTests}\n실패: ${totalTests - passedTests}`);
+            }, 500);
+        }
+
+        // 결과 초기화
+        function clearResults() {
+            for (let i = 1; i <= 8; i++) {
+                const element = document.getElementById(`test${i}-result`);
+                if (element) element.innerHTML = '';
+            }
+            testResults = [];
+        }
+
+        // 페이지 로드 시 안내 메시지
+        console.log('🔒 보안 기능 테스트 페이지가 로드되었습니다.');
+        console.log('각 테스트 버튼을 클릭하거나 "모든 테스트 실행" 버튼을 클릭하세요.');
+    </script>
+</body>
+</html>

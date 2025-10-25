@@ -1,7 +1,8 @@
 // 데이터 마이그레이션 관리 클래스
 class DataMigrationManager {
-    constructor(config) {
+    constructor(config, logger = null) {
         this.config = config;
+        this.logger = logger;
         this.backupData = null;
         this.migrationLog = [];
     }
@@ -147,6 +148,15 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
         try {
             this.addMigrationLog('migration_start', '마이그레이션 시작', { oldUsername, newEmail });
             
+            // 마이그레이션 시작 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_start', '데이터 마이그레이션 시작', {
+                    oldUsername,
+                    newEmail,
+                    timestamp: Date.now()
+                });
+            }
+            
             // 1. 기존 데이터 조회
             const existingData = this.getExistingUserData(oldUsername);
             if (existingData.savedTexts.length === 0 && !existingData.tempSave) {
@@ -156,6 +166,16 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
             // 2. 백업 생성
             const backup = this.createBackup(existingData);
             
+            // 백업 생성 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_backup_created', '마이그레이션 백업 생성', {
+                    oldUsername,
+                    backupTimestamp: backup.timestamp,
+                    backupChecksum: backup.checksum,
+                    dataCount: existingData.savedTexts.length
+                });
+            }
+            
             // 3. 새 키로 데이터 이전
             if (existingData.savedTexts.length > 0) {
                 localStorage.setItem(
@@ -163,6 +183,15 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
                     JSON.stringify(existingData.savedTexts)
                 );
                 this.addMigrationLog('saved_texts_migrated', `저장된 글 ${existingData.savedTexts.length}개 이전 완료`);
+                
+                // 데이터 이전 로깅
+                if (this.logger) {
+                    this.logger.logAction('migration_data_transferred', '저장된 글 이전 완료', {
+                        oldUsername,
+                        newEmail,
+                        itemCount: existingData.savedTexts.length
+                    });
+                }
             }
             
             if (existingData.tempSave) {
@@ -171,6 +200,14 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
                     JSON.stringify(existingData.tempSave)
                 );
                 this.addMigrationLog('temp_save_migrated', '임시 저장 데이터 이전 완료');
+                
+                // 임시 저장 이전 로깅
+                if (this.logger) {
+                    this.logger.logAction('migration_temp_save_transferred', '임시 저장 데이터 이전 완료', {
+                        oldUsername,
+                        newEmail
+                    });
+                }
             }
             
             // 4. 마이그레이션 기록 저장
@@ -192,6 +229,18 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
             
             this.addMigrationLog('migration_complete', '마이그레이션 완료', migrationRecord);
             
+            // 마이그레이션 완료 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_complete', '데이터 마이그레이션 완료', {
+                    oldUsername,
+                    newEmail,
+                    migrationId: migrationRecord.migrationId,
+                    dataCount: migrationRecord.dataCount,
+                    tempSaveExists: migrationRecord.tempSaveExists,
+                    migratedAt: migrationRecord.migratedAt
+                });
+            }
+            
             return {
                 success: true,
                 migrationRecord,
@@ -202,6 +251,16 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
         } catch (error) {
             console.error('마이그레이션 실패:', error);
             this.addMigrationLog('migration_error', error.message, { error: error.toString() });
+            
+            // 마이그레이션 실패 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_error', '데이터 마이그레이션 실패', {
+                    oldUsername,
+                    newEmail,
+                    error: error.message || error.toString(),
+                    stack: error.stack
+                });
+            }
             
             // 실패 시 롤백 시도
             await this.rollbackMigration();
@@ -219,6 +278,14 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
             }
             
             this.addMigrationLog('rollback_start', '롤백 시작');
+            
+            // 롤백 시작 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_rollback_start', '마이그레이션 롤백 시작', {
+                    username: this.backupData.username,
+                    backupTimestamp: this.backupData.timestamp
+                });
+            }
             
             const { username, data } = this.backupData;
             
@@ -238,11 +305,30 @@ Google 계정으로 데이터를 안전하게 이전하시겠습니까?
             }
             
             this.addMigrationLog('rollback_complete', '롤백 완료');
+            
+            // 롤백 완료 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_rollback_complete', '마이그레이션 롤백 완료', {
+                    username: this.backupData.username,
+                    restoredItemCount: data.savedTexts.length,
+                    tempSaveRestored: !!data.tempSave
+                });
+            }
+            
             return true;
             
         } catch (error) {
             console.error('롤백 실패:', error);
             this.addMigrationLog('rollback_error', error.message);
+            
+            // 롤백 실패 로깅
+            if (this.logger) {
+                this.logger.logAction('migration_rollback_error', '마이그레이션 롤백 실패', {
+                    error: error.message || error.toString(),
+                    stack: error.stack
+                });
+            }
+            
             return false;
         }
     }

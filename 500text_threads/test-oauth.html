@@ -67,11 +67,14 @@
         <h1>🔧 Google OAuth 2.0 테스트 도구</h1>
         <p>이 페이지는 Google OAuth 설정을 테스트하고 디버깅하기 위한 도구입니다.</p>
         
-        <!-- 설정 상태 -->
+        <!-- 설정 검증 테스트 -->
         <div class="test-section">
-            <h3>📋 설정 상태</h3>
+            <h3>📋 설정 검증 테스트</h3>
             <div id="config-status"></div>
-            <button class="btn btn-info" onclick="checkConfig()">설정 확인</button>
+            <button class="btn btn-info" onclick="checkConfig()">전체 설정 확인</button>
+            <button class="btn btn-primary" onclick="testClientIdFormat()">Client ID 형식 검증</button>
+            <button class="btn btn-primary" onclick="testPlaceholderDetection()">플레이스홀더 감지</button>
+            <button class="btn btn-primary" onclick="testEnvironmentValidation()">환경 검증 (HTTPS)</button>
             <button class="btn btn-warning" onclick="showSetupGuide()">설정 가이드</button>
         </div>
         
@@ -84,21 +87,52 @@
             <button class="btn btn-info" onclick="checkAuthStatus()">인증 상태 확인</button>
         </div>
         
-        <!-- 토큰 관리 -->
+        <!-- 토큰 관리 테스트 -->
         <div class="test-section">
-            <h3>🎫 토큰 관리</h3>
+            <h3>🎫 토큰 관리 테스트</h3>
             <div id="token-status"></div>
-            <button class="btn btn-success" onclick="refreshToken()">토큰 갱신</button>
+            <button class="btn btn-success" onclick="testTokenRefresh()">토큰 갱신 테스트</button>
             <button class="btn btn-info" onclick="validateToken()">토큰 검증</button>
+            <button class="btn btn-warning" onclick="testTokenExpiry()">토큰 만료 시뮬레이션</button>
+            <button class="btn btn-primary" onclick="testAutoRefreshScheduling()">자동 갱신 스케줄링 테스트</button>
         </div>
         
-        <!-- 데이터 마이그레이션 -->
+        <!-- 데이터 마이그레이션 시뮬레이션 -->
         <div class="test-section">
-            <h3>📦 데이터 마이그레이션</h3>
+            <h3>📦 데이터 마이그레이션 시뮬레이션</h3>
             <div id="migration-status"></div>
+            <button class="btn btn-primary" onclick="simulateFullMigration()">전체 마이그레이션 시뮬레이션</button>
+            <button class="btn btn-success" onclick="testBackupCreation()">백업 생성 테스트</button>
+            <button class="btn btn-warning" onclick="testDataTransfer()">데이터 이전 테스트</button>
+            <button class="btn btn-info" onclick="testDataVerification()">데이터 검증 테스트</button>
+            <button class="btn btn-danger" onclick="testRollback()">롤백 테스트</button>
             <button class="btn btn-info" onclick="checkMigrationStatus()">마이그레이션 상태</button>
             <button class="btn btn-warning" onclick="createTestData()">테스트 데이터 생성</button>
             <button class="btn btn-danger" onclick="clearTestData()">테스트 데이터 삭제</button>
+        </div>
+        
+        <!-- 에러 시나리오 테스트 -->
+        <div class="test-section">
+            <h3>⚠️ 에러 시나리오 테스트</h3>
+            <div id="error-status"></div>
+            <button class="btn btn-warning" onclick="testConfigError()">설정 오류 시나리오</button>
+            <button class="btn btn-warning" onclick="testNetworkError()">네트워크 오류 시나리오</button>
+            <button class="btn btn-info" onclick="testUserCancellation()">사용자 취소 시나리오</button>
+            <button class="btn btn-danger" onclick="testTokenError()">토큰 오류 시나리오</button>
+            <button class="btn btn-danger" onclick="testMigrationFailure()">마이그레이션 실패 시나리오</button>
+            <button class="btn btn-primary" onclick="testErrorRecovery()">오류 복구 테스트</button>
+        </div>
+        
+        <!-- UX 기능 테스트 (Task 5) -->
+        <div class="test-section">
+            <h3>🎨 UX 기능 테스트</h3>
+            <div id="ux-status"></div>
+            <button class="btn btn-primary" onclick="testLoadingAnimation()">로딩 애니메이션 테스트</button>
+            <button class="btn btn-success" onclick="testToastSuccess()">토스트 (성공)</button>
+            <button class="btn btn-warning" onclick="testToastWarning()">토스트 (경고)</button>
+            <button class="btn btn-danger" onclick="testToastError()">토스트 (오류)</button>
+            <button class="btn btn-info" onclick="testToastInfo()">토스트 (정보)</button>
+            <button class="btn btn-primary" onclick="testMigrationProgress()">마이그레이션 진행 표시</button>
         </div>
         
         <!-- 로그 -->
@@ -229,20 +263,445 @@
             log(`인증 상태 확인: ${isSignedIn ? '로그인됨' : '로그아웃됨'}`);
         }
         
-        // 토큰 갱신
-        async function refreshToken() {
+        // ===== 설정 검증 테스트 함수 =====
+        
+        // Client ID 형식 검증 테스트
+        function testClientIdFormat() {
+            log('Client ID 형식 검증 테스트 시작');
+            
+            const clientId = config.GOOGLE_CLIENT_ID;
+            const isValid = clientId.endsWith('.googleusercontent.com');
+            
+            const message = isValid 
+                ? `✅ Client ID 형식이 올바릅니다: ${clientId}`
+                : `❌ Client ID 형식이 잘못되었습니다: ${clientId}`;
+            
+            updateConfigStatus(isValid ? 'success' : 'error', message);
+            log(message);
+        }
+        
+        // 플레이스홀더 감지 테스트
+        function testPlaceholderDetection() {
+            log('플레이스홀더 감지 테스트 시작');
+            
+            const clientId = config.GOOGLE_CLIENT_ID;
+            const hasPlaceholder = clientId.includes('YOUR_');
+            
+            const message = hasPlaceholder
+                ? `⚠️ 플레이스홀더 감지됨: ${clientId}`
+                : `✅ 플레이스홀더 없음: 설정 완료`;
+            
+            updateConfigStatus(hasPlaceholder ? 'error' : 'success', message);
+            log(message);
+            
+            if (hasPlaceholder) {
+                log('설정 안내를 확인하세요.');
+            }
+        }
+        
+        // 환경 검증 테스트
+        function testEnvironmentValidation() {
+            log('환경 검증 테스트 시작');
+            
+            const isDev = config.isDevelopment;
+            const protocol = window.location.protocol;
+            const hostname = window.location.hostname;
+            
+            let message = `환경: ${isDev ? '개발' : '프로덕션'}<br>`;
+            message += `프로토콜: ${protocol}<br>`;
+            message += `호스트: ${hostname}<br>`;
+            
+            if (!isDev && protocol !== 'https:') {
+                message += `❌ 프로덕션 환경에서는 HTTPS가 필요합니다!`;
+                updateConfigStatus('error', message);
+                log('❌ HTTPS 검증 실패: 프로덕션 환경에서 HTTP 사용 중');
+            } else if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
+                message += `✅ 개발 환경: HTTP 허용됨`;
+                updateConfigStatus('success', message);
+                log('✅ 환경 검증 성공: 개발 환경');
+            } else {
+                message += `✅ 환경 설정이 올바릅니다`;
+                updateConfigStatus('success', message);
+                log('✅ 환경 검증 성공');
+            }
+        }
+        
+        function updateConfigStatus(type, message) {
+            document.getElementById('config-status').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+        
+        // ===== 토큰 관리 테스트 함수 =====
+        
+        // 토큰 갱신 테스트
+        async function testTokenRefresh() {
             try {
-                log('토큰 갱신 시도...');
+                log('토큰 갱신 테스트 시작...');
+                showLoadingIndicator('토큰 갱신 중...');
+                
                 const tokenData = await authManager.refreshToken();
+                hideLoadingIndicator();
+                
                 if (tokenData) {
-                    updateTokenStatus('success', `토큰 갱신 완료: ${new Date(tokenData.refreshTime).toLocaleString()}`);
+                    const message = `✅ 토큰 갱신 성공<br>갱신 시간: ${new Date(tokenData.refreshTime).toLocaleString()}<br>만료 시간: ${new Date(tokenData.expiryTime).toLocaleString()}`;
+                    updateTokenStatus('success', message);
+                    showToast('토큰이 성공적으로 갱신되었습니다!', 'success');
+                    log('✅ 토큰 갱신 테스트 성공');
                 } else {
-                    updateTokenStatus('error', '토큰 갱신 실패: 로그인되지 않음');
+                    updateTokenStatus('error', '❌ 토큰 갱신 실패: 로그인되지 않음');
+                    showToast('로그인이 필요합니다.', 'warning');
+                    log('❌ 토큰 갱신 실패: 로그인되지 않음');
                 }
             } catch (error) {
-                log(`토큰 갱신 실패: ${error.message}`);
-                updateTokenStatus('error', `토큰 갱신 실패: ${error.message}`);
+                hideLoadingIndicator();
+                log(`❌ 토큰 갱신 테스트 실패: ${error.message}`);
+                updateTokenStatus('error', `❌ 토큰 갱신 실패: ${error.message}`);
+                showToast('토큰 갱신에 실패했습니다.', 'error');
             }
+        }
+        
+        // 토큰 만료 시뮬레이션
+        function testTokenExpiry() {
+            log('토큰 만료 시뮬레이션 시작');
+            
+            if (!authManager.tokenData) {
+                updateTokenStatus('error', '❌ 로그인되지 않음');
+                showToast('먼저 로그인해주세요.', 'warning');
+                return;
+            }
+            
+            // 토큰 만료 시간을 과거로 설정
+            const originalExpiry = authManager.tokenData.expiryTime;
+            authManager.tokenData.expiryTime = Date.now() - 1000;
+            
+            log(`토큰 만료 시간을 과거로 설정: ${new Date(authManager.tokenData.expiryTime).toLocaleString()}`);
+            updateTokenStatus('warning', '⚠️ 토큰이 만료되었습니다 (시뮬레이션)');
+            showToast('토큰이 만료되었습니다. 갱신이 필요합니다.', 'warning');
+            
+            // 5초 후 원래대로 복구
+            setTimeout(() => {
+                if (authManager.tokenData) {
+                    authManager.tokenData.expiryTime = originalExpiry;
+                    log('토큰 만료 시간 복구됨');
+                    updateTokenStatus('info', 'ℹ️ 토큰 만료 시뮬레이션 종료');
+                }
+            }, 5000);
+        }
+        
+        // 자동 갱신 스케줄링 테스트
+        function testAutoRefreshScheduling() {
+            log('자동 갱신 스케줄링 테스트 시작');
+            
+            if (!authManager.tokenData) {
+                updateTokenStatus('error', '❌ 로그인되지 않음');
+                showToast('먼저 로그인해주세요.', 'warning');
+                return;
+            }
+            
+            const expiryTime = authManager.tokenData.expiryTime;
+            const now = Date.now();
+            const timeUntilExpiry = expiryTime - now;
+            const refreshTime = expiryTime - (5 * 60 * 1000); // 만료 5분 전
+            const timeUntilRefresh = refreshTime - now;
+            
+            let message = `<strong>토큰 만료 시간:</strong> ${new Date(expiryTime).toLocaleString()}<br>`;
+            message += `<strong>만료까지 남은 시간:</strong> ${Math.floor(timeUntilExpiry / 1000 / 60)}분<br>`;
+            message += `<strong>자동 갱신 예정 시간:</strong> ${new Date(refreshTime).toLocaleString()}<br>`;
+            message += `<strong>갱신까지 남은 시간:</strong> ${Math.floor(timeUntilRefresh / 1000 / 60)}분`;
+            
+            if (timeUntilRefresh < 0) {
+                message += `<br><strong style="color: #dc3545;">⚠️ 갱신이 필요합니다!</strong>`;
+                updateTokenStatus('warning', message);
+            } else {
+                message += `<br><strong style="color: #28a745;">✅ 자동 갱신 스케줄링 활성</strong>`;
+                updateTokenStatus('success', message);
+            }
+            
+            log(`자동 갱신 스케줄링 정보: 갱신까지 ${Math.floor(timeUntilRefresh / 1000 / 60)}분`);
+        }
+        
+        // ===== 마이그레이션 시뮬레이션 함수 =====
+        
+        // 전체 마이그레이션 시뮬레이션
+        async function simulateFullMigration() {
+            log('=== 전체 마이그레이션 시뮬레이션 시작 ===');
+            
+            try {
+                // 1단계: 테스트 데이터 생성
+                log('1단계: 테스트 데이터 생성');
+                createTestData();
+                await sleep(1000);
+                
+                // 2단계: 백업 생성
+                log('2단계: 백업 생성');
+                showMigrationProgress('checking');
+                await testBackupCreation();
+                await sleep(2000);
+                
+                // 3단계: 데이터 이전
+                log('3단계: 데이터 이전');
+                showMigrationProgress('migrating');
+                await testDataTransfer();
+                await sleep(2000);
+                
+                // 4단계: 데이터 검증
+                log('4단계: 데이터 검증');
+                await testDataVerification();
+                await sleep(1000);
+                
+                // 5단계: 완료
+                log('5단계: 마이그레이션 완료');
+                showMigrationProgress('complete');
+                
+                log('=== 전체 마이그레이션 시뮬레이션 완료 ===');
+                updateMigrationStatus('success', '✅ 전체 마이그레이션 시뮬레이션 성공');
+            } catch (error) {
+                log(`❌ 마이그레이션 시뮬레이션 실패: ${error.message}`);
+                updateMigrationStatus('error', `❌ 마이그레이션 실패: ${error.message}`);
+                showToast('마이그레이션 시뮬레이션에 실패했습니다.', 'error');
+            }
+        }
+        
+        // 백업 생성 테스트
+        async function testBackupCreation() {
+            log('백업 생성 테스트 시작');
+            
+            const currentUser = localStorage.getItem('dualTextWriter_currentUser');
+            if (!currentUser) {
+                log('❌ 현재 사용자 없음');
+                updateMigrationStatus('error', '❌ 현재 사용자가 없습니다');
+                return;
+            }
+            
+            const savedTextsKey = `dualTextWriter_savedTexts_${currentUser}`;
+            const savedTexts = JSON.parse(localStorage.getItem(savedTextsKey) || '[]');
+            
+            const backup = {
+                key: `dualTextWriter_backup_${Date.now()}`,
+                timestamp: Date.now(),
+                username: currentUser,
+                data: savedTexts
+            };
+            
+            localStorage.setItem(backup.key, JSON.stringify(backup));
+            
+            log(`✅ 백업 생성 완료: ${backup.key} (${savedTexts.length}개 항목)`);
+            updateMigrationStatus('success', `✅ 백업 생성 완료: ${savedTexts.length}개 항목`);
+            showToast('백업이 생성되었습니다.', 'success');
+        }
+        
+        // 데이터 이전 테스트
+        async function testDataTransfer() {
+            log('데이터 이전 테스트 시작');
+            
+            const oldUsername = localStorage.getItem('dualTextWriter_currentUser');
+            if (!oldUsername) {
+                log('❌ 원본 사용자 없음');
+                updateMigrationStatus('error', '❌ 원본 사용자가 없습니다');
+                return;
+            }
+            
+            const newEmail = 'test_migration@example.com';
+            const oldKey = `dualTextWriter_savedTexts_${oldUsername}`;
+            const newKey = `dualTextWriter_savedTexts_${newEmail}`;
+            
+            const oldData = JSON.parse(localStorage.getItem(oldKey) || '[]');
+            localStorage.setItem(newKey, JSON.stringify(oldData));
+            
+            log(`✅ 데이터 이전 완료: ${oldUsername} → ${newEmail} (${oldData.length}개 항목)`);
+            updateMigrationStatus('success', `✅ 데이터 이전 완료: ${oldData.length}개 항목`);
+            showToast('데이터가 이전되었습니다.', 'success');
+        }
+        
+        // 데이터 검증 테스트
+        async function testDataVerification() {
+            log('데이터 검증 테스트 시작');
+            
+            const oldUsername = localStorage.getItem('dualTextWriter_currentUser');
+            const newEmail = 'test_migration@example.com';
+            
+            const oldKey = `dualTextWriter_savedTexts_${oldUsername}`;
+            const newKey = `dualTextWriter_savedTexts_${newEmail}`;
+            
+            const oldData = JSON.parse(localStorage.getItem(oldKey) || '[]');
+            const newData = JSON.parse(localStorage.getItem(newKey) || '[]');
+            
+            const isValid = oldData.length === newData.length && 
+                           JSON.stringify(oldData) === JSON.stringify(newData);
+            
+            if (isValid) {
+                log(`✅ 데이터 검증 성공: ${oldData.length}개 항목 일치`);
+                updateMigrationStatus('success', `✅ 데이터 검증 성공: ${oldData.length}개 항목`);
+                showToast('데이터 무결성이 확인되었습니다.', 'success');
+            } else {
+                log(`❌ 데이터 검증 실패: 원본 ${oldData.length}개, 대상 ${newData.length}개`);
+                updateMigrationStatus('error', '❌ 데이터 검증 실패');
+                showToast('데이터 검증에 실패했습니다.', 'error');
+            }
+        }
+        
+        // 롤백 테스트
+        async function testRollback() {
+            log('롤백 테스트 시작');
+            
+            // 가장 최근 백업 찾기
+            const backupKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('dualTextWriter_backup_')
+            );
+            
+            if (backupKeys.length === 0) {
+                log('❌ 백업 데이터 없음');
+                updateMigrationStatus('error', '❌ 백업 데이터가 없습니다');
+                showToast('백업 데이터가 없습니다.', 'warning');
+                return;
+            }
+            
+            const latestBackupKey = backupKeys.sort().reverse()[0];
+            const backup = JSON.parse(localStorage.getItem(latestBackupKey));
+            
+            // 백업에서 복원
+            const restoreKey = `dualTextWriter_savedTexts_${backup.username}`;
+            localStorage.setItem(restoreKey, JSON.stringify(backup.data));
+            
+            log(`✅ 롤백 완료: ${backup.key} → ${restoreKey} (${backup.data.length}개 항목)`);
+            updateMigrationStatus('success', `✅ 롤백 완료: ${backup.data.length}개 항목 복원`);
+            showToast('백업에서 데이터가 복원되었습니다.', 'success');
+        }
+        
+        // ===== 에러 시나리오 테스트 함수 =====
+        
+        // 설정 오류 시나리오
+        function testConfigError() {
+            log('설정 오류 시나리오 테스트');
+            
+            const errorScenarios = [
+                { type: 'PLACEHOLDER_VALUE', message: 'Client ID에 플레이스홀더가 포함되어 있습니다.' },
+                { type: 'INVALID_FORMAT', message: 'Client ID 형식이 올바르지 않습니다.' },
+                { type: 'HTTPS_REQUIRED', message: '프로덕션 환경에서는 HTTPS가 필요합니다.' }
+            ];
+            
+            const scenario = errorScenarios[Math.floor(Math.random() * errorScenarios.length)];
+            
+            log(`❌ 설정 오류: ${scenario.type}`);
+            updateErrorStatus('error', `❌ ${scenario.message}`);
+            showToast(scenario.message, 'error');
+            
+            setTimeout(() => {
+                log('설정 안내 표시');
+                showToast('설정 가이드를 확인하세요.', 'info');
+            }, 2000);
+        }
+        
+        // 네트워크 오류 시나리오
+        function testNetworkError() {
+            log('네트워크 오류 시나리오 테스트');
+            
+            updateErrorStatus('error', '❌ 네트워크 연결을 확인해주세요.');
+            showToast('네트워크 연결을 확인해주세요.', 'warning');
+            
+            log('❌ 네트워크 오류 발생');
+            
+            setTimeout(() => {
+                log('재시도 옵션 제공');
+                if (confirm('다시 시도하시겠습니까?')) {
+                    log('사용자가 재시도 선택');
+                    showToast('재시도 중...', 'info');
+                } else {
+                    log('사용자가 재시도 취소');
+                }
+            }, 2000);
+        }
+        
+        // 사용자 취소 시나리오
+        function testUserCancellation() {
+            log('사용자 취소 시나리오 테스트');
+            
+            updateErrorStatus('info', 'ℹ️ 로그인이 취소되었습니다.');
+            showToast('로그인이 취소되었습니다.', 'info');
+            
+            log('ℹ️ 사용자가 로그인 팝업을 닫음 (오류 아님)');
+        }
+        
+        // 토큰 오류 시나리오
+        function testTokenError() {
+            log('토큰 오류 시나리오 테스트');
+            
+            const errorTypes = [
+                { type: 'token_expired', message: '세션이 만료되었습니다.', action: '자동 갱신 시도' },
+                { type: 'invalid_token', message: '유효하지 않은 인증 정보입니다.', action: '재로그인 필요' }
+            ];
+            
+            const error = errorTypes[Math.floor(Math.random() * errorTypes.length)];
+            
+            log(`❌ 토큰 오류: ${error.type}`);
+            updateErrorStatus('error', `❌ ${error.message}`);
+            showToast(error.message, 'error');
+            
+            setTimeout(() => {
+                log(`액션: ${error.action}`);
+                showToast(error.action, 'info');
+            }, 2000);
+        }
+        
+        // 마이그레이션 실패 시나리오
+        function testMigrationFailure() {
+            log('마이그레이션 실패 시나리오 테스트');
+            
+            showMigrationProgress('migrating');
+            
+            setTimeout(() => {
+                log('❌ 마이그레이션 실패 발생');
+                updateErrorStatus('error', '❌ 마이그레이션에 실패했습니다. 백업에서 복원 중...');
+                showToast('마이그레이션에 실패했습니다.', 'error');
+                
+                // 진행 표시 제거
+                const progressEl = document.getElementById('test-migration-progress');
+                if (progressEl) progressEl.remove();
+                
+                setTimeout(() => {
+                    log('✅ 백업에서 데이터 복원 완료');
+                    showToast('백업에서 데이터가 복원되었습니다.', 'success');
+                }, 2000);
+            }, 3000);
+        }
+        
+        // 오류 복구 테스트
+        function testErrorRecovery() {
+            log('오류 복구 테스트 시작');
+            
+            // 1단계: 오류 발생
+            log('1단계: 오류 발생 시뮬레이션');
+            updateErrorStatus('error', '❌ 오류가 발생했습니다.');
+            showToast('오류가 발생했습니다.', 'error');
+            
+            setTimeout(() => {
+                // 2단계: 폴백 시스템 활성화
+                log('2단계: 폴백 시스템 활성화');
+                updateErrorStatus('warning', '⚠️ 폴백 시스템으로 전환 중...');
+                showToast('기존 로그인 방식으로 전환합니다.', 'warning');
+                
+                setTimeout(() => {
+                    // 3단계: 복구 완료
+                    log('3단계: 복구 완료');
+                    updateErrorStatus('success', '✅ 폴백 시스템으로 정상 작동 중');
+                    showToast('정상적으로 복구되었습니다.', 'success');
+                }, 2000);
+            }, 2000);
+        }
+        
+        function updateErrorStatus(type, message) {
+            document.getElementById('error-status').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+        
+        // 유틸리티 함수
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // 토큰 갱신 (기존 함수 유지)
+        async function refreshToken() {
+            await testTokenRefresh();
         }
         
         // 토큰 검증
@@ -340,6 +799,358 @@
         // 로그 지우기
         function clearLog() {
             document.getElementById('log-container').innerHTML = '';
+        }
+        
+        // ===== UX 기능 테스트 (Task 5) =====
+        
+        // 로딩 애니메이션 테스트
+        function testLoadingAnimation() {
+            log('로딩 애니메이션 테스트 시작');
+            
+            // 로딩 표시
+            showLoadingIndicator('테스트 로딩 중...');
+            
+            // 3초 후 자동 숨김
+            setTimeout(() => {
+                hideLoadingIndicator();
+                log('로딩 애니메이션 테스트 완료');
+            }, 3000);
+        }
+        
+        // 로딩 표시기 표시
+        function showLoadingIndicator(message = '처리 중...') {
+            hideLoadingIndicator();
+            
+            const loadingEl = document.createElement('div');
+            loadingEl.id = 'test-loading-indicator';
+            loadingEl.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.85);
+                color: white;
+                padding: 30px 40px;
+                border-radius: 12px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+                z-index: 2000;
+                text-align: center;
+                min-width: 250px;
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            loadingEl.innerHTML = `
+                <div style="
+                    border: 4px solid rgba(255, 255, 255, 0.3);
+                    border-top: 4px solid white;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 15px;
+                "></div>
+                <div style="font-size: 16px; font-weight: 600;">${message}</div>
+            `;
+            
+            document.body.appendChild(loadingEl);
+            
+            // 스피너 애니메이션
+            if (!document.getElementById('test-spinner-style')) {
+                const style = document.createElement('style');
+                style.id = 'test-spinner-style';
+                style.textContent = `
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+        
+        // 로딩 표시기 숨기기
+        function hideLoadingIndicator() {
+            const loadingEl = document.getElementById('test-loading-indicator');
+            if (loadingEl && loadingEl.parentNode) {
+                loadingEl.parentNode.removeChild(loadingEl);
+            }
+        }
+        
+        // 토스트 메시지 테스트
+        function testToastSuccess() {
+            showToast('작업이 성공적으로 완료되었습니다!', 'success');
+            log('토스트 (성공) 테스트');
+        }
+        
+        function testToastWarning() {
+            showToast('주의가 필요한 상황입니다.', 'warning');
+            log('토스트 (경고) 테스트');
+        }
+        
+        function testToastError() {
+            showToast('오류가 발생했습니다. 다시 시도해주세요.', 'error');
+            log('토스트 (오류) 테스트');
+        }
+        
+        function testToastInfo() {
+            showToast('정보성 메시지입니다.', 'info');
+            log('토스트 (정보) 테스트');
+        }
+        
+        // 토스트 메시지 표시
+        function showToast(message, type = 'info') {
+            const messageConfig = {
+                'success': { icon: '✅', bgColor: '#28a745', textColor: 'white', duration: 3000 },
+                'error': { icon: '❌', bgColor: '#dc3545', textColor: 'white', duration: 5000 },
+                'warning': { icon: '⚠️', bgColor: '#ffc107', textColor: '#000', duration: 4000 },
+                'info': { icon: 'ℹ️', bgColor: '#17a2b8', textColor: 'white', duration: 3000 }
+            };
+            
+            const config = messageConfig[type] || messageConfig['info'];
+            
+            const messageEl = document.createElement('div');
+            messageEl.className = 'test-toast-message';
+            messageEl.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${config.bgColor};
+                color: ${config.textColor};
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 1000;
+                font-weight: 600;
+                max-width: 350px;
+                word-wrap: break-word;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            messageEl.innerHTML = `
+                <span style="font-size: 1.2em;">${config.icon}</span>
+                <span style="flex: 1;">${message}</span>
+                <button style="
+                    background: none;
+                    border: none;
+                    color: inherit;
+                    font-size: 1.2em;
+                    cursor: pointer;
+                    padding: 0;
+                    margin-left: auto;
+                    opacity: 0.7;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">×</button>
+            `;
+            
+            document.body.appendChild(messageEl);
+            
+            // 닫기 버튼
+            const closeBtn = messageEl.querySelector('button');
+            const removeToast = () => {
+                messageEl.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.parentNode.removeChild(messageEl);
+                    }
+                }, 300);
+            };
+            
+            closeBtn.addEventListener('click', removeToast);
+            
+            // 자동 사라짐
+            const autoHideTimeout = setTimeout(removeToast, config.duration);
+            
+            // 마우스 호버 시 타이머 일시 정지
+            messageEl.addEventListener('mouseenter', () => {
+                clearTimeout(autoHideTimeout);
+            });
+            
+            messageEl.addEventListener('mouseleave', () => {
+                setTimeout(removeToast, 1000);
+            });
+            
+            // 애니메이션 스타일 추가
+            if (!document.getElementById('test-toast-style')) {
+                const style = document.createElement('style');
+                style.id = 'test-toast-style';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from {
+                            opacity: 0;
+                            transform: translateX(100%);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateX(0);
+                        }
+                    }
+                    @keyframes slideOut {
+                        from {
+                            opacity: 1;
+                            transform: translateX(0);
+                        }
+                        to {
+                            opacity: 0;
+                            transform: translateX(100%);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+        
+        // 마이그레이션 진행 표시 테스트
+        function testMigrationProgress() {
+            log('마이그레이션 진행 표시 테스트 시작');
+            
+            // 1단계: 확인 중
+            showMigrationProgress('checking');
+            
+            setTimeout(() => {
+                // 2단계: 마이그레이션 중
+                showMigrationProgress('migrating');
+                
+                setTimeout(() => {
+                    // 3단계: 완료
+                    showMigrationProgress('complete');
+                    log('마이그레이션 진행 표시 테스트 완료');
+                }, 2000);
+            }, 2000);
+        }
+        
+        // 마이그레이션 진행 표시
+        function showMigrationProgress(status) {
+            const existingProgress = document.getElementById('test-migration-progress');
+            if (existingProgress) {
+                existingProgress.remove();
+            }
+            
+            const statusConfig = {
+                'checking': {
+                    icon: '🔍',
+                    title: '데이터 확인 중',
+                    text: '기존 데이터를 확인하고 있습니다...',
+                    progress: 10,
+                    steps: { backup: false, transfer: false, verify: false }
+                },
+                'migrating': {
+                    icon: '📦',
+                    title: '마이그레이션 진행 중',
+                    text: '데이터를 안전하게 이전하고 있습니다...',
+                    progress: 50,
+                    steps: { backup: true, transfer: true, verify: false }
+                },
+                'complete': {
+                    icon: '✅',
+                    title: '마이그레이션 완료',
+                    text: '모든 데이터가 성공적으로 이전되었습니다!',
+                    progress: 100,
+                    steps: { backup: true, transfer: true, verify: true }
+                }
+            };
+            
+            const config = statusConfig[status];
+            if (!config) return;
+            
+            if (status === 'complete') {
+                showToast(config.text, 'success');
+                return;
+            }
+            
+            const progressEl = document.createElement('div');
+            progressEl.id = 'test-migration-progress';
+            progressEl.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                border-radius: 12px;
+                padding: 30px 40px;
+                text-align: center;
+                z-index: 2000;
+                min-width: 400px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+                animation: fadeIn 0.3s ease;
+            `;
+            
+            progressEl.innerHTML = `
+                <h4 style="color: white; margin-bottom: 20px; font-size: 1.2rem; font-weight: 600;">
+                    ${config.icon} ${config.title}
+                </h4>
+                <div style="
+                    width: 100%;
+                    height: 12px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 6px;
+                    overflow: hidden;
+                    margin-bottom: 15px;
+                ">
+                    <div style="
+                        height: 100%;
+                        background: linear-gradient(90deg, #28a745, #20c997);
+                        border-radius: 6px;
+                        transition: width 0.5s ease;
+                        width: ${config.progress}%;
+                    "></div>
+                </div>
+                <div style="color: rgba(255, 255, 255, 0.9); font-size: 1rem; margin-bottom: 10px;">
+                    ${config.text}
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 20px; gap: 10px;">
+                    <div style="
+                        flex: 1;
+                        padding: 10px;
+                        background: ${config.steps.backup ? 'rgba(40, 167, 69, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        color: white;
+                        transition: all 0.3s ease;
+                    ">
+                        <span style="font-size: 1.2em; display: block; margin-bottom: 5px;">
+                            ${config.steps.backup ? '✅' : '⏳'}
+                        </span>
+                        백업
+                    </div>
+                    <div style="
+                        flex: 1;
+                        padding: 10px;
+                        background: ${config.steps.transfer ? 'rgba(40, 167, 69, 0.3)' : 'rgba(255, 255, 255, 0.1)'};
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        color: ${config.steps.transfer ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+                        font-weight: ${config.steps.transfer ? '600' : 'normal'};
+                        transition: all 0.3s ease;
+                    ">
+                        <span style="font-size: 1.2em; display: block; margin-bottom: 5px;">
+                            ${config.steps.transfer ? '✅' : '⏳'}
+                        </span>
+                        이전
+                    </div>
+                    <div style="
+                        flex: 1;
+                        padding: 10px;
+                        background: ${config.steps.verify ? 'rgba(40, 167, 69, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        color: ${config.steps.verify ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+                        transition: all 0.3s ease;
+                    ">
+                        <span style="font-size: 1.2em; display: block; margin-bottom: 5px;">
+                            ${config.steps.verify ? '✅' : '⏳'}
+                        </span>
+                        검증
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(progressEl);
         }
     </script>
 </body>

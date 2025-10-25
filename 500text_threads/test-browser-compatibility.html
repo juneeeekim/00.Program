@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Compatibility Test - 500text_threads</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .browser-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+
+        .browser-info h2 {
+            font-size: 18px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .browser-info p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .test-section-header {
+            background: #667eea;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .test-section-body {
+            padding: 20px;
+        }
+
+        .test-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+
+        .test-item.pass {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .test-item.fail {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .test-item.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .test-name {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .test-status.pass {
+            background: #28a745;
+            color: white;
+        }
+
+        .test-status.fail {
+            background: #dc3545;
+            color: white;
+        }
+
+        .test-status.warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .test-status.pending {
+            background: #6c757d;
+            color: white;
+        }
+
+        .test-details {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card h3 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .summary-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .console-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .console-output .log {
+            margin: 3px 0;
+        }
+
+        .console-output .log.info {
+            color: #4fc3f7;
+        }
+
+        .console-output .log.success {
+            color: #66bb6a;
+        }
+
+        .console-output .log.error {
+            color: #ef5350;
+        }
+
+        .console-output .log.warning {
+            color: #ffca28;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Browser Compatibility Test Suite</h1>
+        <p style="color: #666; margin-bottom: 20px;">500text_threads - Google OAuth Enhancement</p>
+
+        <!-- Browser Information -->
+        <div class="browser-info">
+            <h2>🌐 Current Browser Information</h2>
+            <p><strong>Browser:</strong> <span id="browser-name">Detecting...</span></p>
+            <p><strong>Version:</strong> <span id="browser-version">Detecting...</span></p>
+            <p><strong>User Agent:</strong> <span id="user-agent">Detecting...</span></p>
+            <p><strong>Platform:</strong> <span id="platform">Detecting...</span></p>
+            <p><strong>Screen Resolution:</strong> <span id="screen-resolution">Detecting...</span></p>
+        </div>
+
+        <!-- Test Summary -->
+        <div class="summary">
+            <div class="summary-card">
+                <h3 id="total-tests">0</h3>
+                <p>Total Tests</p>
+            </div>
+            <div class="summary-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                <h3 id="passed-tests">0</h3>
+                <p>Passed</p>
+            </div>
+            <div class="summary-card" style="background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);">
+                <h3 id="failed-tests">0</h3>
+                <p>Failed</p>
+            </div>
+            <div class="summary-card" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);">
+                <h3 id="warning-tests">0</h3>
+                <p>Warnings</p>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div style="margin-bottom: 20px;">
+            <button class="btn" onclick="runAllTests()">▶️ Run All Tests</button>
+            <button class="btn btn-secondary" onclick="clearResults()">🔄 Clear Results</button>
+            <button class="btn btn-secondary" onclick="exportResults()">📥 Export Results</button>
+        </div>
+
+        <!-- Test Sections -->
+        <div class="test-section">
+            <div class="test-section-header">1. Browser Feature Detection</div>
+            <div class="test-section-body" id="feature-tests">
+                <!-- Tests will be added here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-section-header">2. Local Storage Tests</div>
+            <div class="test-section-body" id="storage-tests">
+                <!-- Tests will be added here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-section-header">3. Google OAuth Compatibility</div>
+            <div class="test-section-body" id="oauth-tests">
+                <!-- Tests will be added here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-section-header">4. UI/UX Rendering Tests</div>
+            <div class="test-section-body" id="ui-tests">
+                <!-- Tests will be added here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-section-header">5. Performance Tests</div>
+            <div class="test-section-body" id="performance-tests">
+                <!-- Tests will be added here -->
+            </div>
+        </div>
+
+        <!-- Console Output -->
+        <div class="test-section">
+            <div class="test-section-header">📋 Test Console Output</div>
+            <div class="test-section-body">
+                <div class="console-output" id="console-output">
+                    <div class="log info">Ready to run tests...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test Results Storage
+        let testResults = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0,
+            details: []
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            detectBrowser();
+            initializeTests();
+        });
+
+        // Browser Detection
+        function detectBrowser() {
+            const ua = navigator.userAgent;
+            let browserName = 'Unknown';
+            let browserVersion = 'Unknown';
+
+            if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
+                browserName = 'Chrome';
+                browserVersion = ua.match(/Chrome\/(\d+)/)[1];
+            } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+                browserName = 'Safari';
+                browserVersion = ua.match(/Version\/(\d+)/)[1];
+            } else if (ua.indexOf('Firefox') > -1) {
+                browserName = 'Firefox';
+                browserVersion = ua.match(/Firefox\/(\d+)/)[1];
+            } else if (ua.indexOf('Edg') > -1) {
+                browserName = 'Edge';
+                browserVersion = ua.match(/Edg\/(\d+)/)[1];
+            }
+
+            document.getElementById('browser-name').textContent = browserName;
+            document.getElementById('browser-version').textContent = browserVersion;
+            document.getElementById('user-agent').textContent = ua;
+            document.getElementById('platform').textContent = navigator.platform;
+            document.getElementById('screen-resolution').textContent = 
+                `${window.screen.width} x ${window.screen.height}`;
+        }
+
+        // Initialize Test Structure
+        function initializeTests() {
+            const tests = [
+                // Feature Detection Tests
+                { section: 'feature-tests', name: 'Local Storage Support', test: () => typeof(Storage) !== "undefined" },
+                { section: 'feature-tests', name: 'Fetch API Support', test: () => typeof(fetch) !== "undefined" },
+                { section: 'feature-tests', name: 'Promise Support', test: () => typeof(Promise) !== "undefined" },
+                { section: 'feature-tests', name: 'ES6 Support (Arrow Functions)', test: () => { try { eval('() => {}'); return true; } catch(e) { return false; } } },
+                { section: 'feature-tests', name: 'Web Crypto API', test: () => window.crypto && window.crypto.subtle },
+                { section: 'feature-tests', name: 'Console API', test: () => typeof(console) !== "undefined" },
+                
+                // Local Storage Tests
+                { section: 'storage-tests', name: 'Write to Local Storage', test: testLocalStorageWrite },
+                { section: 'storage-tests', name: 'Read from Local Storage', test: testLocalStorageRead },
+                { section: 'storage-tests', name: 'Delete from Local Storage', test: testLocalStorageDelete },
+                { section: 'storage-tests', name: 'JSON Serialization', test: testJSONSerialization },
+                { section: 'storage-tests', name: 'Large Data Storage (1MB)', test: testLargeDataStorage },
+                
+                // OAuth Tests
+                { section: 'oauth-tests', name: 'HTTPS Protocol (Production)', test: testHTTPS },
+                { section: 'oauth-tests', name: 'Google Identity Services Script Load', test: testGoogleScriptLoad },
+                { section: 'oauth-tests', name: 'Popup Window Support', test: testPopupSupport },
+                { section: 'oauth-tests', name: 'Third-party Cookies Enabled', test: testThirdPartyCookies },
+                
+                // UI/UX Tests
+                { section: 'ui-tests', name: 'CSS Grid Support', test: () => CSS.supports('display', 'grid') },
+                { section: 'ui-tests', name: 'CSS Flexbox Support', test: () => CSS.supports('display', 'flex') },
+                { section: 'ui-tests', name: 'CSS Animations', test: () => CSS.supports('animation', 'test') },
+                { section: 'ui-tests', name: 'Viewport Meta Tag', test: testViewportMeta },
+                { section: 'ui-tests', name: 'Touch Events (Mobile)', test: () => 'ontouchstart' in window },
+                
+                // Performance Tests
+                { section: 'performance-tests', name: 'Performance API', test: () => typeof(performance) !== "undefined" },
+                { section: 'performance-tests', name: 'RequestAnimationFrame', test: () => typeof(requestAnimationFrame) !== "undefined" },
+                { section: 'performance-tests', name: 'Page Load Time < 3s', test: testPageLoadTime },
+            ];
+
+            tests.forEach(test => {
+                addTestItem(test.section, test.name, test.test);
+            });
+
+            updateSummary();
+        }
+
+        // Add Test Item to UI
+        function addTestItem(sectionId, testName, testFunction) {
+            const section = document.getElementById(sectionId);
+            const testItem = document.createElement('div');
+            testItem.className = 'test-item';
+            testItem.innerHTML = `
+                <div>
+                    <div class="test-name">${testName}</div>
+                    <div class="test-details" style="display:none;"></div>
+                </div>
+                <span class="test-status pending">Pending</span>
+            `;
+            testItem.dataset.testFunction = testFunction.toString();
+            testItem.dataset.testName = testName;
+            section.appendChild(testItem);
+            testResults.total++;
+        }
+
+        // Run All Tests
+        async function runAllTests() {
+            logToConsole('Starting browser compatibility tests...', 'info');
+            clearResults();
+            
+            const testItems = document.querySelectorAll('.test-item');
+            
+            for (const item of testItems) {
+                await runTest(item);
+                await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for UI update
+            }
+            
+            updateSummary();
+            logToConsole(`Tests completed: ${testResults.passed} passed, ${testResults.failed} failed, ${testResults.warnings} warnings`, 'info');
+        }
+
+        // Run Individual Test
+        async function runTest(testItem) {
+            const testName = testItem.dataset.testName;
+            const testFunctionStr = testItem.dataset.testFunction;
+            const statusElement = testItem.querySelector('.test-status');
+            const detailsElement = testItem.querySelector('.test-details');
+            
+            try {
+                // Reconstruct function from string
+                const testFunction = eval(`(${testFunctionStr})`);
+                const result = await testFunction();
+                
+                if (result === true) {
+                    testItem.className = 'test-item pass';
+                    statusElement.className = 'test-status pass';
+                    statusElement.textContent = 'Pass';
+                    testResults.passed++;
+                    logToConsole(`✓ ${testName}`, 'success');
+                } else if (result === 'warning') {
+                    testItem.className = 'test-item warning';
+                    statusElement.className = 'test-status warning';
+                    statusElement.textContent = 'Warning';
+                    testResults.warnings++;
+                    logToConsole(`⚠ ${testName}`, 'warning');
+                } else {
+                    testItem.className = 'test-item fail';
+                    statusElement.className = 'test-status fail';
+                    statusElement.textContent = 'Fail';
+                    testResults.failed++;
+                    logToConsole(`✗ ${testName}`, 'error');
+                    
+                    if (typeof result === 'string') {
+                        detailsElement.textContent = result;
+                        detailsElement.style.display = 'block';
+                    }
+                }
+                
+                testResults.details.push({
+                    name: testName,
+                    status: statusElement.textContent,
+                    details: detailsElement.textContent
+                });
+                
+            } catch (error) {
+                testItem.className = 'test-item fail';
+                statusElement.className = 'test-status fail';
+                statusElement.textContent = 'Error';
+                testResults.failed++;
+                detailsElement.textContent = error.message;
+                detailsElement.style.display = 'block';
+                logToConsole(`✗ ${testName}: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Functions
+        function testLocalStorageWrite() {
+            try {
+                localStorage.setItem('test_key', 'test_value');
+                return true;
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testLocalStorageRead() {
+            try {
+                const value = localStorage.getItem('test_key');
+                return value === 'test_value';
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testLocalStorageDelete() {
+            try {
+                localStorage.removeItem('test_key');
+                return localStorage.getItem('test_key') === null;
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testJSONSerialization() {
+            try {
+                const obj = { name: 'test', value: 123, nested: { key: 'value' } };
+                const json = JSON.stringify(obj);
+                const parsed = JSON.parse(json);
+                return parsed.name === 'test' && parsed.nested.key === 'value';
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testLargeDataStorage() {
+            try {
+                const largeData = 'x'.repeat(1024 * 1024); // 1MB
+                localStorage.setItem('test_large', largeData);
+                const retrieved = localStorage.getItem('test_large');
+                localStorage.removeItem('test_large');
+                return retrieved.length === largeData.length;
+            } catch (e) {
+                return 'warning'; // Some browsers have smaller limits
+            }
+        }
+
+        function testHTTPS() {
+            if (window.location.protocol === 'https:') {
+                return true;
+            } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'warning'; // OK for development
+            } else {
+                return 'HTTPS required for production';
+            }
+        }
+
+        async function testGoogleScriptLoad() {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.onload = () => {
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    resolve('Failed to load Google Identity Services');
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        function testPopupSupport() {
+            try {
+                const popup = window.open('', '_blank', 'width=1,height=1');
+                if (popup) {
+                    popup.close();
+                    return true;
+                } else {
+                    return 'Popup blocked - please allow popups for OAuth';
+                }
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testThirdPartyCookies() {
+            // This is a simplified test
+            return navigator.cookieEnabled ? true : 'Cookies disabled';
+        }
+
+        function testViewportMeta() {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            return viewport !== null;
+        }
+
+        function testPageLoadTime() {
+            if (typeof(performance) !== "undefined" && performance.timing) {
+                const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                if (loadTime < 3000) {
+                    return true;
+                } else {
+                    return `Load time: ${loadTime}ms (should be < 3000ms)`;
+                }
+            }
+            return 'warning';
+        }
+
+        // Update Summary
+        function updateSummary() {
+            document.getElementById('total-tests').textContent = testResults.total;
+            document.getElementById('passed-tests').textContent = testResults.passed;
+            document.getElementById('failed-tests').textContent = testResults.failed;
+            document.getElementById('warning-tests').textContent = testResults.warnings;
+        }
+
+        // Clear Results
+        function clearResults() {
+            testResults = {
+                total: testResults.total,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                details: []
+            };
+            
+            document.querySelectorAll('.test-item').forEach(item => {
+                item.className = 'test-item';
+                item.querySelector('.test-status').className = 'test-status pending';
+                item.querySelector('.test-status').textContent = 'Pending';
+                item.querySelector('.test-details').style.display = 'none';
+            });
+            
+            updateSummary();
+            document.getElementById('console-output').innerHTML = '<div class="log info">Ready to run tests...</div>';
+        }
+
+        // Log to Console
+        function logToConsole(message, type = 'info') {
+            const consoleOutput = document.getElementById('console-output');
+            const log = document.createElement('div');
+            log.className = `log ${type}`;
+            log.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(log);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        // Export Results
+        function exportResults() {
+            const browserInfo = {
+                name: document.getElementById('browser-name').textContent,
+                version: document.getElementById('browser-version').textContent,
+                userAgent: document.getElementById('user-agent').textContent,
+                platform: document.getElementById('platform').textContent,
+                screenResolution: document.getElementById('screen-resolution').textContent
+            };
+
+            const report = {
+                timestamp: new Date().toISOString(),
+                browser: browserInfo,
+                summary: {
+                    total: testResults.total,
+                    passed: testResults.passed,
+                    failed: testResults.failed,
+                    warnings: testResults.warnings
+                },
+                details: testResults.details
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `browser-compatibility-test-${browserInfo.name}-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            logToConsole('Test results exported successfully', 'success');
+        }
+    </script>
+</body>
+</html>

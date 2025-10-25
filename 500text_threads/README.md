@@ -90,10 +90,26 @@
 
 ## 브라우저 지원
 
-- Chrome (권장)
-- Firefox
-- Safari
-- Edge
+### 지원 브라우저 (최신 2개 버전)
+- ✅ **Chrome** 90+ (권장)
+- ✅ **Firefox** 88+
+- ✅ **Safari** 14+
+- ✅ **Edge** 90+
+
+### 브라우저 호환성 테스트
+애플리케이션의 브라우저 호환성을 확인하려면:
+1. `test-browser-compatibility.html` 파일을 각 브라우저에서 열기
+2. "▶️ Run All Tests" 버튼 클릭
+3. 테스트 결과 확인 및 내보내기
+
+자세한 테스트 가이드는 [브라우저 호환성 테스트 가이드](docs/browser-compatibility-testing-guide.md)를 참조하세요.
+
+### 필수 브라우저 기능
+- Local Storage
+- Fetch API
+- ES6+ (Arrow Functions, Promises)
+- CSS Grid & Flexbox
+- Web Crypto API (선택적)
 
 ## 라이선스
 

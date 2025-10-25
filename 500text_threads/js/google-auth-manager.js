@@ -1,21 +1,31 @@
 // Google OAuth 관리 클래스
 class GoogleAuthManager {
-    constructor(config) {
+    constructor(config, logger = null) {
         this.config = config;
         this.googleAuth = null;
         this.isInitialized = false;
         this.isInitializing = false;
         this.currentUser = null;
+        this.tokenData = null; // Access Token 메모리 저장 (보안)
         this.tokenRefreshTimer = null;
+        this.tokenRefreshTimeout = null; // setTimeout ID for token refresh
         this.tokenMonitoringInterval = null;
         this.tokenRefreshRetries = 0;
         this.maxTokenRefreshRetries = 3;
+        
+        // 에러 핸들러 초기화
+        this.errorHandler = new ErrorHandler(logger);
+        this.logger = logger;
         
         // 이벤트 리스너
         this.onSignInSuccess = null;
         this.onSignInError = null;
         this.onSignOutSuccess = null;
         this.onTokenRefresh = null;
+        this.onTokenRefreshError = null; // 토큰 갱신 실패 콜백
+        this.showMessage = null; // UI 메시지 표시 콜백
+        this.showSetupInstructions = null; // 설정 안내 표시 콜백
+        this.enableFallback = null; // 폴백 활성화 콜백
     }
     
     // Google OAuth 초기화 (향상된 버전)
@@ -41,10 +51,8 @@ class GoogleAuthManager {
                 console.warn(this.config.getSetupInstructions());
                 
                 this.handleAuthError({
-                    type: 'configuration',
                     error: 'config_validation_failed',
-                    message: validationError ? validationError.message : '설정 검증 실패',
-                    details: validationError
+                    message: validationError ? validationError.message : '설정 검증 실패'
                 });
                 
                 this.isInitializing = false;
@@ -75,12 +83,7 @@ class GoogleAuthManager {
         } catch (error) {
             console.error('❌ Google OAuth 초기화 실패:', error);
             
-            this.handleAuthError({
-                type: 'initialization',
-                error: 'init_failed',
-                message: 'Google OAuth 초기화에 실패했습니다.',
-                details: error
-            });
+            this.handleAuthError(error);
             
             this.isInitialized = false;
             this.isInitializing = false;
@@ -88,12 +91,12 @@ class GoogleAuthManager {
         }
     }
     
-    // Google API 스크립트 로드 (향상된 버전)
+    // Google Identity Services 스크립트 지연 로딩 (새로운 API)
     loadGoogleAPI() {
         return new Promise((resolve, reject) => {
             // 이미 로드된 경우
-            if (window.gapi) {
-                console.log('📦 Google API 스크립트 이미 로드됨');
+            if (window.google?.accounts) {
+                console.log('📦 Google Identity Services 이미 로드됨');
                 resolve();
                 return;
             }
@@ -105,82 +108,57 @@ class GoogleAuthManager {
             }
             
             const script = document.createElement('script');
-            script.src = 'https://apis.google.com/js/api.js';
+            script.src = 'https://accounts.google.com/gsi/client';
             script.async = true;
             script.defer = true;
             
             script.onload = () => {
-                console.log('📦 Google API 스크립트 로드 완료');
+                console.log('📦 Google Identity Services 스크립트 로드 완료');
                 resolve();
             };
             
             script.onerror = (error) => {
-                console.error('❌ Google API 스크립트 로드 실패');
-                reject(new Error('Google API 스크립트를 로드할 수 없습니다. 네트워크 연결을 확인해주세요.'));
+                console.error('❌ Google Identity Services 스크립트 로드 실패');
+                reject(new Error('Google Identity Services를 로드할 수 없습니다. 네트워크 연결을 확인해주세요.'));
             };
             
             document.head.appendChild(script);
         });
     }
     
-    // Google Auth 초기화 (향상된 버전)
+    // Google Identity Services 초기화 (새로운 API)
     initializeGoogleAuth() {
         return new Promise((resolve, reject) => {
-            if (!window.gapi) {
-                reject(new Error('Google API가 로드되지 않았습니다.'));
+            if (!window.google?.accounts) {
+                reject(new Error('Google Identity Services가 로드되지 않았습니다.'));
                 return;
             }
             
-            gapi.load('auth2', async () => {
-                try {
-                    // 이미 초기화된 경우 기존 인스턴스 사용
-                    if (gapi.auth2.getAuthInstance()) {
-                        this.googleAuth = gapi.auth2.getAuthInstance();
-                        console.log('🔐 기존 Google Auth 인스턴스 사용');
-                        resolve();
-                        return;
-                    }
-                    
-                    // 새로운 인스턴스 초기화
-                    this.googleAuth = await gapi.auth2.init({
-                        client_id: this.config.GOOGLE_CLIENT_ID,
-                        scope: this.config.OAUTH_SCOPES.join(' '),
-                        fetch_basic_profile: true,
-                        ux_mode: 'popup'
-                    });
-                    
-                    console.log('🔐 Google Auth 초기화 완료');
-                    resolve();
-                    
-                } catch (error) {
-                    console.error('❌ Google Auth 초기화 실패:', error);
-                    reject(error);
-                }
-            });
+            try {
+                // Google Identity Services는 별도의 초기화가 필요 없음
+                // 토큰 클라이언트는 signIn 시점에 생성됨
+                this.googleAuth = window.google.accounts.oauth2;
+                
+                console.log('🔐 Google Identity Services 초기화 완료');
+                resolve();
+                
+            } catch (error) {
+                console.error('❌ Google Identity Services 초기화 실패:', error);
+                reject(error);
+            }
         });
     }
     
-    // 기존 세션 복원 및 토큰 검증
+    // 기존 세션 복원 및 토큰 검증 (Google Identity Services용)
     async restoreExistingSession() {
         try {
-            if (!this.googleAuth) {
-                return;
-            }
+            // 로컬 스토리지에서 저장된 인증 상태 확인
+            const authState = this.restoreAuthState();
             
-            // 기존 로그인 상태 확인
-            if (this.googleAuth.isSignedIn.get()) {
-                this.currentUser = this.googleAuth.currentUser.get();
-                
-                // 토큰 유효성 검증
-                const isValid = this.validateToken();
-                
-                if (isValid) {
-                    console.log('✅ 기존 세션 복원 완료');
-                    this.startTokenMonitoring();
-                } else {
-                    console.warn('⚠️ 기존 토큰이 만료되었습니다.');
-                    await this.clearInvalidTokens();
-                }
+            if (authState && authState.provider === 'google') {
+                // 토큰 데이터가 메모리에 없으므로 재로그인 필요
+                console.log('ℹ️ Google 사용자 세션 발견, 토큰 갱신 필요');
+                // 토큰 모니터링은 시작하지 않음 (토큰이 없으므로)
             }
         } catch (error) {
             console.error('기존 세션 복원 실패:', error);
@@ -188,136 +166,67 @@ class GoogleAuthManager {
         }
     }
     
-    // 포괄적인 오류 처리 시스템
-    handleAuthError(errorInfo) {
-        const { type, error, message, details } = errorInfo;
+    // 통합 에러 처리 시스템 (ErrorHandler 사용)
+    handleAuthError(error) {
+        // ErrorHandler를 통한 에러 처리
+        const result = this.errorHandler.handleError(error, {
+            // 사용자 메시지 표시 콜백
+            showMessage: (message, type) => {
+                if (this.showMessage) {
+                    this.showMessage(message, type);
+                }
+            },
+            
+            // 설정 안내 표시 콜백
+            showSetupInstructions: () => {
+                if (this.showSetupInstructions) {
+                    this.showSetupInstructions();
+                }
+            },
+            
+            // 폴백 활성화 콜백
+            enableFallback: () => {
+                if (this.enableFallback) {
+                    this.enableFallback();
+                }
+            },
+            
+            // 토큰 자동 갱신 콜백
+            autoRefreshToken: () => {
+                this.refreshToken();
+            },
+            
+            // 재로그인 프롬프트 콜백
+            promptRelogin: () => {
+                if (this.showMessage) {
+                    this.showMessage('다시 로그인해주세요.', 'warning');
+                }
+            },
+            
+            // 재시도 옵션 제공 콜백
+            offerRetry: () => {
+                if (this.showMessage) {
+                    this.showMessage('네트워크 연결을 확인한 후 다시 시도해주세요.', 'warning');
+                }
+            }
+        });
         
-        // 상세한 콘솔 로깅 (디버깅용)
-        console.group('🔴 Google OAuth 오류');
-        console.error('오류 유형:', type);
-        console.error('오류 코드:', error);
-        console.error('오류 메시지:', message);
-        if (details) {
-            console.error('상세 정보:', details);
-        }
-        console.groupEnd();
-        
-        // 사용자 친화적 메시지 생성
-        const userMessage = this.getUserFriendlyErrorMessage(type, error);
-        
-        // 오류 콜백 호출
+        // 오류 콜백 호출 (기존 호환성 유지)
         if (this.onSignInError) {
             this.onSignInError({
-                type,
-                error,
-                message: userMessage,
-                technicalDetails: details
+                category: result.category,
+                code: result.code,
+                error: result.code,
+                message: result.userMessage,
+                action: result.action,
+                handled: result.handled
             });
         }
         
-        return userMessage;
+        return result;
     }
     
-    // 사용자 친화적 오류 메시지 생성
-    getUserFriendlyErrorMessage(type, error) {
-        const errorMessages = {
-            // 설정 오류
-            configuration: {
-                'config_validation_failed': 'Google 로그인 설정이 완료되지 않았습니다. 기존 방식으로 로그인해주세요.',
-                'invalid_client_id': 'Google Client ID가 올바르지 않습니다.',
-                'https_required': '보안을 위해 HTTPS 연결이 필요합니다.'
-            },
-            
-            // 네트워크 오류
-            network: {
-                'network_error': '네트워크 연결을 확인해주세요.',
-                'timeout': '요청 시간이 초과되었습니다. 다시 시도해주세요.',
-                'service_unavailable': 'Google 서비스에 일시적으로 접속할 수 없습니다.'
-            },
-            
-            // 인증 오류
-            authentication: {
-                'popup_closed_by_user': '로그인이 취소되었습니다.',
-                'popup_blocked': '팝업이 차단되었습니다. 팝업 차단을 해제해주세요.',
-                'access_denied': '로그인 권한이 거부되었습니다.',
-                'invalid_grant': '인증 정보가 유효하지 않습니다. 다시 로그인해주세요.'
-            },
-            
-            // 토큰 오류
-            token: {
-                'token_expired': '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
-                'token_refresh_failed': '세션 갱신에 실패했습니다. 다시 로그인해주세요.',
-                'invalid_token': '인증 토큰이 유효하지 않습니다.'
-            },
-            
-            // 초기화 오류
-            initialization: {
-                'init_failed': 'Google 로그인을 초기화할 수 없습니다. 기존 방식으로 로그인해주세요.',
-                'script_load_failed': 'Google 서비스를 불러올 수 없습니다. 네트워크 연결을 확인해주세요.'
-            }
-        };
-        
-        // 오류 메시지 조회
-        if (errorMessages[type] && errorMessages[type][error]) {
-            return errorMessages[type][error];
-        }
-        
-        // 기본 메시지
-        return 'Google 로그인 중 오류가 발생했습니다. 기존 방식으로 로그인해주세요.';
-    }
-    
-    // 오류 분류 및 처리
-    categorizeError(error) {
-        // 네트워크 오류
-        if (!navigator.onLine) {
-            return {
-                type: 'network',
-                error: 'network_error',
-                message: '네트워크 연결이 없습니다.'
-            };
-        }
-        
-        // Google API 오류 코드 분석
-        if (error.error) {
-            const errorCode = error.error;
-            
-            // 사용자 취소
-            if (errorCode === 'popup_closed_by_user' || errorCode === 'access_denied') {
-                return {
-                    type: 'authentication',
-                    error: errorCode,
-                    message: '사용자가 로그인을 취소했습니다.'
-                };
-            }
-            
-            // 팝업 차단
-            if (errorCode === 'popup_blocked_by_browser') {
-                return {
-                    type: 'authentication',
-                    error: 'popup_blocked',
-                    message: '팝업이 차단되었습니다.'
-                };
-            }
-            
-            // 토큰 오류
-            if (errorCode === 'invalid_grant' || errorCode === 'token_expired') {
-                return {
-                    type: 'token',
-                    error: errorCode,
-                    message: '인증 토큰이 유효하지 않습니다.'
-                };
-            }
-        }
-        
-        // 기타 오류
-        return {
-            type: 'unknown',
-            error: 'unknown_error',
-            message: error.message || '알 수 없는 오류가 발생했습니다.'
-        };
-    }
-    
-    // Google 로그인 (향상된 오류 처리)
+    // Google 로그인 (Google Identity Services OAuth 2.0)
     async signIn() {
         if (!this.isInitialized) {
             const errorInfo = {
@@ -329,53 +238,161 @@ class GoogleAuthManager {
             throw new Error(errorInfo.message);
         }
         
+        // 로그인 시도 로깅
+        if (this.logger) {
+            this.logger.logAction('auth_login_attempt', 'Google 로그인 시도', {
+                provider: 'google',
+                timestamp: Date.now()
+            });
+        }
+        
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('🔐 Google 로그인 시도 중...');
+                
+                // OAuth 2.0 토큰 클라이언트 설정
+                const tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.config.GOOGLE_CLIENT_ID,
+                    scope: this.config.OAUTH_SCOPES.join(' '),
+                    callback: async (tokenResponse) => {
+                        try {
+                            if (tokenResponse.error) {
+                                throw tokenResponse;
+                            }
+                            
+                            // Access Token 메모리 저장
+                            this.tokenData = {
+                                accessToken: tokenResponse.access_token,
+                                expiresIn: tokenResponse.expires_in,
+                                expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+                                tokenType: tokenResponse.token_type,
+                                scope: tokenResponse.scope
+                            };
+                            
+                            // 사용자 정보 가져오기 (Google People API)
+                            const userInfo = await this.fetchUserInfo(this.tokenData.accessToken);
+                            
+                            const userData = {
+                                id: userInfo.id,
+                                name: userInfo.name,
+                                email: userInfo.email,
+                                picture: userInfo.picture,
+                                provider: 'google',
+                                accessToken: this.tokenData.accessToken,
+                                expiresAt: this.tokenData.expiresAt,
+                                loginTime: Date.now()
+                            };
+                            
+                            this.currentUser = userData;
+                            
+                            // 로그인 성공 로깅
+                            if (this.logger) {
+                                this.logger.logAction('auth_login_success', 'Google 로그인 성공', {
+                                    userId: userData.email,
+                                    userName: userData.name,
+                                    provider: 'google',
+                                    loginTime: userData.loginTime,
+                                    expiresAt: this.tokenData.expiresAt
+                                });
+                            }
+                            
+                            // 토큰 자동 갱신 스케줄링
+                            this.scheduleTokenRefresh(this.tokenData.expiresAt);
+                            
+                            // 성공 콜백 호출
+                            if (this.onSignInSuccess) {
+                                this.onSignInSuccess(userData);
+                            }
+                            
+                            console.log('✅ Google 로그인 성공:', userData.email);
+                            resolve(userData);
+                            
+                        } catch (error) {
+                            console.error('❌ 사용자 정보 가져오기 실패:', error);
+                            
+                            // 로그인 실패 로깅
+                            if (this.logger) {
+                                this.logger.logAction('auth_login_error', 'Google 로그인 실패', {
+                                    error: error.message || error.toString(),
+                                    errorType: error.error || 'unknown'
+                                });
+                            }
+                            
+                            this.handleAuthError(error);
+                            reject(error);
+                        }
+                    },
+                    error_callback: (error) => {
+                        console.error('❌ Google 로그인 실패:', error);
+                        
+                        // 로그인 실패 로깅
+                        if (this.logger) {
+                            this.logger.logAction('auth_login_error', 'Google 로그인 실패', {
+                                error: error.message || error.toString(),
+                                errorType: error.error || 'unknown'
+                            });
+                        }
+                        
+                        this.handleAuthError(error);
+                        reject(error);
+                    }
+                });
+                
+                // 토큰 요청 (팝업 표시)
+                tokenClient.requestAccessToken({ prompt: 'select_account' });
+                
+            } catch (error) {
+                console.error('❌ Google 로그인 초기화 실패:', error);
+                
+                // 로그인 실패 로깅
+                if (this.logger) {
+                    this.logger.logAction('auth_login_error', 'Google 로그인 초기화 실패', {
+                        error: error.message || error.toString()
+                    });
+                }
+                
+                this.handleAuthError(error);
+                reject(error);
+            }
+        });
+    }
+    
+    // 사용자 정보 가져오기 (Google People API)
+    async fetchUserInfo(accessToken) {
         try {
-            console.log('🔐 Google 로그인 시도 중...');
-            
-            const googleUser = await this.googleAuth.signIn({
-                prompt: 'select_account'
+            const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
             });
             
-            this.currentUser = googleUser;
-            
-            // 사용자 정보 추출
-            const profile = googleUser.getBasicProfile();
-            const authResponse = googleUser.getAuthResponse();
-            
-            const userData = {
-                id: profile.getId(),
-                name: profile.getName(),
-                email: profile.getEmail(),
-                picture: profile.getImageUrl(),
-                provider: 'google',
-                accessToken: authResponse.access_token,
-                expiresAt: authResponse.expires_at * 1000,
-                loginTime: Date.now()
-            };
-            
-            // 토큰 모니터링 시작
-            this.startTokenMonitoring();
-            
-            // 성공 콜백 호출
-            if (this.onSignInSuccess) {
-                this.onSignInSuccess(userData);
+            if (!response.ok) {
+                throw new Error(`사용자 정보 가져오기 실패: ${response.status}`);
             }
             
-            console.log('✅ Google 로그인 성공:', userData.email);
-            return userData;
+            const userInfo = await response.json();
+            
+            // 이메일 검증 (보안 강화)
+            if (!userInfo.email) {
+                throw new Error('사용자 이메일 정보가 없습니다.');
+            }
+            
+            // SecurityUtils를 사용한 이메일 형식 검증
+            const securityUtils = new SecurityUtils();
+            if (!securityUtils.isValidEmail(userInfo.email)) {
+                console.error('❌ 유효하지 않은 이메일 형식:', userInfo.email);
+                throw new Error('유효하지 않은 이메일 형식입니다.');
+            }
+            
+            return userInfo;
             
         } catch (error) {
-            console.error('❌ Google 로그인 실패:', error);
-            
-            // 오류 분류 및 처리
-            const categorizedError = this.categorizeError(error);
-            this.handleAuthError(categorizedError);
-            
+            console.error('사용자 정보 가져오기 오류:', error);
             throw error;
         }
     }
     
-    // Google 로그아웃 (향상된 버전 - 토큰 정리 포함)
+    // Google 로그아웃 (토큰 및 타이머 정리)
     async signOut() {
         if (!this.isInitialized) {
             console.warn('⚠️ Google OAuth가 초기화되지 않았습니다.');
@@ -385,22 +402,43 @@ class GoogleAuthManager {
         try {
             console.log('🚪 Google 로그아웃 처리 중...');
             
-            // 1단계: 토큰 모니터링 정지
-            this.stopTokenMonitoring();
+            // 로그아웃 전 사용자 정보 저장 (로깅용)
+            const logoutUserId = this.currentUser?.email || 'unknown';
             
-            // 2단계: Google Auth 로그아웃
-            if (this.googleAuth && this.googleAuth.isSignedIn.get()) {
-                await this.googleAuth.signOut();
+            // 1단계: 타이머 정리 (tokenRefreshTimeout)
+            if (this.tokenRefreshTimeout) {
+                clearTimeout(this.tokenRefreshTimeout);
+                this.tokenRefreshTimeout = null;
+                console.log('⏹️ 토큰 갱신 타이머 정리 완료');
             }
+            
+            // 2단계: 메모리 토큰 데이터 삭제
+            this.tokenData = null;
+            console.log('🧹 메모리 토큰 데이터 삭제 완료');
             
             // 3단계: 현재 사용자 정보 초기화
             this.currentUser = null;
             
-            // 4단계: 로컬 스토리지 정리
+            // 4단계: 로컬 스토리지 사용자 정보 삭제
             this.clearAuthStorage();
             
-            // 5단계: 재시도 카운터 리셋
+            // 5단계: Google 자동 선택 비활성화
+            if (window.google?.accounts?.id) {
+                google.accounts.id.disableAutoSelect();
+                console.log('🔒 Google 자동 선택 비활성화 완료');
+            }
+            
+            // 6단계: 재시도 카운터 리셋
             this.tokenRefreshRetries = 0;
+            
+            // 로그아웃 성공 로깅
+            if (this.logger) {
+                this.logger.logAction('auth_logout_success', 'Google 로그아웃 성공', {
+                    userId: logoutUserId,
+                    provider: 'google',
+                    logoutTime: Date.now()
+                });
+            }
             
             // 성공 콜백 호출
             if (this.onSignOutSuccess) {
@@ -412,9 +450,20 @@ class GoogleAuthManager {
         } catch (error) {
             console.error('❌ Google 로그아웃 실패:', error);
             
+            // 로그아웃 실패 로깅
+            if (this.logger) {
+                this.logger.logAction('auth_logout_error', 'Google 로그아웃 실패', {
+                    error: error.message || error.toString()
+                });
+            }
+            
             // 오류가 발생해도 로컬 상태는 정리
+            this.tokenData = null;
             this.currentUser = null;
-            this.stopTokenMonitoring();
+            if (this.tokenRefreshTimeout) {
+                clearTimeout(this.tokenRefreshTimeout);
+                this.tokenRefreshTimeout = null;
+            }
             this.clearAuthStorage();
             
             throw error;
@@ -498,141 +547,220 @@ class GoogleAuthManager {
         }
     }
     
-    // 토큰 모니터링 시작 (5분 임계값)
-    startTokenMonitoring() {
-        this.stopTokenMonitoring();
-        
-        console.log('🔄 토큰 모니터링 시작');
-        
-        // 1분마다 토큰 상태 확인
-        this.tokenMonitoringInterval = setInterval(async () => {
-            await this.checkTokenExpiry();
-        }, 60000); // 1분
-        
-        // 즉시 한 번 확인
-        this.checkTokenExpiry();
-    }
-    
-    // 토큰 모니터링 정지
-    stopTokenMonitoring() {
-        if (this.tokenMonitoringInterval) {
-            clearInterval(this.tokenMonitoringInterval);
-            this.tokenMonitoringInterval = null;
-            console.log('⏹️ 토큰 모니터링 정지');
-        }
-    }
-    
-    // 토큰 만료 확인 및 자동 갱신
-    async checkTokenExpiry() {
-        if (!this.currentUser) {
-            return;
+    // 토큰 자동 갱신 스케줄링 (setTimeout 기반)
+    scheduleTokenRefresh(expiresAt) {
+        // 기존 타이머 정리
+        if (this.tokenRefreshTimeout) {
+            clearTimeout(this.tokenRefreshTimeout);
+            this.tokenRefreshTimeout = null;
         }
         
-        try {
-            const authResponse = this.currentUser.getAuthResponse();
-            const now = Date.now();
-            const expiresAt = authResponse.expires_at * 1000;
-            const timeUntilExpiry = expiresAt - now;
+        const now = Date.now();
+        const timeUntilExpiry = expiresAt - now;
+        
+        // 만료 5분 전에 갱신
+        const refreshThreshold = 5 * 60 * 1000; // 5분
+        const refreshTime = timeUntilExpiry - refreshThreshold;
+        
+        if (refreshTime > 0) {
+            const minutesUntilRefresh = Math.floor(refreshTime / 60000);
+            console.log(`🔄 토큰 자동 갱신 예약: ${minutesUntilRefresh}분 후`);
             
-            // 5분 임계값
-            const refreshThreshold = 5 * 60 * 1000;
-            
-            // 이미 만료된 경우
-            if (timeUntilExpiry <= 0) {
-                console.warn('⚠️ 토큰이 이미 만료되었습니다.');
-                await this.clearInvalidTokens();
-                return;
-            }
-            
-            // 5분 이내 만료 예정인 경우 자동 갱신
-            if (timeUntilExpiry < refreshThreshold && timeUntilExpiry > 0) {
-                const minutesLeft = Math.floor(timeUntilExpiry / 60000);
-                console.log(`🔄 토큰이 ${minutesLeft}분 후 만료됩니다. 자동 갱신 시도...`);
-                await this.refreshTokenIfNeeded();
-            }
-            
-        } catch (error) {
-            console.error('토큰 만료 확인 중 오류:', error);
+            this.tokenRefreshTimeout = setTimeout(async () => {
+                console.log('🔄 토큰 자동 갱신 시작...');
+                await this.refreshToken();
+            }, refreshTime);
+        } else if (timeUntilExpiry > 0) {
+            // 이미 5분 이내인 경우 즉시 갱신
+            console.log('🔄 토큰이 곧 만료됩니다. 즉시 갱신 시도...');
+            setTimeout(() => this.refreshToken(), 1000);
+        } else {
+            console.warn('⚠️ 토큰이 이미 만료되었습니다.');
         }
     }
     
     // 토큰 갱신 (재시도 로직 포함)
-    async refreshTokenIfNeeded() {
-        if (!this.currentUser) {
+    async refreshToken() {
+        if (!this.tokenData || !this.currentUser) {
+            console.warn('⚠️ 갱신할 토큰 정보가 없습니다.');
             return null;
         }
         
-        try {
-            const authResponse = await this.currentUser.reloadAuthResponse();
+        return new Promise((resolve, reject) => {
+            try {
+                // OAuth 2.0 토큰 클라이언트로 토큰 갱신
+                const tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.config.GOOGLE_CLIENT_ID,
+                    scope: this.config.OAUTH_SCOPES.join(' '),
+                    callback: (tokenResponse) => {
+                        try {
+                            if (tokenResponse.error) {
+                                throw tokenResponse;
+                            }
+                            
+                            // 새 토큰 데이터 저장 (메모리)
+                            this.tokenData = {
+                                accessToken: tokenResponse.access_token,
+                                expiresIn: tokenResponse.expires_in,
+                                expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
+                                tokenType: tokenResponse.token_type,
+                                scope: tokenResponse.scope
+                            };
+                            
+                            // 사용자 데이터 업데이트
+                            if (this.currentUser) {
+                                this.currentUser.accessToken = this.tokenData.accessToken;
+                                this.currentUser.expiresAt = this.tokenData.expiresAt;
+                            }
+                            
+                            // 재시도 카운터 리셋
+                            this.tokenRefreshRetries = 0;
+                            
+                            // 다음 갱신 스케줄링
+                            this.scheduleTokenRefresh(this.tokenData.expiresAt);
+                            
+                            // 토큰 갱신 성공 로깅
+                            if (this.logger) {
+                                this.logger.logAction('token_refresh_success', '토큰 자동 갱신 성공', {
+                                    userId: this.currentUser?.email || 'unknown',
+                                    expiresAt: this.tokenData.expiresAt,
+                                    refreshTime: Date.now(),
+                                    expiresIn: this.tokenData.expiresIn
+                                });
+                            }
+                            
+                            // 갱신 콜백 호출
+                            if (this.onTokenRefresh) {
+                                this.onTokenRefresh({
+                                    accessToken: this.tokenData.accessToken,
+                                    expiresAt: this.tokenData.expiresAt,
+                                    refreshTime: Date.now()
+                                });
+                            }
+                            
+                            console.log('✅ 토큰 갱신 완료');
+                            resolve(this.tokenData);
+                            
+                        } catch (error) {
+                            this.handleTokenRefreshError(error, reject);
+                        }
+                    },
+                    error_callback: (error) => {
+                        this.handleTokenRefreshError(error, reject);
+                    }
+                });
+                
+                // 토큰 갱신 요청 (prompt 없이)
+                tokenClient.requestAccessToken({ prompt: '' });
+                
+            } catch (error) {
+                this.handleTokenRefreshError(error, reject);
+            }
+        });
+    }
+    
+    // 토큰 갱신 실패 처리 (재시도 로직)
+    async handleTokenRefreshError(error, reject) {
+        console.error('❌ 토큰 갱신 실패:', error);
+        
+        // 토큰 갱신 실패 로깅
+        if (this.logger) {
+            this.logger.logAction('token_refresh_error', '토큰 갱신 실패', {
+                userId: this.currentUser?.email || 'unknown',
+                error: error.message || error.toString(),
+                errorType: error.error || 'unknown',
+                retryCount: this.tokenRefreshRetries
+            });
+        }
+        
+        this.tokenRefreshRetries++;
+        
+        if (this.tokenRefreshRetries <= 1) {
+            // 1회 재시도 (30초 후)
+            console.log(`🔄 토큰 갱신 재시도 (${this.tokenRefreshRetries}/1) - 30초 후...`);
             
-            const tokenData = {
-                accessToken: authResponse.access_token,
-                expiresAt: authResponse.expires_at * 1000,
-                refreshTime: Date.now()
-            };
-            
-            // 재시도 카운터 리셋
-            this.tokenRefreshRetries = 0;
-            
-            // 갱신 콜백 호출
-            if (this.onTokenRefresh) {
-                this.onTokenRefresh(tokenData);
+            // 재시도 로깅
+            if (this.logger) {
+                this.logger.logAction('token_refresh_retry', '토큰 갱신 재시도 예약', {
+                    userId: this.currentUser?.email || 'unknown',
+                    retryCount: this.tokenRefreshRetries,
+                    retryDelay: 30000
+                });
             }
             
-            console.log('✅ 토큰 갱신 완료');
-            return tokenData;
+            setTimeout(async () => {
+                try {
+                    const result = await this.refreshToken();
+                    if (reject) {
+                        // 이미 reject된 경우가 아니면 resolve
+                        // Promise는 한 번만 resolve/reject 가능
+                    }
+                } catch (retryError) {
+                    console.error('❌ 토큰 갱신 재시도 실패:', retryError);
+                    
+                    // 오류 처리
+                    this.handleAuthError({
+                        error: 'token_refresh_failed',
+                        message: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.'
+                    });
+                    
+                    // 토큰 갱신 실패 콜백 호출
+                    if (this.onTokenRefreshError) {
+                        this.onTokenRefreshError(retryError);
+                    }
+                    
+                    if (reject) {
+                        reject(retryError);
+                    }
+                }
+            }, 30000); // 30초
             
-        } catch (error) {
-            console.error('❌ 토큰 갱신 실패:', error);
+        } else {
+            console.error('❌ 토큰 갱신 최대 재시도 횟수 초과');
             
-            // 재시도 로직
-            this.tokenRefreshRetries++;
+            // 최대 재시도 초과 로깅
+            if (this.logger) {
+                this.logger.logAction('token_refresh_max_retries', '토큰 갱신 최대 재시도 횟수 초과', {
+                    userId: this.currentUser?.email || 'unknown',
+                    maxRetries: 1,
+                    totalAttempts: this.tokenRefreshRetries
+                });
+            }
             
-            if (this.tokenRefreshRetries < this.maxTokenRefreshRetries) {
-                console.log(`🔄 토큰 갱신 재시도 (${this.tokenRefreshRetries}/${this.maxTokenRefreshRetries})...`);
-                
-                // 지수 백오프: 2초, 4초, 8초
-                const retryDelay = Math.pow(2, this.tokenRefreshRetries) * 1000;
-                
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-                return await this.refreshTokenIfNeeded();
-                
-            } else {
-                console.error('❌ 토큰 갱신 최대 재시도 횟수 초과');
-                
-                // 오류 처리
-                const errorInfo = {
-                    type: 'token',
-                    error: 'token_refresh_failed',
-                    message: '토큰 갱신에 실패했습니다.',
-                    details: error
-                };
-                this.handleAuthError(errorInfo);
-                
-                // 토큰 정리 및 로그아웃
-                await this.clearInvalidTokens();
-                
-                throw error;
+            // 오류 처리
+            this.handleAuthError({
+                error: 'token_refresh_failed',
+                message: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.'
+            });
+            
+            // 토큰 갱신 실패 콜백 호출
+            if (this.onTokenRefreshError) {
+                this.onTokenRefreshError(error);
+            }
+            
+            // 토큰 정리
+            await this.clearInvalidTokens();
+            
+            if (reject) {
+                reject(error);
             }
         }
     }
     
     // 애플리케이션 시작 시 토큰 검증
     validateToken() {
-        if (!this.currentUser) {
+        if (!this.tokenData) {
             return false;
         }
         
         try {
-            const authResponse = this.currentUser.getAuthResponse();
-            
-            if (!authResponse || !authResponse.access_token) {
+            if (!this.tokenData.accessToken) {
                 console.warn('⚠️ 토큰 정보가 없습니다.');
                 return false;
             }
             
             const now = Date.now();
-            const expiresAt = authResponse.expires_at * 1000;
+            const expiresAt = this.tokenData.expiresAt;
             
             const isValid = expiresAt > now;
             
@@ -653,20 +781,22 @@ class GoogleAuthManager {
         console.log('🧹 유효하지 않은 토큰 정리 중...');
         
         try {
-            // 토큰 모니터링 정지
-            this.stopTokenMonitoring();
+            // 타이머 정리
+            if (this.tokenRefreshTimeout) {
+                clearTimeout(this.tokenRefreshTimeout);
+                this.tokenRefreshTimeout = null;
+            }
+            
+            // 메모리 토큰 데이터 삭제
+            this.tokenData = null;
             
             // 현재 사용자 정보 초기화
             this.currentUser = null;
             
-            // Google Auth 로그아웃 (조용히)
-            if (this.googleAuth && this.googleAuth.isSignedIn.get()) {
-                await this.googleAuth.signOut();
-            }
-            
             // 로컬 스토리지 정리
             localStorage.removeItem('dualTextWriter_userData');
             localStorage.removeItem('dualTextWriter_authProvider');
+            localStorage.removeItem('dualTextWriter_authState');
             
             console.log('✅ 토큰 정리 완료');
             
@@ -675,26 +805,23 @@ class GoogleAuthManager {
         }
     }
     
-    // 현재 사용자 정보 반환 (향상된 버전)
+    // 현재 사용자 정보 반환
     getCurrentUser() {
         if (!this.currentUser) {
             return null;
         }
         
         try {
-            const profile = this.currentUser.getBasicProfile();
-            const authResponse = this.currentUser.getAuthResponse();
-            
             return {
-                id: profile.getId(),
-                name: profile.getName(),
-                email: profile.getEmail(),
-                picture: profile.getImageUrl(),
+                id: this.currentUser.id,
+                name: this.currentUser.name,
+                email: this.currentUser.email,
+                picture: this.currentUser.picture,
                 provider: 'google',
-                accessToken: authResponse.access_token,
-                expiresAt: authResponse.expires_at * 1000,
+                accessToken: this.tokenData?.accessToken || this.currentUser.accessToken,
+                expiresAt: this.tokenData?.expiresAt || this.currentUser.expiresAt,
                 isValid: this.validateToken(),
-                loginTime: Date.now()
+                loginTime: this.currentUser.loginTime
             };
         } catch (error) {
             console.error('사용자 정보 조회 실패:', error);
@@ -702,12 +829,12 @@ class GoogleAuthManager {
         }
     }
     
-    // 로그인 상태 확인 (향상된 버전)
+    // 로그인 상태 확인
     isSignedIn() {
         try {
             return this.isInitialized && 
-                   this.googleAuth && 
-                   this.googleAuth.isSignedIn.get() && 
+                   this.currentUser !== null && 
+                   this.tokenData !== null &&
                    this.validateToken();
         } catch (error) {
             console.error('로그인 상태 확인 실패:', error);
@@ -728,14 +855,18 @@ class GoogleAuthManager {
         };
     }
     
-    // 정리 작업 (향상된 버전)
+    // 정리 작업
     cleanup() {
         console.log('🧹 GoogleAuthManager 정리 중...');
         
-        // 토큰 모니터링 정지
-        this.stopTokenMonitoring();
+        // 타이머 정리
+        if (this.tokenRefreshTimeout) {
+            clearTimeout(this.tokenRefreshTimeout);
+            this.tokenRefreshTimeout = null;
+        }
         
         // 상태 초기화
+        this.tokenData = null;
         this.currentUser = null;
         this.googleAuth = null;
         this.isInitialized = false;

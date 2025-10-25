@@ -1,12 +1,15 @@
 class DualTextWriter {
     constructor() {
-        // 설정 및 매니저 초기화
-        this.config = window.AUTH_CONFIG;
-        this.googleAuthManager = new GoogleAuthManager(this.config);
-        this.migrationManager = new DataMigrationManager(this.config);
-        
-        // 활동 로거 초기화
+        // 활동 로거 초기화 (먼저 생성)
         this.logger = new ActivityLogger();
+        
+        // 보안 유틸리티 초기화
+        this.securityUtils = new SecurityUtils();
+        
+        // 설정 및 매니저 초기화 (로거 전달)
+        this.config = window.AUTH_CONFIG;
+        this.googleAuthManager = new GoogleAuthManager(this.config, this.logger);
+        this.migrationManager = new DataMigrationManager(this.config, this.logger);
         
         // Google OAuth 상태
         this.isGoogleReady = false;
@@ -63,13 +66,16 @@ class DualTextWriter {
         this.bindEvents();
         this.logger.logAction('events_bound', '이벤트 바인딩 완료');
         
-        // 2. Google OAuth 초기화 (향상된 버전)
+        // 2. 네트워크 상태 모니터링 시작
+        this.setupNetworkMonitoring();
+        
+        // 3. Google OAuth 초기화 (향상된 버전)
         await this.initializeGoogleAuth();
         
-        // 3. Google Auth 콜백 설정
+        // 4. Google Auth 콜백 설정
         this.setupGoogleAuthCallbacks();
         
-        // 4. 기존 사용자 확인 및 복원
+        // 5. 기존 사용자 확인 및 복원
         this.checkExistingUser();
         
         // 성능 측정 종료
@@ -148,11 +154,19 @@ class DualTextWriter {
         return text.length;
     }
     
-    // Google OAuth 초기화 (향상된 버전 - 로깅 추가)
+    // Google OAuth 초기화 (향상된 버전 - 로깅 및 폴백 시스템 통합)
     async initializeGoogleAuth() {
         try {
             console.log('🔐 Google OAuth 초기화 시도...');
             this.logger.logAction('auth_init', 'Google OAuth 초기화 시작');
+            
+            // 오프라인 상태 확인
+            if (!navigator.onLine) {
+                console.warn('⚠️ 오프라인 상태: Google OAuth 초기화 건너뛰기');
+                this.isGoogleReady = false;
+                this.enableFallbackSystem('offline');
+                return;
+            }
             
             // 설정 검증 먼저 수행
             if (!this.config.validateGoogleConfig()) {
@@ -163,7 +177,7 @@ class DualTextWriter {
                 
                 this.isGoogleReady = false;
                 this.showGoogleSetupNotice();
-                this.updateGoogleLoginButtonState(false, 'config_invalid');
+                this.enableFallbackSystem('config_invalid');
                 return;
             }
             
@@ -174,11 +188,17 @@ class DualTextWriter {
                 console.log('✅ Google OAuth 시스템 준비 완료');
                 this.logger.logAction('auth_init_success', 'Google OAuth 초기화 성공');
                 this.updateGoogleLoginButtonState(true);
+                
+                // 상태 표시 숨김
+                const googleStatus = document.getElementById('google-status');
+                if (googleStatus) {
+                    googleStatus.style.display = 'none';
+                }
             } else {
                 console.warn('⚠️ Google OAuth 사용 불가, 기존 방식으로 폴백');
                 this.logger.logAction('auth_init_failed', 'Google OAuth 초기화 실패, 폴백 모드');
                 this.showGoogleSetupNotice();
-                this.updateGoogleLoginButtonState(false, 'init_failed');
+                this.enableFallbackSystem('init_failed');
             }
         } catch (error) {
             console.error('❌ Google OAuth 초기화 중 오류:', error);
@@ -188,7 +208,7 @@ class DualTextWriter {
             });
             
             this.isGoogleReady = false;
-            this.updateGoogleLoginButtonState(false, 'error');
+            this.enableFallbackSystem('error');
             this.showGoogleSetupNotice();
         }
     }
@@ -209,10 +229,36 @@ class DualTextWriter {
             this.handleGoogleSignOutSuccess();
         };
         
+        // 토큰 갱신 성공 콜백 (콘솔 로그만 출력, 사용자 방해 안 함)
         this.googleAuthManager.onTokenRefresh = (tokenData) => {
-            console.log('🔄 토큰 갱신됨:', new Date(tokenData.refreshTime).toLocaleString());
+            console.log('🔄 토큰 자동 갱신 성공:', new Date(tokenData.refreshTime).toLocaleString());
+            console.log('   ├─ 다음 갱신 예정:', new Date(tokenData.expiresAt - 5 * 60 * 1000).toLocaleString());
+            console.log('   └─ 만료 시간:', new Date(tokenData.expiresAt).toLocaleString());
+            
             // 마지막 활동 시간 업데이트
             this.googleAuthManager.updateLastActivity();
+            
+            // 로깅
+            this.logger.logAction('token_refresh_success', '토큰 자동 갱신 성공', {
+                expiresAt: tokenData.expiresAt,
+                refreshTime: tokenData.refreshTime
+            });
+        };
+        
+        // 토큰 갱신 실패 콜백 (사용자에게 알림)
+        this.googleAuthManager.onTokenRefreshError = (error) => {
+            console.error('❌ 토큰 갱신 실패:', error);
+            
+            // 사용자에게 알림 (갱신 실패 시에만)
+            this.showMessage(
+                '로그인 세션 갱신에 실패했습니다. 잠시 후 다시 로그인해주세요.',
+                'warning'
+            );
+            
+            // 로깅
+            this.logger.logAction('token_refresh_error', '토큰 갱신 실패', {
+                error: error.message || error.toString()
+            });
         };
     }
     
@@ -362,17 +408,37 @@ class DualTextWriter {
     
     // Google 사용자 데이터 저장
     saveGoogleUserData(userData) {
+        // 이메일 검증 (보안 강화)
+        if (!this.securityUtils.isValidEmail(userData.email)) {
+            console.error('❌ 유효하지 않은 이메일 형식:', userData.email);
+            this.logger.logAction('invalid_email', '유효하지 않은 이메일', {
+                email: userData.email
+            });
+            return;
+        }
+        
         const secureData = {
             id: userData.id,
             name: userData.name,
             email: userData.email,
             picture: userData.picture,
-            provider: userData.provider,
+            provider: userData.provider || 'google',
             loginTime: userData.loginTime
         };
         
+        // 데이터 검증
+        const validation = this.securityUtils.validateUserData(secureData);
+        if (!validation.valid) {
+            console.error('❌ 사용자 데이터 검증 실패:', validation.errors);
+            this.logger.logAction('user_data_validation_failed', '사용자 데이터 검증 실패', {
+                errors: validation.errors
+            });
+            return;
+        }
+        
+        // 안전한 저장
         localStorage.setItem('dualTextWriter_currentUser', userData.email);
-        localStorage.setItem('dualTextWriter_userData', JSON.stringify(secureData));
+        this.securityUtils.safeSaveToStorage('dualTextWriter_userData', secureData);
         localStorage.setItem('dualTextWriter_authProvider', 'google');
     }
     
@@ -397,14 +463,11 @@ class DualTextWriter {
     
     login() {
         const username = this.usernameInput.value.trim();
-        if (!username) {
-            alert('사용자명을 입력해주세요.');
-            this.usernameInput.focus();
-            return;
-        }
         
-        if (username.length < 2) {
-            alert('사용자명은 2자 이상이어야 합니다.');
+        // 사용자명 검증 (보안 강화)
+        const validation = this.securityUtils.validateUsername(username);
+        if (!validation.valid) {
+            alert(validation.error);
             this.usernameInput.focus();
             return;
         }
@@ -420,7 +483,10 @@ class DualTextWriter {
         localStorage.setItem('dualTextWriter_currentUser', username);
         this.showUserInterface();
         this.loadUserData();
-        this.showMessage(`${username}님, 환영합니다!`, 'success');
+        
+        // 사용자 이름 안전 처리 (XSS 방지)
+        const safeName = this.securityUtils.sanitizeUserName(username);
+        this.showMessage(`${safeName}님, 환영합니다!`, 'success');
     }
     
     async logout() {
@@ -502,9 +568,16 @@ class DualTextWriter {
         this.mainContent.style.display = 'block';
         
         // 사용자 정보 표시 (Google 사용자인 경우 이름 표시)
-        const userData = JSON.parse(localStorage.getItem('dualTextWriter_userData') || '{}');
-        const displayName = userData.name || this.currentUser;
-        this.usernameDisplay.textContent = displayName;
+        // 안전한 데이터 로드 및 검증
+        const userData = this.securityUtils.safeLoadFromStorage(
+            'dualTextWriter_userData',
+            {},
+            (data) => this.securityUtils.validateUserData(data)
+        );
+        
+        // 사용자 이름 안전 처리 (XSS 방지)
+        const displayName = userData?.name || this.currentUser;
+        this.usernameDisplay.textContent = this.securityUtils.sanitizeUserName(displayName);
     }
     
     clearAllData() {
@@ -656,21 +729,20 @@ class DualTextWriter {
     }
     
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // SecurityUtils를 사용한 XSS 방지
+        return this.securityUtils.escapeHtml(text);
     }
     
-    // 향상된 메시지 표시 시스템
+    // 향상된 메시지 표시 시스템 (토스트 알림)
     showMessage(message, type = 'info') {
         const messageEl = document.createElement('div');
         
         // 타입별 아이콘 및 색상
         const messageConfig = {
-            'success': { icon: '✅', bgColor: '#28a745', textColor: 'white' },
-            'error': { icon: '❌', bgColor: '#dc3545', textColor: 'white' },
-            'warning': { icon: '⚠️', bgColor: '#ffc107', textColor: '#000' },
-            'info': { icon: 'ℹ️', bgColor: '#17a2b8', textColor: 'white' }
+            'success': { icon: '✅', bgColor: '#28a745', textColor: 'white', duration: 3000 },
+            'error': { icon: '❌', bgColor: '#dc3545', textColor: 'white', duration: 5000 },
+            'warning': { icon: '⚠️', bgColor: '#ffc107', textColor: '#000', duration: 4000 },
+            'info': { icon: 'ℹ️', bgColor: '#17a2b8', textColor: 'white', duration: 3000 }
         };
         
         const config = messageConfig[type] || messageConfig['info'];
@@ -687,7 +759,6 @@ class DualTextWriter {
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             z-index: 1000;
             font-weight: 600;
-            animation: slideIn 0.3s ease;
             max-width: 350px;
             word-wrap: break-word;
             display: flex;
@@ -697,22 +768,36 @@ class DualTextWriter {
         
         messageEl.innerHTML = `
             <span style="font-size: 1.2em;">${config.icon}</span>
-            <span>${this.escapeHtml(message)}</span>
+            <span style="flex: 1;">${this.escapeHtml(message)}</span>
+            <button class="toast-close" aria-label="닫기">×</button>
         `;
         
         document.body.appendChild(messageEl);
         
-        // 타입별 표시 시간
-        const duration = this.config.NOTIFICATION_DURATION[type] || 2000;
-        
-        setTimeout(() => {
-            messageEl.style.animation = 'slideOut 0.3s ease';
+        // 닫기 버튼 이벤트
+        const closeBtn = messageEl.querySelector('.toast-close');
+        const removeToast = () => {
+            messageEl.classList.add('hiding');
             setTimeout(() => {
                 if (messageEl.parentNode) {
                     messageEl.parentNode.removeChild(messageEl);
                 }
             }, 300);
-        }, duration);
+        };
+        
+        closeBtn.addEventListener('click', removeToast);
+        
+        // 자동 사라짐 (3초)
+        const autoHideTimeout = setTimeout(removeToast, config.duration);
+        
+        // 마우스 호버 시 타이머 일시 정지
+        messageEl.addEventListener('mouseenter', () => {
+            clearTimeout(autoHideTimeout);
+        });
+        
+        messageEl.addEventListener('mouseleave', () => {
+            setTimeout(removeToast, 1000);
+        });
     }
     
     // 로딩 표시기 표시
@@ -895,39 +980,93 @@ class DualTextWriter {
         }
     }
     
-    // 마이그레이션 진행 표시 (새로운 메서드)
+    // 마이그레이션 진행 표시 (향상된 버전 - 진행률 바 포함)
     showMigrationProgress(status) {
-        const statusMessages = {
+        // 기존 진행 표시기 제거
+        const existingProgress = document.getElementById('migration-progress-indicator');
+        if (existingProgress) {
+            existingProgress.remove();
+        }
+        
+        const statusConfig = {
             'checking': {
                 icon: '🔍',
-                text: '기존 데이터 확인 중...',
-                type: 'info'
+                title: '데이터 확인 중',
+                text: '기존 데이터를 확인하고 있습니다...',
+                progress: 10,
+                steps: { backup: false, transfer: false, verify: false }
             },
             'migrating': {
                 icon: '📦',
-                text: '데이터 마이그레이션 진행 중...',
-                type: 'info'
+                title: '마이그레이션 진행 중',
+                text: '데이터를 안전하게 이전하고 있습니다...',
+                progress: 50,
+                steps: { backup: true, transfer: true, verify: false }
             },
             'complete': {
                 icon: '✅',
-                text: '마이그레이션 완료!',
-                type: 'success'
+                title: '마이그레이션 완료',
+                text: '모든 데이터가 성공적으로 이전되었습니다!',
+                progress: 100,
+                steps: { backup: true, transfer: true, verify: true }
             },
             'error': {
                 icon: '❌',
-                text: '마이그레이션 실패',
-                type: 'error'
+                title: '마이그레이션 실패',
+                text: '데이터 이전 중 오류가 발생했습니다. 기존 데이터는 안전합니다.',
+                progress: 0,
+                steps: { backup: false, transfer: false, verify: false }
             }
         };
         
-        const statusMsg = statusMessages[status];
-        if (statusMsg) {
-            console.log(`${statusMsg.icon} ${statusMsg.text}`);
-            
-            // UI에 표시 (짧은 시간)
-            if (status !== 'checking') {
-                this.showMessage(statusMsg.text, statusMsg.type);
-            }
+        const config = statusConfig[status];
+        if (!config) return;
+        
+        console.log(`${config.icon} ${config.text}`);
+        
+        // 완료 또는 오류 시 토스트 메시지만 표시
+        if (status === 'complete' || status === 'error') {
+            this.showMessage(config.text, status === 'complete' ? 'success' : 'error');
+            return;
+        }
+        
+        // 진행 중 상태는 모달 표시
+        const progressEl = document.createElement('div');
+        progressEl.id = 'migration-progress-indicator';
+        progressEl.className = 'migration-progress';
+        
+        progressEl.innerHTML = `
+            <h4>${config.icon} ${config.title}</h4>
+            <div class="migration-progress-bar">
+                <div class="migration-progress-fill" style="width: ${config.progress}%"></div>
+            </div>
+            <div class="migration-status-text">${config.text}</div>
+            <div class="migration-steps">
+                <div class="migration-step ${config.steps.backup ? 'complete' : ''}">
+                    <span class="migration-step-icon">${config.steps.backup ? '✅' : '⏳'}</span>
+                    백업
+                </div>
+                <div class="migration-step ${config.steps.transfer ? 'active' : ''}">
+                    <span class="migration-step-icon">${config.steps.transfer ? '✅' : '⏳'}</span>
+                    이전
+                </div>
+                <div class="migration-step ${config.steps.verify ? 'complete' : ''}">
+                    <span class="migration-step-icon">${config.steps.verify ? '✅' : '⏳'}</span>
+                    검증
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(progressEl);
+        
+        // 완료 시 자동 제거 (3초 후)
+        if (status === 'complete') {
+            setTimeout(() => {
+                if (progressEl.parentNode) {
+                    progressEl.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => progressEl.remove(), 300);
+                }
+            }, 3000);
         }
     }
     
@@ -1028,24 +1167,31 @@ class DualTextWriter {
     loadSavedTexts() {
         if (!this.currentUser) return [];
         
-        try {
-            const userKey = `dualTextWriter_savedTexts_${this.currentUser}`;
-            const saved = localStorage.getItem(userKey);
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) {
-            console.error('저장된 글을 불러오는데 실패했습니다:', error);
-            return [];
-        }
+        // 안전한 데이터 로드 및 검증 (보안 강화)
+        const userKey = `dualTextWriter_savedTexts_${this.currentUser}`;
+        const savedTexts = this.securityUtils.safeLoadFromStorage(
+            userKey,
+            [],
+            (data) => this.securityUtils.validateSavedTexts(data)
+        );
+        
+        // 검증된 데이터 반환
+        return savedTexts || [];
     }
     
     saveToLocalStorage() {
         if (!this.currentUser) return;
         
-        try {
-            const userKey = `dualTextWriter_savedTexts_${this.currentUser}`;
-            localStorage.setItem(userKey, JSON.stringify(this.savedTexts));
-        } catch (error) {
-            console.error('글을 저장하는데 실패했습니다:', error);
+        // 안전한 데이터 저장 및 검증 (보안 강화)
+        const userKey = `dualTextWriter_savedTexts_${this.currentUser}`;
+        const success = this.securityUtils.safeSaveToStorage(
+            userKey,
+            this.savedTexts,
+            (data) => this.securityUtils.validateSavedTexts(data)
+        );
+        
+        if (!success) {
+            console.error('글을 저장하는데 실패했습니다.');
             this.showMessage('저장에 실패했습니다.', 'error');
         }
     }
@@ -1059,7 +1205,256 @@ class DualTextWriter {
         }
     }
     
+    // ============================================
+    // 폴백 시스템 강화 (Task 6)
+    // ============================================
+    
+    // 6.1 폴백 활성화 로직 구현
+    enableFallbackSystem(reason = 'unknown') {
+        console.log(`🔄 폴백 시스템 활성화: ${reason}`);
+        
+        // 로깅
+        this.logger.logAction('fallback_enabled', '폴백 시스템 활성화', {
+            reason: reason,
+            timestamp: Date.now()
+        });
+        
+        // Google 로그인 버튼 비활성화
+        this.updateGoogleLoginButtonState(false, reason);
+        
+        // 폴백 활성화 이유 사용자에게 설명
+        this.showFallbackNotice(reason);
+        
+        // 기존 사용자명 로그인 섹션 강조
+        this.highlightFallbackLogin();
+    }
+    
+    // 폴백 활성화 이유 표시
+    showFallbackNotice(reason) {
+        const reasonMessages = {
+            'offline': {
+                icon: '📡',
+                title: '오프라인 모드',
+                message: '인터넷 연결이 없습니다. 기존 사용자명으로 로그인하여 오프라인에서도 사용할 수 있습니다.',
+                type: 'warning'
+            },
+            'config_invalid': {
+                icon: '⚙️',
+                title: 'Google OAuth 설정 필요',
+                message: 'Google OAuth가 설정되지 않았습니다. 기존 사용자명으로 로그인해주세요.',
+                type: 'info'
+            },
+            'init_failed': {
+                icon: '⚠️',
+                title: 'Google 로그인 사용 불가',
+                message: 'Google 로그인 초기화에 실패했습니다. 기존 사용자명으로 로그인해주세요.',
+                type: 'warning'
+            },
+            'error': {
+                icon: '❌',
+                title: 'Google 로그인 오류',
+                message: 'Google 로그인 중 오류가 발생했습니다. 기존 사용자명으로 로그인해주세요.',
+                type: 'error'
+            },
+            'unknown': {
+                icon: 'ℹ️',
+                title: '폴백 모드',
+                message: '기존 사용자명으로 로그인해주세요.',
+                type: 'info'
+            }
+        };
+        
+        const notice = reasonMessages[reason] || reasonMessages['unknown'];
+        
+        // Google 상태 표시 영역 업데이트
+        const googleStatus = document.getElementById('google-status');
+        const googleStatusIcon = document.getElementById('google-status-icon');
+        const googleStatusText = document.getElementById('google-status-text');
+        
+        if (googleStatus && googleStatusIcon && googleStatusText) {
+            googleStatusIcon.textContent = notice.icon;
+            googleStatusText.textContent = notice.message;
+            googleStatus.style.display = 'flex';
+            googleStatus.className = `google-status ${notice.type}`;
+        }
+        
+        // 콘솔 로그
+        console.log(`${notice.icon} ${notice.title}: ${notice.message}`);
+    }
+    
+    // 기존 사용자명 로그인 섹션 강조
+    highlightFallbackLogin() {
+        const legacyLoginSection = document.querySelector('.legacy-login-section');
+        if (legacyLoginSection) {
+            legacyLoginSection.classList.add('highlighted');
+            
+            // 3초 후 강조 제거
+            setTimeout(() => {
+                legacyLoginSection.classList.remove('highlighted');
+            }, 3000);
+        }
+    }
+    
+    // 6.2 네트워크 상태 모니터링 구현
+    setupNetworkMonitoring() {
+        console.log('📡 네트워크 상태 모니터링 시작...');
+        
+        // 초기 네트워크 상태 확인
+        this.checkNetworkStatus();
+        
+        // online 이벤트 리스너
+        window.addEventListener('online', () => {
+            console.log('✅ 네트워크 연결 복구됨');
+            this.handleNetworkOnline();
+        });
+        
+        // offline 이벤트 리스너
+        window.addEventListener('offline', () => {
+            console.warn('⚠️ 네트워크 연결 끊김');
+            this.handleNetworkOffline();
+        });
+        
+        this.logger.logAction('network_monitoring_started', '네트워크 모니터링 시작');
+    }
+    
+    // 네트워크 상태 확인
+    checkNetworkStatus() {
+        if (!navigator.onLine) {
+            console.warn('⚠️ 오프라인 상태 감지');
+            this.handleNetworkOffline();
+        }
+    }
+    
+    // 온라인 복구 시 처리
+    async handleNetworkOnline() {
+        this.logger.logAction('network_online', '네트워크 연결 복구');
+        
+        // 사용자에게 알림
+        this.showMessage('인터넷 연결이 복구되었습니다. Google 로그인을 사용할 수 있습니다.', 'success');
+        
+        // Google OAuth 재활성화 시도
+        if (!this.isGoogleReady) {
+            console.log('🔄 Google OAuth 재초기화 시도...');
+            await this.initializeGoogleAuth();
+            
+            if (this.isGoogleReady) {
+                // Google 로그인 버튼 활성화
+                this.updateGoogleLoginButtonState(true);
+                
+                // 상태 표시 숨김
+                const googleStatus = document.getElementById('google-status');
+                if (googleStatus) {
+                    googleStatus.style.display = 'none';
+                }
+                
+                console.log('✅ Google OAuth 재활성화 완료');
+            }
+        }
+    }
+    
+    // 오프라인 시 처리
+    handleNetworkOffline() {
+        this.logger.logAction('network_offline', '네트워크 연결 끊김');
+        
+        // 폴백 시스템 활성화
+        this.enableFallbackSystem('offline');
+        
+        // 사용자에게 명확한 안내
+        this.showMessage(
+            '오프라인 모드입니다. 기존 사용자명으로 로그인하여 계속 사용할 수 있습니다.',
+            'warning'
+        );
+    }
+    
+    // 6.3 폴백 시스템 기능 검증
+    verifyFallbackSystem() {
+        console.group('🔍 폴백 시스템 기능 검증');
+        
+        const verificationResults = {
+            usernameLogin: false,
+            dataSave: false,
+            dataLoad: false,
+            coreFunctions: false
+        };
+        
+        try {
+            // 1. 기존 사용자명 로그인 정상 작동 확인
+            const usernameInput = document.getElementById('username-input');
+            const loginBtn = document.getElementById('login-btn');
+            verificationResults.usernameLogin = !!(usernameInput && loginBtn && !loginBtn.disabled);
+            console.log(`✓ 사용자명 로그인: ${verificationResults.usernameLogin ? '정상' : '오류'}`);
+            
+            // 2. 데이터 저장 기능 확인
+            try {
+                const testKey = 'dualTextWriter_fallback_test';
+                const testData = { test: 'fallback_verification', timestamp: Date.now() };
+                localStorage.setItem(testKey, JSON.stringify(testData));
+                const retrieved = JSON.parse(localStorage.getItem(testKey));
+                verificationResults.dataSave = retrieved.test === 'fallback_verification';
+                localStorage.removeItem(testKey);
+                console.log(`✓ 데이터 저장/로드: ${verificationResults.dataSave ? '정상' : '오류'}`);
+            } catch (error) {
+                console.error('✗ 데이터 저장/로드 오류:', error);
+            }
+            
+            // 3. 핵심 기능 확인
+            const refTextInput = document.getElementById('ref-text-input');
+            const editTextInput = document.getElementById('edit-text-input');
+            const refSaveBtn = document.getElementById('ref-save-btn');
+            const editSaveBtn = document.getElementById('edit-save-btn');
+            
+            verificationResults.coreFunctions = !!(
+                refTextInput && editTextInput && 
+                refSaveBtn && editSaveBtn
+            );
+            console.log(`✓ 핵심 기능: ${verificationResults.coreFunctions ? '정상' : '오류'}`);
+            
+            // 전체 결과
+            const allPassed = Object.values(verificationResults).every(result => result === true);
+            
+            if (allPassed) {
+                console.log('✅ 폴백 시스템 검증 완료: 모든 기능 정상');
+            } else {
+                console.warn('⚠️ 폴백 시스템 검증: 일부 기능 오류');
+            }
+            
+            console.groupEnd();
+            
+            // 로깅
+            this.logger.logAction('fallback_verification', '폴백 시스템 검증', {
+                results: verificationResults,
+                allPassed: allPassed
+            });
+            
+            return verificationResults;
+            
+        } catch (error) {
+            console.error('❌ 폴백 시스템 검증 실패:', error);
+            console.groupEnd();
+            
+            this.logger.logAction('fallback_verification_error', '폴백 시스템 검증 오류', {
+                error: error.message
+            });
+            
+            return verificationResults;
+        }
+    }
+    
+    // 폴백 시스템 상태 확인 (디버깅용)
+    getFallbackSystemStatus() {
+        return {
+            isGoogleReady: this.isGoogleReady,
+            isOnline: navigator.onLine,
+            currentUser: this.currentUser,
+            authProvider: localStorage.getItem('dualTextWriter_authProvider'),
+            fallbackAvailable: true,
+            verificationResults: this.verifyFallbackSystem()
+        };
+    }
+    
+    // ============================================
     // 전체 정리 작업
+    // ============================================
     cleanup() {
         this.cleanupTempSave();
         this.googleAuthManager.cleanup();
