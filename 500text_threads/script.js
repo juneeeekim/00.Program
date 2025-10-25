@@ -107,7 +107,7 @@ class DualTextWriter {
     
     saveText(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
-        const text = textInput.value.trim();
+        const text = textInput.value; // trim() 제거하여 사용자 입력의 공백과 줄바꿈 보존
         const panelName = panel === 'ref' ? '레퍼런스 글' : '수정/작성 글';
         
         if (text.length === 0) {
@@ -136,7 +136,7 @@ class DualTextWriter {
     
     downloadAsTxt(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
-        const text = textInput.value.trim();
+        const text = textInput.value; // trim() 제거하여 사용자 입력의 공백과 줄바꿈 보존
         const panelName = panel === 'ref' ? '레퍼런스' : '수정작성';
         
         if (text.length === 0) {
@@ -151,7 +151,7 @@ class DualTextWriter {
                       `작성일: ${new Date().toLocaleString('ko-KR')}\n` +
                       `글자 수: ${this.getKoreanCharacterCount(text)}자\n` +
                       `\n${'='.repeat(30)}\n\n` +
-                      `${text}`;
+                      `${text}`; // 사용자가 입력한 그대로 줄바꿈과 공백 유지
         
         const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -267,7 +267,7 @@ class DualTextWriter {
         const refText = this.refTextInput.value;
         const editText = this.editTextInput.value;
         
-        if (refText.trim().length > 0 || editText.trim().length > 0) {
+        if (refText.length > 0 || editText.length > 0) { // trim() 제거하여 원본 포맷 유지
             try {
                 const tempData = {
                     refText: refText,
