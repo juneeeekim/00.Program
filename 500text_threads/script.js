@@ -863,10 +863,10 @@ class DualTextWriter {
     initializeLLMValidation() {
         // LLM 사이트별 프롬프트 템플릿
         this.llmPrompts = {
-            chatgpt: "다음 글의 논리적 일관성과 문법적 정확성을 검증해주세요. 특히 다음 사항들을 확인해주세요:\n\n1. 논리적 흐름이 자연스러운가?\n2. 문법과 맞춤법이 정확한가?\n3. 내용이 일관성 있게 구성되어 있는가?\n4. 전달하고자 하는 메시지가 명확한가?\n\n검증할 글:\n",
-            gemini: "이 텍스트의 논리적 구조와 내용의 타당성을 분석해주세요. 다음 관점에서 평가해주세요:\n\n1. 논리적 구조의 완성도\n2. 내용의 신뢰성과 타당성\n3. 표현의 명확성과 효과성\n4. 전체적인 일관성\n\n분석할 텍스트:\n",
-            perplexity: "다음 글의 사실적 정확성과 논리적 흐름을 평가해주세요. 특히 다음을 확인해주세요:\n\n1. 제시된 사실들의 정확성\n2. 논리적 추론의 타당성\n3. 정보의 신뢰성\n4. 전체적인 논증의 강도\n\n평가할 글:\n",
-            grok: "이 글의 논리적 일관성과 표현의 명확성을 검토해주세요. 다음 사항들을 중점적으로 살펴보세요:\n\n1. 논리적 일관성\n2. 표현의 명확성\n3. 내용의 응집성\n4. 전달력의 효과성\n\n검토할 글:\n"
+            chatgpt: "다음 글을 SNS 후킹 관점에서 분석해주세요. 특히 다음 요소들을 평가해주세요:\n\n🎯 후킹 효과성:\n- 첫 문장이 독자의 관심을 끌 수 있는가?\n- 감정적 몰입을 유도하는가?\n- 호기심을 자극하는 요소가 있는가?\n\n📱 SNS 최적화:\n- 읽기 쉬운 구조인가?\n- 공유하고 싶은 욕구를 자극하는가?\n- 댓글을 유도할 수 있는 요소가 있는가?\n\n💡 개선 제안:\n- 더 강력한 후킹 포인트 제안\n- 감정적 반응을 높이는 방법\n- 행동 유도(좋아요, 공유, 댓글) 강화 방안\n\n분석할 글:\n",
+            gemini: "다음 글을 SNS 마케팅 전문가 관점에서 분석해주세요:\n\n🧠 심리적 후킹 분석:\n- 독자의 무의식을 자극하는 요소 분석\n- 감정적 트리거 포인트 식별\n- 인지 편향 활용도 평가\n\n📊 타겟 독자 분석:\n- 어떤 독자층에게 어필하는가?\n- 공감대 형성 요소는 무엇인가?\n- 행동 변화를 유도할 수 있는가?\n\n🎨 표현력 개선:\n- 더 강력한 표현으로 바꿀 부분\n- 시각적 임팩트를 높이는 방법\n- 기억에 남는 문구 만들기\n\n분석할 글:\n",
+            perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n분석할 글:\n",
+            grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n분석할 글:\n"
         };
         
         // LLM 사이트별 특성 정보 (사용자 가이드용)
@@ -874,30 +874,30 @@ class DualTextWriter {
             chatgpt: {
                 name: "ChatGPT",
                 icon: "🤖",
-                description: "종합 검증",
-                details: "문법·논리·일관성 전체 검토",
-                strength: "포괄적 분석"
+                description: "SNS 후킹 분석",
+                details: "후킹 효과성·SNS 최적화·행동 유도 분석",
+                strength: "종합적 후킹 전략"
             },
             gemini: {
                 name: "Gemini", 
                 icon: "🧠",
-                description: "구조 분석",
-                details: "논리적 구조와 타당성 분석",
-                strength: "신뢰성 검증"
+                description: "심리적 후킹",
+                details: "무의식 자극·감정 트리거·타겟 독자 분석",
+                strength: "심리학적 접근"
             },
             perplexity: {
                 name: "Perplexity",
                 icon: "🔎", 
-                description: "사실 검증",
-                details: "정보 정확성과 논증 강도 평가",
-                strength: "실시간 검증"
+                description: "트렌드 검증",
+                details: "SNS 트렌드·바이럴 가능성·신뢰성 강화",
+                strength: "실시간 트렌드 분석"
             },
             grok: {
                 name: "Grok",
                 icon: "🚀",
-                description: "명확성 검토", 
-                details: "표현 명확성과 전달력 검토",
-                strength: "간결한 피드백"
+                description: "임팩트 최적화", 
+                details: "강력한 후킹 문구·명확한 메시지·즉시 개선점",
+                strength: "간결한 임팩트 분석"
             }
         };
         
@@ -973,11 +973,19 @@ class DualTextWriter {
     
     // LLM 사이트 새 탭에서 열기
     openLLMSite(llmService, text) {
-        const baseUrl = this.llmUrls[llmService];
-        const encodedText = encodeURIComponent(text);
-        const fullUrl = baseUrl + encodedText;
+        let fullUrl;
         
-        console.log('LLM 사이트 열기:', { llmService, url: fullUrl });
+        if (llmService === 'gemini') {
+            // Gemini는 URL 파라미터를 지원하지 않으므로 기본 URL만 사용
+            fullUrl = this.llmUrls[llmService];
+            console.log('Gemini 사이트 열기 (URL 파라미터 미지원):', { llmService, url: fullUrl });
+        } else {
+            // 다른 LLM들은 URL 파라미터 지원
+            const baseUrl = this.llmUrls[llmService];
+            const encodedText = encodeURIComponent(text);
+            fullUrl = baseUrl + encodedText;
+            console.log('LLM 사이트 열기 (URL 파라미터 지원):', { llmService, url: fullUrl });
+        }
         
         // 새 탭에서 열기
         window.open(fullUrl, '_blank', 'noopener,noreferrer');
@@ -987,13 +995,22 @@ class DualTextWriter {
     showLLMValidationGuide(llmService) {
         const characteristics = this.llmCharacteristics[llmService];
         
-        this.showMessage(
-            `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
-            `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
-            `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
-            `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`,
-            'success'
-        );
+        let message;
+        
+        if (llmService === 'gemini') {
+            message = `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
+                `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
+                `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
+                `⚠️ 참고: ${characteristics.name}은 URL 파라미터를 지원하지 않아 수동으로 붙여넣기해야 합니다.\n\n` +
+                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
+        } else {
+            message = `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
+                `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
+                `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
+                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
+        }
+        
+        this.showMessage(message, 'success');
         
         // 추가 안내를 위한 상세 메시지
         setTimeout(() => {
@@ -1004,10 +1021,10 @@ class DualTextWriter {
     // 상세 가이드 표시
     showDetailedGuide(llmService) {
         const guides = {
-            chatgpt: 'ChatGPT에서 검증 결과를 확인한 후, 필요시 글을 수정하여 다시 저장하세요.',
-            gemini: 'Gemini의 분석 결과를 바탕으로 글의 논리적 구조를 개선해보세요.',
-            perplexity: 'Perplexity의 사실 검증 결과를 참고하여 내용의 정확성을 높이세요.',
-            grok: 'Grok의 검토 의견을 반영하여 글의 명확성을 향상시키세요.'
+            chatgpt: 'ChatGPT의 SNS 후킹 분석 결과를 바탕으로 글의 감정적 몰입과 행동 유도를 강화해보세요.',
+            gemini: 'Gemini의 심리적 후킹 분석을 참고하여 독자의 무의식을 자극하는 요소를 추가해보세요.',
+            perplexity: 'Perplexity의 트렌드 분석 결과를 활용하여 현재 SNS 트렌드에 맞게 글을 개선해보세요.',
+            grok: 'Grok의 임팩트 분석을 반영하여 더 강력하고 명확한 후킹 문구로 글을 업그레이드해보세요.'
         };
         
         const guide = guides[llmService];
