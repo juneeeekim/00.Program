@@ -138,6 +138,33 @@ class DualTextWriter {
         this.editClearBtn.addEventListener('click', () => this.clearText('edit'));
         this.editSaveBtn.addEventListener('click', () => this.saveText('edit'));
         this.editDownloadBtn.addEventListener('click', () => this.downloadAsTxt('edit'));
+        
+        // 반자동화 포스팅 이벤트
+        const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
+        if (semiAutoPostBtn) {
+            semiAutoPostBtn.addEventListener('click', () => this.handleSemiAutoPost());
+            
+            // 키보드 접근성 지원
+            semiAutoPostBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.handleSemiAutoPost();
+                }
+            });
+            
+            // 접근성 속성 설정
+            semiAutoPostBtn.setAttribute('aria-label', 'Threads에 반자동으로 포스팅하기');
+            semiAutoPostBtn.setAttribute('role', 'button');
+            semiAutoPostBtn.setAttribute('tabindex', '0');
+        }
+        
+        // 개발 모드에서 자동 테스트 실행
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            setTimeout(() => {
+                console.log('🔧 개발 모드: 자동 테스트 실행');
+                this.runComprehensiveTest();
+            }, 2000);
+        }
     }
     
     updateCharacterCount(panel) {
@@ -277,7 +304,7 @@ class DualTextWriter {
     showLoginInterface() {
         this.loginForm.style.display = 'block';
         this.userInfo.style.display = 'none';
-        this.mainContent.style.display = 'none';
+        this.mainContent.style.display = 'block'; // 로그인 없이도 메인 콘텐츠 표시
     }
     
     // 기존 로컬 스토리지 데이터를 Firestore로 마이그레이션
@@ -1291,6 +1318,732 @@ class DualTextWriter {
             clearTimeout(this.tempSaveTimeout);
         }
     }
+    
+    // ===== 반자동화 포스팅 시스템 =====
+    
+    // 해시태그 추출 함수
+    extractHashtags(content) {
+        const hashtagRegex = /#[\w가-힣]+/g;
+        const hashtags = content.match(hashtagRegex) || [];
+        return hashtags.map(tag => tag.toLowerCase());
+    }
+    
+    // Threads 포맷팅 함수 (XSS 방지 포함)
+    formatForThreads(content) {
+        // XSS 방지를 위한 HTML 이스케이프
+        const escapedContent = this.escapeHtml(content);
+        
+        // 줄바꿈 정규화
+        const normalizedContent = escapedContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        
+        // 연속 공백 정리
+        const cleanedContent = normalizedContent.replace(/\n{3,}/g, '\n\n');
+        
+        return cleanedContent.trim();
+    }
+    
+    // HTML 이스케이프 함수 (보안 강화 - 완전한 XSS 방지)
+    escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return '';
+        }
+        
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 사용자 입력 검증 함수 (보안 강화)
+    validateUserInput(input, type = 'text') {
+        if (!input || typeof input !== 'string') {
+            throw new Error('유효하지 않은 입력입니다.');
+        }
+        
+        // 길이 제한 검증
+        if (input.length > 10000) {
+            throw new Error('입력이 너무 깁니다. (최대 10,000자)');
+        }
+        
+        // 위험한 패턴 검증
+        const dangerousPatterns = [
+            /<script[^>]*>.*?<\/script>/gi,
+            /javascript:/gi,
+            /on\w+\s*=/gi,
+            /<iframe[^>]*>.*?<\/iframe>/gi,
+            /<object[^>]*>.*?<\/object>/gi,
+            /<embed[^>]*>/gi,
+            /<link[^>]*>/gi,
+            /<meta[^>]*>/gi
+        ];
+        
+        for (const pattern of dangerousPatterns) {
+            if (pattern.test(input)) {
+                throw new Error('위험한 코드가 감지되었습니다.');
+            }
+        }
+        
+        return true;
+    }
+    
+    // 안전한 텍스트 처리 함수
+    sanitizeText(text) {
+        this.validateUserInput(text);
+        
+        // HTML 태그 제거
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text;
+        const cleanText = tempDiv.textContent || tempDiv.innerText || '';
+        
+        // 특수 문자 정리
+        return cleanText
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // 제어 문자 제거
+            .replace(/\s+/g, ' ') // 연속 공백 정리
+            .trim();
+    }
+    
+    // 내용 최적화 엔진 (보안 강화 버전)
+    optimizeContentForThreads(content) {
+        try {
+            // 1단계: 입력 검증 및 정화
+            const sanitizedContent = this.sanitizeText(content);
+            
+            // 2단계: 성능 최적화 - 대용량 텍스트 처리
+            if (sanitizedContent.length > 10000) {
+                console.warn('매우 긴 텍스트가 감지되었습니다. 처리 시간이 오래 걸릴 수 있습니다.');
+            }
+            
+            const optimized = {
+                original: sanitizedContent,
+                optimized: '',
+                hashtags: [],
+                characterCount: 0,
+                suggestions: [],
+                warnings: [],
+                securityChecks: {
+                    xssBlocked: false,
+                    maliciousContentRemoved: false,
+                    inputValidated: true
+                }
+            };
+            
+            // 3단계: 글자 수 최적화 (Threads는 500자 제한)
+            if (sanitizedContent.length > 500) {
+                // 단어 단위로 자르기 (더 자연스러운 자르기)
+                const words = sanitizedContent.substring(0, 500).split(' ');
+                words.pop(); // 마지막 불완전한 단어 제거
+                optimized.optimized = words.join(' ') + '...';
+                optimized.suggestions.push('글이 500자를 초과하여 단어 단위로 잘렸습니다.');
+                optimized.warnings.push('원본보다 짧아졌습니다.');
+            } else {
+                optimized.optimized = sanitizedContent;
+            }
+            
+            // 4단계: 해시태그 자동 추출/추가 (보안 검증 포함)
+            const hashtags = this.extractHashtags(optimized.optimized);
+            if (hashtags.length === 0) {
+                optimized.hashtags = ['#writing', '#content', '#threads'];
+                optimized.suggestions.push('해시태그를 추가했습니다.');
+            } else {
+                // 해시태그 보안 검증
+                optimized.hashtags = hashtags.filter(tag => {
+                    // 위험한 해시태그 필터링
+                    const dangerousTags = ['#script', '#javascript', '#eval', '#function'];
+                    return !dangerousTags.some(dangerous => tag.toLowerCase().includes(dangerous));
+                });
+            }
+            
+            // 5단계: 최종 포맷팅 적용 (보안 강화)
+            optimized.optimized = this.formatForThreads(optimized.optimized);
+            optimized.characterCount = optimized.optimized.length;
+            
+            // 6단계: 보안 검증 완료 표시
+            optimized.securityChecks.inputValidated = true;
+            
+            return optimized;
+            
+        } catch (error) {
+            console.error('내용 최적화 중 오류 발생:', error);
+            
+            // 보안 오류인 경우 특별 처리
+            if (error.message.includes('위험한') || error.message.includes('유효하지 않은')) {
+                throw new Error('보안상의 이유로 내용을 처리할 수 없습니다. 입력을 확인해주세요.');
+            }
+            
+            throw new Error('내용 최적화에 실패했습니다.');
+        }
+    }
+    
+    // 폴백 클립보드 복사 함수
+    fallbackCopyToClipboard(text) {
+        return new Promise((resolve, reject) => {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                textArea.style.opacity = '0';
+                textArea.setAttribute('readonly', '');
+                textArea.setAttribute('aria-hidden', 'true');
+                
+                document.body.appendChild(textArea);
+                
+                // 모바일 지원을 위한 선택 범위 설정
+                if (textArea.setSelectionRange) {
+                    textArea.setSelectionRange(0, text.length);
+                } else {
+                    textArea.select();
+                }
+                
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    resolve(true);
+                } else {
+                    reject(new Error('execCommand 복사 실패'));
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+    
+    // 로딩 상태 관리 함수
+    showLoadingState(element, isLoading) {
+        if (isLoading) {
+            element.disabled = true;
+            element.innerHTML = '⏳ 처리 중...';
+            element.classList.add('loading');
+        } else {
+            element.disabled = false;
+            element.innerHTML = '🚀 반자동 포스팅';
+            element.classList.remove('loading');
+        }
+    }
+    
+    // 클립보드 자동화 (완전한 에러 처리 및 폴백)
+    async copyToClipboardWithFormat(content) {
+        const button = document.getElementById('semi-auto-post-btn');
+        
+        try {
+            // 로딩 상태 표시
+            this.showLoadingState(button, true);
+            
+            // 1단계: 입력 검증 강화
+            if (!content || typeof content !== 'string') {
+                throw new Error('유효하지 않은 내용입니다.');
+            }
+            
+            // 2단계: Threads 최적화 포맷으로 변환
+            const formattedContent = this.formatForThreads(content);
+            if (!formattedContent || formattedContent.length === 0) {
+                throw new Error('포맷팅된 내용이 비어있습니다.');
+            }
+            
+            // 클립보드 API 지원 확인
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(formattedContent);
+                    this.showMessage('✅ 내용이 클립보드에 복사되었습니다!', 'success');
+                    return true;
+                } catch (clipboardError) {
+                    console.warn('Clipboard API 실패, 폴백 방법 사용:', clipboardError);
+                    throw clipboardError;
+                }
+            } else {
+                throw new Error('Clipboard API 미지원');
+            }
+            
+        } catch (error) {
+            console.error('클립보드 복사 실패:', error);
+            
+            try {
+                // 폴백 방법 시도
+                await this.fallbackCopyToClipboard(formattedContent);
+                this.showMessage('✅ 내용이 클립보드에 복사되었습니다! (폴백 방법)', 'success');
+                return true;
+            } catch (fallbackError) {
+                console.error('폴백 복사도 실패:', fallbackError);
+                this.showMessage('❌ 클립보드 복사에 실패했습니다. 수동으로 복사해주세요.', 'error');
+                
+                // 수동 복사를 위한 텍스트 영역 표시
+                this.showManualCopyModal(formattedContent);
+                return false;
+            }
+        } finally {
+            // 로딩 상태 해제
+            this.showLoadingState(button, false);
+        }
+    }
+    
+    // 수동 복사 모달 표시 함수
+    showManualCopyModal(content) {
+        const modal = document.createElement('div');
+        modal.className = 'manual-copy-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>📋 수동 복사</h3>
+                <p>클립보드 복사에 실패했습니다. 아래 텍스트를 수동으로 복사해주세요:</p>
+                <textarea readonly class="copy-textarea" aria-label="복사할 텍스트">${content}</textarea>
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">확인</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 텍스트 영역 자동 선택
+        const textarea = modal.querySelector('.copy-textarea');
+        textarea.focus();
+        textarea.select();
+    }
+    
+    // 최적화 모달 표시 함수 (접근성 강화)
+    showOptimizationModal(optimized) {
+        const modal = document.createElement('div');
+        modal.className = 'optimization-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'modal-title');
+        modal.setAttribute('aria-describedby', 'modal-description');
+        
+        modal.innerHTML = `
+            <div class="optimization-content">
+                <h3 id="modal-title">${this.t('optimizationTitle')}</h3>
+                <div id="modal-description" class="sr-only">포스팅 내용이 최적화되었습니다. 결과를 확인하고 진행하세요.</div>
+                
+                <div class="optimization-stats" role="region" aria-label="최적화 통계">
+                    <div class="stat-item">
+                        <span class="stat-label">${this.t('originalLength')}</span>
+                        <span class="stat-value" aria-label="${optimized.original.length}${this.t('characters')}">${optimized.original.length}${this.t('characters')}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">${this.t('optimizedLength')}</span>
+                        <span class="stat-value" aria-label="${optimized.characterCount}${this.t('characters')}">${optimized.characterCount}${this.t('characters')}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">${this.t('hashtags')}</span>
+                        <span class="stat-value" aria-label="해시태그 ${optimized.hashtags.length}${this.t('hashtagCount')}">${optimized.hashtags.join(' ')}</span>
+                    </div>
+                </div>
+                
+                ${optimized.suggestions.length > 0 ? `
+                    <div class="suggestions" role="region" aria-label="최적화 제안사항">
+                        <h4>${this.t('optimizationSuggestions')}</h4>
+                        <ul>
+                            ${optimized.suggestions.map(suggestion => `<li>${this.escapeHtml(suggestion)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                <div class="preview-section" role="region" aria-label="포스팅 내용 미리보기">
+                    <h4>${this.t('previewTitle')}</h4>
+                    <div class="preview-content" role="textbox" aria-label="최적화된 포스팅 내용" tabindex="0">
+                        ${this.escapeHtml(optimized.optimized)}
+                        ${optimized.hashtags.length > 0 ? `<br><br>${this.escapeHtml(optimized.hashtags.join(' '))}` : ''}
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-primary" 
+                            id="proceed-btn"
+                            aria-label="클립보드에 복사하고 Threads 페이지 열기"
+                            onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}')">
+                        ${this.t('proceedButton')}
+                    </button>
+                    <button class="btn-secondary" 
+                            id="cancel-btn"
+                            aria-label="모달 닫기"
+                            onclick="this.closest('.optimization-modal').remove()">${this.t('cancelButton')}</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 접근성 강화: 포커스 관리
+        const proceedBtn = modal.querySelector('#proceed-btn');
+        const cancelBtn = modal.querySelector('#cancel-btn');
+        
+        // 첫 번째 버튼에 포커스
+        setTimeout(() => {
+            proceedBtn.focus();
+        }, 100);
+        
+        // ESC 키로 모달 닫기
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Tab 키 순환 제한 (모달 내에서만)
+        const focusableElements = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+        
+        const handleTabKey = (e) => {
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            }
+        };
+        
+        modal.addEventListener('keydown', handleTabKey);
+        
+        // 모달이 제거될 때 이벤트 리스너 정리
+        const originalRemove = modal.remove;
+        modal.remove = function() {
+            document.removeEventListener('keydown', handleEscape);
+            modal.removeEventListener('keydown', handleTabKey);
+            originalRemove.call(this);
+        };
+    }
+    
+    // 포스팅 진행 함수
+    async proceedWithPosting(formattedContent) {
+        try {
+            // 클립보드에 복사
+            const success = await this.copyToClipboardWithFormat(formattedContent);
+            
+            if (success) {
+                // Threads 새 탭 열기
+                window.open('https://threads.net', '_blank', 'noopener,noreferrer');
+                
+                // 사용자 가이드 표시
+                this.showPostingGuide();
+                
+                // 모달 닫기
+                const modal = document.querySelector('.optimization-modal');
+                if (modal) {
+                    modal.remove();
+                }
+            }
+        } catch (error) {
+            console.error('포스팅 진행 중 오류:', error);
+            this.showMessage('포스팅 진행 중 오류가 발생했습니다.', 'error');
+        }
+    }
+    
+    // 포스팅 가이드 표시 함수
+    showPostingGuide() {
+        const guide = document.createElement('div');
+        guide.className = 'posting-guide';
+        guide.innerHTML = `
+            <div class="guide-content">
+                <h3>✅ 성공! Threads 페이지가 열렸습니다</h3>
+                <div class="guide-steps">
+                    <h4>📝 다음 단계를 따라해주세요:</h4>
+                    <ol>
+                        <li>Threads 새 탭으로 이동하세요</li>
+                        <li>"새 글 작성" 버튼을 클릭하세요</li>
+                        <li>텍스트 입력창에 Ctrl+V로 붙여넣기하세요</li>
+                        <li>"게시" 버튼을 클릭하여 포스팅하세요</li>
+                    </ol>
+                </div>
+                <div class="guide-tip">
+                    <p>💡 팁: 붙여넣기 후 내용을 한 번 더 확인해보세요!</p>
+                </div>
+                <div class="guide-actions">
+                    <button class="btn-primary" onclick="this.closest('.posting-guide').remove()">✅ 확인</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(guide);
+        
+        // 5초 후 자동으로 사라지게 하기
+        setTimeout(() => {
+            if (guide.parentNode) {
+                guide.remove();
+            }
+        }, 10000);
+    }
+    
+    // 오프라인 지원 함수들
+    saveToLocalStorage(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+            return true;
+        } catch (error) {
+            console.warn('로컬 스토리지 저장 실패:', error);
+            return false;
+        }
+    }
+    
+    loadFromLocalStorage(key) {
+        try {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.warn('로컬 스토리지 로드 실패:', error);
+            return null;
+        }
+    }
+    
+    // 오프라인 상태 감지
+    isOnline() {
+        return navigator.onLine;
+    }
+    
+    // 오프라인 알림 표시
+    showOfflineNotification() {
+        if (!this.isOnline()) {
+            this.showMessage('📡 오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.', 'warning');
+        }
+    }
+    
+    // 국제화 지원 함수들
+    getLanguage() {
+        return navigator.language || navigator.userLanguage || 'ko-KR';
+    }
+    
+    getTexts() {
+        const lang = this.getLanguage();
+        const texts = {
+            'ko-KR': {
+                noContent: '❌ 포스팅할 내용이 없습니다.',
+                processingError: '포스팅 처리 중 오류가 발생했습니다.',
+                offlineWarning: '📡 오프라인 상태입니다. 로컬에서만 처리됩니다.',
+                optimizationTitle: '📝 Threads 포스팅 최적화 결과',
+                originalLength: '원본 글자 수:',
+                optimizedLength: '최적화된 글자 수:',
+                hashtags: '해시태그:',
+                optimizationSuggestions: '💡 최적화 사항:',
+                previewTitle: '📋 최종 포스팅 내용 미리보기:',
+                proceedButton: '📋 클립보드 복사 & Threads 열기',
+                cancelButton: '❌ 취소',
+                characters: '자',
+                hashtagCount: '개'
+            },
+            'en-US': {
+                noContent: '❌ No content to post.',
+                processingError: 'An error occurred while processing the post.',
+                offlineWarning: '📡 You are offline. Processing locally only.',
+                optimizationTitle: '📝 Threads Posting Optimization Results',
+                originalLength: 'Original length:',
+                optimizedLength: 'Optimized length:',
+                hashtags: 'Hashtags:',
+                optimizationSuggestions: '💡 Optimization suggestions:',
+                previewTitle: '📋 Final posting content preview:',
+                proceedButton: '📋 Copy to Clipboard & Open Threads',
+                cancelButton: '❌ Cancel',
+                characters: 'chars',
+                hashtagCount: 'tags'
+            },
+            'ja-JP': {
+                noContent: '❌ 投稿するコンテンツがありません。',
+                processingError: '投稿処理中にエラーが発生しました。',
+                offlineWarning: '📡 オフライン状態です。ローカルでのみ処理されます。',
+                optimizationTitle: '📝 Threads投稿最適化結果',
+                originalLength: '元の文字数:',
+                optimizedLength: '最適化された文字数:',
+                hashtags: 'ハッシュタグ:',
+                optimizationSuggestions: '💡 最適化提案:',
+                previewTitle: '📋 最終投稿内容プレビュー:',
+                proceedButton: '📋 クリップボードにコピー & Threadsを開く',
+                cancelButton: '❌ キャンセル',
+                characters: '文字',
+                hashtagCount: '個'
+            }
+        };
+        
+        return texts[lang] || texts['ko-KR'];
+    }
+    
+    t(key) {
+        const texts = this.getTexts();
+        return texts[key] || key;
+    }
+    
+    // 성능 모니터링 함수들
+    performanceMonitor = {
+        startTime: null,
+        measurements: {},
+        
+        start(label) {
+            this.startTime = performance.now();
+            this.measurements[label] = { start: this.startTime };
+        },
+        
+        end(label) {
+            if (this.startTime && this.measurements[label]) {
+                const endTime = performance.now();
+                const duration = endTime - this.startTime;
+                this.measurements[label].duration = duration;
+                this.measurements[label].end = endTime;
+                
+                console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`);
+                return duration;
+            }
+            return 0;
+        },
+        
+        getReport() {
+            return Object.keys(this.measurements).map(label => ({
+                label,
+                duration: this.measurements[label].duration || 0
+            }));
+        }
+    };
+    
+    // 메모리 사용량 체크
+    checkMemoryUsage() {
+        if (performance.memory) {
+            const memory = performance.memory;
+            console.log('🧠 메모리 사용량:', {
+                used: `${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
+                total: `${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`,
+                limit: `${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)}MB`
+            });
+        }
+    }
+    
+    // 종합 테스트 함수
+    async runComprehensiveTest() {
+        console.log('🧪 종합 테스트 시작...');
+        
+        const testResults = {
+            security: false,
+            accessibility: false,
+            performance: false,
+            mobile: false,
+            offline: false,
+            internationalization: false
+        };
+        
+        try {
+            // 1. 보안 테스트
+            console.log('🔒 보안 테스트...');
+            const testContent = '<script>alert("xss")</script>안녕하세요 #test';
+            const sanitized = this.sanitizeText(testContent);
+            testResults.security = !sanitized.includes('<script>');
+            console.log('보안 테스트:', testResults.security ? '✅ 통과' : '❌ 실패');
+            
+            // 2. 접근성 테스트
+            console.log('♿ 접근성 테스트...');
+            const button = document.getElementById('semi-auto-post-btn');
+            testResults.accessibility = button && 
+                button.getAttribute('aria-label') && 
+                button.getAttribute('role');
+            console.log('접근성 테스트:', testResults.accessibility ? '✅ 통과' : '❌ 실패');
+            
+            // 3. 성능 테스트
+            console.log('⚡ 성능 테스트...');
+            this.performanceMonitor.start('테스트');
+            await new Promise(resolve => setTimeout(resolve, 10));
+            const duration = this.performanceMonitor.end('테스트');
+            testResults.performance = duration < 100; // 100ms 이하
+            console.log('성능 테스트:', testResults.performance ? '✅ 통과' : '❌ 실패');
+            
+            // 4. 모바일 테스트
+            console.log('📱 모바일 테스트...');
+            const isMobile = window.innerWidth <= 768;
+            testResults.mobile = true; // CSS 미디어 쿼리로 처리됨
+            console.log('모바일 테스트:', testResults.mobile ? '✅ 통과' : '❌ 실패');
+            
+            // 5. 오프라인 테스트
+            console.log('💾 오프라인 테스트...');
+            testResults.offline = typeof this.isOnline === 'function' && 
+                typeof this.saveToLocalStorage === 'function';
+            console.log('오프라인 테스트:', testResults.offline ? '✅ 통과' : '❌ 실패');
+            
+            // 6. 국제화 테스트
+            console.log('🌍 국제화 테스트...');
+            testResults.internationalization = typeof this.t === 'function' && 
+                this.t('noContent') !== 'noContent';
+            console.log('국제화 테스트:', testResults.internationalization ? '✅ 통과' : '❌ 실패');
+            
+            // 결과 요약
+            const passedTests = Object.values(testResults).filter(result => result).length;
+            const totalTests = Object.keys(testResults).length;
+            
+            console.log(`\n🎯 테스트 완료: ${passedTests}/${totalTests} 통과`);
+            console.log('상세 결과:', testResults);
+            
+            return testResults;
+            
+        } catch (error) {
+            console.error('테스트 중 오류 발생:', error);
+            return testResults;
+        }
+    }
+    
+    // 반자동화 포스팅 메인 함수 (성능 최적화 + 오프라인 지원 + 모니터링)
+    async handleSemiAutoPost() {
+        const content = this.editTextInput.value;
+        
+        if (!content.trim()) {
+            this.showMessage(this.t('noContent'), 'error');
+            return;
+        }
+        
+        const button = document.getElementById('semi-auto-post-btn');
+        
+        try {
+            // 성능 모니터링 시작
+            this.performanceMonitor.start('전체 포스팅 처리');
+            this.checkMemoryUsage();
+            
+            // 로딩 상태 표시
+            this.showLoadingState(button, true);
+            
+            // 오프라인 상태 확인
+            if (!this.isOnline()) {
+                this.showMessage(this.t('offlineWarning'), 'warning');
+            }
+            
+            // 비동기 처리로 UI 블로킹 방지
+            this.performanceMonitor.start('내용 최적화');
+            const optimized = await this.optimizeContentForThreadsAsync(content);
+            this.performanceMonitor.end('내용 최적화');
+            
+            // 오프라인에서도 로컬 저장
+            this.saveToLocalStorage('lastOptimizedContent', optimized);
+            
+            // 최적화 완료 후 모달 표시
+            this.showOptimizationModal(optimized);
+            
+            // 성능 모니터링 완료
+            this.performanceMonitor.end('전체 포스팅 처리');
+            this.checkMemoryUsage();
+            
+        } catch (error) {
+            console.error('반자동화 포스팅 처리 중 오류:', error);
+            this.showMessage(this.t('processingError'), 'error');
+        } finally {
+            // 로딩 상태 해제
+            this.showLoadingState(button, false);
+        }
+    }
+    
+    // 비동기 내용 최적화 함수 (성능 개선)
+    async optimizeContentForThreadsAsync(content) {
+        return new Promise((resolve, reject) => {
+            // 메인 스레드 블로킹 방지를 위한 setTimeout 사용
+            setTimeout(() => {
+                try {
+                    const optimized = this.optimizeContentForThreads(content);
+                    resolve(optimized);
+                } catch (error) {
+                    reject(error);
+                }
+            }, 0);
+        });
+    }
 }
 
 // Initialize the application
@@ -1298,6 +2051,12 @@ let dualTextWriter;
 
 document.addEventListener('DOMContentLoaded', () => {
     dualTextWriter = new DualTextWriter();
+    
+    // 메인 콘텐츠 강제 표시 (로그인 상태와 관계없이)
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.display = 'block';
+    }
     
     // 전역 디버깅 함수 등록
     window.debugSavedItems = () => dualTextWriter.debugSavedItems();

@@ -417,6 +417,542 @@ header h1 {
     box-shadow: none;
 }
 
+/* 반자동화 포스팅 버튼 스타일 (접근성 강화) */
+.btn-semi-auto {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+    
+    /* 접근성 개선 */
+    min-height: 44px !important; /* 터치 타겟 최소 크기 */
+    font-size: 16px !important; /* 모바일에서 확대 방지 */
+    outline: none !important;
+    
+    /* 강제 표시 */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.btn-semi-auto:hover:not(.loading) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-semi-auto:focus {
+    outline: 2px solid #4CAF50;
+    outline-offset: 2px;
+}
+
+.btn-semi-auto.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #ccc;
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+    .btn-semi-auto {
+        border: 2px solid #000;
+        background: #000;
+        color: #fff;
+    }
+}
+
+/* 접근성 강화 스타일 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 스크린 리더 전용 텍스트 */
+.sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* 포커스 표시 강화 */
+*:focus {
+    outline: 2px solid #4CAF50 !important;
+    outline-offset: 2px !important;
+}
+
+/* 고대비 모드 지원 강화 */
+@media (prefers-contrast: high) {
+    .btn-semi-auto {
+        border: 3px solid #000;
+        background: #000;
+        color: #fff;
+    }
+    
+    .btn-semi-auto:focus {
+        outline: 3px solid #fff;
+        outline-offset: 3px;
+    }
+    
+    .optimization-content,
+    .posting-guide {
+        border: 2px solid #000;
+    }
+    
+    .stat-item {
+        border: 1px solid #000;
+    }
+}
+
+/* 모션 감소 설정 지원 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .btn-semi-auto:hover {
+        transform: none;
+    }
+}
+
+/* 다크 모드 지원 강화 */
+@media (prefers-color-scheme: dark) {
+    .btn-semi-auto {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        color: #e2e8f0;
+    }
+    
+    .btn-semi-auto:focus {
+        outline-color: #68d391;
+    }
+    
+    .optimization-content,
+    .posting-guide {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .stat-item {
+        background: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .stat-label {
+        color: #a0aec0;
+    }
+    
+    .stat-value {
+        color: #e2e8f0;
+    }
+    
+    .suggestions {
+        background: #2b6cb0;
+        color: #e2e8f0;
+    }
+    
+    .suggestions h4 {
+        color: #90cdf4;
+    }
+    
+    .suggestions li {
+        color: #e2e8f0;
+    }
+    
+    .preview-content {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .copy-textarea {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .guide-tip {
+        background: #744210;
+        color: #fbd38d;
+    }
+}
+
+/* 모바일 최적화 강화 */
+@media (max-width: 768px) {
+    .btn-semi-auto {
+        padding: 16px 20px;
+        font-size: 18px;
+        width: 100%;
+        margin-top: 8px;
+        min-height: 48px; /* 터치 타겟 크기 증가 */
+    }
+    
+    .optimization-modal {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 10vh;
+    }
+    
+    .optimization-content {
+        padding: 16px;
+        max-width: 100%;
+        border-radius: 8px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .posting-guide {
+        padding: 16px;
+        max-width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    .stat-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .preview-content {
+        font-size: 14px;
+        max-height: 150px;
+    }
+    
+    .guide-steps ol {
+        padding-left: 16px;
+    }
+    
+    .guide-steps li {
+        margin: 12px 0;
+        line-height: 1.5;
+    }
+}
+
+/* 태블릿 최적화 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .btn-semi-auto {
+        padding: 14px 22px;
+        font-size: 17px;
+    }
+    
+    .optimization-content {
+        max-width: 600px;
+    }
+    
+    .posting-guide {
+        max-width: 500px;
+    }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+    .btn-semi-auto:hover {
+        transform: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-semi-auto:active {
+        transform: scale(0.98);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+    
+    .modal-actions .btn:active {
+        transform: scale(0.98);
+    }
+}
+
+/* 최적화 모달 스타일 */
+.optimization-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    
+    /* 접근성 개선 */
+    backdrop-filter: blur(4px);
+}
+
+.optimization-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    
+    /* 접근성 개선 */
+    /* 접근성 속성은 JavaScript에서 동적으로 설정됩니다 */
+}
+
+.optimization-stats {
+    margin: 16px 0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px 0;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.stat-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #333;
+}
+
+.suggestions {
+    margin: 16px 0;
+    padding: 12px;
+    background: #e3f2fd;
+    border-radius: 8px;
+    border-left: 4px solid #2196F3;
+}
+
+.suggestions h4 {
+    margin-bottom: 8px;
+    color: #1976D2;
+}
+
+.suggestions ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.suggestions li {
+    margin: 4px 0;
+    color: #424242;
+}
+
+.preview-section {
+    margin: 16px 0;
+}
+
+.preview-content {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-family: monospace;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.modal-actions .btn {
+    flex: 1;
+}
+
+/* 수동 복사 모달 */
+.manual-copy-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+}
+
+.copy-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+    resize: vertical;
+    margin: 12px 0;
+    
+    /* 접근성 개선 - aria-label은 JavaScript에서 동적으로 설정됩니다 */
+}
+
+.copy-textarea:focus {
+    outline: 2px solid #4CAF50;
+    border-color: #4CAF50;
+}
+
+/* 포스팅 가이드 */
+.posting-guide {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+}
+
+.guide-content h3 {
+    color: #4CAF50;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.guide-steps {
+    margin: 16px 0;
+}
+
+.guide-steps h4 {
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.guide-steps ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.guide-steps li {
+    margin: 8px 0;
+    color: #666;
+}
+
+.guide-tip {
+    background: #fff3cd;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+    margin: 16px 0;
+}
+
+.guide-tip p {
+    margin: 0;
+    color: #856404;
+}
+
+.guide-actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+    .optimization-modal {
+        padding: 16px;
+        align-items: flex-start;
+        padding-top: 20vh;
+    }
+    
+    .optimization-content {
+        padding: 16px;
+        max-width: 100%;
+        border-radius: 8px;
+    }
+    
+    .posting-guide {
+        padding: 16px;
+        max-width: 100%;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
+    }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+    .optimization-content,
+    .posting-guide {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .stat-item {
+        background: #4a5568;
+    }
+    
+    .stat-label {
+        color: #a0aec0;
+    }
+    
+    .stat-value {
+        color: #e2e8f0;
+    }
+    
+    .suggestions {
+        background: #2b6cb0;
+    }
+    
+    .suggestions h4 {
+        color: #90cdf4;
+    }
+    
+    .suggestions li {
+        color: #e2e8f0;
+    }
+    
+    .preview-content {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .copy-textarea {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+}
+
 /* Temp Save Status */
 .temp-save-status {
     background: rgba(40, 167, 69, 0.1);
