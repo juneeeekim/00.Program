@@ -571,6 +571,13 @@ class DualTextWriter {
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
                 // 드롭다운 메뉴 토글은 CSS로 처리됨
+            } else {
+                // LLM 옵션 버튼 처리 (data-llm 속성 확인)
+                const llmService = button.getAttribute('data-llm');
+                if (llmService) {
+                    console.log('LLM 옵션 클릭:', { itemId, llmService });
+                    this.validateWithLLM(itemId, llmService);
+                }
             }
         };
         
@@ -643,6 +650,12 @@ class DualTextWriter {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('직접 LLM 버튼 클릭:', { itemId, llmService });
+                
+                // 디버깅을 위한 추가 로그
+                console.log('버튼 요소:', button);
+                console.log('클릭된 요소:', e.target);
+                console.log('이벤트 타겟의 부모:', e.target.closest('.llm-option'));
+                
                 this.validateWithLLM(itemId, llmService);
             };
             
