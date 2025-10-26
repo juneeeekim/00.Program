@@ -127,7 +127,7 @@ class FirebaseTestSuite {
                 // LLM 특성 정보 확인
                 if (window.dualTextWriter.llmCharacteristics) {
                     const charCount = Object.keys(window.dualTextWriter.llmCharacteristics).length;
-                    this.addResult('✅ LLM 특성 정보', `${charCount}개 로드됨`);
+                    this.addResult('✅ LLM 특성 정보', `${charCount}개 로드됨 (SNS 후킹 전문가 버전)`);
                 } else {
                     this.addResult('❌ LLM 특성 정보', '로드되지 않음');
                 }
