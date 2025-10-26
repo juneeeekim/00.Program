@@ -51,6 +51,9 @@ class DualTextWriter {
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
         
+        // LLM 검증 시스템 초기화
+        this.initializeLLMValidation();
+        
         this.init();
     }
     
@@ -474,6 +477,15 @@ class DualTextWriter {
                 <div class="saved-item-actions">
                     <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
                     <button class="btn-small btn-delete" data-action="delete" data-item-id="${item.id}">삭제</button>
+                    <div class="llm-validation-dropdown">
+                        <button class="btn-small btn-llm-main" data-action="llm-validation" data-item-id="${item.id}">🔍 LLM 검증</button>
+                        <div class="llm-dropdown-menu">
+                            <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">🤖 ChatGPT</button>
+                            <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">🧠 Gemini</button>
+                            <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">🔎 Perplexity</button>
+                            <button class="llm-option" data-llm="grok" data-item-id="${item.id}">🚀 Grok</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -520,6 +532,9 @@ class DualTextWriter {
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
                 this.deleteText(itemId);
+            } else if (action === 'llm-validation') {
+                console.log('LLM 검증 드롭다운 클릭:', { itemId });
+                // 드롭다운 메뉴 토글은 CSS로 처리됨
             }
         };
         
@@ -534,8 +549,9 @@ class DualTextWriter {
         
         const editButtons = this.savedList.querySelectorAll('.btn-edit');
         const deleteButtons = this.savedList.querySelectorAll('.btn-delete');
+        const llmButtons = this.savedList.querySelectorAll('.llm-option');
         
-        console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개 발견`);
+        console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개, LLM 버튼 ${llmButtons.length}개 발견`);
         
         editButtons.forEach((button, index) => {
             const itemId = button.getAttribute('data-item-id');
@@ -574,6 +590,27 @@ class DualTextWriter {
             };
             
             button.addEventListener('click', button._deleteHandler);
+        });
+        
+        // LLM 검증 버튼들 바인딩
+        llmButtons.forEach((button, index) => {
+            const itemId = button.getAttribute('data-item-id');
+            const llmService = button.getAttribute('data-llm');
+            
+            console.log(`LLM 버튼 ${index} 바인딩:`, { itemId, llmService });
+            
+            // 기존 이벤트 리스너 제거
+            button.removeEventListener('click', button._llmHandler);
+            
+            // 새로운 이벤트 핸들러 생성 및 바인딩
+            button._llmHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('직접 LLM 버튼 클릭:', { itemId, llmService });
+                this.validateWithLLM(itemId, llmService);
+            };
+            
+            button.addEventListener('click', button._llmHandler);
         });
         
         console.log('직접 이벤트 바인딩 완료');
@@ -773,6 +810,135 @@ class DualTextWriter {
         `);
     }
     
+    // LLM 검증 시스템 초기화
+    initializeLLMValidation() {
+        // LLM 사이트별 프롬프트 템플릿
+        this.llmPrompts = {
+            chatgpt: "다음 글의 논리적 일관성과 문법적 정확성을 검증해주세요. 특히 다음 사항들을 확인해주세요:\n\n1. 논리적 흐름이 자연스러운가?\n2. 문법과 맞춤법이 정확한가?\n3. 내용이 일관성 있게 구성되어 있는가?\n4. 전달하고자 하는 메시지가 명확한가?\n\n검증할 글:\n",
+            gemini: "이 텍스트의 논리적 구조와 내용의 타당성을 분석해주세요. 다음 관점에서 평가해주세요:\n\n1. 논리적 구조의 완성도\n2. 내용의 신뢰성과 타당성\n3. 표현의 명확성과 효과성\n4. 전체적인 일관성\n\n분석할 텍스트:\n",
+            perplexity: "다음 글의 사실적 정확성과 논리적 흐름을 평가해주세요. 특히 다음을 확인해주세요:\n\n1. 제시된 사실들의 정확성\n2. 논리적 추론의 타당성\n3. 정보의 신뢰성\n4. 전체적인 논증의 강도\n\n평가할 글:\n",
+            grok: "이 글의 논리적 일관성과 표현의 명확성을 검토해주세요. 다음 사항들을 중점적으로 살펴보세요:\n\n1. 논리적 일관성\n2. 표현의 명확성\n3. 내용의 응집성\n4. 전달력의 효과성\n\n검토할 글:\n"
+        };
+        
+        // LLM 사이트별 URL 패턴
+        this.llmUrls = {
+            chatgpt: "https://chatgpt.com/?q=",
+            gemini: "https://gemini.google.com/?q=",
+            perplexity: "https://www.perplexity.ai/?q=",
+            grok: "https://x.com/i/grok?q="
+        };
+        
+        console.log('LLM 검증 시스템 초기화 완료');
+    }
+    
+    // LLM 검증 실행
+    async validateWithLLM(itemId, llmService) {
+        console.log('LLM 검증 시작:', { itemId, llmService });
+        
+        // 저장된 글 찾기
+        const item = this.savedTexts.find(saved => saved.id === itemId);
+        if (!item) {
+            this.showMessage('검증할 글을 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 프롬프트와 글 내용 조합
+        const prompt = this.llmPrompts[llmService];
+        const fullText = prompt + item.content;
+        
+        console.log('검증 텍스트 생성:', { llmService, contentLength: item.content.length });
+        
+        try {
+            // 클립보드에 복사
+            await this.copyToClipboard(fullText);
+            
+            // LLM 사이트 URL 생성 및 새 탭에서 열기
+            this.openLLMSite(llmService, fullText);
+            
+            // 사용자에게 안내 메시지
+            this.showLLMValidationGuide(llmService);
+            
+        } catch (error) {
+            console.error('LLM 검증 실행 실패:', error);
+            this.showMessage('LLM 검증 실행에 실패했습니다.', 'error');
+        }
+    }
+    
+    // 클립보드에 텍스트 복사
+    async copyToClipboard(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                console.log('클립보드 복사 성공 (Clipboard API)');
+            } else {
+                // 폴백 방법
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                console.log('클립보드 복사 성공 (execCommand)');
+            }
+        } catch (error) {
+            console.error('클립보드 복사 실패:', error);
+            throw error;
+        }
+    }
+    
+    // LLM 사이트 새 탭에서 열기
+    openLLMSite(llmService, text) {
+        const baseUrl = this.llmUrls[llmService];
+        const encodedText = encodeURIComponent(text);
+        const fullUrl = baseUrl + encodedText;
+        
+        console.log('LLM 사이트 열기:', { llmService, url: fullUrl });
+        
+        // 새 탭에서 열기
+        window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    }
+    
+    // LLM 검증 가이드 메시지 표시
+    showLLMValidationGuide(llmService) {
+        const serviceNames = {
+            chatgpt: 'ChatGPT',
+            gemini: 'Gemini',
+            perplexity: 'Perplexity',
+            grok: 'Grok'
+        };
+        
+        const serviceName = serviceNames[llmService];
+        
+        this.showMessage(
+            `✅ ${serviceName} 검증 페이지가 열렸습니다!\n\n` +
+            `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
+            `💡 ${serviceName} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.`,
+            'success'
+        );
+        
+        // 추가 안내를 위한 상세 메시지
+        setTimeout(() => {
+            this.showDetailedGuide(llmService);
+        }, 2000);
+    }
+    
+    // 상세 가이드 표시
+    showDetailedGuide(llmService) {
+        const guides = {
+            chatgpt: 'ChatGPT에서 검증 결과를 확인한 후, 필요시 글을 수정하여 다시 저장하세요.',
+            gemini: 'Gemini의 분석 결과를 바탕으로 글의 논리적 구조를 개선해보세요.',
+            perplexity: 'Perplexity의 사실 검증 결과를 참고하여 내용의 정확성을 높이세요.',
+            grok: 'Grok의 검토 의견을 반영하여 글의 명확성을 향상시키세요.'
+        };
+        
+        const guide = guides[llmService];
+        this.showMessage(`💡 ${guide}`, 'info');
+    }
+    
     // 임시 저장 기능
     startTempSave() {
         this.tempSaveInterval = setInterval(() => {
@@ -936,6 +1102,14 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteButtons[index].click();
         } else {
             console.log('삭제 버튼을 찾을 수 없습니다.');
+        }
+    };
+    window.testLLMValidation = (llmService = 'chatgpt', index = 0) => {
+        const llmButtons = document.querySelectorAll(`[data-llm="${llmService}"]`);
+        if (llmButtons[index]) {
+            llmButtons[index].click();
+        } else {
+            console.log(`${llmService} 검증 버튼을 찾을 수 없습니다.`);
         }
     };
 });

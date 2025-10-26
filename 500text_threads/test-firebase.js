@@ -14,6 +14,7 @@ class FirebaseTestSuite {
         await this.testFirestoreConnection();
         await this.testDataOperations();
         await this.testButtonFunctions();
+        await this.testLLMValidationFeatures();
         
         this.printResults();
     }
@@ -108,6 +109,49 @@ class FirebaseTestSuite {
             }
         } catch (error) {
             this.addResult('❌ 버튼 기능 테스트', `실패 - ${error.message}`);
+        }
+    }
+    
+    async testLLMValidationFeatures() {
+        try {
+            // LLM 검증 기능 테스트
+            if (window.dualTextWriter) {
+                // LLM 프롬프트 템플릿 확인
+                if (window.dualTextWriter.llmPrompts) {
+                    const promptCount = Object.keys(window.dualTextWriter.llmPrompts).length;
+                    this.addResult('✅ LLM 프롬프트 템플릿', `${promptCount}개 로드됨`);
+                } else {
+                    this.addResult('❌ LLM 프롬프트 템플릿', '로드되지 않음');
+                }
+                
+                // LLM URL 패턴 확인
+                if (window.dualTextWriter.llmUrls) {
+                    const urlCount = Object.keys(window.dualTextWriter.llmUrls).length;
+                    this.addResult('✅ LLM URL 패턴', `${urlCount}개 설정됨`);
+                } else {
+                    this.addResult('❌ LLM URL 패턴', '설정되지 않음');
+                }
+                
+                // LLM 검증 버튼 확인
+                const llmButtons = document.querySelectorAll('.llm-option');
+                if (llmButtons.length > 0) {
+                    this.addResult('✅ LLM 검증 버튼', `${llmButtons.length}개 발견`);
+                } else {
+                    this.addResult('⚠️ LLM 검증 버튼', '없음 (저장된 글이 있어야 표시됨)');
+                }
+                
+                // 클립보드 API 지원 확인
+                if (navigator.clipboard) {
+                    this.addResult('✅ 클립보드 API', '지원됨');
+                } else {
+                    this.addResult('⚠️ 클립보드 API', '지원되지 않음 (폴백 방법 사용)');
+                }
+                
+            } else {
+                this.addResult('❌ DualTextWriter 객체', '찾을 수 없음');
+            }
+        } catch (error) {
+            this.addResult('❌ LLM 검증 기능 테스트', `실패 - ${error.message}`);
         }
     }
     

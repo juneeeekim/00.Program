@@ -534,6 +534,86 @@ header h1 {
     transform: translateY(-1px);
 }
 
+/* LLM 검증 드롭다운 스타일 */
+.llm-validation-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-llm-main {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.btn-llm-main:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    transform: translateY(-1px);
+}
+
+.btn-llm-main::after {
+    content: '▼';
+    margin-left: 5px;
+    font-size: 0.7rem;
+}
+
+.llm-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    min-width: 150px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.llm-validation-dropdown:hover .llm-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.llm-option {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: white;
+    color: #333;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.llm-option:hover {
+    background: #f8f9fa;
+}
+
+.llm-option:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.llm-option:last-child {
+    border-radius: 0 0 6px 6px;
+}
+
+.llm-option:only-child {
+    border-radius: 6px;
+}
+
 /* Character count warnings */
 .warning {
     color: #ff6b6b;
