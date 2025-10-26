@@ -901,6 +901,14 @@ class DualTextWriter {
             }
         };
         
+        // LLM 사이트별 URL 패턴
+        this.llmUrls = {
+            chatgpt: "https://chatgpt.com/?q=",
+            gemini: "https://gemini.google.com/?q=",
+            perplexity: "https://www.perplexity.ai/?q=",
+            grok: "https://x.com/i/grok?q="
+        };
+        
         console.log('LLM 검증 시스템 초기화 완료');
     }
     
