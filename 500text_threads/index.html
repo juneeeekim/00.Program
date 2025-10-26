@@ -39,11 +39,32 @@
 
                     <!-- Google 로그인 버튼 -->
                     <div class="google-login-section">
-                        <button id="google-login-btn" class="btn btn-google">
-                            <span class="google-icon">🔍</span>
-                            <span id="google-login-text">Google로 로그인</span>
-                        </button>
-                        <p class="google-note" id="google-login-note">Google 계정으로 안전하게 로그인하세요</p>
+                        <div class="login-method-card">
+                            <button 
+                                id="google-login-btn" 
+                                class="btn btn-google" 
+                                title="Google 계정으로 안전하게 로그인하고 클라우드 동기화를 사용할 수 있습니다"
+                                aria-label="Google 계정으로 로그인"
+                                aria-describedby="google-login-description"
+                            >
+                                <span class="google-icon" aria-hidden="true">🔍</span>
+                                <span id="google-login-text">Google로 로그인</span>
+                                <span class="recommended-badge" id="google-recommended-badge" style="display: none;" aria-label="추천 로그인 방식">추천</span>
+                            </button>
+                            <p id="google-login-description" class="sr-only">
+                                Google 계정으로 안전하게 로그인하고 클라우드 동기화 및 여러 기기에서 사용할 수 있습니다
+                            </p>
+                            <p class="login-method-description">
+                                <span class="benefit-icon">✓</span> 클라우드 동기화
+                                <span class="benefit-icon">✓</span> 여러 기기 사용
+                            </p>
+                            <div class="always-use-option">
+                                <label class="always-use-label">
+                                    <input type="checkbox" id="always-use-google" class="always-use-checkbox" />
+                                    <span>항상 이 방식 사용</span>
+                                </label>
+                            </div>
+                        </div>
                         
                         <!-- Google 로그인 상태 표시 -->
                         <div class="google-status" id="google-status" style="display: none;">
@@ -52,39 +73,102 @@
                         </div>
                     </div>
 
-                    <!-- 구분선 -->
-                    <div class="auth-divider">
-                        <span>또는</span>
+                    <!-- 로그인 방식 구분선 -->
+                    <div class="login-divider">
+                        <span class="divider-line"></span>
+                        <span class="divider-text">또는</span>
+                        <span class="divider-line"></span>
                     </div>
 
-                    <!-- 기존 사용자명 로그인 (폴백) -->
-                    <div class="legacy-login-section">
-                        <div class="auth-input-group">
-                            <input type="text" id="username-input" placeholder="사용자명을 입력하세요" maxlength="20">
-                            <button id="login-btn" class="btn btn-secondary">기존 방식 로그인</button>
+                    <!-- 사용자명 로그인 섹션 -->
+                    <div class="username-login-section">
+                        <div class="login-method-card">
+                            <div class="username-header">
+                                <span class="username-title">사용자명 로그인</span>
+                                <span class="recommended-badge" id="username-recommended-badge" style="display: none;">추천</span>
+                            </div>
+                            <div class="username-input-group">
+                                <label for="username-input" class="username-label">
+                                    사용자명
+                                    <button 
+                                        type="button" 
+                                        class="help-icon" 
+                                        id="username-help-btn" 
+                                        title="사용자명 규칙 보기"
+                                        aria-label="사용자명 입력 규칙 도움말"
+                                    >?</button>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="username-input" 
+                                    class="username-input" 
+                                    placeholder="사용자명을 입력하세요 (2-50자)"
+                                    maxlength="50"
+                                    autocomplete="off"
+                                    title="간단한 사용자명으로 로그인하고 오프라인에서도 사용할 수 있습니다"
+                                    aria-label="사용자명 입력"
+                                    aria-describedby="username-help-text username-char-count"
+                                    aria-required="true"
+                                    aria-invalid="false"
+                                />
+                                <div class="username-char-count" id="username-char-count" aria-live="polite" aria-atomic="true">
+                                    <span id="username-current-count">0</span>/50
+                                </div>
+                            </div>
+                            <div 
+                                class="username-error" 
+                                id="username-error" 
+                                style="display: none;"
+                                role="alert"
+                                aria-live="assertive"
+                            ></div>
+                            <button 
+                                id="username-login-btn" 
+                                class="btn btn-username"
+                                aria-label="사용자명으로 로그인"
+                            >
+                                로그인
+                            </button>
+                            <p class="login-method-description">
+                                <span class="benefit-icon">✓</span> 빠른 접근
+                                <span class="benefit-icon">✓</span> 오프라인 지원
+                            </p>
+                            <div class="always-use-option">
+                                <label class="always-use-label">
+                                    <input type="checkbox" id="always-use-username" class="always-use-checkbox" />
+                                    <span>항상 이 방식 사용</span>
+                                </label>
+                            </div>
                         </div>
-                        <p class="auth-note">기존 사용자명으로 로그인 (보안 수준 낮음)</p>
                     </div>
+
+                    <!-- 로그인 방식 선택 가이드 -->
+                    <div class="login-guide">
+                        <span class="guide-icon">💡</span>
+                        <span class="guide-text">처음 사용하시나요?</span>
+                        <button id="login-guide-btn" class="btn-link">로그인 방식 선택 가이드</button>
+                    </div>
+
                 </div>
 
-                <div class="user-info" id="user-info" style="display: none;">
+                <div class="user-info" id="user-info" style="display: none;" role="region" aria-label="사용자 정보">
                     <div class="user-welcome">
-                        <span class="user-icon">👤</span>
-                        <span class="username-display" id="username-display"></span>
-                        <span class="user-provider" id="user-provider"></span>
-                        <button id="logout-btn" class="btn btn-secondary">로그아웃</button>
+                        <span class="user-icon" aria-hidden="true">👤</span>
+                        <span class="username-display" id="username-display" aria-label="현재 로그인한 사용자"></span>
+                        <span class="user-provider" id="user-provider" aria-label="로그인 방식"></span>
+                        <button id="logout-btn" class="btn btn-secondary" aria-label="로그아웃">로그아웃</button>
                     </div>
                 </div>
             </div>
         </header>
 
-        <main id="main-content" style="display: none;">
+        <main id="main-content" style="display: none;" role="main">
             <div class="writing-container">
                 <!-- 왼쪽 창: 레퍼런스 글 -->
-                <div class="writing-panel left-panel">
+                <div class="writing-panel left-panel" role="region" aria-label="레퍼런스 글 작성 영역">
                     <div class="panel-header">
                         <h3>📖 레퍼런스 글</h3>
-                        <div class="character-counter">
+                        <div class="character-counter" aria-live="polite" aria-atomic="true">
                             <span id="ref-current-count">0</span>
                             <span class="separator">/</span>
                             <span id="ref-max-count">500</span>
@@ -92,24 +176,30 @@
                         </div>
                     </div>
 
-                    <textarea id="ref-text-input" placeholder="참고할 레퍼런스 글을 입력하세요..." maxlength="500"></textarea>
+                    <textarea 
+                        id="ref-text-input" 
+                        placeholder="참고할 레퍼런스 글을 입력하세요..." 
+                        maxlength="500"
+                        aria-label="레퍼런스 글 입력"
+                        aria-describedby="ref-current-count"
+                    ></textarea>
 
-                    <div class="progress-bar">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="레퍼런스 글 작성 진행률">
                         <div id="ref-progress-fill" class="progress-fill"></div>
                     </div>
 
                     <div class="panel-controls">
-                        <button id="ref-clear-btn" class="btn btn-secondary">지우기</button>
-                        <button id="ref-save-btn" class="btn btn-primary">저장</button>
-                        <button id="ref-download-btn" class="btn btn-success">TXT 다운로드</button>
+                        <button id="ref-clear-btn" class="btn btn-secondary" aria-label="레퍼런스 글 지우기">지우기</button>
+                        <button id="ref-save-btn" class="btn btn-primary" aria-label="레퍼런스 글 저장">저장</button>
+                        <button id="ref-download-btn" class="btn btn-success" aria-label="레퍼런스 글 TXT 파일로 다운로드">TXT 다운로드</button>
                     </div>
                 </div>
 
                 <!-- 오른쪽 창: 수정/작성 글 -->
-                <div class="writing-panel right-panel">
+                <div class="writing-panel right-panel" role="region" aria-label="수정 및 작성 글 영역">
                     <div class="panel-header">
                         <h3>✏️ 수정/작성 글</h3>
-                        <div class="character-counter">
+                        <div class="character-counter" aria-live="polite" aria-atomic="true">
                             <span id="edit-current-count">0</span>
                             <span class="separator">/</span>
                             <span id="edit-max-count">500</span>
@@ -117,45 +207,53 @@
                         </div>
                     </div>
 
-                    <textarea id="edit-text-input" placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..." maxlength="500"></textarea>
+                    <textarea 
+                        id="edit-text-input" 
+                        placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..." 
+                        maxlength="500"
+                        aria-label="수정 및 작성 글 입력"
+                        aria-describedby="edit-current-count"
+                    ></textarea>
 
-                    <div class="progress-bar">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="작성 글 진행률">
                         <div id="edit-progress-fill" class="progress-fill"></div>
                     </div>
 
                     <div class="panel-controls">
-                        <button id="edit-clear-btn" class="btn btn-secondary">지우기</button>
-                        <button id="edit-save-btn" class="btn btn-primary">저장</button>
-                        <button id="edit-download-btn" class="btn btn-success">TXT 다운로드</button>
+                        <button id="edit-clear-btn" class="btn btn-secondary" aria-label="작성 글 지우기">지우기</button>
+                        <button id="edit-save-btn" class="btn btn-primary" aria-label="작성 글 저장">저장</button>
+                        <button id="edit-download-btn" class="btn btn-success" aria-label="작성 글 TXT 파일로 다운로드">TXT 다운로드</button>
                     </div>
                 </div>
             </div>
 
             <!-- 임시 저장 상태 -->
-            <div class="temp-save-status" id="temp-save-status">
-                <span id="temp-save-indicator">💾</span>
+            <div class="temp-save-status" id="temp-save-status" role="status" aria-live="polite">
+                <span id="temp-save-indicator" aria-hidden="true">💾</span>
                 <span id="temp-save-text">임시 저장됨</span>
             </div>
 
             <!-- 저장된 글 목록 -->
-            <div class="saved-texts" id="saved-texts">
+            <div class="saved-texts" id="saved-texts" role="region" aria-label="저장된 글 목록">
                 <h3>저장된 글</h3>
-                <div id="saved-list"></div>
+                <div id="saved-list" role="list"></div>
             </div>
         </main>
     </div>
 
     <!-- 
         스크립트 로딩 순서 (중요):
-        1. 설정 파일 (AuthConfig) - 환경 감지 및 검증
+        1. 설정 파일 (AuthConfig, FirebaseConfig) - 환경 감지 및 검증
         2. 활동 로거 (ActivityLogger) - 로깅 시스템
-        3. Google 인증 관리자 (GoogleAuthManager) - OAuth 처리
-        4. 데이터 마이그레이션 관리자 (DataMigrationManager) - 데이터 이전
-        5. 메인 애플리케이션 (DualTextWriter) - 전체 통합
+        3. Firebase Manager (FirebaseManager) - Firebase 통합
+        4. Google 인증 관리자 (GoogleAuthManager) - OAuth 처리
+        5. 데이터 마이그레이션 관리자 (DataMigrationManager) - 데이터 이전
+        6. Username 인증 (UsernameValidator, UsernameAuthProvider) - 사용자명 로그인
+        7. 메인 애플리케이션 (DualTextWriter) - 전체 통합
     -->
     
     <!-- 1. 설정 파일 (필수 - 가장 먼저 로드) -->
-    <script src="config/auth-config.js"></script>
+    <script src="config/firebase-config.js"></script>
     
     <!-- 2. 활동 로거 (독립적 모듈) -->
     <script src="js/activity-logger.js"></script>
@@ -166,14 +264,53 @@
     <!-- 4. 에러 핸들러 (ActivityLogger 의존) -->
     <script src="js/error-handler.js"></script>
     
-    <!-- 5. Google 인증 관리자 (AuthConfig, ErrorHandler 의존) -->
-    <script src="js/google-auth-manager.js"></script>
+    <!-- 5. Firebase Manager (FirebaseConfig 의존) -->
+    <script src="js/firebase-manager.js"></script>
     
-    <!-- 6. 데이터 마이그레이션 관리자 (AuthConfig 의존) -->
-    <script src="js/data-migration-manager.js"></script>
+    <!-- 6. Firebase Data Migration Service (FirebaseManager 의존) -->
+    <script src="js/firebase-data-migration-service.js"></script>
+    
+    <!-- 7. Username 인증 (독립적 모듈) -->
+    <script src="js/username-validator.js"></script>
+    <script src="js/username-auth-provider.js"></script>
+    
+    <!-- 8. Security Manager (공용/개인 기기 모드) -->
+    <script src="js/security-manager.js"></script>
+    
+    <!-- 9. User Matcher (계정 매칭) -->
+    <script src="js/user-matcher.js"></script>
+    
+    <!-- 10. Account Linking Dialog (계정 연결 UI) -->
+    <script src="js/account-linking-dialog.js"></script>
+    
+    <!-- 11. Migration Manager (하이브리드 인증 데이터 마이그레이션) -->
+    <script src="js/migration-manager.js"></script>
+    
+    <!-- 12. Migration Preview Dialog (마이그레이션 미리보기 UI) -->
+    <script src="js/migration-preview-dialog.js"></script>
+    
+    <!-- 13. Migration Progress Dialog (마이그레이션 진행 UI) -->
+    <script src="js/migration-progress-dialog.js"></script>
+    
+    <!-- 14. Adaptive UI Manager (적응형 UI) -->
+    <script src="js/adaptive-ui-manager.js"></script>
+    
+    <!-- 15. Error Message System (에러 메시지 시스템) -->
+    <script src="js/error-message-system.js"></script>
+    
+    <!-- 16. Contextual Help System (상황별 도움말) -->
+    <script src="js/contextual-help-system.js"></script>
+    
+    <!-- 17. Analytics Monitor (분석 및 모니터링) -->
+    <script src="js/analytics-monitor.js"></script>
 
-    <!-- 7. 메인 애플리케이션 (모든 모듈 의존) -->
+    <!-- 18. 메인 애플리케이션 (모든 모듈 의존) -->
     <script src="script.js"></script>
+    
+    <!-- Firebase SDK (v9 modular) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" async defer></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" async defer></script>
     
     <!-- Google Identity Services (동적 로드) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
