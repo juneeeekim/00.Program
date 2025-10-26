@@ -456,6 +456,8 @@ class DualTextWriter {
     }
     
     renderSavedTexts() {
+        console.log('renderSavedTexts 호출됨:', this.savedTexts);
+        
         if (this.savedTexts.length === 0) {
             this.savedList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">저장된 글이 없습니다.</p>';
             return;
@@ -470,18 +472,23 @@ class DualTextWriter {
                 </div>
                 <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
                 <div class="saved-item-actions">
-                    <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}">편집</button>
-                    <button class="btn-small btn-delete" data-action="delete">삭제</button>
+                    <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
+                    <button class="btn-small btn-delete" data-action="delete" data-item-id="${item.id}">삭제</button>
                 </div>
             </div>
         `).join('');
         
-        // 이벤트 위임으로 버튼 클릭 처리
-        this.setupSavedItemEventListeners();
+        // DOM 렌더링 완료 후 이벤트 리스너 설정
+        setTimeout(() => {
+            this.setupSavedItemEventListeners();
+            this.bindDirectEventListeners(); // 직접 이벤트 바인딩도 추가
+        }, 100);
     }
     
     // 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
     setupSavedItemEventListeners() {
+        console.log('setupSavedItemEventListeners 호출됨');
+        
         // 기존 이벤트 리스너 제거 (중복 방지)
         if (this.savedItemClickHandler) {
             this.savedList.removeEventListener('click', this.savedItemClickHandler);
@@ -496,14 +503,8 @@ class DualTextWriter {
                 return;
             }
             
-            const savedItem = button.closest('.saved-item');
-            if (!savedItem) {
-                console.log('저장된 글 항목을 찾을 수 없음');
-                return;
-            }
-            
-            const itemId = savedItem.getAttribute('data-item-id');
             const action = button.getAttribute('data-action');
+            const itemId = button.getAttribute('data-item-id');
             
             console.log('이벤트 처리:', { itemId, action, button: button.textContent });
             
@@ -524,6 +525,88 @@ class DualTextWriter {
         
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
+        console.log('이벤트 리스너 등록 완료');
+    }
+    
+    // 직접 이벤트 바인딩 (백업 방법)
+    bindDirectEventListeners() {
+        console.log('직접 이벤트 바인딩 시작');
+        
+        const editButtons = this.savedList.querySelectorAll('.btn-edit');
+        const deleteButtons = this.savedList.querySelectorAll('.btn-delete');
+        
+        console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개 발견`);
+        
+        editButtons.forEach((button, index) => {
+            const itemId = button.getAttribute('data-item-id');
+            const type = button.getAttribute('data-type');
+            
+            console.log(`편집 버튼 ${index} 바인딩:`, { itemId, type });
+            
+            // 기존 이벤트 리스너 제거
+            button.removeEventListener('click', button._editHandler);
+            
+            // 새로운 이벤트 핸들러 생성 및 바인딩
+            button._editHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('직접 편집 버튼 클릭:', { itemId, type });
+                this.editText(itemId, type);
+            };
+            
+            button.addEventListener('click', button._editHandler);
+        });
+        
+        deleteButtons.forEach((button, index) => {
+            const itemId = button.getAttribute('data-item-id');
+            
+            console.log(`삭제 버튼 ${index} 바인딩:`, { itemId });
+            
+            // 기존 이벤트 리스너 제거
+            button.removeEventListener('click', button._deleteHandler);
+            
+            // 새로운 이벤트 핸들러 생성 및 바인딩
+            button._deleteHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('직접 삭제 버튼 클릭:', { itemId });
+                this.deleteText(itemId);
+            };
+            
+            button.addEventListener('click', button._deleteHandler);
+        });
+        
+        console.log('직접 이벤트 바인딩 완료');
+    }
+    
+    // 디버깅용 함수 - 전역에서 호출 가능
+    debugSavedItems() {
+        console.log('=== 저장된 글 디버깅 정보 ===');
+        console.log('savedTexts 배열:', this.savedTexts);
+        console.log('savedList 요소:', this.savedList);
+        
+        const savedItems = this.savedList.querySelectorAll('.saved-item');
+        console.log(`저장된 글 항목 ${savedItems.length}개:`);
+        
+        savedItems.forEach((item, index) => {
+            const itemId = item.getAttribute('data-item-id');
+            const editBtn = item.querySelector('.btn-edit');
+            const deleteBtn = item.querySelector('.btn-delete');
+            
+            console.log(`항목 ${index}:`, {
+                id: itemId,
+                editButton: editBtn,
+                deleteButton: deleteBtn,
+                editButtonId: editBtn?.getAttribute('data-item-id'),
+                deleteButtonId: deleteBtn?.getAttribute('data-item-id')
+            });
+        });
+        
+        const editButtons = this.savedList.querySelectorAll('.btn-edit');
+        const deleteButtons = this.savedList.querySelectorAll('.btn-delete');
+        console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개`);
+        
+        console.log('=== 디버깅 정보 끝 ===');
     }
     
     editText(id, type) {
@@ -836,6 +919,25 @@ let dualTextWriter;
 
 document.addEventListener('DOMContentLoaded', () => {
     dualTextWriter = new DualTextWriter();
+    
+    // 전역 디버깅 함수 등록
+    window.debugSavedItems = () => dualTextWriter.debugSavedItems();
+    window.testEditButton = (index = 0) => {
+        const editButtons = document.querySelectorAll('.btn-edit');
+        if (editButtons[index]) {
+            editButtons[index].click();
+        } else {
+            console.log('편집 버튼을 찾을 수 없습니다.');
+        }
+    };
+    window.testDeleteButton = (index = 0) => {
+        const deleteButtons = document.querySelectorAll('.btn-delete');
+        if (deleteButtons[index]) {
+            deleteButtons[index].click();
+        } else {
+            console.log('삭제 버튼을 찾을 수 없습니다.');
+        }
+    };
 });
 
 // 페이지 언로드 시 정리 작업
