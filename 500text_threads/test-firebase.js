@@ -13,6 +13,7 @@ class FirebaseTestSuite {
         await this.testAuthentication();
         await this.testFirestoreConnection();
         await this.testDataOperations();
+        await this.testButtonFunctions();
         
         this.printResults();
     }
@@ -75,6 +76,38 @@ class FirebaseTestSuite {
             }
         } catch (error) {
             this.addResult('❌ 데이터 작업 테스트', `실패 - ${error.message}`);
+        }
+    }
+    
+    async testButtonFunctions() {
+        try {
+            // 편집/삭제 버튼 테스트
+            if (window.dualTextWriter) {
+                const savedItems = document.querySelectorAll('.saved-item');
+                if (savedItems.length > 0) {
+                    this.addResult('✅ 저장된 글 항목', `${savedItems.length}개 발견`);
+                    
+                    // 편집 버튼 확인
+                    const editButtons = document.querySelectorAll('.btn-edit');
+                    const deleteButtons = document.querySelectorAll('.btn-delete');
+                    
+                    this.addResult('✅ 편집 버튼', `${editButtons.length}개 발견`);
+                    this.addResult('✅ 삭제 버튼', `${deleteButtons.length}개 발견`);
+                    
+                    // 이벤트 리스너 확인
+                    if (window.dualTextWriter.savedItemClickHandler) {
+                        this.addResult('✅ 이벤트 리스너', '설정됨');
+                    } else {
+                        this.addResult('❌ 이벤트 리스너', '설정되지 않음');
+                    }
+                } else {
+                    this.addResult('⚠️ 저장된 글 항목', '없음 (테스트용 데이터 저장 후 다시 테스트)');
+                }
+            } else {
+                this.addResult('❌ DualTextWriter 객체', '찾을 수 없음');
+            }
+        } catch (error) {
+            this.addResult('❌ 버튼 기능 테스트', `실패 - ${error.message}`);
         }
     }
     

@@ -49,6 +49,7 @@ class DualTextWriter {
         this.savedTexts = [];
         this.tempSaveInterval = null;
         this.lastTempSave = null;
+        this.savedItemClickHandler = null; // 이벤트 핸들러 참조
         
         this.init();
     }
@@ -461,7 +462,7 @@ class DualTextWriter {
         }
         
         this.savedList.innerHTML = this.savedTexts.map((item, index) => `
-            <div class="saved-item ${index === 0 ? 'new' : ''}">
+            <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
                 <div class="saved-item-header">
                     <span class="saved-item-date">${item.date}</span>
                     <span class="saved-item-count">${item.characterCount}자</span>
@@ -469,31 +470,88 @@ class DualTextWriter {
                 </div>
                 <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
                 <div class="saved-item-actions">
-                    <button class="btn-small btn-edit" onclick="dualTextWriter.editText(${item.id}, '${item.type}')">편집</button>
-                    <button class="btn-small btn-delete" onclick="dualTextWriter.deleteText(${item.id})">삭제</button>
+                    <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}">편집</button>
+                    <button class="btn-small btn-delete" data-action="delete">삭제</button>
                 </div>
             </div>
         `).join('');
+        
+        // 이벤트 위임으로 버튼 클릭 처리
+        this.setupSavedItemEventListeners();
+    }
+    
+    // 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
+    setupSavedItemEventListeners() {
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        if (this.savedItemClickHandler) {
+            this.savedList.removeEventListener('click', this.savedItemClickHandler);
+        }
+        
+        // 새로운 이벤트 리스너 생성
+        this.savedItemClickHandler = (event) => {
+            console.log('저장된 글 영역 클릭:', event.target);
+            const button = event.target.closest('button');
+            if (!button) {
+                console.log('버튼이 아님');
+                return;
+            }
+            
+            const savedItem = button.closest('.saved-item');
+            if (!savedItem) {
+                console.log('저장된 글 항목을 찾을 수 없음');
+                return;
+            }
+            
+            const itemId = savedItem.getAttribute('data-item-id');
+            const action = button.getAttribute('data-action');
+            
+            console.log('이벤트 처리:', { itemId, action, button: button.textContent });
+            
+            if (!itemId) {
+                console.error('Item ID not found');
+                return;
+            }
+            
+            if (action === 'edit') {
+                const type = button.getAttribute('data-type');
+                console.log('편집 액션 실행:', { itemId, type });
+                this.editText(itemId, type);
+            } else if (action === 'delete') {
+                console.log('삭제 액션 실행:', { itemId });
+                this.deleteText(itemId);
+            }
+        };
+        
+        // 이벤트 리스너 등록
+        this.savedList.addEventListener('click', this.savedItemClickHandler);
     }
     
     editText(id, type) {
+        console.log('편집 버튼 클릭:', { id, type });
         const item = this.savedTexts.find(saved => saved.id === id);
         if (item) {
+            console.log('편집할 항목 찾음:', item);
             if (type === 'reference') {
                 this.refTextInput.value = item.content;
                 this.updateCharacterCount('ref');
                 this.refTextInput.focus();
+                this.showMessage('레퍼런스 글을 편집 영역으로 불러왔습니다.', 'success');
             } else {
                 this.editTextInput.value = item.content;
                 this.updateCharacterCount('edit');
                 this.editTextInput.focus();
+                this.showMessage('수정 글을 편집 영역으로 불러왔습니다.', 'success');
             }
             this.refTextInput.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            console.error('편집할 항목을 찾을 수 없음:', { id, type, savedTexts: this.savedTexts });
+            this.showMessage('편집할 글을 찾을 수 없습니다.', 'error');
         }
     }
     
     // Firestore에서 텍스트 삭제
     async deleteText(id) {
+        console.log('삭제 버튼 클릭:', { id });
         if (confirm('이 글을 삭제하시겠습니까?')) {
             if (!this.currentUser || !this.isFirebaseReady) {
                 this.showMessage('로그인이 필요합니다.', 'error');
@@ -501,6 +559,7 @@ class DualTextWriter {
             }
             
             try {
+                console.log('Firestore에서 삭제 시작:', id);
                 // Firestore에서 삭제
                 await window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id));
                 
@@ -508,6 +567,7 @@ class DualTextWriter {
                 this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
                 this.renderSavedTexts();
                 this.showMessage('글이 삭제되었습니다.', 'info');
+                console.log('삭제 완료');
                 
             } catch (error) {
                 console.error('텍스트 삭제 실패:', error);
