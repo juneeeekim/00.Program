@@ -502,5 +502,158 @@ class ErrorHandler {
     }
 }
 
+    /**
+     * 검증 에러 처리 (Username validation)
+     * @param {Error} error
+     * @param {Function} showMessage
+     * Requirements: 9.2
+     */
+    handleValidationError(error, showMessage) {
+        console.warn('⚠️ [VALIDATION ERROR]', error.message);
+        
+        if (showMessage) {
+            showMessage(error.message, 'warning');
+        }
+        
+        if (this.logger) {
+            this.logger.logAction('validation_error', '검증 오류', {
+                error: error.message,
+                details: error.details || []
+            });
+        }
+        
+        return {
+            category: 'VALIDATION',
+            handled: true,
+            userMessage: error.message
+        };
+    }
+    
+    /**
+     * 저장 공간 부족 에러 처리
+     * @param {Error} error
+     * @param {Object} callbacks
+     * Requirements: 9.3
+     */
+    handleStorageQuotaError(error, callbacks) {
+        console.error('❌ [STORAGE ERROR] 저장 공간 부족');
+        
+        const message = '저장 공간이 부족합니다. 오래된 데이터를 삭제해주세요.';
+        
+        if (callbacks.showMessage) {
+            callbacks.showMessage(message, 'error');
+        }
+        
+        // 저장 공간 관리 UI 제공
+        if (callbacks.showStorageManagement) {
+            setTimeout(() => {
+                if (confirm(message + '\n\n저장 공간 관리 화면을 여시겠습니까?')) {
+                    callbacks.showStorageManagement();
+                }
+            }, 500);
+        }
+        
+        if (this.logger) {
+            this.logger.logAction('storage_quota_exceeded', '저장 공간 부족', {
+                error: error.message
+            });
+        }
+        
+        return {
+            category: 'STORAGE',
+            code: 'QUOTA_EXCEEDED',
+            handled: true,
+            userMessage: message,
+            action: 'SHOW_STORAGE_MANAGEMENT'
+        };
+    }
+    
+    /**
+     * 마이그레이션 에러 처리 (자동 롤백 포함)
+     * @param {Error} error
+     * @param {Object} callbacks
+     * Requirements: 9.4, 9.5
+     */
+    handleMigrationError(error, callbacks) {
+        console.error('❌ [MIGRATION ERROR]', error.message);
+        
+        const message = '데이터 마이그레이션에 실패했습니다. 기존 데이터는 안전하게 보존되었습니다.';
+        
+        if (callbacks.showMessage) {
+            callbacks.showMessage(message, 'error');
+        }
+        
+        // 자동 롤백 실행
+        if (callbacks.rollback) {
+            console.log('🔄 자동 롤백 시작...');
+            callbacks.rollback().then(() => {
+                console.log('✅ 롤백 완료');
+                if (callbacks.showMessage) {
+                    callbacks.showMessage('원본 데이터가 복원되었습니다.', 'success');
+                }
+            }).catch(rollbackError => {
+                console.error('❌ 롤백 실패:', rollbackError);
+                if (callbacks.showMessage) {
+                    callbacks.showMessage('롤백에 실패했습니다. 백업 데이터를 확인해주세요.', 'error');
+                }
+            });
+        }
+        
+        if (this.logger) {
+            this.logger.logAction('migration_error', '마이그레이션 오류', {
+                error: error.message,
+                stack: error.stack
+            });
+        }
+        
+        return {
+            category: 'MIGRATION',
+            code: 'MIGRATION_FAILED',
+            handled: true,
+            userMessage: message,
+            action: 'ROLLBACK'
+        };
+    }
+    
+    /**
+     * 네트워크 에러 처리 (폴백 제안 포함)
+     * @param {Error} error
+     * @param {Object} callbacks
+     * Requirements: 9.1
+     */
+    handleNetworkErrorWithFallback(error, callbacks) {
+        console.warn('⚠️ [NETWORK ERROR]', error.message);
+        
+        const message = '네트워크 연결을 확인해주세요. 사용자명 로그인을 사용할 수 있습니다.';
+        
+        if (callbacks.showMessage) {
+            callbacks.showMessage(message, 'warning');
+        }
+        
+        // 폴백 제안
+        if (callbacks.suggestFallback) {
+            setTimeout(() => {
+                if (confirm('Google 로그인을 사용할 수 없습니다.\n\n사용자명 로그인을 사용하시겠습니까?')) {
+                    callbacks.suggestFallback();
+                }
+            }, 1000);
+        }
+        
+        if (this.logger) {
+            this.logger.logAction('network_error_with_fallback', '네트워크 오류 (폴백 제안)', {
+                error: error.message
+            });
+        }
+        
+        return {
+            category: 'NETWORK',
+            code: 'NETWORK_ERROR',
+            handled: true,
+            userMessage: message,
+            action: 'SUGGEST_FALLBACK'
+        };
+    }
+}
+
 // 전역 인스턴스 생성
 window.ErrorHandler = ErrorHandler;
