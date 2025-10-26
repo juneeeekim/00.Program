@@ -1,0 +1,36 @@
+{
+  "name": "500text-writer",
+  "version": "2.0.0",
+  "description": "500자 미만 글 작성기 - Firebase 연동 멀티유저 버전",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "echo 'Deploy via GitHub Pages'"
+  },
+  "keywords": [
+    "writing",
+    "text-editor",
+    "firebase",
+    "multi-user",
+    "korean",
+    "500-characters"
+  ],
+  "author": "Senior Developer & Junior Developer Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/500text_threads.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/500text_threads/issues"
+  },
+  "homepage": "https://username.github.io/500text_threads",
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
