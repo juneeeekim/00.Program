@@ -906,7 +906,7 @@ class DualTextWriter {
             chatgpt: "https://chatgpt.com/?q=",
             gemini: "https://gemini.google.com/?q=",
             perplexity: "https://www.perplexity.ai/?q=",
-            grok: "https://x.com/i/grok?q="
+            grok: "https://grok.com/?q="
         };
         
         console.log('LLM 검증 시스템 초기화 완료');
