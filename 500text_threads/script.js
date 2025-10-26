@@ -198,9 +198,9 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
-            }
+            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
         }
+    }
     }
     
     // Firebase Auth 상태 리스너가 자동으로 처리함
@@ -238,7 +238,7 @@ class DualTextWriter {
             
             this.showMessage(`${username}님, 환영합니다!`, 'success');
             
-        } catch (error) {
+                } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
@@ -327,10 +327,10 @@ class DualTextWriter {
                     window.firebaseCollection(this.db, 'users', userId, 'texts'),
                     textData
                 );
-                
-            } catch (error) {
+            
+        } catch (error) {
                 console.error('개별 텍스트 마이그레이션 실패:', error);
-            }
+        }
         }
         
         console.log(`${localTexts.length}개의 텍스트를 Firestore로 마이그레이션했습니다.`);
@@ -346,7 +346,7 @@ class DualTextWriter {
             const displayName = this.currentUser.displayName || 
                               this.currentUser.email || 
                               '사용자';
-            this.usernameDisplay.textContent = displayName;
+        this.usernameDisplay.textContent = displayName;
         }
     }
     
@@ -402,22 +402,22 @@ class DualTextWriter {
             );
             
             // 로컬 배열에도 추가 (UI 업데이트용)
-            const savedItem = {
+        const savedItem = {
                 id: docRef.id,
-                content: text,
-                date: new Date().toLocaleString('ko-KR'),
-                characterCount: this.getKoreanCharacterCount(text),
-                type: panel === 'ref' ? 'reference' : 'edit'
-            };
-            
-            this.savedTexts.unshift(savedItem);
-            this.renderSavedTexts();
-            
-            this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
-            
-            // Clear input
-            textInput.value = '';
-            this.updateCharacterCount(panel);
+            content: text,
+            date: new Date().toLocaleString('ko-KR'),
+            characterCount: this.getKoreanCharacterCount(text),
+            type: panel === 'ref' ? 'reference' : 'edit'
+        };
+        
+        this.savedTexts.unshift(savedItem);
+        this.renderSavedTexts();
+        
+        this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
+        
+        // Clear input
+        textInput.value = '';
+        this.updateCharacterCount(panel);
             
         } catch (error) {
             console.error('텍스트 저장 실패:', error);
@@ -483,41 +483,41 @@ class DualTextWriter {
                             <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">
                                 <div class="llm-option-content">
                                     <div class="llm-option-header">
-                                        <span class="llm-icon">🤖</span>
-                                        <span class="llm-name">ChatGPT</span>
+                                        <span class="llm-icon">${this.llmCharacteristics.chatgpt.icon}</span>
+                                        <span class="llm-name">${this.llmCharacteristics.chatgpt.name}</span>
                                     </div>
-                                    <div class="llm-description">종합 검증</div>
-                                    <div class="llm-details">문법·논리·일관성 전체 검토</div>
+                                    <div class="llm-description">${this.llmCharacteristics.chatgpt.description}</div>
+                                    <div class="llm-details">${this.llmCharacteristics.chatgpt.details}</div>
                                 </div>
                             </button>
                             <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
                                 <div class="llm-option-content">
                                     <div class="llm-option-header">
-                                        <span class="llm-icon">🧠</span>
-                                        <span class="llm-name">Gemini</span>
+                                        <span class="llm-icon">${this.llmCharacteristics.gemini.icon}</span>
+                                        <span class="llm-name">${this.llmCharacteristics.gemini.name}</span>
                                     </div>
-                                    <div class="llm-description">구조 분석</div>
-                                    <div class="llm-details">논리적 구조와 타당성 분석</div>
+                                    <div class="llm-description">${this.llmCharacteristics.gemini.description}</div>
+                                    <div class="llm-details">${this.llmCharacteristics.gemini.details}</div>
                                 </div>
                             </button>
                             <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
                                 <div class="llm-option-content">
                                     <div class="llm-option-header">
-                                        <span class="llm-icon">🔎</span>
-                                        <span class="llm-name">Perplexity</span>
+                                        <span class="llm-icon">${this.llmCharacteristics.perplexity.icon}</span>
+                                        <span class="llm-name">${this.llmCharacteristics.perplexity.name}</span>
                                     </div>
-                                    <div class="llm-description">사실 검증</div>
-                                    <div class="llm-details">정보 정확성과 논증 강도 평가</div>
+                                    <div class="llm-description">${this.llmCharacteristics.perplexity.description}</div>
+                                    <div class="llm-details">${this.llmCharacteristics.perplexity.details}</div>
                                 </div>
                             </button>
                             <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
                                 <div class="llm-option-content">
                                     <div class="llm-option-header">
-                                        <span class="llm-icon">🚀</span>
-                                        <span class="llm-name">Grok</span>
+                                        <span class="llm-icon">${this.llmCharacteristics.grok.icon}</span>
+                                        <span class="llm-name">${this.llmCharacteristics.grok.name}</span>
                                     </div>
-                                    <div class="llm-description">명확성 검토</div>
-                                    <div class="llm-details">표현 명확성과 전달력 검토</div>
+                                    <div class="llm-description">${this.llmCharacteristics.grok.description}</div>
+                                    <div class="llm-details">${this.llmCharacteristics.grok.details}</div>
                                 </div>
                             </button>
                         </div>
@@ -665,6 +665,37 @@ class DualTextWriter {
         console.log('직접 이벤트 바인딩 완료');
     }
     
+    // LLM 특성 정보 검증 함수 (개발자용)
+    verifyLLMCharacteristics() {
+        console.log('=== LLM 특성 정보 검증 ===');
+        
+        if (!this.llmCharacteristics) {
+            console.error('❌ llmCharacteristics 객체가 없습니다!');
+            return false;
+        }
+        
+        const services = ['chatgpt', 'gemini', 'perplexity', 'grok'];
+        let allValid = true;
+        
+        services.forEach(service => {
+            const char = this.llmCharacteristics[service];
+            if (!char) {
+                console.error(`❌ ${service} 특성 정보가 없습니다!`);
+                allValid = false;
+            } else {
+                console.log(`✅ ${service}:`, {
+                    name: char.name,
+                    description: char.description,
+                    details: char.details,
+                    strength: char.strength
+                });
+            }
+        });
+        
+        console.log('=== 검증 완료 ===');
+        return allValid;
+    }
+    
     // 디버깅용 함수 - 전역에서 호출 가능
     debugSavedItems() {
         console.log('=== 저장된 글 디버깅 정보 ===');
@@ -733,9 +764,9 @@ class DualTextWriter {
                 await window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id));
                 
                 // 로컬 배열에서도 제거
-                this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
-                this.renderSavedTexts();
-                this.showMessage('글이 삭제되었습니다.', 'info');
+            this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
+            this.renderSavedTexts();
+            this.showMessage('글이 삭제되었습니다.', 'info');
                 console.log('삭제 완료');
                 
             } catch (error) {
@@ -1120,11 +1151,11 @@ class DualTextWriter {
         
         try {
             await this.loadSavedTextsFromFirestore();
-            this.updateCharacterCount('ref');
-            this.updateCharacterCount('edit');
-            this.renderSavedTexts();
-            this.startTempSave();
-            this.restoreTempSave();
+        this.updateCharacterCount('ref');
+        this.updateCharacterCount('edit');
+        this.renderSavedTexts();
+        this.startTempSave();
+        this.restoreTempSave();
         } catch (error) {
             console.error('사용자 데이터 로드 실패:', error);
             this.showMessage('데이터를 불러오는데 실패했습니다.', 'error');
@@ -1180,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 전역 디버깅 함수 등록
     window.debugSavedItems = () => dualTextWriter.debugSavedItems();
+    window.verifyLLMCharacteristics = () => dualTextWriter.verifyLLMCharacteristics();
     window.testEditButton = (index = 0) => {
         const editButtons = document.querySelectorAll('.btn-edit');
         if (editButtons[index]) {
