@@ -124,6 +124,14 @@ class FirebaseTestSuite {
                     this.addResult('❌ LLM 프롬프트 템플릿', '로드되지 않음');
                 }
                 
+                // LLM 특성 정보 확인
+                if (window.dualTextWriter.llmCharacteristics) {
+                    const charCount = Object.keys(window.dualTextWriter.llmCharacteristics).length;
+                    this.addResult('✅ LLM 특성 정보', `${charCount}개 로드됨`);
+                } else {
+                    this.addResult('❌ LLM 특성 정보', '로드되지 않음');
+                }
+                
                 // LLM URL 패턴 확인
                 if (window.dualTextWriter.llmUrls) {
                     const urlCount = Object.keys(window.dualTextWriter.llmUrls).length;

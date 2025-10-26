@@ -480,10 +480,46 @@ class DualTextWriter {
                     <div class="llm-validation-dropdown">
                         <button class="btn-small btn-llm-main" data-action="llm-validation" data-item-id="${item.id}">🔍 LLM 검증</button>
                         <div class="llm-dropdown-menu">
-                            <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">🤖 ChatGPT</button>
-                            <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">🧠 Gemini</button>
-                            <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">🔎 Perplexity</button>
-                            <button class="llm-option" data-llm="grok" data-item-id="${item.id}">🚀 Grok</button>
+                            <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🤖</span>
+                                        <span class="llm-name">ChatGPT</span>
+                                    </div>
+                                    <div class="llm-description">종합 검증</div>
+                                    <div class="llm-details">문법·논리·일관성 전체 검토</div>
+                                </div>
+                            </button>
+                            <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🧠</span>
+                                        <span class="llm-name">Gemini</span>
+                                    </div>
+                                    <div class="llm-description">구조 분석</div>
+                                    <div class="llm-details">논리적 구조와 타당성 분석</div>
+                                </div>
+                            </button>
+                            <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🔎</span>
+                                        <span class="llm-name">Perplexity</span>
+                                    </div>
+                                    <div class="llm-description">사실 검증</div>
+                                    <div class="llm-details">정보 정확성과 논증 강도 평가</div>
+                                </div>
+                            </button>
+                            <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🚀</span>
+                                        <span class="llm-name">Grok</span>
+                                    </div>
+                                    <div class="llm-description">명확성 검토</div>
+                                    <div class="llm-details">표현 명확성과 전달력 검토</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -820,12 +856,36 @@ class DualTextWriter {
             grok: "이 글의 논리적 일관성과 표현의 명확성을 검토해주세요. 다음 사항들을 중점적으로 살펴보세요:\n\n1. 논리적 일관성\n2. 표현의 명확성\n3. 내용의 응집성\n4. 전달력의 효과성\n\n검토할 글:\n"
         };
         
-        // LLM 사이트별 URL 패턴
-        this.llmUrls = {
-            chatgpt: "https://chatgpt.com/?q=",
-            gemini: "https://gemini.google.com/?q=",
-            perplexity: "https://www.perplexity.ai/?q=",
-            grok: "https://x.com/i/grok?q="
+        // LLM 사이트별 특성 정보 (사용자 가이드용)
+        this.llmCharacteristics = {
+            chatgpt: {
+                name: "ChatGPT",
+                icon: "🤖",
+                description: "종합 검증",
+                details: "문법·논리·일관성 전체 검토",
+                strength: "포괄적 분석"
+            },
+            gemini: {
+                name: "Gemini", 
+                icon: "🧠",
+                description: "구조 분석",
+                details: "논리적 구조와 타당성 분석",
+                strength: "신뢰성 검증"
+            },
+            perplexity: {
+                name: "Perplexity",
+                icon: "🔎", 
+                description: "사실 검증",
+                details: "정보 정확성과 논증 강도 평가",
+                strength: "실시간 검증"
+            },
+            grok: {
+                name: "Grok",
+                icon: "🚀",
+                description: "명확성 검토", 
+                details: "표현 명확성과 전달력 검토",
+                strength: "간결한 피드백"
+            }
         };
         
         console.log('LLM 검증 시스템 초기화 완료');
@@ -904,19 +964,13 @@ class DualTextWriter {
     
     // LLM 검증 가이드 메시지 표시
     showLLMValidationGuide(llmService) {
-        const serviceNames = {
-            chatgpt: 'ChatGPT',
-            gemini: 'Gemini',
-            perplexity: 'Perplexity',
-            grok: 'Grok'
-        };
-        
-        const serviceName = serviceNames[llmService];
+        const characteristics = this.llmCharacteristics[llmService];
         
         this.showMessage(
-            `✅ ${serviceName} 검증 페이지가 열렸습니다!\n\n` +
+            `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
             `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
-            `💡 ${serviceName} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.`,
+            `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
+            `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`,
             'success'
         );
         
