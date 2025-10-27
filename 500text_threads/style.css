@@ -1582,6 +1582,98 @@ header h1 {
     transform: translateY(-1px);
 }
 
+/* 언어별 텍스트 줄바꿈 최적화 */
+.modal-actions button {
+    /* 기본 줄바꿈 설정 - 자연스러운 단어 경계에서 줄바꿈 */
+    word-break: normal;
+    word-wrap: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.4;
+    text-align: center;
+    white-space: normal;
+    padding: 12px 8px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 한글 텍스트 최적화 */
+.modal-actions button:lang(ko),
+.modal-actions button[lang="ko"] {
+    word-break: keep-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
+
+/* 영어 텍스트 최적화 */
+.modal-actions button:lang(en),
+.modal-actions button[lang="en"] {
+    word-break: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* 일본어 텍스트 최적화 */
+.modal-actions button:lang(ja),
+.modal-actions button[lang="ja"] {
+    word-break: keep-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
+
+/* 중국어 텍스트 최적화 */
+.modal-actions button:lang(zh),
+.modal-actions button[lang="zh"] {
+    word-break: keep-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
+
+/* 반응형 텍스트 크기 조정 */
+@media (max-width: 768px) {
+    .modal-actions {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .modal-actions button {
+        font-size: 14px;
+        padding: 10px 6px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-actions button {
+        font-size: 13px;
+        padding: 8px 4px;
+        min-height: 40px;
+    }
+}
+
+/* 언어별 폰트 최적화 */
+.lang-ko {
+    font-family: "Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+
+.lang-en {
+    font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+}
+
+.lang-ja {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", sans-serif;
+}
+
+.lang-zh {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
 /* 간단한 Threads 가이드 스타일 */
 .simple-threads-guide {
     position: fixed;

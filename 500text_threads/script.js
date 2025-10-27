@@ -1684,8 +1684,12 @@ class DualTextWriter {
         modal.setAttribute('aria-labelledby', 'modal-title');
         modal.setAttribute('aria-describedby', 'modal-description');
         
+        // 현재 언어 감지
+        const currentLang = this.detectLanguage();
+        console.log('🌍 감지된 언어:', currentLang);
+        
         modal.innerHTML = `
-            <div class="optimization-content">
+            <div class="optimization-content" lang="${currentLang}">
                 <h3 id="modal-title">${this.t('optimizationTitle')}</h3>
                 <div id="modal-description" class="sr-only">포스팅 내용이 최적화되었습니다. 결과를 확인하고 진행하세요.</div>
                 
@@ -1724,24 +1728,28 @@ class DualTextWriter {
                 <div class="modal-actions">
                     <button class="btn-primary btn-copy-only" 
                             id="copy-only-btn"
+                            lang="${currentLang}"
                             aria-label="클립보드에만 복사"
                             onclick="dualTextWriter.copyToClipboardOnly('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
                         📋 클립보드 복사
                     </button>
                     <button class="btn-primary btn-threads-only" 
                             id="threads-only-btn"
+                            lang="${currentLang}"
                             aria-label="Threads 페이지만 열기"
                             onclick="dualTextWriter.openThreadsOnly()">
                         🚀 Threads 열기
                     </button>
                     <button class="btn-success btn-both" 
                             id="both-btn"
+                            lang="${currentLang}"
                             aria-label="클립보드 복사하고 Threads 페이지 열기"
                             onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
                         📋🚀 둘 다 실행
                     </button>
                     <button class="btn-secondary" 
                             id="cancel-btn"
+                            lang="${currentLang}"
                             aria-label="모달 닫기"
                             onclick="this.closest('.optimization-modal').remove()">${this.t('cancelButton')}</button>
                 </div>
@@ -1946,8 +1954,12 @@ class DualTextWriter {
     
     // 간단한 Threads 가이드 표시
     showSimpleThreadsGuide() {
+        const currentLang = this.detectLanguage();
+        
         const guide = document.createElement('div');
         guide.className = 'simple-threads-guide';
+        guide.setAttribute('lang', currentLang);
+        
         guide.innerHTML = `
             <div class="guide-content">
                 <h3>✅ Threads 페이지가 열렸습니다!</h3>
@@ -1961,12 +1973,15 @@ class DualTextWriter {
                     </ol>
                 </div>
                 <div class="guide-actions">
-                    <button class="btn-primary" onclick="this.closest('.simple-threads-guide').remove()">✅ 확인</button>
+                    <button class="btn-primary" lang="${currentLang}" onclick="this.closest('.simple-threads-guide').remove()">✅ 확인</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(guide);
+        
+        // 언어 최적화 적용
+        this.applyLanguageOptimization(guide, currentLang);
         
         // 5초 후 자동으로 사라지게 하기
         setTimeout(() => {
@@ -2051,8 +2066,12 @@ class DualTextWriter {
     
     // Threads 프로필 설정 모달 표시
     showThreadsProfileSettings() {
+        const currentLang = this.detectLanguage();
+        
         const modal = document.createElement('div');
         modal.className = 'threads-profile-modal';
+        modal.setAttribute('lang', currentLang);
+        
         modal.innerHTML = `
             <div class="modal-content">
                 <h3>⚙️ Threads 프로필 설정</h3>
@@ -2068,22 +2087,25 @@ class DualTextWriter {
                 
                 <div class="url-options">
                     <h4>빠른 선택:</h4>
-                    <button class="btn-option" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/')">
+                    <button class="btn-option" lang="${currentLang}" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/')">
                         🏠 Threads 메인 페이지
                     </button>
-                    <button class="btn-option" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/new')">
+                    <button class="btn-option" lang="${currentLang}" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/new')">
                         ✏️ 새 글 작성 페이지
                     </button>
                 </div>
                 
                 <div class="modal-actions">
-                    <button class="btn-primary" onclick="dualTextWriter.saveThreadsProfileUrl()">💾 저장</button>
-                    <button class="btn-secondary" onclick="this.closest('.threads-profile-modal').remove()">❌ 취소</button>
+                    <button class="btn-primary" lang="${currentLang}" onclick="dualTextWriter.saveThreadsProfileUrl()">💾 저장</button>
+                    <button class="btn-secondary" lang="${currentLang}" onclick="this.closest('.threads-profile-modal').remove()">❌ 취소</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
+        
+        // 언어 최적화 적용
+        this.applyLanguageOptimization(modal, currentLang);
         
         // 입력 필드에 포커스
         setTimeout(() => {
@@ -2147,6 +2169,71 @@ class DualTextWriter {
         if (!this.isOnline()) {
             this.showMessage('📡 오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.', 'warning');
         }
+    }
+    
+    // 언어 감지 함수
+    detectLanguage() {
+        // 1. 브라우저 언어 설정 확인
+        const browserLang = navigator.language || navigator.userLanguage;
+        console.log('🌍 브라우저 언어:', browserLang);
+        
+        // 2. HTML lang 속성 확인
+        const htmlLang = document.documentElement.lang;
+        console.log('🌍 HTML 언어:', htmlLang);
+        
+        // 3. 사용자 설정 언어 확인 (로컬 스토리지)
+        const userLang = localStorage.getItem('preferred_language');
+        console.log('🌍 사용자 설정 언어:', userLang);
+        
+        // 우선순위: 사용자 설정 > HTML 속성 > 브라우저 설정
+        let detectedLang = userLang || htmlLang || browserLang;
+        
+        // 언어 코드 정규화 (ko-KR -> ko, en-US -> en)
+        if (detectedLang) {
+            detectedLang = detectedLang.split('-')[0];
+        }
+        
+        // 지원되는 언어 목록
+        const supportedLanguages = ['ko', 'en', 'ja', 'zh'];
+        
+        // 지원되지 않는 언어는 기본값(한국어)으로 설정
+        if (!supportedLanguages.includes(detectedLang)) {
+            detectedLang = 'ko';
+        }
+        
+        console.log('🌍 최종 감지된 언어:', detectedLang);
+        return detectedLang;
+    }
+    
+    // 언어별 텍스트 최적화 적용
+    applyLanguageOptimization(element, language) {
+        if (!element) return;
+        
+        // 언어별 클래스 추가
+        element.classList.add(`lang-${language}`);
+        
+        // 언어별 스타일 적용
+        const style = document.createElement('style');
+        style.textContent = `
+            .lang-${language} {
+                font-family: ${this.getLanguageFont(language)};
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log(`🌍 ${language} 언어 최적화 적용됨`);
+    }
+    
+    // 언어별 폰트 설정
+    getLanguageFont(language) {
+        const fontMap = {
+            'ko': '"Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif',
+            'en': '"Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif',
+            'ja': '"Noto Sans JP", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", sans-serif',
+            'zh': '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif'
+        };
+        
+        return fontMap[language] || fontMap['ko'];
     }
     
     // 국제화 지원 함수들
