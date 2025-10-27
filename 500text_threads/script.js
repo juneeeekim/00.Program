@@ -1680,11 +1680,23 @@ class DualTextWriter {
                 </div>
                 
                 <div class="modal-actions">
-                    <button class="btn-primary" 
-                            id="proceed-btn"
-                            aria-label="클립보드에 복사하고 Threads 페이지 열기"
+                    <button class="btn-primary btn-copy-only" 
+                            id="copy-only-btn"
+                            aria-label="클립보드에만 복사"
+                            onclick="dualTextWriter.copyToClipboardOnly('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}')">
+                        📋 클립보드 복사
+                    </button>
+                    <button class="btn-primary btn-threads-only" 
+                            id="threads-only-btn"
+                            aria-label="Threads 페이지만 열기"
+                            onclick="dualTextWriter.openThreadsOnly()">
+                        🚀 Threads 열기
+                    </button>
+                    <button class="btn-success btn-both" 
+                            id="both-btn"
+                            aria-label="클립보드 복사하고 Threads 페이지 열기"
                             onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}')">
-                        ${this.t('proceedButton')}
+                        📋🚀 둘 다 실행
                     </button>
                     <button class="btn-secondary" 
                             id="cancel-btn"
@@ -1771,6 +1783,80 @@ class DualTextWriter {
             console.error('포스팅 진행 중 오류:', error);
             this.showMessage('포스팅 진행 중 오류가 발생했습니다.', 'error');
         }
+    }
+    
+    // 클립보드 복사만 실행하는 함수
+    async copyToClipboardOnly(formattedContent) {
+        console.log('📋 클립보드 복사만 실행');
+        
+        try {
+            const success = await this.copyToClipboardWithFormat(formattedContent);
+            
+            if (success) {
+                this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
+                console.log('✅ 클립보드 복사 완료');
+            } else {
+                this.showMessage('❌ 클립보드 복사에 실패했습니다.', 'error');
+                console.error('❌ 클립보드 복사 실패');
+            }
+        } catch (error) {
+            console.error('❌ 클립보드 복사 중 오류:', error);
+            this.showMessage('클립보드 복사 중 오류가 발생했습니다: ' + error.message, 'error');
+        }
+    }
+    
+    // Threads 열기만 실행하는 함수
+    openThreadsOnly() {
+        console.log('🚀 Threads 열기만 실행');
+        
+        try {
+            const threadsUrl = this.getThreadsUrl();
+            console.log('🔗 Threads URL:', threadsUrl);
+            
+            window.open(threadsUrl, '_blank', 'noopener,noreferrer');
+            
+            this.showMessage('✅ Threads 페이지가 열렸습니다!', 'success');
+            console.log('✅ Threads 페이지 열기 완료');
+            
+            // 간단한 가이드 표시
+            this.showSimpleThreadsGuide();
+            
+        } catch (error) {
+            console.error('❌ Threads 열기 중 오류:', error);
+            this.showMessage('Threads 열기 중 오류가 발생했습니다: ' + error.message, 'error');
+        }
+    }
+    
+    // 간단한 Threads 가이드 표시
+    showSimpleThreadsGuide() {
+        const guide = document.createElement('div');
+        guide.className = 'simple-threads-guide';
+        guide.innerHTML = `
+            <div class="guide-content">
+                <h3>✅ Threads 페이지가 열렸습니다!</h3>
+                <div class="guide-steps">
+                    <h4>📝 다음 단계:</h4>
+                    <ol>
+                        <li>Threads 새 탭으로 이동하세요</li>
+                        <li>"새 글 작성" 버튼을 클릭하세요</li>
+                        <li>작성한 텍스트를 입력하세요</li>
+                        <li>"게시" 버튼을 클릭하세요</li>
+                    </ol>
+                </div>
+                <div class="guide-actions">
+                    <button class="btn-primary" onclick="this.closest('.simple-threads-guide').remove()">✅ 확인</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(guide);
+        
+        // 5초 후 자동으로 사라지게 하기
+        setTimeout(() => {
+            if (guide.parentNode) {
+                guide.remove();
+            }
+        }, 8000);
     }
     
     // Threads URL 가져오기 함수
