@@ -142,13 +142,42 @@ class DualTextWriter {
         // 반자동화 포스팅 이벤트
         const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
         if (semiAutoPostBtn) {
-            semiAutoPostBtn.addEventListener('click', () => this.handleSemiAutoPost());
+            console.log('✅ 반자동화 포스팅 버튼 발견 및 이벤트 바인딩');
+            
+            semiAutoPostBtn.addEventListener('click', (e) => {
+                console.log('🔍 반자동화 포스팅 버튼 클릭 감지');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // this 컨텍스트 명시적 바인딩
+                const self = this;
+                console.log('🔍 this 컨텍스트:', self);
+                console.log('🔍 handleSemiAutoPost 함수:', typeof self.handleSemiAutoPost);
+                
+                if (typeof self.handleSemiAutoPost === 'function') {
+                    console.log('✅ handleSemiAutoPost 함수 호출');
+                    self.handleSemiAutoPost();
+                } else {
+                    console.error('❌ handleSemiAutoPost 함수가 없습니다!');
+                }
+            });
             
             // 키보드 접근성 지원
             semiAutoPostBtn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
+                    console.log('🔍 반자동화 포스팅 버튼 키보드 입력 감지');
                     e.preventDefault();
-                    this.handleSemiAutoPost();
+                    e.stopPropagation();
+                    
+                    // this 컨텍스트 명시적 바인딩
+                    const self = this;
+                    
+                    if (typeof self.handleSemiAutoPost === 'function') {
+                        console.log('✅ handleSemiAutoPost 함수 호출 (키보드)');
+                        self.handleSemiAutoPost();
+                    } else {
+                        console.error('❌ handleSemiAutoPost 함수가 없습니다!');
+                    }
                 }
             });
             
@@ -156,6 +185,10 @@ class DualTextWriter {
             semiAutoPostBtn.setAttribute('aria-label', 'Threads에 반자동으로 포스팅하기');
             semiAutoPostBtn.setAttribute('role', 'button');
             semiAutoPostBtn.setAttribute('tabindex', '0');
+            
+            console.log('✅ 반자동화 포스팅 버튼 이벤트 바인딩 완료');
+        } else {
+            console.error('❌ 반자동화 포스팅 버튼을 찾을 수 없습니다!');
         }
         
         // 개발 모드에서 자동 테스트 실행
@@ -1984,49 +2017,55 @@ class DualTextWriter {
     
     // 반자동화 포스팅 메인 함수 (성능 최적화 + 오프라인 지원 + 모니터링)
     async handleSemiAutoPost() {
+        console.log('🔍 반자동화 포스팅 시작');
+        
         const content = this.editTextInput.value;
+        console.log('📝 입력 내용:', content);
         
         if (!content.trim()) {
-            this.showMessage(this.t('noContent'), 'error');
+            console.warn('❌ 포스팅할 내용이 없습니다');
+            this.showMessage('❌ 포스팅할 내용이 없습니다.', 'error');
             return;
         }
         
         const button = document.getElementById('semi-auto-post-btn');
         
         try {
-            // 성능 모니터링 시작
-            this.performanceMonitor.start('전체 포스팅 처리');
-            this.checkMemoryUsage();
+            console.log('✅ 1. 입력 검증 완료');
             
             // 로딩 상태 표시
-            this.showLoadingState(button, true);
-            
-            // 오프라인 상태 확인
-            if (!this.isOnline()) {
-                this.showMessage(this.t('offlineWarning'), 'warning');
+            if (button) {
+                this.showLoadingState(button, true);
+                console.log('✅ 2. 로딩 상태 표시');
             }
             
-            // 비동기 처리로 UI 블로킹 방지
-            this.performanceMonitor.start('내용 최적화');
+            console.log('🔄 3. 내용 최적화 시작...');
             const optimized = await this.optimizeContentForThreadsAsync(content);
-            this.performanceMonitor.end('내용 최적화');
+            console.log('✅ 4. 내용 최적화 완료:', optimized);
             
             // 오프라인에서도 로컬 저장
-            this.saveToLocalStorage('lastOptimizedContent', optimized);
+            try {
+                this.saveToLocalStorage('lastOptimizedContent', optimized);
+                console.log('✅ 5. 로컬 저장 완료');
+            } catch (saveError) {
+                console.warn('⚠️ 로컬 저장 실패:', saveError);
+            }
             
             // 최적화 완료 후 모달 표시
+            console.log('🔄 6. 최적화 모달 표시 시작...');
             this.showOptimizationModal(optimized);
-            
-            // 성능 모니터링 완료
-            this.performanceMonitor.end('전체 포스팅 처리');
-            this.checkMemoryUsage();
+            console.log('✅ 7. 최적화 모달 표시 완료');
             
         } catch (error) {
-            console.error('반자동화 포스팅 처리 중 오류:', error);
-            this.showMessage(this.t('processingError'), 'error');
+            console.error('❌ 반자동화 포스팅 처리 중 오류:', error);
+            console.error('오류 상세:', error.stack);
+            this.showMessage('포스팅 처리 중 오류가 발생했습니다: ' + error.message, 'error');
         } finally {
             // 로딩 상태 해제
-            this.showLoadingState(button, false);
+            if (button) {
+                this.showLoadingState(button, false);
+                console.log('✅ 8. 로딩 상태 해제');
+            }
         }
     }
     
