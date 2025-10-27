@@ -798,6 +798,39 @@ header h1 {
     line-height: 1.5;
 }
 
+/* 해시태그 토글 섹션 */
+.hashtag-toggle-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.hashtag-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+#hashtag-toggle {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
+.toggle-text {
+    font-weight: 500;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.hashtag-toggle-label:hover .toggle-text {
+    color: #667eea;
+}
+
 .preview-content::before {
     content: '';
     position: absolute;

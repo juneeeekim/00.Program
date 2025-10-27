@@ -1778,7 +1778,10 @@ class DualTextWriter {
     }
     
     // 최적화 모달 표시 함수 (접근성 강화)
-    showOptimizationModal(optimized) {
+    showOptimizationModal(optimized, originalContent) {
+        // 원본 텍스트 저장 (줄바꿈 보존)
+        optimized.originalContent = originalContent;
+        
         const modal = document.createElement('div');
         modal.className = 'optimization-modal';
         modal.setAttribute('role', 'dialog');
@@ -1789,6 +1792,7 @@ class DualTextWriter {
         // 현재 언어 감지
         const currentLang = this.detectLanguage();
         console.log('🌍 감지된 언어:', currentLang);
+        console.log('📝 원본 텍스트 저장:', originalContent);
         
         modal.innerHTML = `
             <div class="optimization-content" lang="${currentLang}">
@@ -1820,9 +1824,15 @@ class DualTextWriter {
                 ` : ''}
                 
                 <div class="preview-section" role="region" aria-label="포스팅 내용 미리보기">
+                    <div class="hashtag-toggle-section">
+                        <label class="hashtag-toggle-label">
+                            <input type="checkbox" id="hashtag-toggle" checked aria-label="해시태그 자동 추가">
+                            <span class="toggle-text">해시태그 자동 추가</span>
+                        </label>
+                    </div>
                     <h4>${this.t('previewTitle')}</h4>
-                    <div class="preview-content" role="textbox" aria-label="최적화된 포스팅 내용" tabindex="0">
-                        ${this.escapeHtml(optimized.optimized)}
+                    <div class="preview-content" role="textbox" aria-label="포스팅 내용" tabindex="0" id="preview-content-display">
+                        ${this.escapeHtml(originalContent)}
                         ${optimized.hashtags.length > 0 ? `<br><br>${this.escapeHtmlOnly(optimized.hashtags.join(' '))}` : ''}
                     </div>
                 </div>
@@ -1860,14 +1870,34 @@ class DualTextWriter {
         
         // 버튼 클릭 이벤트 직접 바인딩 (동적 생성된 모달)
         setTimeout(() => {
+            // 해시태그 토글 스위치
+            const hashtagToggle = modal.querySelector('#hashtag-toggle');
+            const previewDisplay = modal.querySelector('#preview-content-display');
+            
+            if (hashtagToggle && previewDisplay) {
+                hashtagToggle.addEventListener('change', () => {
+                    console.log('🔄 해시태그 토글 변경:', hashtagToggle.checked);
+                    
+                    // 미리보기 업데이트
+                    if (hashtagToggle.checked) {
+                        previewDisplay.innerHTML = this.escapeHtml(originalContent) + 
+                            (optimized.hashtags.length > 0 ? '<br><br>' + this.escapeHtmlOnly(optimized.hashtags.join(' ')) : '');
+                    } else {
+                        previewDisplay.innerHTML = this.escapeHtml(originalContent);
+                    }
+                });
+            }
+            
             // 클립보드 복사 버튼
             const copyBtn = modal.querySelector('#copy-only-btn');
             if (copyBtn) {
                 copyBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    // 원본 텍스트 사용 (줄바꿈 보존)
-                    const content = optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
+                    // 토글 상태에 따라 해시태그 포함 여부 결정
+                    const includeHashtags = hashtagToggle ? hashtagToggle.checked : true;
+                    const content = originalContent + (includeHashtags && optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
                     console.log('🔍 클립보드 복사 버튼 클릭 감지');
+                    console.log('📝 원본 텍스트 직접 사용:', content);
                     this.copyToClipboardOnly(content, e);
                 });
             }
@@ -1887,9 +1917,11 @@ class DualTextWriter {
             if (bothBtn) {
                 bothBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    // 원본 텍스트 사용 (줄바꿈 보존)
-                    const content = optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
+                    // 토글 상태에 따라 해시태그 포함 여부 결정
+                    const includeHashtags = hashtagToggle ? hashtagToggle.checked : true;
+                    const content = originalContent + (includeHashtags && optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
                     console.log('🔍 둘 다 실행 버튼 클릭 감지');
+                    console.log('📝 원본 텍스트 직접 사용:', content);
                     this.proceedWithPosting(content, e);
                 });
             }
@@ -2718,9 +2750,9 @@ class DualTextWriter {
                 console.warn('⚠️ 로컬 저장 실패:', saveError);
             }
             
-            // 최적화 완료 후 모달 표시
+            // 최적화 완료 후 모달 표시 (원본 텍스트 전달)
             console.log('🔄 6. 최적화 모달 표시 시작...');
-            this.showOptimizationModal(optimized);
+            this.showOptimizationModal(optimized, content);
             console.log('✅ 7. 최적화 모달 표시 완료');
             
         } catch (error) {
