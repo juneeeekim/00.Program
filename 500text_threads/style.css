@@ -1805,7 +1805,159 @@ header h1 {
     animation: slideIn 0.3s ease;
 }
 
-/* 패널 컨트롤 영역의 LLM 검증 버튼 스타일 */
+/* 패널 컨트롤 영역 개선된 레이아웃 */
+.panel-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.control-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-group.basic-actions {
+    justify-content: flex-start;
+}
+
+.control-group.advanced-actions {
+    justify-content: flex-start;
+    margin-top: 4px;
+}
+
+/* 버튼 크기 개선 */
+.btn-small {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    min-height: 36px;
+    border-radius: 6px;
+}
+
+.btn-primary-large {
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    min-height: 42px;
+    border-radius: 8px;
+    flex: 0 0 auto;
+    min-width: 80px;
+}
+
+/* 기본 버튼 스타일 개선 */
+.btn {
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 버튼 색상 개선 */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #218838, #1ea085);
+}
+
+.btn-semi-auto {
+    background: linear-gradient(135deg, #fd7e14, #e83e8c);
+    color: white;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    min-height: 36px;
+    border-radius: 6px;
+}
+
+.btn-semi-auto:hover {
+    background: linear-gradient(135deg, #e8650e, #d63384);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .panel-controls {
+        gap: 8px;
+    }
+    
+    .control-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    
+    .control-group.basic-actions {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .btn-small {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .btn-primary-large {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .control-group.advanced-actions {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .llm-validation-dropdown {
+        flex: 1;
+        margin-right: 8px;
+    }
+    
+    .btn-semi-auto {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+/* LLM 검증 드롭다운 스타일 */
 .panel-controls .llm-validation-dropdown {
     position: relative;
     display: inline-block;
@@ -1821,6 +1973,7 @@ header h1 {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    min-height: 36px;
 }
 
 .panel-controls .btn-llm-main:hover {
