@@ -1831,6 +1831,11 @@ header h1 {
     font-family: 'Courier New', monospace;
 }
 
+.hashtags-display:empty::after {
+    content: '해시태그 없음';
+    color: #6c757d;
+}
+
 .btn-hashtag-settings {
     padding: 6px 12px;
     background: linear-gradient(135deg, #667eea, #764ba2);

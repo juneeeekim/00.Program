@@ -1394,7 +1394,8 @@ class DualTextWriter {
             const saved = localStorage.getItem('userHashtags');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                return Array.isArray(parsed) && parsed.length > 0 ? parsed : this.defaultHashtags;
+                // 빈 배열도 유효한 값으로 처리
+                return Array.isArray(parsed) ? parsed : this.defaultHashtags;
             }
         } catch (error) {
             console.error('해시태그 불러오기 실패:', error);
@@ -1405,10 +1406,17 @@ class DualTextWriter {
     // 사용자 정의 해시태그 저장
     saveUserHashtags(hashtags) {
         try {
-            // 입력 검증
-            if (!Array.isArray(hashtags) || hashtags.length === 0) {
+            // 빈 배열 허용 (해시태그 없이 사용)
+            if (!Array.isArray(hashtags)) {
                 console.warn('유효하지 않은 해시태그 배열');
                 return false;
+            }
+            
+            // 해시태그가 없는 경우
+            if (hashtags.length === 0) {
+                localStorage.setItem('userHashtags', JSON.stringify([]));
+                console.log('해시태그 없이 사용하도록 설정됨');
+                return true;
             }
             
             // 해시태그 형식 검증
@@ -1544,9 +1552,15 @@ class DualTextWriter {
             // 4단계: 해시태그 자동 추출/추가 (보안 검증 포함)
             const hashtags = this.extractHashtags(optimized.optimized);
             if (hashtags.length === 0) {
-                // 사용자 정의 해시태그 사용
-                optimized.hashtags = this.getUserHashtags();
-                optimized.suggestions.push('해시태그를 추가했습니다.');
+                // 사용자 정의 해시태그 사용 (선택적)
+                const userHashtags = this.getUserHashtags();
+                if (userHashtags && userHashtags.length > 0) {
+                    optimized.hashtags = userHashtags;
+                    optimized.suggestions.push('해시태그를 추가했습니다.');
+                } else {
+                    optimized.hashtags = [];
+                    optimized.suggestions.push('해시태그 없이 포스팅됩니다.');
+                }
             } else {
                 // 해시태그 보안 검증
                 optimized.hashtags = hashtags.filter(tag => {
@@ -2298,6 +2312,9 @@ class DualTextWriter {
                     <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#기술, #개발, #tech'">
                         🚀 기술/개발
                     </button>
+                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value=''" style="background: #f8f9fa; color: #6c757d;">
+                        ❌ 해시태그 없이 사용
+                    </button>
                 </div>
                 
                 <div class="modal-actions">
@@ -2328,8 +2345,17 @@ class DualTextWriter {
         if (input) {
             const inputValue = input.value.trim();
             
+            // 빈 값 허용 (해시태그 없이 사용)
             if (!inputValue) {
-                this.showMessage('⚠️ 해시태그를 입력해주세요.', 'warning');
+                this.saveUserHashtags([]);
+                this.showMessage('✅ 해시태그 없이 포스팅하도록 설정되었습니다!', 'success');
+                this.updateHashtagsDisplay();
+                
+                // 모달 닫기
+                const modal = document.querySelector('.hashtag-settings-modal');
+                if (modal) {
+                    modal.remove();
+                }
                 return;
             }
             
@@ -2359,7 +2385,12 @@ class DualTextWriter {
         const display = document.getElementById('current-hashtags-display');
         if (display) {
             const hashtags = this.getUserHashtags();
-            display.textContent = hashtags.join(' ');
+            if (hashtags && hashtags.length > 0) {
+                display.textContent = hashtags.join(' ');
+            } else {
+                display.textContent = '해시태그 없음';
+                display.style.color = '#6c757d';
+            }
         }
     }
     
