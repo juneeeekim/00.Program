@@ -1753,8 +1753,10 @@ class DualTextWriter {
             const success = await this.copyToClipboardWithFormat(formattedContent);
             
             if (success) {
-                // Threads 새 탭 열기
-                window.open('https://threads.net', '_blank', 'noopener,noreferrer');
+                // Threads 새 탭 열기 (올바른 URL 사용)
+                const threadsUrl = this.getThreadsUrl();
+                console.log('🔗 Threads URL:', threadsUrl);
+                window.open(threadsUrl, '_blank', 'noopener,noreferrer');
                 
                 // 사용자 가이드 표시
                 this.showPostingGuide();
@@ -1768,6 +1770,43 @@ class DualTextWriter {
         } catch (error) {
             console.error('포스팅 진행 중 오류:', error);
             this.showMessage('포스팅 진행 중 오류가 발생했습니다.', 'error');
+        }
+    }
+    
+    // Threads URL 가져오기 함수
+    getThreadsUrl() {
+        // 사용자 설정에서 프로필 URL 확인
+        const userProfileUrl = localStorage.getItem('threads_profile_url');
+        
+        if (userProfileUrl && this.isValidThreadsUrl(userProfileUrl)) {
+            console.log('✅ 사용자 프로필 URL 사용:', userProfileUrl);
+            return userProfileUrl;
+        }
+        
+        // 기본 Threads 메인 페이지
+        console.log('✅ 기본 Threads 메인 페이지 사용');
+        return 'https://www.threads.com/';
+    }
+    
+    // Threads URL 유효성 검사
+    isValidThreadsUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.hostname.includes('threads.com') || urlObj.hostname.includes('threads.net');
+        } catch (error) {
+            return false;
+        }
+    }
+    
+    // 사용자 프로필 URL 설정 함수
+    setThreadsProfileUrl(url) {
+        if (this.isValidThreadsUrl(url)) {
+            localStorage.setItem('threads_profile_url', url);
+            this.showMessage('✅ Threads 프로필 URL이 설정되었습니다!', 'success');
+            return true;
+        } else {
+            this.showMessage('❌ 올바른 Threads URL을 입력해주세요. (예: https://www.threads.com/@username)', 'error');
+            return false;
         }
     }
     
@@ -1792,6 +1831,7 @@ class DualTextWriter {
                 </div>
                 <div class="guide-actions">
                     <button class="btn-primary" onclick="this.closest('.posting-guide').remove()">✅ 확인</button>
+                    <button class="btn-secondary" onclick="dualTextWriter.showThreadsProfileSettings()">⚙️ 프로필 설정</button>
                 </div>
             </div>
         `;
@@ -1804,6 +1844,73 @@ class DualTextWriter {
                 guide.remove();
             }
         }, 10000);
+    }
+    
+    // Threads 프로필 설정 모달 표시
+    showThreadsProfileSettings() {
+        const modal = document.createElement('div');
+        modal.className = 'threads-profile-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>⚙️ Threads 프로필 설정</h3>
+                <p>포스팅 시 열릴 Threads 페이지를 설정하세요.</p>
+                
+                <div class="profile-url-section">
+                    <label for="threads-profile-url">프로필 URL:</label>
+                    <input type="url" id="threads-profile-url" 
+                           placeholder="https://www.threads.com/@username"
+                           value="${localStorage.getItem('threads_profile_url') || ''}">
+                    <small>예: https://www.threads.com/@username</small>
+                </div>
+                
+                <div class="url-options">
+                    <h4>빠른 선택:</h4>
+                    <button class="btn-option" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/')">
+                        🏠 Threads 메인 페이지
+                    </button>
+                    <button class="btn-option" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/new')">
+                        ✏️ 새 글 작성 페이지
+                    </button>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="dualTextWriter.saveThreadsProfileUrl()">💾 저장</button>
+                    <button class="btn-secondary" onclick="this.closest('.threads-profile-modal').remove()">❌ 취소</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 입력 필드에 포커스
+        setTimeout(() => {
+            const input = modal.querySelector('#threads-profile-url');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 100);
+    }
+    
+    // Threads 프로필 URL 저장
+    saveThreadsProfileUrl() {
+        const input = document.getElementById('threads-profile-url');
+        if (input) {
+            const url = input.value.trim();
+            if (url) {
+                this.setThreadsProfileUrl(url);
+            } else {
+                // 빈 값이면 기본 URL로 설정
+                localStorage.removeItem('threads_profile_url');
+                this.showMessage('✅ 기본 Threads 메인 페이지로 설정되었습니다!', 'success');
+            }
+            
+            // 모달 닫기
+            const modal = document.querySelector('.threads-profile-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
     }
     
     // 오프라인 지원 함수들
