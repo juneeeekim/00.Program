@@ -988,9 +988,9 @@ class DualTextWriter {
                 return;
             }
             
-            // 프롬프트 생성
+            // 프롬프트 생성 (제목 라인 없이)
             const prompt = this.llmPrompts[llmService];
-            const fullText = `${prompt}\n\n--- ${panelType} ---\n${content}`;
+            const fullText = `${prompt}\n\n${content}`;
             
             console.log('패널 검증 텍스트 생성:', { panel, llmService, contentLength: content.length });
             
