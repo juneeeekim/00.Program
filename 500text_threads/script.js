@@ -808,7 +808,19 @@ class DualTextWriter {
         }
     }
     
+    // HTML 이스케이프 함수 (줄바꿈 보존)
     escapeHtml(text) {
+        if (!text) return '';
+        
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/\n/g, '<br>'); // 줄바꿈을 <br> 태그로 변환
+    }
+    
+    // 텍스트만 이스케이프 (줄바꿈 없이)
+    escapeHtmlOnly(text) {
+        if (!text) return '';
+        
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -1806,7 +1818,7 @@ class DualTextWriter {
                     <h4>${this.t('previewTitle')}</h4>
                     <div class="preview-content" role="textbox" aria-label="최적화된 포스팅 내용" tabindex="0">
                         ${this.escapeHtml(optimized.optimized)}
-                        ${optimized.hashtags.length > 0 ? `<br><br>${this.escapeHtml(optimized.hashtags.join(' '))}` : ''}
+                        ${optimized.hashtags.length > 0 ? `<br><br>${this.escapeHtmlOnly(optimized.hashtags.join(' '))}` : ''}
                     </div>
                 </div>
                 
@@ -1848,7 +1860,8 @@ class DualTextWriter {
             if (copyBtn) {
                 copyBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const content = this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''));
+                    // 원본 텍스트 사용 (줄바꿈 보존)
+                    const content = optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
                     console.log('🔍 클립보드 복사 버튼 클릭 감지');
                     this.copyToClipboardOnly(content, e);
                 });
@@ -1869,7 +1882,8 @@ class DualTextWriter {
             if (bothBtn) {
                 bothBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const content = this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''));
+                    // 원본 텍스트 사용 (줄바꿈 보존)
+                    const content = optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : '');
                     console.log('🔍 둘 다 실행 버튼 클릭 감지');
                     this.proceedWithPosting(content, e);
                 });

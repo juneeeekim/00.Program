@@ -794,6 +794,10 @@ header h1 {
     position: relative;
 }
 
+.preview-content br {
+    line-height: 1.5;
+}
+
 .preview-content::before {
     content: '';
     position: absolute;
