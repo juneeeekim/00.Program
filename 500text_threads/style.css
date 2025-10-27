@@ -1805,3 +1805,95 @@ header h1 {
     animation: slideIn 0.3s ease;
 }
 
+/* 패널 컨트롤 영역의 LLM 검증 버튼 스타일 */
+.panel-controls .llm-validation-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.panel-controls .btn-llm-main {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.panel-controls .btn-llm-main:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    transform: translateY(-1px);
+}
+
+.panel-controls .btn-llm-main::after {
+    content: '▼';
+    margin-left: 5px;
+    font-size: 0.7rem;
+}
+
+.panel-controls .llm-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    z-index: 1000;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.panel-controls .llm-validation-dropdown:hover .llm-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.panel-controls .llm-option {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.panel-controls .llm-option:hover {
+    background-color: #f8f9fa;
+}
+
+.panel-controls .llm-option-content {
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.panel-controls .llm-option-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.panel-controls .llm-icon {
+    font-size: 1.2rem;
+}
+
+.panel-controls .llm-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.panel-controls .llm-description {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.3;
+}
+

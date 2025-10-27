@@ -537,51 +537,6 @@ class DualTextWriter {
                 <div class="saved-item-actions">
                     <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
                     <button class="btn-small btn-delete" data-action="delete" data-item-id="${item.id}">삭제</button>
-                    <div class="llm-validation-dropdown">
-                        <button class="btn-small btn-llm-main" data-action="llm-validation" data-item-id="${item.id}">🔍 LLM 검증</button>
-                        <div class="llm-dropdown-menu">
-                            <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">
-                                <div class="llm-option-content">
-                                    <div class="llm-option-header">
-                                        <span class="llm-icon">${this.llmCharacteristics.chatgpt.icon}</span>
-                                        <span class="llm-name">${this.llmCharacteristics.chatgpt.name}</span>
-                                    </div>
-                                    <div class="llm-description">${this.llmCharacteristics.chatgpt.description}</div>
-                                    <div class="llm-details">${this.llmCharacteristics.chatgpt.details}</div>
-                                </div>
-                            </button>
-                            <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
-                                <div class="llm-option-content">
-                                    <div class="llm-option-header">
-                                        <span class="llm-icon">${this.llmCharacteristics.gemini.icon}</span>
-                                        <span class="llm-name">${this.llmCharacteristics.gemini.name}</span>
-                                    </div>
-                                    <div class="llm-description">${this.llmCharacteristics.gemini.description}</div>
-                                    <div class="llm-details">${this.llmCharacteristics.gemini.details}</div>
-                                </div>
-                            </button>
-                            <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
-                                <div class="llm-option-content">
-                                    <div class="llm-option-header">
-                                        <span class="llm-icon">${this.llmCharacteristics.perplexity.icon}</span>
-                                        <span class="llm-name">${this.llmCharacteristics.perplexity.name}</span>
-                                    </div>
-                                    <div class="llm-description">${this.llmCharacteristics.perplexity.description}</div>
-                                    <div class="llm-details">${this.llmCharacteristics.perplexity.details}</div>
-                                </div>
-                            </button>
-                            <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
-                                <div class="llm-option-content">
-                                    <div class="llm-option-header">
-                                        <span class="llm-icon">${this.llmCharacteristics.grok.icon}</span>
-                                        <span class="llm-name">${this.llmCharacteristics.grok.name}</span>
-                                    </div>
-                                    <div class="llm-description">${this.llmCharacteristics.grok.description}</div>
-                                    <div class="llm-details">${this.llmCharacteristics.grok.details}</div>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         `).join('');
@@ -695,31 +650,27 @@ class DualTextWriter {
             button.addEventListener('click', button._deleteHandler);
         });
         
-        // LLM 검증 버튼들 바인딩
-        llmButtons.forEach((button, index) => {
-            const itemId = button.getAttribute('data-item-id');
+        // 패널 기반 LLM 검증 버튼들 바인딩
+        const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
+        panelLlmButtons.forEach((button, index) => {
+            const panel = button.getAttribute('data-panel');
             const llmService = button.getAttribute('data-llm');
             
-            console.log(`LLM 버튼 ${index} 바인딩:`, { itemId, llmService });
+            console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
             
             // 기존 이벤트 리스너 제거
-            button.removeEventListener('click', button._llmHandler);
+            button.removeEventListener('click', button._panelLlmHandler);
             
             // 새로운 이벤트 핸들러 생성 및 바인딩
-            button._llmHandler = (e) => {
+            button._panelLlmHandler = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('직접 LLM 버튼 클릭:', { itemId, llmService });
+                console.log('패널 LLM 버튼 클릭:', { panel, llmService });
                 
-                // 디버깅을 위한 추가 로그
-                console.log('버튼 요소:', button);
-                console.log('클릭된 요소:', e.target);
-                console.log('이벤트 타겟의 부모:', e.target.closest('.llm-option'));
-                
-                this.validateWithLLM(itemId, llmService);
+                this.validatePanelWithLLM(panel, llmService);
             };
             
-            button.addEventListener('click', button._llmHandler);
+            button.addEventListener('click', button._panelLlmHandler);
         });
         
         console.log('직접 이벤트 바인딩 완료');
@@ -1001,6 +952,61 @@ class DualTextWriter {
         };
         
         console.log('LLM 검증 시스템 초기화 완료');
+    }
+    
+    // 패널 기반 LLM 검증 실행
+    async validatePanelWithLLM(panel, llmService) {
+        console.log('패널 LLM 검증 시작:', { panel, llmService });
+        
+        try {
+            // 패널에 따른 텍스트 영역 선택
+            let textArea, panelType;
+            if (panel === 'reference') {
+                textArea = document.getElementById('ref-text-input');
+                panelType = '레퍼런스 글';
+            } else if (panel === 'writing') {
+                textArea = document.getElementById('edit-text-input');
+                panelType = '수정/작성 글';
+            } else {
+                console.error('지원하지 않는 패널:', panel);
+                this.showMessage('지원하지 않는 패널입니다.', 'error');
+                return;
+            }
+            
+            // 텍스트 내용 가져오기
+            const content = textArea.value.trim();
+            if (!content) {
+                this.showMessage(`${panelType}이 비어있습니다. 먼저 글을 작성해주세요.`, 'warning');
+                return;
+            }
+            
+            // LLM 서비스 정보 가져오기
+            const llmInfo = this.llmCharacteristics[llmService];
+            if (!llmInfo) {
+                console.error('지원하지 않는 LLM 서비스:', llmService);
+                this.showMessage('지원하지 않는 LLM 서비스입니다.', 'error');
+                return;
+            }
+            
+            // 프롬프트 생성
+            const prompt = this.llmPrompts[llmService];
+            const fullText = `${prompt}\n\n--- ${panelType} ---\n${content}`;
+            
+            console.log('패널 검증 텍스트 생성:', { panel, llmService, contentLength: content.length });
+            
+            // 클립보드에 복사
+            await this.copyToClipboard(fullText);
+            
+            // LLM 사이트 열기
+            this.openLLMSite(llmService, fullText);
+            
+            // 성공 메시지
+            this.showMessage(`${panelType}에 대한 ${llmInfo.name} 검증을 위해 새 탭이 열렸습니다. 프롬프트가 클립보드에 복사되었습니다.`, 'success');
+            
+        } catch (error) {
+            console.error('패널 LLM 검증 실행 실패:', error);
+            this.showMessage('LLM 검증 실행에 실패했습니다.', 'error');
+        }
     }
     
     // LLM 검증 실행
