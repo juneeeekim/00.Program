@@ -1729,43 +1729,87 @@ class DualTextWriter {
                     <button class="btn-primary btn-copy-only" 
                             id="copy-only-btn"
                             lang="${currentLang}"
-                            aria-label="클립보드에만 복사"
-                            onclick="dualTextWriter.copyToClipboardOnly('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
+                            aria-label="클립보드에만 복사">
                         📋 클립보드 복사
                     </button>
                     <button class="btn-primary btn-threads-only" 
                             id="threads-only-btn"
                             lang="${currentLang}"
-                            aria-label="Threads 페이지만 열기"
-                            onclick="dualTextWriter.openThreadsOnly()">
+                            aria-label="Threads 페이지만 열기">
                         🚀 Threads 열기
                     </button>
                     <button class="btn-success btn-both" 
                             id="both-btn"
                             lang="${currentLang}"
-                            aria-label="클립보드 복사하고 Threads 페이지 열기"
-                            onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
+                            aria-label="클립보드 복사하고 Threads 페이지 열기">
                         📋🚀 둘 다 실행
                     </button>
                     <button class="btn-secondary" 
                             id="cancel-btn"
                             lang="${currentLang}"
-                            aria-label="모달 닫기"
-                            onclick="this.closest('.optimization-modal').remove()">${this.t('cancelButton')}</button>
+                            aria-label="모달 닫기">
+                        ${this.t('cancelButton')}
+                    </button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
         
+        // 버튼 클릭 이벤트 직접 바인딩 (동적 생성된 모달)
+        setTimeout(() => {
+            // 클립보드 복사 버튼
+            const copyBtn = modal.querySelector('#copy-only-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const content = this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''));
+                    console.log('🔍 클립보드 복사 버튼 클릭 감지');
+                    this.copyToClipboardOnly(content, e);
+                });
+            }
+            
+            // Threads 열기 버튼
+            const threadsBtn = modal.querySelector('#threads-only-btn');
+            if (threadsBtn) {
+                threadsBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔍 Threads 열기 버튼 클릭 감지');
+                    this.openThreadsOnly();
+                });
+            }
+            
+            // 둘 다 실행 버튼
+            const bothBtn = modal.querySelector('#both-btn');
+            if (bothBtn) {
+                bothBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const content = this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''));
+                    console.log('🔍 둘 다 실행 버튼 클릭 감지');
+                    this.proceedWithPosting(content, e);
+                });
+            }
+            
+            // 취소 버튼
+            const cancelBtn = modal.querySelector('#cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('🔍 취소 버튼 클릭 감지');
+                    modal.remove();
+                });
+            }
+        }, 10);
+        
         // 접근성 강화: 포커스 관리
-        const proceedBtn = modal.querySelector('#proceed-btn');
-        const cancelBtn = modal.querySelector('#cancel-btn');
+        const firstBtn = modal.querySelector('#copy-only-btn');
         
         // 첫 번째 버튼에 포커스
         setTimeout(() => {
-            proceedBtn.focus();
-        }, 100);
+            if (firstBtn) {
+                firstBtn.focus();
+            }
+        }, 150);
         
         // ESC 키로 모달 닫기
         const handleEscape = (e) => {
@@ -1781,31 +1825,40 @@ class DualTextWriter {
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
         
-        const handleTabKey = (e) => {
-            if (e.key === 'Tab') {
-                if (e.shiftKey) {
-                    if (document.activeElement === firstElement) {
-                        e.preventDefault();
-                        lastElement.focus();
-                    }
-                } else {
-                    if (document.activeElement === lastElement) {
-                        e.preventDefault();
-                        firstElement.focus();
+        if (firstElement && lastElement) {
+            const handleTabKey = (e) => {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstElement) {
+                            e.preventDefault();
+                            lastElement.focus();
+                        }
+                    } else {
+                        if (document.activeElement === lastElement) {
+                            e.preventDefault();
+                            firstElement.focus();
+                        }
                     }
                 }
-            }
-        };
+            };
+            
+            modal.addEventListener('keydown', handleTabKey);
+        }
         
-        modal.addEventListener('keydown', handleTabKey);
-        
-        // 모달이 제거될 때 이벤트 리스너 정리
-        const originalRemove = modal.remove;
-        modal.remove = function() {
+        // 모달이 제거될 때 이벤트 리스너 정리 (간단한 방식)
+        const cleanup = () => {
             document.removeEventListener('keydown', handleEscape);
-            modal.removeEventListener('keydown', handleTabKey);
-            originalRemove.call(this);
+            console.log('✅ 모달 이벤트 리스너 정리됨');
         };
+        
+        // 모달 DOM 제거 시 자동 정리
+        const observer = new MutationObserver(() => {
+            if (!document.body.contains(modal)) {
+                cleanup();
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
     }
     
     // 포스팅 진행 함수 (이벤트 컨텍스트 보존)
