@@ -2,6 +2,9 @@ class DualTextWriter {
     constructor() {
         // Firebase 설정
         this.auth = null;
+        
+        // 사용자 정의 해시태그 설정 (기본값)
+        this.defaultHashtags = ['#writing', '#content', '#threads'];
         this.db = null;
         this.currentUser = null;
         this.isFirebaseReady = false;
@@ -189,6 +192,24 @@ class DualTextWriter {
             console.log('✅ 반자동화 포스팅 버튼 이벤트 바인딩 완료');
         } else {
             console.error('❌ 반자동화 포스팅 버튼을 찾을 수 없습니다!');
+        }
+        
+        // 해시태그 설정 버튼 이벤트 바인딩
+        const hashtagSettingsBtn = document.getElementById('hashtag-settings-btn');
+        if (hashtagSettingsBtn) {
+            hashtagSettingsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showHashtagSettings();
+            });
+            
+            // 초기 해시태그 표시 업데이트
+            setTimeout(() => {
+                this.updateHashtagsDisplay();
+            }, 100);
+            
+            console.log('✅ 해시태그 설정 버튼 이벤트 바인딩 완료');
+        } else {
+            console.error('❌ 해시태그 설정 버튼을 찾을 수 없습니다!');
         }
         
         // 개발 모드에서 자동 테스트 실행
@@ -1367,6 +1388,49 @@ class DualTextWriter {
         return hashtags.map(tag => tag.toLowerCase());
     }
     
+    // 사용자 정의 해시태그 가져오기
+    getUserHashtags() {
+        try {
+            const saved = localStorage.getItem('userHashtags');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return Array.isArray(parsed) && parsed.length > 0 ? parsed : this.defaultHashtags;
+            }
+        } catch (error) {
+            console.error('해시태그 불러오기 실패:', error);
+        }
+        return this.defaultHashtags;
+    }
+    
+    // 사용자 정의 해시태그 저장
+    saveUserHashtags(hashtags) {
+        try {
+            // 입력 검증
+            if (!Array.isArray(hashtags) || hashtags.length === 0) {
+                console.warn('유효하지 않은 해시태그 배열');
+                return false;
+            }
+            
+            // 해시태그 형식 검증
+            const validHashtags = hashtags
+                .map(tag => tag.trim())
+                .filter(tag => tag.startsWith('#') && tag.length > 1)
+                .filter(tag => tag.length <= 50); // 길이 제한
+            
+            if (validHashtags.length === 0) {
+                console.warn('유효한 해시태그가 없습니다');
+                return false;
+            }
+            
+            localStorage.setItem('userHashtags', JSON.stringify(validHashtags));
+            console.log('해시태그 저장 완료:', validHashtags);
+            return true;
+        } catch (error) {
+            console.error('해시태그 저장 실패:', error);
+            return false;
+        }
+    }
+    
     // Threads 포맷팅 함수 (XSS 방지 포함)
     formatForThreads(content) {
         // XSS 방지를 위한 HTML 이스케이프
@@ -1480,7 +1544,8 @@ class DualTextWriter {
             // 4단계: 해시태그 자동 추출/추가 (보안 검증 포함)
             const hashtags = this.extractHashtags(optimized.optimized);
             if (hashtags.length === 0) {
-                optimized.hashtags = ['#writing', '#content', '#threads'];
+                // 사용자 정의 해시태그 사용
+                optimized.hashtags = this.getUserHashtags();
                 optimized.suggestions.push('해시태그를 추가했습니다.');
             } else {
                 // 해시태그 보안 검증
@@ -2194,6 +2259,107 @@ class DualTextWriter {
             if (modal) {
                 modal.remove();
             }
+        }
+    }
+    
+    // 해시태그 설정 모달 표시
+    showHashtagSettings() {
+        const currentLang = this.detectLanguage();
+        const currentHashtags = this.getUserHashtags();
+        
+        const modal = document.createElement('div');
+        modal.className = 'hashtag-settings-modal';
+        modal.setAttribute('lang', currentLang);
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>📌 해시태그 설정</h3>
+                <p>반자동 포스팅 시 사용될 기본 해시태그를 설정하세요.</p>
+                
+                <div class="hashtag-input-section">
+                    <label for="hashtag-input">해시태그 (쉼표로 구분):</label>
+                    <input type="text" id="hashtag-input" 
+                           placeholder="예: #writing, #content, #threads"
+                           value="${currentHashtags.join(', ')}">
+                    <small>예: #writing, #content, #threads</small>
+                </div>
+                
+                <div class="hashtag-examples">
+                    <h4>추천 해시태그:</h4>
+                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#writing, #content, #threads'">
+                        📝 일반 글 작성
+                    </button>
+                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#생각, #일상, #daily'">
+                        💭 일상 글
+                    </button>
+                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#경제, #투자, #finance'">
+                        💰 경제/투자
+                    </button>
+                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#기술, #개발, #tech'">
+                        🚀 기술/개발
+                    </button>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-primary" lang="${currentLang}" onclick="dualTextWriter.saveHashtagSettings()">💾 저장</button>
+                    <button class="btn-secondary" lang="${currentLang}" onclick="this.closest('.hashtag-settings-modal').remove()">❌ 취소</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 언어 최적화 적용
+        this.applyLanguageOptimization(modal, currentLang);
+        
+        // 입력 필드에 포커스
+        setTimeout(() => {
+            const input = modal.querySelector('#hashtag-input');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 100);
+    }
+    
+    // 해시태그 설정 저장
+    saveHashtagSettings() {
+        const input = document.getElementById('hashtag-input');
+        if (input) {
+            const inputValue = input.value.trim();
+            
+            if (!inputValue) {
+                this.showMessage('⚠️ 해시태그를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            // 쉼표로 분리하여 배열로 변환
+            const hashtags = inputValue
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
+            
+            if (this.saveUserHashtags(hashtags)) {
+                this.showMessage('✅ 해시태그가 저장되었습니다!', 'success');
+                this.updateHashtagsDisplay();
+                
+                // 모달 닫기
+                const modal = document.querySelector('.hashtag-settings-modal');
+                if (modal) {
+                    modal.remove();
+                }
+            } else {
+                this.showMessage('❌ 해시태그 저장에 실패했습니다. 형식을 확인해주세요.', 'error');
+            }
+        }
+    }
+    
+    // 해시태그 표시 업데이트
+    updateHashtagsDisplay() {
+        const display = document.getElementById('current-hashtags-display');
+        if (display) {
+            const hashtags = this.getUserHashtags();
+            display.textContent = hashtags.join(' ');
         }
     }
     
