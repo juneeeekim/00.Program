@@ -1508,6 +1508,10 @@ class DualTextWriter {
     
     // 폴백 클립보드 복사 함수
     fallbackCopyToClipboard(text) {
+        console.log('🔄 폴백 클립보드 복사 시작');
+        console.log('📝 폴백 복사할 텍스트:', text);
+        console.log('📝 폴백 텍스트 길이:', text ? text.length : 'undefined');
+        
         return new Promise((resolve, reject) => {
             try {
                 const textArea = document.createElement('textarea');
@@ -1520,23 +1524,31 @@ class DualTextWriter {
                 textArea.setAttribute('aria-hidden', 'true');
                 
                 document.body.appendChild(textArea);
+                console.log('✅ textarea 생성 및 DOM 추가 완료');
                 
                 // 모바일 지원을 위한 선택 범위 설정
                 if (textArea.setSelectionRange) {
                     textArea.setSelectionRange(0, text.length);
+                    console.log('✅ setSelectionRange 사용');
                 } else {
                     textArea.select();
+                    console.log('✅ select() 사용');
                 }
                 
                 const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
+                console.log('✅ textarea 제거 완료');
+                console.log('📋 execCommand 결과:', successful);
                 
                 if (successful) {
+                    console.log('✅ 폴백 복사 성공');
                     resolve(true);
                 } else {
+                    console.error('❌ execCommand 복사 실패');
                     reject(new Error('execCommand 복사 실패'));
                 }
             } catch (error) {
+                console.error('❌ 폴백 복사 중 오류:', error);
                 reject(error);
             }
         });
@@ -1557,56 +1569,86 @@ class DualTextWriter {
     
     // 클립보드 자동화 (완전한 에러 처리 및 폴백)
     async copyToClipboardWithFormat(content) {
+        console.log('🔍 copyToClipboardWithFormat 시작');
+        console.log('📝 입력 내용:', content);
+        console.log('📝 입력 타입:', typeof content);
+        
         const button = document.getElementById('semi-auto-post-btn');
         
         try {
             // 로딩 상태 표시
-            this.showLoadingState(button, true);
+            if (button) {
+                this.showLoadingState(button, true);
+            }
             
             // 1단계: 입력 검증 강화
             if (!content || typeof content !== 'string') {
+                console.error('❌ 유효하지 않은 내용:', content);
                 throw new Error('유효하지 않은 내용입니다.');
             }
             
+            console.log('✅ 1단계: 입력 검증 통과');
+            
             // 2단계: Threads 최적화 포맷으로 변환
+            console.log('🔄 2단계: 포맷팅 시작...');
             const formattedContent = this.formatForThreads(content);
+            console.log('📝 포맷팅된 내용:', formattedContent);
+            console.log('📝 포맷팅된 내용 길이:', formattedContent ? formattedContent.length : 'undefined');
+            
             if (!formattedContent || formattedContent.length === 0) {
+                console.error('❌ 포맷팅된 내용이 비어있음');
                 throw new Error('포맷팅된 내용이 비어있습니다.');
             }
             
+            console.log('✅ 2단계: 포맷팅 완료');
+            
             // 클립보드 API 지원 확인
+            console.log('🔄 3단계: 클립보드 API 확인...');
+            console.log('📋 navigator.clipboard 존재:', !!navigator.clipboard);
+            console.log('🔒 isSecureContext:', window.isSecureContext);
+            
             if (navigator.clipboard && window.isSecureContext) {
                 try {
+                    console.log('📋 클립보드 API로 복사 시도...');
                     await navigator.clipboard.writeText(formattedContent);
+                    console.log('✅ 클립보드 API 복사 성공');
                     this.showMessage('✅ 내용이 클립보드에 복사되었습니다!', 'success');
                     return true;
                 } catch (clipboardError) {
-                    console.warn('Clipboard API 실패, 폴백 방법 사용:', clipboardError);
+                    console.warn('❌ Clipboard API 실패, 폴백 방법 사용:', clipboardError);
                     throw clipboardError;
                 }
             } else {
+                console.warn('❌ Clipboard API 미지원');
                 throw new Error('Clipboard API 미지원');
             }
             
         } catch (error) {
-            console.error('클립보드 복사 실패:', error);
+            console.error('❌ 클립보드 복사 실패:', error);
+            console.error('❌ 오류 상세:', error.stack);
             
             try {
                 // 폴백 방법 시도
+                console.log('🔄 폴백 방법 시도...');
                 await this.fallbackCopyToClipboard(formattedContent);
+                console.log('✅ 폴백 방법 복사 성공');
                 this.showMessage('✅ 내용이 클립보드에 복사되었습니다! (폴백 방법)', 'success');
                 return true;
             } catch (fallbackError) {
-                console.error('폴백 복사도 실패:', fallbackError);
+                console.error('❌ 폴백 복사도 실패:', fallbackError);
                 this.showMessage('❌ 클립보드 복사에 실패했습니다. 수동으로 복사해주세요.', 'error');
                 
                 // 수동 복사를 위한 텍스트 영역 표시
+                console.log('🔄 수동 복사 모달 표시...');
                 this.showManualCopyModal(formattedContent);
                 return false;
             }
         } finally {
             // 로딩 상태 해제
-            this.showLoadingState(button, false);
+            if (button) {
+                this.showLoadingState(button, false);
+            }
+            console.log('✅ 로딩 상태 해제 완료');
         }
     }
     
@@ -1683,7 +1725,7 @@ class DualTextWriter {
                     <button class="btn-primary btn-copy-only" 
                             id="copy-only-btn"
                             aria-label="클립보드에만 복사"
-                            onclick="dualTextWriter.copyToClipboardOnly('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}')">
+                            onclick="dualTextWriter.copyToClipboardOnly('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
                         📋 클립보드 복사
                     </button>
                     <button class="btn-primary btn-threads-only" 
@@ -1695,7 +1737,7 @@ class DualTextWriter {
                     <button class="btn-success btn-both" 
                             id="both-btn"
                             aria-label="클립보드 복사하고 Threads 페이지 열기"
-                            onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}')">
+                            onclick="dualTextWriter.proceedWithPosting('${this.escapeHtml(optimized.optimized + (optimized.hashtags.length > 0 ? '\n\n' + optimized.hashtags.join(' ') : ''))}', event)">
                         📋🚀 둘 다 실행
                     </button>
                     <button class="btn-secondary" 
@@ -1758,38 +1800,72 @@ class DualTextWriter {
         };
     }
     
-    // 포스팅 진행 함수
-    async proceedWithPosting(formattedContent) {
+    // 포스팅 진행 함수 (이벤트 컨텍스트 보존)
+    async proceedWithPosting(formattedContent, event = null) {
+        console.log('📋🚀 둘 다 실행 시작');
+        console.log('🎯 이벤트 컨텍스트:', event ? '보존됨' : '없음');
+        
         try {
-            // 클립보드에 복사
-            const success = await this.copyToClipboardWithFormat(formattedContent);
+            // 클립보드에 복사 (이벤트 컨텍스트 보존)
+            let success = false;
+            
+            if (event) {
+                console.log('🚀 이벤트 컨텍스트에서 즉시 복사 시도');
+                success = await this.copyToClipboardImmediate(formattedContent);
+            } else {
+                console.log('🔄 기존 방법으로 복사 시도');
+                success = await this.copyToClipboardWithFormat(formattedContent);
+            }
             
             if (success) {
-                // Threads 새 탭 열기 (올바른 URL 사용)
-                const threadsUrl = this.getThreadsUrl();
-                console.log('🔗 Threads URL:', threadsUrl);
-                window.open(threadsUrl, '_blank', 'noopener,noreferrer');
-                
-                // 사용자 가이드 표시
-                this.showPostingGuide();
-                
-                // 모달 닫기
-                const modal = document.querySelector('.optimization-modal');
-                if (modal) {
-                    modal.remove();
-                }
+                console.log('✅ 클립보드 복사 성공');
+            } else {
+                console.warn('⚠️ 클립보드 복사 실패, Threads는 계속 열기');
             }
+            
+            // Threads 새 탭 열기 (클립보드 복사 성공 여부와 관계없이)
+            const threadsUrl = this.getThreadsUrl();
+            console.log('🔗 Threads URL:', threadsUrl);
+            window.open(threadsUrl, '_blank', 'noopener,noreferrer');
+            
+            // 사용자 가이드 표시
+            this.showPostingGuide();
+            
+            // 모달 닫기
+            const modal = document.querySelector('.optimization-modal');
+            if (modal) {
+                modal.remove();
+            }
+            
         } catch (error) {
             console.error('포스팅 진행 중 오류:', error);
             this.showMessage('포스팅 진행 중 오류가 발생했습니다.', 'error');
         }
     }
     
-    // 클립보드 복사만 실행하는 함수
-    async copyToClipboardOnly(formattedContent) {
+    // 클립보드 복사만 실행하는 함수 (이벤트 컨텍스트 보존)
+    async copyToClipboardOnly(formattedContent, event = null) {
         console.log('📋 클립보드 복사만 실행');
+        console.log('📝 받은 내용:', formattedContent);
+        console.log('📝 내용 타입:', typeof formattedContent);
+        console.log('📝 내용 길이:', formattedContent ? formattedContent.length : 'undefined');
+        console.log('🎯 이벤트 컨텍스트:', event ? '보존됨' : '없음');
         
         try {
+            // 이벤트가 있으면 즉시 클립보드 복사 시도
+            if (event) {
+                console.log('🚀 이벤트 컨텍스트에서 즉시 복사 시도');
+                const success = await this.copyToClipboardImmediate(formattedContent);
+                
+                if (success) {
+                    this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
+                    console.log('✅ 클립보드 복사 완료');
+                    return;
+                }
+            }
+            
+            // 이벤트가 없거나 즉시 복사 실패 시 기존 방법 사용
+            console.log('🔄 기존 방법으로 복사 시도');
             const success = await this.copyToClipboardWithFormat(formattedContent);
             
             if (success) {
@@ -1802,6 +1878,47 @@ class DualTextWriter {
         } catch (error) {
             console.error('❌ 클립보드 복사 중 오류:', error);
             this.showMessage('클립보드 복사 중 오류가 발생했습니다: ' + error.message, 'error');
+        }
+    }
+    
+    // 즉시 클립보드 복사 (이벤트 컨텍스트 보존)
+    async copyToClipboardImmediate(content) {
+        console.log('🚀 즉시 클립보드 복사 시작');
+        
+        try {
+            // 1단계: 입력 검증
+            if (!content || typeof content !== 'string') {
+                throw new Error('유효하지 않은 내용입니다.');
+            }
+            
+            // 2단계: 포맷팅
+            const formattedContent = this.formatForThreads(content);
+            if (!formattedContent || formattedContent.length === 0) {
+                throw new Error('포맷팅된 내용이 비어있습니다.');
+            }
+            
+            console.log('📝 포맷팅된 내용:', formattedContent);
+            
+            // 3단계: 클립보드 API 시도 (이벤트 컨텍스트 내에서)
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    console.log('📋 클립보드 API로 즉시 복사 시도...');
+                    await navigator.clipboard.writeText(formattedContent);
+                    console.log('✅ 클립보드 API 즉시 복사 성공');
+                    return true;
+                } catch (clipboardError) {
+                    console.warn('❌ 클립보드 API 즉시 복사 실패:', clipboardError);
+                    // 폴백으로 execCommand 시도
+                    return await this.fallbackCopyToClipboard(formattedContent);
+                }
+            } else {
+                console.log('🔄 클립보드 API 미지원, 폴백 방법 사용');
+                return await this.fallbackCopyToClipboard(formattedContent);
+            }
+            
+        } catch (error) {
+            console.error('❌ 즉시 클립보드 복사 실패:', error);
+            return false;
         }
     }
     
