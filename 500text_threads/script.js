@@ -1451,15 +1451,23 @@ class DualTextWriter {
         }
     }
     
-    // Threads 포맷팅 함수 (XSS 방지 포함)
+    // Threads 포맷팅 함수 (XSS 방지 포함, 줄바꿈 보존)
     formatForThreads(content) {
-        // XSS 방지를 위한 HTML 이스케이프
-        const escapedContent = this.escapeHtml(content);
+        // XSS 방지를 위한 HTML 이스케이프 (줄바꿈은 보존)
+        if (!content) return '';
         
-        // 줄바꿈 정규화
+        // 줄바꿈 보존하면서 XSS 방지
+        const escapedContent = content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        
+        // 줄바꿈 정규화 (CRLF -> LF)
         const normalizedContent = escapedContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         
-        // 연속 공백 정리
+        // 연속 줄바꿈 정리 (최대 2개까지만)
         const cleanedContent = normalizedContent.replace(/\n{3,}/g, '\n\n');
         
         return cleanedContent.trim();
@@ -1686,18 +1694,15 @@ class DualTextWriter {
             
             console.log('✅ 1단계: 입력 검증 통과');
             
-            // 2단계: Threads 최적화 포맷으로 변환
-            console.log('🔄 2단계: 포맷팅 시작...');
-            const formattedContent = this.formatForThreads(content);
-            console.log('📝 포맷팅된 내용:', formattedContent);
-            console.log('📝 포맷팅된 내용 길이:', formattedContent ? formattedContent.length : 'undefined');
+            // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
+            console.log('📝 원본 내용 사용 (줄바꿈 보존):', content);
             
-            if (!formattedContent || formattedContent.length === 0) {
-                console.error('❌ 포맷팅된 내용이 비어있음');
-                throw new Error('포맷팅된 내용이 비어있습니다.');
+            if (!content || content.length === 0) {
+                console.error('❌ 내용이 비어있음');
+                throw new Error('내용이 비어있습니다.');
             }
             
-            console.log('✅ 2단계: 포맷팅 완료');
+            console.log('✅ 2단계: 검증 완료');
             
             // 클립보드 API 지원 확인
             console.log('🔄 3단계: 클립보드 API 확인...');
@@ -1707,7 +1712,7 @@ class DualTextWriter {
             if (navigator.clipboard && window.isSecureContext) {
                 try {
                     console.log('📋 클립보드 API로 복사 시도...');
-                    await navigator.clipboard.writeText(formattedContent);
+                    await navigator.clipboard.writeText(content);
                     console.log('✅ 클립보드 API 복사 성공');
                     this.showMessage('✅ 내용이 클립보드에 복사되었습니다!', 'success');
                     return true;
@@ -1727,7 +1732,7 @@ class DualTextWriter {
             try {
                 // 폴백 방법 시도
                 console.log('🔄 폴백 방법 시도...');
-                await this.fallbackCopyToClipboard(formattedContent);
+                await this.fallbackCopyToClipboard(content);
                 console.log('✅ 폴백 방법 복사 성공');
                 this.showMessage('✅ 내용이 클립보드에 복사되었습니다! (폴백 방법)', 'success');
                 return true;
@@ -2051,29 +2056,24 @@ class DualTextWriter {
                 throw new Error('유효하지 않은 내용입니다.');
             }
             
-            // 2단계: 포맷팅
-            const formattedContent = this.formatForThreads(content);
-            if (!formattedContent || formattedContent.length === 0) {
-                throw new Error('포맷팅된 내용이 비어있습니다.');
-            }
-            
-            console.log('📝 포맷팅된 내용:', formattedContent);
+            // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
+            console.log('📝 원본 내용 (줄바꿈 보존):', content);
             
             // 3단계: 클립보드 API 시도 (이벤트 컨텍스트 내에서)
             if (navigator.clipboard && window.isSecureContext) {
                 try {
                     console.log('📋 클립보드 API로 즉시 복사 시도...');
-                    await navigator.clipboard.writeText(formattedContent);
+                    await navigator.clipboard.writeText(content);
                     console.log('✅ 클립보드 API 즉시 복사 성공');
                     return true;
                 } catch (clipboardError) {
                     console.warn('❌ 클립보드 API 즉시 복사 실패:', clipboardError);
                     // 폴백으로 execCommand 시도
-                    return await this.fallbackCopyToClipboard(formattedContent);
+                    return await this.fallbackCopyToClipboard(content);
                 }
             } else {
                 console.log('🔄 클립보드 API 미지원, 폴백 방법 사용');
-                return await this.fallbackCopyToClipboard(formattedContent);
+                return await this.fallbackCopyToClipboard(content);
             }
             
         } catch (error) {
