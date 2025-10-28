@@ -9,6 +9,11 @@ class DualTextWriter {
         this.currentUser = null;
         this.isFirebaseReady = false;
         
+        // 트래킹 관련 속성
+        this.trackingPosts = []; // 트래킹 중인 포스트 목록
+        this.trackingChart = null; // Chart.js 인스턴스
+        this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
+        
         // Firebase 초기화 대기
         this.waitForFirebase();
         
@@ -50,6 +55,13 @@ class DualTextWriter {
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
+        
+        // 트래킹 관련 요소들
+        this.trackingPostsList = document.getElementById('tracking-posts-list');
+        this.trackingChartCanvas = document.getElementById('tracking-chart');
+        this.totalPostsElement = document.getElementById('total-posts');
+        this.totalViewsElement = document.getElementById('total-views');
+        this.totalLikesElement = document.getElementById('total-likes');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -140,6 +152,13 @@ class DualTextWriter {
         if (tabName === 'saved') {
             this.loadSavedTexts();
             this.initSavedFilters();
+        }
+        
+        // 트래킹 탭으로 전환 시 데이터 로드
+        if (tabName === 'tracking') {
+            this.loadTrackingPosts();
+            this.updateTrackingSummary();
+            this.initTrackingChart();
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -661,6 +680,7 @@ class DualTextWriter {
                 <div class="saved-item-actions">
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
                     <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
+                    <button class="action-button btn-tracking" data-action="track" data-item-id="${item.id}">📊 트래킹</button>
                 </div>
             </div>
         `).join('');
@@ -707,6 +727,9 @@ class DualTextWriter {
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
                 this.deleteText(itemId);
+            } else if (action === 'track') {
+                console.log('트래킹 액션 실행:', { itemId });
+                this.startTrackingFromSaved(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
                 // 드롭다운 메뉴 토글은 CSS로 처리됨
@@ -2969,3 +2992,424 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// ==================== 트래킹 기능 메서드들 ====================
+
+// 트래킹 포스트 로드
+DualTextWriter.prototype.loadTrackingPosts = async function() {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(postsRef, window.firebaseOrderBy('postedAt', 'desc'));
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        this.trackingPosts = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            this.trackingPosts.push({
+                id: doc.id,
+                content: data.content,
+                type: data.type || 'edit',
+                postedAt: data.postedAt ? data.postedAt.toDate() : new Date(),
+                trackingEnabled: data.trackingEnabled || false,
+                metrics: data.metrics || [],
+                analytics: data.analytics || {}
+            });
+        });
+        
+        console.log(`${this.trackingPosts.length}개의 트래킹 포스트를 불러왔습니다.`);
+        this.renderTrackingPosts();
+        
+    } catch (error) {
+        console.error('트래킹 포스트 불러오기 실패:', error);
+        this.trackingPosts = [];
+    }
+};
+
+// 트래킹 포스트 렌더링
+DualTextWriter.prototype.renderTrackingPosts = function() {
+    if (!this.trackingPostsList) return;
+    
+    if (this.trackingPosts.length === 0) {
+        this.trackingPostsList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #666;">
+                <div style="font-size: 3rem; margin-bottom: 20px;">📊</div>
+                <h3>트래킹 중인 포스트가 없습니다</h3>
+                <p>저장된 글에서 트래킹을 시작해보세요!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    this.trackingPostsList.innerHTML = this.trackingPosts.map(post => {
+        const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        const statusClass = post.trackingEnabled ? 'active' : 'inactive';
+        const statusText = post.trackingEnabled ? '활성' : '비활성';
+        
+        return `
+            <div class="tracking-post-item" data-post-id="${post.id}">
+                <div class="tracking-post-header">
+                    <div class="tracking-post-title">
+                        ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
+                    </div>
+                    <div class="tracking-post-status ${statusClass}">${statusText}</div>
+                </div>
+                
+                ${latestMetrics ? `
+                    <div class="tracking-post-metrics">
+                        <div class="metric-item">
+                            <div class="metric-icon">👀</div>
+                            <div class="metric-value">${latestMetrics.views || 0}</div>
+                            <div class="metric-label">조회수</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-icon">❤️</div>
+                            <div class="metric-value">${latestMetrics.likes || 0}</div>
+                            <div class="metric-label">좋아요</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-icon">💬</div>
+                            <div class="metric-value">${latestMetrics.comments || 0}</div>
+                            <div class="metric-label">댓글</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-icon">🔄</div>
+                            <div class="metric-value">${latestMetrics.shares || 0}</div>
+                            <div class="metric-label">공유</div>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="tracking-post-actions">
+                    ${post.trackingEnabled ? 
+                        `<button class="tracking-btn primary" onclick="dualTextWriter.addTrackingData('${post.id}')">데이터 추가</button>` :
+                        `<button class="tracking-btn primary" onclick="dualTextWriter.startTracking('${post.id}')">트래킹 시작</button>`
+                    }
+                    <button class="tracking-btn secondary" onclick="dualTextWriter.stopTracking('${post.id}')">트래킹 중지</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// 트래킹 시작
+DualTextWriter.prototype.startTracking = async function(postId) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+        await window.firebaseUpdateDoc(postRef, {
+            trackingEnabled: true,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts.find(p => p.id === postId);
+        if (post) {
+            post.trackingEnabled = true;
+            this.renderTrackingPosts();
+        }
+        
+        console.log('트래킹이 시작되었습니다.');
+        
+    } catch (error) {
+        console.error('트래킹 시작 실패:', error);
+    }
+};
+
+// 트래킹 중지
+DualTextWriter.prototype.stopTracking = async function(postId) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+        await window.firebaseUpdateDoc(postRef, {
+            trackingEnabled: false,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts.find(p => p.id === postId);
+        if (post) {
+            post.trackingEnabled = false;
+            this.renderTrackingPosts();
+        }
+        
+        console.log('트래킹이 중지되었습니다.');
+        
+    } catch (error) {
+        console.error('트래킹 중지 실패:', error);
+    }
+};
+
+// 트래킹 데이터 추가
+DualTextWriter.prototype.addTrackingData = function(postId) {
+    this.currentTrackingPost = postId;
+    this.openTrackingModal();
+};
+
+// 트래킹 모달 열기
+DualTextWriter.prototype.openTrackingModal = function() {
+    const modal = document.getElementById('tracking-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // 폼 초기화
+        document.getElementById('tracking-views').value = '';
+        document.getElementById('tracking-likes').value = '';
+        document.getElementById('tracking-comments').value = '';
+        document.getElementById('tracking-shares').value = '';
+        document.getElementById('tracking-notes').value = '';
+    }
+};
+
+// 트래킹 데이터 저장
+DualTextWriter.prototype.saveTrackingData = async function() {
+    if (!this.currentTrackingPost || !this.currentUser || !this.isFirebaseReady) return;
+    
+    const views = parseInt(document.getElementById('tracking-views').value) || 0;
+    const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
+    const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
+    const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
+    const notes = document.getElementById('tracking-notes').value;
+    
+    const trackingData = {
+        timestamp: window.firebaseServerTimestamp(),
+        views,
+        likes,
+        comments,
+        shares,
+        notes
+    };
+    
+    try {
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', this.currentTrackingPost);
+        const postDoc = await window.firebaseGetDoc(postRef);
+        
+        if (postDoc.exists()) {
+            const postData = postDoc.data();
+            const updatedMetrics = [...(postData.metrics || []), trackingData];
+            
+            // 분석 데이터 계산
+            const analytics = this.calculateAnalytics(updatedMetrics);
+            
+            await window.firebaseUpdateDoc(postRef, {
+                metrics: updatedMetrics,
+                analytics,
+                updatedAt: window.firebaseServerTimestamp()
+            });
+            
+            // 로컬 데이터 업데이트
+            const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
+            if (post) {
+                post.metrics = updatedMetrics;
+                post.analytics = analytics;
+            }
+            
+            this.closeTrackingModal();
+            this.renderTrackingPosts();
+            this.updateTrackingSummary();
+            this.updateTrackingChart();
+            
+            console.log('트래킹 데이터가 저장되었습니다.');
+        }
+        
+    } catch (error) {
+        console.error('트래킹 데이터 저장 실패:', error);
+    }
+};
+
+// 트래킹 모달 닫기
+DualTextWriter.prototype.closeTrackingModal = function() {
+    const modal = document.getElementById('tracking-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    this.currentTrackingPost = null;
+};
+
+// 분석 데이터 계산
+DualTextWriter.prototype.calculateAnalytics = function(metrics) {
+    if (metrics.length === 0) return {};
+    
+    const latest = metrics[metrics.length - 1];
+    const first = metrics[0];
+    
+    return {
+        totalViews: latest.views,
+        totalLikes: latest.likes,
+        totalComments: latest.comments,
+        totalShares: latest.shares,
+        viewsGrowth: latest.views - first.views,
+        likesGrowth: latest.likes - first.likes,
+        commentsGrowth: latest.comments - first.comments,
+        sharesGrowth: latest.shares - first.shares,
+        engagementRate: latest.views > 0 ? 
+            ((latest.likes + latest.comments + latest.shares) / latest.views * 100).toFixed(2) : 0
+    };
+};
+
+// 트래킹 요약 업데이트
+DualTextWriter.prototype.updateTrackingSummary = function() {
+    const totalPosts = this.trackingPosts.length;
+    const totalViews = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.views : 0);
+    }, 0);
+    const totalLikes = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.likes : 0);
+    }, 0);
+    
+    if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
+    if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
+    if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
+};
+
+// 트래킹 차트 초기화
+DualTextWriter.prototype.initTrackingChart = function() {
+    if (!this.trackingChartCanvas) return;
+    
+    const ctx = this.trackingChartCanvas.getContext('2d');
+    
+    // 기존 차트가 있다면 제거
+    if (this.trackingChart) {
+        this.trackingChart.destroy();
+    }
+    
+    this.trackingChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '조회수',
+                data: [],
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4
+            }, {
+                label: '좋아요',
+                data: [],
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '포스트 성과 추이'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    this.updateTrackingChart();
+};
+
+// 트래킹 차트 업데이트
+DualTextWriter.prototype.updateTrackingChart = function() {
+    if (!this.trackingChart) return;
+    
+    // 최근 7일간의 데이터만 표시
+    const last7Days = [];
+    const viewsData = [];
+    const likesData = [];
+    
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        last7Days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
+        
+        // 해당 날짜의 모든 포스트 데이터 합계
+        let dayViews = 0;
+        let dayLikes = 0;
+        
+        this.trackingPosts.forEach(post => {
+            post.metrics.forEach(metric => {
+                const metricDate = metric.timestamp.toDate();
+                if (metricDate.toDateString() === date.toDateString()) {
+                    dayViews += metric.views || 0;
+                    dayLikes += metric.likes || 0;
+                }
+            });
+        });
+        
+        viewsData.push(dayViews);
+        likesData.push(dayLikes);
+    }
+    
+    this.trackingChart.data.labels = last7Days;
+    this.trackingChart.data.datasets[0].data = viewsData;
+    this.trackingChart.data.datasets[1].data = likesData;
+    this.trackingChart.update();
+};
+
+// 저장된 글에서 트래킹 시작
+DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        // 저장된 텍스트 정보 가져오기
+        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', textId);
+        const textDoc = await window.firebaseGetDoc(textRef);
+        
+        if (!textDoc.exists()) {
+            console.error('텍스트를 찾을 수 없습니다.');
+            return;
+        }
+        
+        const textData = textDoc.data();
+        
+        // 포스트 컬렉션에 추가
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const postData = {
+            content: textData.content,
+            type: textData.type || 'edit',
+            postedAt: window.firebaseServerTimestamp(),
+            trackingEnabled: true,
+            metrics: [],
+            analytics: {},
+            createdAt: window.firebaseServerTimestamp(),
+            updatedAt: window.firebaseServerTimestamp()
+        };
+        
+        const docRef = await window.firebaseAddDoc(postsRef, postData);
+        
+        console.log('트래킹 포스트가 생성되었습니다:', docRef.id);
+        
+        // 트래킹 탭으로 전환
+        this.switchTab('tracking');
+        
+        // 트래킹 포스트 목록 새로고침
+        this.loadTrackingPosts();
+        
+    } catch (error) {
+        console.error('트래킹 시작 실패:', error);
+    }
+};
+
+// 전역 함수들
+window.saveTrackingData = function() {
+    if (dualTextWriter) {
+        dualTextWriter.saveTrackingData();
+    }
+};
+
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (modalId === 'tracking-modal' && dualTextWriter) {
+        dualTextWriter.closeTrackingModal();
+    }
+};

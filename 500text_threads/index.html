@@ -62,6 +62,10 @@
                     <span class="tab-icon">💾</span>
                     <span class="tab-text">저장된 글</span>
                 </button>
+                <button class="tab-button" data-tab="tracking">
+                    <span class="tab-icon">📊</span>
+                    <span class="tab-text">트래킹</span>
+                </button>
             </div>
             
             <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
@@ -235,6 +239,42 @@
                 </div>
             </div>
             
+            <!-- 트래킹 탭 콘텐츠 -->
+            <div class="tab-content" id="tracking-tab">
+                <div class="tracking-dashboard">
+                    <h3>📊 트래킹 대시보드</h3>
+                    <div class="tracking-summary">
+                        <div class="summary-card">
+                            <div class="summary-icon">📈</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 포스팅</div>
+                                <div class="summary-value" id="total-posts">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">👀</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 조회수</div>
+                                <div class="summary-value" id="total-views">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">❤️</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 좋아요</div>
+                                <div class="summary-value" id="total-likes">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tracking-chart-container">
+                        <canvas id="tracking-chart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="tracking-posts-list" id="tracking-posts-list">
+                        <!-- 트래킹 중인 포스트 목록 -->
+                    </div>
+                </div>
+            </div>
+            
             <!-- 임시 저장 상태 -->
             <div class="temp-save-status" id="temp-save-status">
                 <span id="temp-save-indicator">💾</span>
@@ -290,6 +330,51 @@
         window.firebaseOrderBy = orderBy;
         window.firebaseServerTimestamp = serverTimestamp;
     </script>
+    
+    <!-- 모달들 -->
+    <div id="copy-modal" class="modal">
+        <div class="modal-content">
+            <h3>복사 완료</h3>
+            <p>클립보드에 복사되었습니다!</p>
+            <button class="btn-primary" onclick="closeModal('copy-modal')">확인</button>
+        </div>
+    </div>
+    
+    <!-- 트래킹 데이터 입력 모달 -->
+    <div id="tracking-modal" class="modal">
+        <div class="modal-content">
+            <h3>📊 트래킹 데이터 입력</h3>
+            <div class="tracking-form">
+                <div class="form-group">
+                    <label for="tracking-views">👀 조회수</label>
+                    <input type="number" id="tracking-views" min="0" placeholder="조회수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-likes">❤️ 좋아요</label>
+                    <input type="number" id="tracking-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-comments">💬 댓글</label>
+                    <input type="number" id="tracking-comments" min="0" placeholder="댓글 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-shares">🔄 공유</label>
+                    <input type="number" id="tracking-shares" min="0" placeholder="공유 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-notes">📝 메모</label>
+                    <textarea id="tracking-notes" placeholder="추가 메모 (선택사항)"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('tracking-modal')">취소</button>
+                <button class="btn-primary" onclick="saveTrackingData()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script src="script.js"></script>
     
