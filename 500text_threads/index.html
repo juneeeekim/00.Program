@@ -224,6 +224,13 @@
             <div class="tab-content" id="saved-tab">
                 <div class="saved-texts">
                     <h3>저장된 글</h3>
+                    <div class="saved-filters">
+                        <div class="segmented-control" role="tablist" aria-label="저장된 글 필터">
+                            <button class="segment-btn active" data-filter="all" role="tab" aria-selected="true">전체</button>
+                            <button class="segment-btn" data-filter="edit" role="tab" aria-selected="false">✏️ 작성</button>
+                            <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
+                        </div>
+                    </div>
                     <div id="saved-list"></div>
                 </div>
             </div>

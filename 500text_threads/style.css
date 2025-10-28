@@ -1154,6 +1154,42 @@ header h1 {
     font-size: 1.3rem;
 }
 
+/* 저장된 글 필터 - 세그먼트 컨트롤 */
+.saved-filters {
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+}
+
+.segmented-control {
+    display: inline-flex;
+    background: #f1f3f5;
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) inset;
+}
+
+.segment-btn {
+    background: transparent;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.segment-btn:hover {
+    background: #e9ecef;
+}
+
+.segment-btn.active {
+    background: white;
+    color: #667eea;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
 /* 개선된 저장된 글 카드 */
 .saved-item {
     background: white;

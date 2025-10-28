@@ -54,6 +54,7 @@ class DualTextWriter {
         this.maxLength = 500;
         this.currentUser = null;
         this.savedTexts = [];
+        this.savedFilter = localStorage.getItem('dualTextWriter_savedFilter') || 'all';
         this.tempSaveInterval = null;
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
@@ -138,6 +139,7 @@ class DualTextWriter {
         // 저장된 글 탭으로 전환할 때 목록 새로고침
         if (tabName === 'saved') {
             this.loadSavedTexts();
+            this.initSavedFilters();
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -164,6 +166,9 @@ class DualTextWriter {
         
         // 탭 이벤트 리스너 설정
         this.initTabListeners();
+
+        // 저장된 글 필터 초기화 (초기 로드 시점에도 반영)
+        setTimeout(() => this.initSavedFilters(), 0);
         
         // 레퍼런스 글 이벤트
         this.refTextInput.addEventListener('input', () => {
@@ -260,6 +265,52 @@ class DualTextWriter {
                 this.runComprehensiveTest();
             }, 2000);
         }
+    }
+
+    // 저장된 글 필터 UI 초기화 및 이벤트 바인딩
+    initSavedFilters() {
+        const container = document.querySelector('#saved-tab .segmented-control');
+        if (!container) return;
+        const buttons = container.querySelectorAll('.segment-btn');
+        if (!buttons || buttons.length === 0) return;
+        
+        // 활성 상태 복원
+        buttons.forEach(btn => {
+            const filter = btn.getAttribute('data-filter');
+            const isActive = filter === this.savedFilter;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        
+        // 클릭 이벤트 바인딩
+        buttons.forEach(btn => {
+            btn.removeEventListener('click', btn._filterHandler);
+            btn._filterHandler = (e) => {
+                e.preventDefault();
+                const filter = btn.getAttribute('data-filter');
+                this.setSavedFilter(filter);
+            };
+            btn.addEventListener('click', btn._filterHandler);
+        });
+    }
+    
+    setSavedFilter(filter) {
+        if (!['all', 'edit', 'reference'].includes(filter)) return;
+        this.savedFilter = filter;
+        localStorage.setItem('dualTextWriter_savedFilter', filter);
+        
+        // UI 업데이트
+        const container = document.querySelector('#saved-tab .segmented-control');
+        if (container) {
+            container.querySelectorAll('.segment-btn').forEach(btn => {
+                const isActive = btn.getAttribute('data-filter') === filter;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        }
+        
+        // 목록 렌더링
+        this.renderSavedTexts();
     }
     
     updateCharacterCount(panel) {
@@ -582,13 +633,24 @@ class DualTextWriter {
     
     renderSavedTexts() {
         console.log('renderSavedTexts 호출됨:', this.savedTexts);
-        
-        if (this.savedTexts.length === 0) {
-            this.savedList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">저장된 글이 없습니다.</p>';
+
+        // 필터 적용
+        let list = this.savedTexts;
+        if (this.savedFilter === 'edit') {
+            list = list.filter(item => item.type === 'edit');
+        } else if (this.savedFilter === 'reference') {
+            list = list.filter(item => item.type === 'reference');
+        }
+
+        if (list.length === 0) {
+            const emptyMsg = this.savedFilter === 'all'
+                ? '저장된 글이 없습니다.'
+                : (this.savedFilter === 'edit' ? '작성 글이 없습니다.' : '레퍼런스 글이 없습니다.');
+            this.savedList.innerHTML = `<p style="color: #666; text-align: center; padding: 20px;">${emptyMsg}</p>`;
             return;
         }
-        
-        this.savedList.innerHTML = this.savedTexts.map((item, index) => `
+
+        this.savedList.innerHTML = list.map((item, index) => `
             <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
                 <div class="saved-item-header">
                     <span class="saved-item-type">${item.type === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
