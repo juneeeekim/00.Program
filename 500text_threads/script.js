@@ -653,13 +653,13 @@ class DualTextWriter {
         this.savedList.innerHTML = list.map((item, index) => `
             <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
                 <div class="saved-item-header">
-                    <span class="saved-item-type">${item.type === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+                    <span class="saved-item-type">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
                     <span class="saved-item-date">${item.date}</span>
                     <span class="saved-item-count">${item.characterCount}자</span>
                 </div>
                 <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
                 <div class="saved-item-actions">
-                    <button class="action-button btn-primary" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
+                    <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
                     <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
                 </div>
             </div>
@@ -1466,12 +1466,20 @@ class DualTextWriter {
             this.savedTexts = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
+                // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
+                let normalizedType = (data.type || '').toString().toLowerCase();
+                if (normalizedType === 'writing') normalizedType = 'edit';
+                if (normalizedType === 'ref') normalizedType = 'reference';
+                if (normalizedType !== 'edit' && normalizedType !== 'reference') {
+                    // 알 수 없는 타입은 편의상 'edit'로 처리
+                    normalizedType = 'edit';
+                }
                 this.savedTexts.push({
                     id: doc.id,
                     content: data.content,
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
                     characterCount: data.characterCount,
-                    type: data.type
+                    type: normalizedType
                 });
             });
             
