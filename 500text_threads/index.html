@@ -242,8 +242,8 @@
             <!-- 트래킹 탭 콘텐츠 -->
             <div class="tab-content" id="tracking-tab">
                 <div class="tracking-dashboard">
-                    <h3>📊 트래킹 대시보드</h3>
-                    <div class="tracking-summary">
+                    <h3>📊 전체 성과 대시보드</h3>
+                    <div class="dashboard-summary">
                         <div class="summary-card">
                             <div class="summary-icon">📈</div>
                             <div class="summary-content">
@@ -265,12 +265,69 @@
                                 <div class="summary-value" id="total-likes">0</div>
                             </div>
                         </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">💬</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 답글</div>
+                                <div class="summary-value" id="total-replies">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">🔄</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 리포스트</div>
+                                <div class="summary-value" id="total-reposts">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">📝</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 인용</div>
+                                <div class="summary-value" id="total-quotes">0</div>
+                            </div>
+                        </div>
                     </div>
+                    
+                    <div class="dashboard-insights">
+                        <div class="insight-card">
+                            <h4>📊 참여율 분석</h4>
+                            <div class="insight-content">
+                                <div class="insight-metric">
+                                    <span class="metric-label">평균 참여율</span>
+                                    <span class="metric-value" id="avg-engagement">0%</span>
+                                </div>
+                                <div class="insight-metric">
+                                    <span class="metric-label">최고 참여율</span>
+                                    <span class="metric-value" id="max-engagement">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="insight-card">
+                            <h4>📈 성장 트렌드</h4>
+                            <div class="insight-content">
+                                <div class="insight-metric">
+                                    <span class="metric-label">조회수 증가</span>
+                                    <span class="metric-value" id="views-growth">+0</span>
+                                </div>
+                                <div class="insight-metric">
+                                    <span class="metric-label">좋아요 증가</span>
+                                    <span class="metric-value" id="likes-growth">+0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="tracking-chart-container">
+                        <h4>📈 성과 추이 (최근 7일)</h4>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
-                    <div class="tracking-posts-list" id="tracking-posts-list">
-                        <!-- 트래킹 중인 포스트 목록 -->
+                    
+                    <div class="top-performing-posts">
+                        <h4>🏆 인기 포스트 TOP 5</h4>
+                        <div id="top-posts-list">
+                            <!-- 인기 포스트 목록 -->
+                        </div>
                     </div>
                 </div>
             </div>

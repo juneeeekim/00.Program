@@ -57,11 +57,18 @@ class DualTextWriter {
         this.tabContents = document.querySelectorAll('.tab-content');
         
         // 트래킹 관련 요소들
-        this.trackingPostsList = document.getElementById('tracking-posts-list');
         this.trackingChartCanvas = document.getElementById('tracking-chart');
         this.totalPostsElement = document.getElementById('total-posts');
         this.totalViewsElement = document.getElementById('total-views');
         this.totalLikesElement = document.getElementById('total-likes');
+        this.totalRepliesElement = document.getElementById('total-replies');
+        this.totalRepostsElement = document.getElementById('total-reposts');
+        this.totalQuotesElement = document.getElementById('total-quotes');
+        this.avgEngagementElement = document.getElementById('avg-engagement');
+        this.maxEngagementElement = document.getElementById('max-engagement');
+        this.viewsGrowthElement = document.getElementById('views-growth');
+        this.likesGrowthElement = document.getElementById('likes-growth');
+        this.topPostsListElement = document.getElementById('top-posts-list');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -157,8 +164,10 @@ class DualTextWriter {
         // 트래킹 탭으로 전환 시 데이터 로드
         if (tabName === 'tracking') {
             this.loadTrackingPosts();
-            this.updateTrackingSummary();
+            this.updateDashboardSummary();
+            this.updateDashboardInsights();
             this.initTrackingChart();
+            this.updateTopPosts();
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -3257,7 +3266,9 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             
             this.closeTrackingModal();
             this.renderTrackingPosts();
-            this.updateTrackingSummary();
+            this.updateDashboardSummary();
+            this.updateDashboardInsights();
+            this.updateTopPosts();
             this.updateTrackingChart();
             
             // 저장된 글 목록도 새로고침
@@ -3303,8 +3314,8 @@ DualTextWriter.prototype.calculateAnalytics = function(metrics) {
     };
 };
 
-// 트래킹 요약 업데이트
-DualTextWriter.prototype.updateTrackingSummary = function() {
+// 대시보드 요약 업데이트
+DualTextWriter.prototype.updateDashboardSummary = function() {
     const totalPosts = this.trackingPosts.length;
     const totalViews = this.trackingPosts.reduce((sum, post) => {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
@@ -3314,10 +3325,108 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         return sum + (latest ? latest.likes : 0);
     }, 0);
+    const totalReplies = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.replies : 0);
+    }, 0);
+    const totalReposts = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.reposts : 0);
+    }, 0);
+    const totalQuotes = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.quotes : 0);
+    }, 0);
     
     if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
     if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
     if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
+    if (this.totalRepliesElement) this.totalRepliesElement.textContent = totalReplies.toLocaleString();
+    if (this.totalRepostsElement) this.totalRepostsElement.textContent = totalReposts.toLocaleString();
+    if (this.totalQuotesElement) this.totalQuotesElement.textContent = totalQuotes.toLocaleString();
+};
+
+// 대시보드 인사이트 업데이트
+DualTextWriter.prototype.updateDashboardInsights = function() {
+    if (this.trackingPosts.length === 0) {
+        if (this.avgEngagementElement) this.avgEngagementElement.textContent = '0%';
+        if (this.maxEngagementElement) this.maxEngagementElement.textContent = '0%';
+        if (this.viewsGrowthElement) this.viewsGrowthElement.textContent = '+0';
+        if (this.likesGrowthElement) this.likesGrowthElement.textContent = '+0';
+        return;
+    }
+    
+    // 참여율 계산
+    const engagementRates = this.trackingPosts.map(post => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        if (!latest || latest.views === 0) return 0;
+        return ((latest.likes + latest.replies + latest.reposts + latest.quotes) / latest.views * 100);
+    });
+    
+    const avgEngagement = engagementRates.reduce((sum, rate) => sum + rate, 0) / engagementRates.length;
+    const maxEngagement = Math.max(...engagementRates);
+    
+    // 성장률 계산 (첫 번째와 마지막 메트릭 비교)
+    let totalViewsGrowth = 0;
+    let totalLikesGrowth = 0;
+    
+    this.trackingPosts.forEach(post => {
+        if (post.metrics.length >= 2) {
+            const first = post.metrics[0];
+            const latest = post.metrics[post.metrics.length - 1];
+            totalViewsGrowth += (latest.views - first.views);
+            totalLikesGrowth += (latest.likes - first.likes);
+        }
+    });
+    
+    if (this.avgEngagementElement) this.avgEngagementElement.textContent = avgEngagement.toFixed(1) + '%';
+    if (this.maxEngagementElement) this.maxEngagementElement.textContent = maxEngagement.toFixed(1) + '%';
+    if (this.viewsGrowthElement) this.viewsGrowthElement.textContent = '+' + totalViewsGrowth.toLocaleString();
+    if (this.likesGrowthElement) this.likesGrowthElement.textContent = '+' + totalLikesGrowth.toLocaleString();
+};
+
+// TOP 포스트 업데이트
+DualTextWriter.prototype.updateTopPosts = function() {
+    if (!this.topPostsListElement) return;
+    
+    if (this.trackingPosts.length === 0) {
+        this.topPostsListElement.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #666;">
+                <p>트래킹 중인 포스트가 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 조회수 기준으로 정렬
+    const sortedPosts = this.trackingPosts
+        .map(post => {
+            const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+            return {
+                ...post,
+                latestViews: latest ? latest.views : 0,
+                latestLikes: latest ? latest.likes : 0,
+                latestReplies: latest ? latest.replies : 0,
+                latestReposts: latest ? latest.reposts : 0,
+                latestQuotes: latest ? latest.quotes : 0
+            };
+        })
+        .sort((a, b) => b.latestViews - a.latestViews)
+        .slice(0, 5);
+    
+    this.topPostsListElement.innerHTML = sortedPosts.map((post, index) => `
+        <div class="top-post-item">
+            <div class="post-rank">#${index + 1}</div>
+            <div class="post-content">${post.content.substring(0, 60)}${post.content.length > 60 ? '...' : ''}</div>
+            <div class="post-metrics">
+                <span class="metric">👀 ${post.latestViews}</span>
+                <span class="metric">❤️ ${post.latestLikes}</span>
+                <span class="metric">💬 ${post.latestReplies}</span>
+                <span class="metric">🔄 ${post.latestReposts}</span>
+                <span class="metric">📝 ${post.latestQuotes}</span>
+            </div>
+        </div>
+    `).join('');
 };
 
 // 트래킹 차트 초기화
