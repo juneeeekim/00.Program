@@ -144,14 +144,6 @@ class DualTextWriter {
             this.initSavedFilters();
         }
         
-        // 트래킹 탭으로 전환 시 데이터 로드
-        if (tabName === 'tracking') {
-            this.loadTrackingPosts();
-            this.updateDashboardSummary();
-            this.updateDashboardInsights();
-            this.initTrackingChart();
-            this.updateTopPosts();
-        }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
         if (tabName === 'writing') {
@@ -3673,20 +3665,3 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
 };
 
 // 전역 함수들
-window.saveTrackingData = function() {
-    if (dualTextWriter) {
-        dualTextWriter.saveTrackingData();
-    }
-};
-
-window.closeInlineForm = function(textId) {
-    if (dualTextWriter) {
-        dualTextWriter.closeInlineForm(textId);
-    }
-};
-
-window.saveInlineTracking = function(textId) {
-    if (dualTextWriter) {
-        dualTextWriter.saveInlineTracking(textId);
-    }
-};
