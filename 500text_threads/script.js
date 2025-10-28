@@ -9,10 +9,6 @@ class DualTextWriter {
         this.currentUser = null;
         this.isFirebaseReady = false;
         
-        // 트래킹 관련 속성
-        this.trackingPosts = []; // 트래킹 중인 포스트 목록
-        this.trackingChart = null; // Chart.js 인스턴스
-        this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -56,19 +52,6 @@ class DualTextWriter {
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
         
-        // 트래킹 관련 요소들
-        this.trackingChartCanvas = document.getElementById('tracking-chart');
-        this.totalPostsElement = document.getElementById('total-posts');
-        this.totalViewsElement = document.getElementById('total-views');
-        this.totalLikesElement = document.getElementById('total-likes');
-        this.totalRepliesElement = document.getElementById('total-replies');
-        this.totalRepostsElement = document.getElementById('total-reposts');
-        this.totalQuotesElement = document.getElementById('total-quotes');
-        this.avgEngagementElement = document.getElementById('avg-engagement');
-        this.maxEngagementElement = document.getElementById('max-engagement');
-        this.viewsGrowthElement = document.getElementById('views-growth');
-        this.likesGrowthElement = document.getElementById('likes-growth');
-        this.topPostsListElement = document.getElementById('top-posts-list');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -686,85 +669,9 @@ class DualTextWriter {
                     <span class="saved-item-count">${item.characterCount}자</span>
                 </div>
                 <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
-                <div class="saved-item-tracking">
-                    ${item.trackingEnabled ? `
-                        <div class="tracking-status active">
-                            <span class="status-icon">📊</span>
-                            <span class="status-text">트래킹 중</span>
-                        </div>
-                        <div class="tracking-metrics-preview">
-                            <div class="metric-preview">
-                                <span class="metric-icon">👀</span>
-                                <span class="metric-value">${item.latestMetrics?.views || 0}</span>
-                            </div>
-                            <div class="metric-preview">
-                                <span class="metric-icon">❤️</span>
-                                <span class="metric-value">${item.latestMetrics?.likes || 0}</span>
-                            </div>
-                            <div class="metric-preview">
-                                <span class="metric-icon">💬</span>
-                                <span class="metric-value">${item.latestMetrics?.replies || 0}</span>
-                            </div>
-                            <div class="metric-preview">
-                                <span class="metric-icon">🔄</span>
-                                <span class="metric-value">${item.latestMetrics?.reposts || 0}</span>
-                            </div>
-                            <div class="metric-preview">
-                                <span class="metric-icon">📝</span>
-                                <span class="metric-value">${item.latestMetrics?.quotes || 0}</span>
-                            </div>
-                        </div>
-                        <div class="inline-tracking-form" id="tracking-form-${item.id}" style="display: none;">
-                            <div class="form-header">
-                                <h4>📊 트래킹 데이터 입력</h4>
-                                <button class="close-form-btn" onclick="dualTextWriter.closeInlineForm('${item.id}')">✕</button>
-                            </div>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>👀 조회수</label>
-                                    <input type="number" id="inline-views-${item.id}" min="0" placeholder="조회수" value="${item.latestMetrics?.views || 0}">
-                                </div>
-                                <div class="form-group">
-                                    <label>❤️ 좋아요</label>
-                                    <input type="number" id="inline-likes-${item.id}" min="0" placeholder="좋아요" value="${item.latestMetrics?.likes || 0}">
-                                </div>
-                                <div class="form-group">
-                                    <label>💬 답글</label>
-                                    <input type="number" id="inline-replies-${item.id}" min="0" placeholder="답글" value="${item.latestMetrics?.replies || 0}">
-                                </div>
-                                <div class="form-group">
-                                    <label>🔄 리포스트</label>
-                                    <input type="number" id="inline-reposts-${item.id}" min="0" placeholder="리포스트" value="${item.latestMetrics?.reposts || 0}">
-                                </div>
-                                <div class="form-group">
-                                    <label>📝 인용</label>
-                                    <input type="number" id="inline-quotes-${item.id}" min="0" placeholder="인용" value="${item.latestMetrics?.quotes || 0}">
-                                </div>
-                                <div class="form-group full-width">
-                                    <label>📝 메모</label>
-                                    <textarea id="inline-notes-${item.id}" placeholder="추가 메모 (선택사항)">${item.latestMetrics?.notes || ''}</textarea>
-                                </div>
-                            </div>
-                            <div class="form-actions">
-                                <button class="btn-secondary" onclick="dualTextWriter.closeInlineForm('${item.id}')">취소</button>
-                                <button class="btn-primary" onclick="dualTextWriter.saveInlineTracking('${item.id}')">저장</button>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="tracking-status inactive">
-                            <span class="status-icon">⏸️</span>
-                            <span class="status-text">트래킹 안함</span>
-                        </div>
-                    `}
-                </div>
                 <div class="saved-item-actions">
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
                     <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
-                    ${item.trackingEnabled ? 
-                        `<button class="action-button btn-tracking" data-action="toggle-form" data-item-id="${item.id}">📈 데이터 추가</button>
-                         <button class="action-button btn-secondary" data-action="stop-tracking" data-item-id="${item.id}">⏸️ 중지</button>` :
-                        `<button class="action-button btn-tracking" data-action="start-tracking" data-item-id="${item.id}">📊 트래킹 시작</button>`
-                    }
                 </div>
             </div>
         `).join('');
@@ -811,15 +718,6 @@ class DualTextWriter {
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
                 this.deleteText(itemId);
-            } else if (action === 'start-tracking') {
-                console.log('트래킹 시작 액션 실행:', { itemId });
-                this.startTrackingFromSaved(itemId);
-            } else if (action === 'toggle-form') {
-                console.log('폼 토글 액션 실행:', { itemId });
-                this.toggleInlineForm(itemId);
-            } else if (action === 'stop-tracking') {
-                console.log('트래킹 중지 액션 실행:', { itemId });
-                this.stopTrackingFromSaved(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
                 // 드롭다운 메뉴 토글은 CSS로 처리됨
