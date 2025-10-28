@@ -2,20 +2,24 @@ class DualTextWriter {
     constructor() {
         // Firebase 설정
         this.auth = null;
-        
+
         // 사용자 정의 해시태그 설정 (기본값)
         this.defaultHashtags = ['#writing', '#content', '#threads'];
         this.db = null;
         this.currentUser = null;
         this.isFirebaseReady = false;
-        
+
+        // 트래킹 관련 속성
+        this.trackingPosts = []; // 트래킹 중인 포스트 목록
+        this.trackingChart = null; // Chart.js 인스턴스
+        this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
         
         // Firebase 초기화 대기
         this.waitForFirebase();
-        
+
         // Firebase 설정 안내
         this.showFirebaseSetupNotice();
-        
+
         // 사용자 인증 관련 요소들
         this.usernameInput = document.getElementById('username-input');
         this.loginBtn = document.getElementById('login-btn');
@@ -24,7 +28,7 @@ class DualTextWriter {
         this.userInfo = document.getElementById('user-info');
         this.usernameDisplay = document.getElementById('username-display');
         this.mainContent = document.getElementById('main-content');
-        
+
         // 레퍼런스 글 관련 요소들
         this.refTextInput = document.getElementById('ref-text-input');
         this.refCurrentCount = document.getElementById('ref-current-count');
@@ -33,7 +37,7 @@ class DualTextWriter {
         this.refClearBtn = document.getElementById('ref-clear-btn');
         this.refSaveBtn = document.getElementById('ref-save-btn');
         this.refDownloadBtn = document.getElementById('ref-download-btn');
-        
+
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
@@ -42,16 +46,22 @@ class DualTextWriter {
         this.editClearBtn = document.getElementById('edit-clear-btn');
         this.editSaveBtn = document.getElementById('edit-save-btn');
         this.editDownloadBtn = document.getElementById('edit-download-btn');
-        
+
         // 공통 요소들
         this.savedList = document.getElementById('saved-list');
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
-        
+
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
-        
+
+        // 트래킹 관련 요소들
+        this.trackingPostsList = document.getElementById('tracking-posts-list');
+        this.trackingChartCanvas = document.getElementById('tracking-chart');
+        this.totalPostsElement = document.getElementById('total-posts');
+        this.totalViewsElement = document.getElementById('total-views');
+        this.totalLikesElement = document.getElementById('total-likes');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -60,24 +70,24 @@ class DualTextWriter {
         this.tempSaveInterval = null;
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
-        
+
         // LLM 검증 시스템 초기화
         this.initializeLLMValidation();
-        
+
         this.init();
     }
-    
+
     async init() {
         this.bindEvents();
         await this.waitForFirebase();
         this.setupAuthStateListener();
     }
-    
+
     // Firebase 초기화 대기
     async waitForFirebase() {
         const maxAttempts = 50;
         let attempts = 0;
-        
+
         while (attempts < maxAttempts) {
             if (window.firebaseAuth && window.firebaseDb) {
                 this.auth = window.firebaseAuth;
@@ -89,17 +99,17 @@ class DualTextWriter {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
-        
+
         if (!this.isFirebaseReady) {
             console.error('Firebase 초기화 실패');
             this.showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
         }
     }
-    
+
     // Firebase Auth 상태 리스너 설정
     setupAuthStateListener() {
         if (!this.isFirebaseReady) return;
-        
+
         window.firebaseOnAuthStateChanged(this.auth, (user) => {
             if (user) {
                 this.currentUser = user;
@@ -114,7 +124,7 @@ class DualTextWriter {
             }
         });
     }
-    
+
     // 탭 기능 초기화
     initTabListeners() {
         this.tabButtons.forEach(button => {
@@ -124,33 +134,39 @@ class DualTextWriter {
             });
         });
     }
-    
+
     // 탭 전환
     switchTab(tabName) {
         // 모든 탭 버튼과 콘텐츠에서 active 클래스 제거
         this.tabButtons.forEach(btn => btn.classList.remove('active'));
         this.tabContents.forEach(content => content.classList.remove('active'));
-        
+
         // 선택된 탭 버튼과 콘텐츠에 active 클래스 추가
         const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
         const activeContent = document.getElementById(`${tabName}-tab`);
-        
+
         if (activeButton) activeButton.classList.add('active');
         if (activeContent) activeContent.classList.add('active');
-        
+
         // 저장된 글 탭으로 전환할 때 목록 새로고침
         if (tabName === 'saved') {
             this.loadSavedTexts();
             this.initSavedFilters();
         }
-        
+
+        // 트래킹 탭으로 전환 시 데이터 로드
+        if (tabName === 'tracking') {
+            this.loadTrackingPosts();
+            this.updateTrackingSummary();
+            this.initTrackingChart();
+        }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
         if (tabName === 'writing') {
             // 이미 writing-container에 두 패널이 모두 포함되어 있음
         }
     }
-    
+
     bindEvents() {
         // 사용자 인증 이벤트
         this.loginBtn.addEventListener('click', () => this.login());
@@ -160,19 +176,19 @@ class DualTextWriter {
                 this.login();
             }
         });
-        
+
         // Google 로그인 이벤트
         const googleLoginBtn = document.getElementById('google-login-btn');
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', () => this.googleLogin());
         }
-        
+
         // 탭 이벤트 리스너 설정
         this.initTabListeners();
 
         // 저장된 글 필터 초기화 (초기 로드 시점에도 반영)
         setTimeout(() => this.initSavedFilters(), 0);
-        
+
         // 레퍼런스 글 이벤트
         this.refTextInput.addEventListener('input', () => {
             this.updateCharacterCount('ref');
@@ -181,7 +197,7 @@ class DualTextWriter {
         this.refClearBtn.addEventListener('click', () => this.clearText('ref'));
         this.refSaveBtn.addEventListener('click', () => this.saveText('ref'));
         this.refDownloadBtn.addEventListener('click', () => this.downloadAsTxt('ref'));
-        
+
         // 수정/작성 글 이벤트
         this.editTextInput.addEventListener('input', () => {
             this.updateCharacterCount('edit');
@@ -190,22 +206,22 @@ class DualTextWriter {
         this.editClearBtn.addEventListener('click', () => this.clearText('edit'));
         this.editSaveBtn.addEventListener('click', () => this.saveText('edit'));
         this.editDownloadBtn.addEventListener('click', () => this.downloadAsTxt('edit'));
-        
+
         // 반자동화 포스팅 이벤트
         const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
         if (semiAutoPostBtn) {
             console.log('✅ 반자동화 포스팅 버튼 발견 및 이벤트 바인딩');
-            
+
             semiAutoPostBtn.addEventListener('click', (e) => {
                 console.log('🔍 반자동화 포스팅 버튼 클릭 감지');
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 // this 컨텍스트 명시적 바인딩
                 const self = this;
                 console.log('🔍 this 컨텍스트:', self);
                 console.log('🔍 handleSemiAutoPost 함수:', typeof self.handleSemiAutoPost);
-                
+
                 if (typeof self.handleSemiAutoPost === 'function') {
                     console.log('✅ handleSemiAutoPost 함수 호출');
                     self.handleSemiAutoPost();
@@ -213,17 +229,17 @@ class DualTextWriter {
                     console.error('❌ handleSemiAutoPost 함수가 없습니다!');
                 }
             });
-            
+
             // 키보드 접근성 지원
             semiAutoPostBtn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     console.log('🔍 반자동화 포스팅 버튼 키보드 입력 감지');
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     // this 컨텍스트 명시적 바인딩
                     const self = this;
-                    
+
                     if (typeof self.handleSemiAutoPost === 'function') {
                         console.log('✅ handleSemiAutoPost 함수 호출 (키보드)');
                         self.handleSemiAutoPost();
@@ -232,17 +248,17 @@ class DualTextWriter {
                     }
                 }
             });
-            
+
             // 접근성 속성 설정
             semiAutoPostBtn.setAttribute('aria-label', 'Threads에 반자동으로 포스팅하기');
             semiAutoPostBtn.setAttribute('role', 'button');
             semiAutoPostBtn.setAttribute('tabindex', '0');
-            
+
             console.log('✅ 반자동화 포스팅 버튼 이벤트 바인딩 완료');
         } else {
             console.error('❌ 반자동화 포스팅 버튼을 찾을 수 없습니다!');
         }
-        
+
         // 해시태그 설정 버튼 이벤트 바인딩
         const hashtagSettingsBtn = document.getElementById('hashtag-settings-btn');
         if (hashtagSettingsBtn) {
@@ -250,17 +266,17 @@ class DualTextWriter {
                 e.preventDefault();
                 this.showHashtagSettings();
             });
-            
+
             // 초기 해시태그 표시 업데이트
             setTimeout(() => {
                 this.updateHashtagsDisplay();
             }, 100);
-            
+
             console.log('✅ 해시태그 설정 버튼 이벤트 바인딩 완료');
         } else {
             console.error('❌ 해시태그 설정 버튼을 찾을 수 없습니다!');
         }
-        
+
         // 개발 모드에서 자동 테스트 실행
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             setTimeout(() => {
@@ -276,7 +292,7 @@ class DualTextWriter {
         if (!container) return;
         const buttons = container.querySelectorAll('.segment-btn');
         if (!buttons || buttons.length === 0) return;
-        
+
         // 활성 상태 복원
         buttons.forEach(btn => {
             const filter = btn.getAttribute('data-filter');
@@ -284,7 +300,7 @@ class DualTextWriter {
             btn.classList.toggle('active', isActive);
             btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
-        
+
         // 클릭 이벤트 바인딩
         buttons.forEach(btn => {
             btn.removeEventListener('click', btn._filterHandler);
@@ -296,12 +312,12 @@ class DualTextWriter {
             btn.addEventListener('click', btn._filterHandler);
         });
     }
-    
+
     setSavedFilter(filter) {
         if (!['all', 'edit', 'reference'].includes(filter)) return;
         this.savedFilter = filter;
         localStorage.setItem('dualTextWriter_savedFilter', filter);
-        
+
         // UI 업데이트
         const container = document.querySelector('#saved-tab .segmented-control');
         if (container) {
@@ -311,27 +327,27 @@ class DualTextWriter {
                 btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
             });
         }
-        
+
         // 목록 렌더링
         this.renderSavedTexts();
     }
-    
+
     updateCharacterCount(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
         const currentCount = panel === 'ref' ? this.refCurrentCount : this.editCurrentCount;
         const progressFill = panel === 'ref' ? this.refProgressFill : this.editProgressFill;
         const saveBtn = panel === 'ref' ? this.refSaveBtn : this.editSaveBtn;
         const downloadBtn = panel === 'ref' ? this.refDownloadBtn : this.editDownloadBtn;
-        
+
         const text = textInput.value;
         const currentLength = this.getKoreanCharacterCount(text);
-        
+
         currentCount.textContent = currentLength;
-        
+
         // Update progress bar
         const progress = (currentLength / this.maxLength) * 100;
         progressFill.style.width = `${Math.min(progress, 100)}%`;
-        
+
         // Update character count color based on usage
         if (currentLength >= this.maxLength * 0.9) {
             currentCount.className = 'danger';
@@ -340,35 +356,35 @@ class DualTextWriter {
         } else {
             currentCount.className = '';
         }
-        
+
         // Update button states
         saveBtn.disabled = currentLength === 0;
         downloadBtn.disabled = currentLength === 0;
     }
-    
+
     getKoreanCharacterCount(text) {
         return text.length;
     }
-    
+
     // Firebase 기반 인증으로 대체됨
-    
+
     // Firebase Google 로그인 처리
     async googleLogin() {
         if (!this.isFirebaseReady) {
             this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
             return;
         }
-        
+
         try {
             const provider = new window.firebaseGoogleAuthProvider();
             const result = await window.firebaseSignInWithPopup(this.auth, provider);
             const user = result.user;
-            
+
             // 기존 로컬 데이터 마이그레이션 확인
             await this.checkAndMigrateLocalData(user.uid);
-            
+
             this.showMessage(`${user.displayName || user.email}님, Google 로그인으로 환영합니다!`, 'success');
-            
+
         } catch (error) {
             console.error('Google 로그인 실패:', error);
             if (error.code === 'auth/popup-closed-by-user') {
@@ -378,9 +394,9 @@ class DualTextWriter {
         }
     }
     }
-    
+
     // Firebase Auth 상태 리스너가 자동으로 처리함
-    
+
     // Firebase 사용자명 로그인 (Anonymous Auth 사용)
     async login() {
         const username = this.usernameInput.value.trim();
@@ -389,37 +405,37 @@ class DualTextWriter {
             this.usernameInput.focus();
             return;
         }
-        
+
         if (username.length < 2) {
             alert('사용자명은 2자 이상이어야 합니다.');
             this.usernameInput.focus();
             return;
         }
-        
+
         if (!this.isFirebaseReady) {
             this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
             return;
         }
-        
+
         try {
             // 익명 로그인으로 사용자 생성
             const result = await window.firebaseSignInAnonymously(this.auth);
             const user = result.user;
-            
+
             // 사용자명을 Firestore에 저장
             await this.saveUsernameToFirestore(user.uid, username);
-            
+
             // 기존 로컬 데이터 마이그레이션
             await this.checkAndMigrateLocalData(user.uid);
-            
+
             this.showMessage(`${username}님, 환영합니다!`, 'success');
-            
+
                 } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
-    
+
     // 사용자명을 Firestore에 저장
     async saveUsernameToFirestore(uid, username) {
         try {
@@ -432,12 +448,12 @@ class DualTextWriter {
             console.error('사용자명 저장 실패:', error);
         }
     }
-    
+
     // Firebase 로그아웃 처리
     async logout() {
         if (confirm('로그아웃하시겠습니까? 현재 작성 중인 내용은 임시 저장됩니다.')) {
             this.performTempSave(); // 로그아웃 전 임시 저장
-            
+
             try {
                 await window.firebaseSignOut(this.auth);
                 this.showMessage('로그아웃되었습니다.', 'info');
@@ -447,45 +463,45 @@ class DualTextWriter {
             }
         }
     }
-    
+
     // Firebase Auth가 자동으로 토큰 관리함
-    
+
     showLoginInterface() {
         this.loginForm.style.display = 'block';
         this.userInfo.style.display = 'none';
         this.mainContent.style.display = 'block'; // 로그인 없이도 메인 콘텐츠 표시
     }
-    
+
     // 기존 로컬 스토리지 데이터를 Firestore로 마이그레이션
     async checkAndMigrateLocalData(userId) {
         const localData = localStorage.getItem('dualTextWriter_savedTexts');
         if (!localData) return;
-        
+
         try {
             const localTexts = JSON.parse(localData);
             if (localTexts.length === 0) return;
-            
+
             const shouldMigrate = confirm(
                 `기존에 저장된 ${localTexts.length}개의 글이 있습니다.\n` +
                 `이 데이터를 새로운 계정으로 이전하시겠습니까?\n\n` +
                 `이전하면 기존 데이터는 클라우드에 안전하게 보관됩니다.`
             );
-            
+
             if (shouldMigrate) {
                 await this.migrateLocalDataToFirestore(userId, localTexts);
                 this.showMessage('기존 데이터가 성공적으로 이전되었습니다!', 'success');
-                
+
                 // 로컬 스토리지 정리
                 localStorage.removeItem('dualTextWriter_savedTexts');
                 localStorage.removeItem('dualTextWriter_tempSave');
             }
-            
+
         } catch (error) {
             console.error('데이터 마이그레이션 실패:', error);
             this.showMessage('데이터 마이그레이션 중 오류가 발생했습니다.', 'error');
         }
     }
-    
+
     // 로컬 데이터를 Firestore로 마이그레이션
     async migrateLocalDataToFirestore(userId, localTexts) {
         for (const text of localTexts) {
@@ -498,25 +514,25 @@ class DualTextWriter {
                     updatedAt: window.firebaseServerTimestamp(),
                     migrated: true // 마이그레이션 표시
                 };
-                
+
                 await window.firebaseAddDoc(
                     window.firebaseCollection(this.db, 'users', userId, 'texts'),
                     textData
                 );
-            
+
         } catch (error) {
                 console.error('개별 텍스트 마이그레이션 실패:', error);
         }
         }
-        
+
         console.log(`${localTexts.length}개의 텍스트를 Firestore로 마이그레이션했습니다.`);
     }
-    
+
     showUserInterface() {
         this.loginForm.style.display = 'none';
         this.userInfo.style.display = 'block';
         this.mainContent.style.display = 'block';
-        
+
         // 사용자 정보 표시 (Firebase 사용자 정보 사용)
         if (this.currentUser) {
             const displayName = this.currentUser.displayName || 
@@ -525,7 +541,7 @@ class DualTextWriter {
         this.usernameDisplay.textContent = displayName;
         }
     }
-    
+
     clearAllData() {
         this.refTextInput.value = '';
         this.editTextInput.value = '';
@@ -534,34 +550,34 @@ class DualTextWriter {
         this.updateCharacterCount('edit');
         this.renderSavedTexts();
     }
-    
+
     clearText(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
         const panelName = panel === 'ref' ? '레퍼런스 글' : '수정/작성 글';
-        
+
         if (confirm(`${panelName}을 지우시겠습니까?`)) {
             textInput.value = '';
             this.updateCharacterCount(panel);
             textInput.focus();
         }
     }
-    
+
     // Firestore에 텍스트 저장
     async saveText(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
         const text = textInput.value; // trim() 제거하여 사용자 입력의 공백과 줄바꿈 보존
         const panelName = panel === 'ref' ? '레퍼런스 글' : '수정/작성 글';
-        
+
         if (text.length === 0) {
             alert('저장할 내용이 없습니다.');
             return;
         }
-        
+
         if (!this.currentUser) {
             this.showMessage('로그인이 필요합니다.', 'error');
             return;
         }
-        
+
         try {
             const textData = {
                 content: text,
@@ -570,13 +586,13 @@ class DualTextWriter {
                 createdAt: window.firebaseServerTimestamp(),
                 updatedAt: window.firebaseServerTimestamp()
             };
-            
+
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
                 window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
                 textData
             );
-            
+
             // 로컬 배열에도 추가 (UI 업데이트용)
         const savedItem = {
                 id: docRef.id,
@@ -585,44 +601,44 @@ class DualTextWriter {
             characterCount: this.getKoreanCharacterCount(text),
             type: panel === 'ref' ? 'reference' : 'edit'
         };
-        
+
         this.savedTexts.unshift(savedItem);
         this.renderSavedTexts();
-        
+
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
-        
+
         // Clear input
         textInput.value = '';
         this.updateCharacterCount(panel);
-            
+
         } catch (error) {
             console.error('텍스트 저장 실패:', error);
             this.showMessage('저장에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
-    
+
     downloadAsTxt(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
         const text = textInput.value; // trim() 제거하여 사용자 입력의 공백과 줄바꿈 보존
         const panelName = panel === 'ref' ? '레퍼런스' : '수정작성';
-        
+
         if (text.length === 0) {
             alert('다운로드할 내용이 없습니다.');
             return;
         }
-        
+
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `${panelName}_${timestamp}.txt`;
-        
+
         const content = `500자 미만 글 작성기 - ${panelName} 글\n` +
                       `작성일: ${new Date().toLocaleString('ko-KR')}\n` +
                       `글자 수: ${this.getKoreanCharacterCount(text)}자\n` +
                       `\n${'='.repeat(30)}\n\n` +
                       `${text}`; // 사용자가 입력한 그대로 줄바꿈과 공백 유지
-        
+
         const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -630,10 +646,10 @@ class DualTextWriter {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         this.showMessage(`${panelName} 글 TXT 파일이 다운로드되었습니다!`, 'success');
     }
-    
+
     renderSavedTexts() {
         console.log('renderSavedTexts 호출됨:', this.savedTexts);
 
@@ -664,26 +680,27 @@ class DualTextWriter {
                 <div class="saved-item-actions">
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
                     <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
+                    <button class="action-button btn-tracking" data-action="track" data-item-id="${item.id}">📊 트래킹</button>
                 </div>
             </div>
         `).join('');
-        
+
         // DOM 렌더링 완료 후 이벤트 리스너 설정
         setTimeout(() => {
             this.setupSavedItemEventListeners();
             this.bindDirectEventListeners(); // 직접 이벤트 바인딩도 추가
         }, 100);
     }
-    
+
     // 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
     setupSavedItemEventListeners() {
         console.log('setupSavedItemEventListeners 호출됨');
-        
+
         // 기존 이벤트 리스너 제거 (중복 방지)
         if (this.savedItemClickHandler) {
             this.savedList.removeEventListener('click', this.savedItemClickHandler);
         }
-        
+
         // 새로운 이벤트 리스너 생성
         this.savedItemClickHandler = (event) => {
             console.log('저장된 글 영역 클릭:', event.target);
@@ -692,17 +709,17 @@ class DualTextWriter {
                 console.log('버튼이 아님');
                 return;
             }
-            
+
             const action = button.getAttribute('data-action');
             const itemId = button.getAttribute('data-item-id');
-            
+
             console.log('이벤트 처리:', { itemId, action, button: button.textContent });
-            
+
             if (!itemId) {
                 console.error('Item ID not found');
                 return;
             }
-            
+
             if (action === 'edit') {
                 const type = button.getAttribute('data-type');
                 console.log('편집 액션 실행:', { itemId, type });
@@ -710,6 +727,9 @@ class DualTextWriter {
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
                 this.deleteText(itemId);
+            } else if (action === 'track') {
+                console.log('트래킹 액션 실행:', { itemId });
+                this.startTrackingFromSaved(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
                 // 드롭다운 메뉴 토글은 CSS로 처리됨
@@ -722,31 +742,31 @@ class DualTextWriter {
                 }
             }
         };
-        
+
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
         console.log('이벤트 리스너 등록 완료');
     }
-    
+
     // 직접 이벤트 바인딩 (백업 방법)
     bindDirectEventListeners() {
         console.log('직접 이벤트 바인딩 시작');
-        
+
         const editButtons = this.savedList.querySelectorAll('.btn-edit');
         const deleteButtons = this.savedList.querySelectorAll('.btn-delete');
         const llmButtons = this.savedList.querySelectorAll('.llm-option');
-        
+
         console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개, LLM 버튼 ${llmButtons.length}개 발견`);
-        
+
         editButtons.forEach((button, index) => {
             const itemId = button.getAttribute('data-item-id');
             const type = button.getAttribute('data-type');
-            
+
             console.log(`편집 버튼 ${index} 바인딩:`, { itemId, type });
-            
+
             // 기존 이벤트 리스너 제거
             button.removeEventListener('click', button._editHandler);
-            
+
             // 새로운 이벤트 핸들러 생성 및 바인딩
             button._editHandler = (e) => {
                 e.preventDefault();
@@ -754,18 +774,18 @@ class DualTextWriter {
                 console.log('직접 편집 버튼 클릭:', { itemId, type });
                 this.editText(itemId, type);
             };
-            
+
             button.addEventListener('click', button._editHandler);
         });
-        
+
         deleteButtons.forEach((button, index) => {
             const itemId = button.getAttribute('data-item-id');
-            
+
             console.log(`삭제 버튼 ${index} 바인딩:`, { itemId });
-            
+
             // 기존 이벤트 리스너 제거
             button.removeEventListener('click', button._deleteHandler);
-            
+
             // 새로운 이벤트 핸들러 생성 및 바인딩
             button._deleteHandler = (e) => {
                 e.preventDefault();
@@ -773,48 +793,48 @@ class DualTextWriter {
                 console.log('직접 삭제 버튼 클릭:', { itemId });
                 this.deleteText(itemId);
             };
-            
+
             button.addEventListener('click', button._deleteHandler);
         });
-        
+
         // 패널 기반 LLM 검증 버튼들 바인딩
         const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
         panelLlmButtons.forEach((button, index) => {
             const panel = button.getAttribute('data-panel');
             const llmService = button.getAttribute('data-llm');
-            
+
             console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
-            
+
             // 기존 이벤트 리스너 제거
             button.removeEventListener('click', button._panelLlmHandler);
-            
+
             // 새로운 이벤트 핸들러 생성 및 바인딩
             button._panelLlmHandler = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('패널 LLM 버튼 클릭:', { panel, llmService });
-                
+
                 this.validatePanelWithLLM(panel, llmService);
             };
-            
+
             button.addEventListener('click', button._panelLlmHandler);
         });
-        
+
         console.log('직접 이벤트 바인딩 완료');
     }
-    
+
     // LLM 특성 정보 검증 함수 (개발자용)
     verifyLLMCharacteristics() {
         console.log('=== LLM 특성 정보 검증 ===');
-        
+
         if (!this.llmCharacteristics) {
             console.error('❌ llmCharacteristics 객체가 없습니다!');
             return false;
         }
-        
+
         const services = ['chatgpt', 'gemini', 'perplexity', 'grok'];
         let allValid = true;
-        
+
         services.forEach(service => {
             const char = this.llmCharacteristics[service];
             if (!char) {
@@ -829,25 +849,25 @@ class DualTextWriter {
                 });
             }
         });
-        
+
         console.log('=== 검증 완료 ===');
         return allValid;
     }
-    
+
     // 디버깅용 함수 - 전역에서 호출 가능
     debugSavedItems() {
         console.log('=== 저장된 글 디버깅 정보 ===');
         console.log('savedTexts 배열:', this.savedTexts);
         console.log('savedList 요소:', this.savedList);
-        
+
         const savedItems = this.savedList.querySelectorAll('.saved-item');
         console.log(`저장된 글 항목 ${savedItems.length}개:`);
-        
+
         savedItems.forEach((item, index) => {
             const itemId = item.getAttribute('data-item-id');
             const editBtn = item.querySelector('.btn-edit');
             const deleteBtn = item.querySelector('.btn-delete');
-            
+
             console.log(`항목 ${index}:`, {
                 id: itemId,
                 editButton: editBtn,
@@ -856,14 +876,14 @@ class DualTextWriter {
                 deleteButtonId: deleteBtn?.getAttribute('data-item-id')
             });
         });
-        
+
         const editButtons = this.savedList.querySelectorAll('.btn-edit');
         const deleteButtons = this.savedList.querySelectorAll('.btn-delete');
         console.log(`편집 버튼 ${editButtons.length}개, 삭제 버튼 ${deleteButtons.length}개`);
-        
+
         console.log('=== 디버깅 정보 끝 ===');
     }
-    
+
     editText(id, type) {
         console.log('편집 버튼 클릭:', { id, type });
         const item = this.savedTexts.find(saved => saved.id === id);
@@ -886,7 +906,7 @@ class DualTextWriter {
             this.showMessage('편집할 글을 찾을 수 없습니다.', 'error');
         }
     }
-    
+
     // Firestore에서 텍스트 삭제
     async deleteText(id) {
         console.log('삭제 버튼 클릭:', { id });
@@ -895,49 +915,49 @@ class DualTextWriter {
                 this.showMessage('로그인이 필요합니다.', 'error');
                 return;
             }
-            
+
             try {
                 console.log('Firestore에서 삭제 시작:', id);
                 // Firestore에서 삭제
                 await window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id));
-                
+
                 // 로컬 배열에서도 제거
             this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
             this.renderSavedTexts();
             this.showMessage('글이 삭제되었습니다.', 'info');
                 console.log('삭제 완료');
-                
+
             } catch (error) {
                 console.error('텍스트 삭제 실패:', error);
                 this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
             }
         }
     }
-    
+
     // HTML 이스케이프 함수 (줄바꿈 보존)
     escapeHtml(text) {
         if (!text) return '';
-        
+
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML.replace(/\n/g, '<br>'); // 줄바꿈을 <br> 태그로 변환
     }
-    
+
     // 텍스트만 이스케이프 (줄바꿈 없이)
     escapeHtmlOnly(text) {
         if (!text) return '';
-        
+
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
     showMessage(message, type = 'info') {
         const messageEl = document.createElement('div');
         const bgColor = type === 'success' ? '#28a745' : 
                        type === 'error' ? '#dc3545' : 
                        type === 'warning' ? '#ffc107' : '#17a2b8';
-        
+
         messageEl.style.cssText = `
             position: fixed;
             top: 20px;
@@ -954,9 +974,9 @@ class DualTextWriter {
             word-wrap: break-word;
         `;
         messageEl.textContent = message;
-        
+
         document.body.appendChild(messageEl);
-        
+
         setTimeout(() => {
             messageEl.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => {
@@ -966,13 +986,13 @@ class DualTextWriter {
             }, 300);
         }, type === 'error' ? 4000 : 2000);
     }
-    
+
     // 보안 강화: 사용자 데이터 암호화
     async encryptUserData(data) {
         try {
             const encoder = new TextEncoder();
             const dataBuffer = encoder.encode(JSON.stringify(data));
-            
+
             // 사용자별 고유 키 생성
             const userKey = await crypto.subtle.importKey(
                 'raw',
@@ -981,14 +1001,14 @@ class DualTextWriter {
                 false,
                 ['encrypt', 'decrypt']
             );
-            
+
             const iv = crypto.getRandomValues(new Uint8Array(12));
             const encrypted = await crypto.subtle.encrypt(
                 { name: 'AES-GCM', iv },
                 userKey,
                 dataBuffer
             );
-            
+
             return {
                 encrypted: Array.from(new Uint8Array(encrypted)),
                 iv: Array.from(iv)
@@ -998,7 +1018,7 @@ class DualTextWriter {
             return null;
         }
     }
-    
+
     // 보안 강화: 사용자 데이터 복호화
     async decryptUserData(encryptedData) {
         try {
@@ -1010,20 +1030,20 @@ class DualTextWriter {
                 false,
                 ['encrypt', 'decrypt']
             );
-            
+
             const decrypted = await crypto.subtle.decrypt(
                 { name: 'AES-GCM', iv: new Uint8Array(encryptedData.iv) },
                 userKey,
                 new Uint8Array(encryptedData.encrypted)
             );
-            
+
             return JSON.parse(encoder.decode(decrypted));
         } catch (error) {
             console.warn('데이터 복호화 실패:', error);
             return null;
         }
     }
-    
+
     // Firebase 설정 안내
     showFirebaseSetupNotice() {
         console.info(`
@@ -1039,7 +1059,7 @@ class DualTextWriter {
 현재는 로컬 스토리지 모드로 동작합니다.
         `);
     }
-    
+
     // LLM 검증 시스템 초기화
     initializeLLMValidation() {
         // LLM 사이트별 프롬프트 템플릿
@@ -1049,7 +1069,7 @@ class DualTextWriter {
             perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n분석할 글:\n",
             grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n분석할 글:\n"
         };
-        
+
         // LLM 사이트별 특성 정보 (사용자 가이드용)
         this.llmCharacteristics = {
             chatgpt: {
@@ -1081,7 +1101,7 @@ class DualTextWriter {
                 strength: "간결한 임팩트 분석"
             }
         };
-        
+
         // LLM 사이트별 URL 패턴
         this.llmUrls = {
             chatgpt: "https://chatgpt.com/?q=",
@@ -1089,14 +1109,14 @@ class DualTextWriter {
             perplexity: "https://www.perplexity.ai/?q=",
             grok: "https://grok.com/?q="
         };
-        
+
         console.log('LLM 검증 시스템 초기화 완료');
     }
-    
+
     // 패널 기반 LLM 검증 실행
     async validatePanelWithLLM(panel, llmService) {
         console.log('패널 LLM 검증 시작:', { panel, llmService });
-        
+
         try {
             // 패널에 따른 텍스트 영역 선택
             let textArea, panelType;
@@ -1111,14 +1131,14 @@ class DualTextWriter {
                 this.showMessage('지원하지 않는 패널입니다.', 'error');
                 return;
             }
-            
+
             // 텍스트 내용 가져오기
             const content = textArea.value.trim();
             if (!content) {
                 this.showMessage(`${panelType}이 비어있습니다. 먼저 글을 작성해주세요.`, 'warning');
                 return;
             }
-            
+
             // LLM 서비스 정보 가져오기
             const llmInfo = this.llmCharacteristics[llmService];
             if (!llmInfo) {
@@ -1126,61 +1146,61 @@ class DualTextWriter {
                 this.showMessage('지원하지 않는 LLM 서비스입니다.', 'error');
                 return;
             }
-            
+
             // 프롬프트 생성 (제목 라인 없이)
             const prompt = this.llmPrompts[llmService];
             const fullText = `${prompt}\n\n${content}`;
-            
+
             console.log('패널 검증 텍스트 생성:', { panel, llmService, contentLength: content.length });
-            
+
             // 클립보드에 복사
             await this.copyToClipboard(fullText);
-            
+
             // LLM 사이트 열기
             this.openLLMSite(llmService, fullText);
-            
+
             // 성공 메시지
             this.showMessage(`${panelType}에 대한 ${llmInfo.name} 검증을 위해 새 탭이 열렸습니다. 프롬프트가 클립보드에 복사되었습니다.`, 'success');
-            
+
         } catch (error) {
             console.error('패널 LLM 검증 실행 실패:', error);
             this.showMessage('LLM 검증 실행에 실패했습니다.', 'error');
         }
     }
-    
+
     // LLM 검증 실행
     async validateWithLLM(itemId, llmService) {
         console.log('LLM 검증 시작:', { itemId, llmService });
-        
+
         // 저장된 글 찾기
         const item = this.savedTexts.find(saved => saved.id === itemId);
         if (!item) {
             this.showMessage('검증할 글을 찾을 수 없습니다.', 'error');
             return;
         }
-        
+
         // 프롬프트와 글 내용 조합
         const prompt = this.llmPrompts[llmService];
         const fullText = prompt + item.content;
-        
+
         console.log('검증 텍스트 생성:', { llmService, contentLength: item.content.length });
-        
+
         try {
             // 클립보드에 복사
             await this.copyToClipboard(fullText);
-            
+
             // LLM 사이트 URL 생성 및 새 탭에서 열기
             this.openLLMSite(llmService, fullText);
-            
+
             // 사용자에게 안내 메시지
             this.showLLMValidationGuide(llmService);
-            
+
         } catch (error) {
             console.error('LLM 검증 실행 실패:', error);
             this.showMessage('LLM 검증 실행에 실패했습니다.', 'error');
         }
     }
-    
+
     // 클립보드에 텍스트 복사
     async copyToClipboard(text) {
         try {
@@ -1206,7 +1226,7 @@ class DualTextWriter {
             throw error;
         }
     }
-    
+
     // LLM 사이트 새 탭에서 열기
     openLLMSite(llmService, text) {
         if (llmService === 'gemini') {
@@ -1214,18 +1234,18 @@ class DualTextWriter {
             this.showGeminiCopyModal(text);
             return;
         }
-        
+
         // 다른 LLM들은 기존 방식 사용
         const baseUrl = this.llmUrls[llmService];
         const encodedText = encodeURIComponent(text);
         const fullUrl = baseUrl + encodedText;
-        
+
         console.log('LLM 사이트 열기 (URL 파라미터 지원):', { llmService, url: fullUrl });
-        
+
         // 새 탭에서 열기
         window.open(fullUrl, '_blank', 'noopener,noreferrer');
     }
-    
+
     // Gemini 전용 복사 모달 표시
     showGeminiCopyModal(text) {
         // 기존 모달이 있다면 제거
@@ -1233,7 +1253,7 @@ class DualTextWriter {
         if (existingModal) {
             existingModal.remove();
         }
-        
+
         // 모달 HTML 생성
         const modalHTML = `
             <div id="gemini-copy-modal" class="gemini-modal-overlay">
@@ -1265,10 +1285,10 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         // 모달을 body에 추가
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
+
         // 텍스트 영역 자동 선택
         setTimeout(() => {
             const textArea = document.getElementById('gemini-text-area');
@@ -1278,7 +1298,7 @@ class DualTextWriter {
             }
         }, 100);
     }
-    
+
     // Gemini 텍스트 복사 함수
     copyGeminiText() {
         const textArea = document.getElementById('gemini-text-area');
@@ -1286,23 +1306,23 @@ class DualTextWriter {
             console.error('Gemini 텍스트 영역을 찾을 수 없습니다.');
             return;
         }
-        
+
         try {
             // 텍스트 영역 선택
             textArea.focus();
             textArea.select();
-            
+
             // 복사 실행
             const successful = document.execCommand('copy');
             if (successful) {
                 this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
-                
+
                 // 복사 버튼 텍스트 변경
                 const copyBtn = document.querySelector('.gemini-copy-btn');
                 if (copyBtn) {
                     copyBtn.textContent = '✅ 복사 완료!';
                     copyBtn.style.background = '#4CAF50';
-                    
+
                     // 2초 후 원래 상태로 복원
                     setTimeout(() => {
                         copyBtn.textContent = '📋 전체 복사';
@@ -1317,13 +1337,13 @@ class DualTextWriter {
             this.showMessage('❌ 복사에 실패했습니다. 텍스트를 수동으로 선택하여 복사해주세요.', 'error');
         }
     }
-    
+
     // LLM 검증 가이드 메시지 표시
     showLLMValidationGuide(llmService) {
         const characteristics = this.llmCharacteristics[llmService];
-        
+
         let message;
-        
+
         if (llmService === 'gemini') {
             message = `✅ ${characteristics.name} 복사 모달이 열렸습니다!\n\n` +
                 `📋 모달에서 "전체 복사" 버튼을 클릭하세요.\n` +
@@ -1335,15 +1355,15 @@ class DualTextWriter {
                 `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
                 `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
         }
-        
+
         this.showMessage(message, 'success');
-        
+
         // 추가 안내를 위한 상세 메시지
         setTimeout(() => {
             this.showDetailedGuide(llmService);
         }, 2000);
     }
-    
+
     // 상세 가이드 표시
     showDetailedGuide(llmService) {
         const guides = {
@@ -1352,31 +1372,31 @@ class DualTextWriter {
             perplexity: 'Perplexity의 트렌드 분석 결과를 활용하여 현재 SNS 트렌드에 맞게 글을 개선해보세요.',
             grok: 'Grok의 임팩트 분석을 반영하여 더 강력하고 명확한 후킹 문구로 글을 업그레이드해보세요.'
         };
-        
+
         const guide = guides[llmService];
         this.showMessage(`💡 ${guide}`, 'info');
     }
-    
+
     // 임시 저장 기능
     startTempSave() {
         this.tempSaveInterval = setInterval(() => {
             this.performTempSave();
         }, 5000);
     }
-    
+
     scheduleTempSave() {
         clearTimeout(this.tempSaveTimeout);
         this.tempSaveTimeout = setTimeout(() => {
             this.performTempSave();
         }, 2000);
     }
-    
+
     performTempSave() {
         if (!this.currentUser) return;
-        
+
         const refText = this.refTextInput.value;
         const editText = this.editTextInput.value;
-        
+
         if (refText.length > 0 || editText.length > 0) { // trim() 제거하여 원본 포맷 유지
             try {
                 const tempData = {
@@ -1386,7 +1406,7 @@ class DualTextWriter {
                     refCharacterCount: this.getKoreanCharacterCount(refText),
                     editCharacterCount: this.getKoreanCharacterCount(editText)
                 };
-                
+
                 const userTempKey = `dualTextWriter_tempSave_${this.currentUser}`;
                 localStorage.setItem(userTempKey, JSON.stringify(tempData));
                 this.lastTempSave = tempData;
@@ -1396,29 +1416,29 @@ class DualTextWriter {
             }
         }
     }
-    
+
     showTempSaveStatus() {
         this.tempSaveStatus.classList.remove('hide');
         this.tempSaveStatus.classList.add('show');
-        
+
         setTimeout(() => {
             this.tempSaveStatus.classList.remove('show');
             this.tempSaveStatus.classList.add('hide');
         }, 3000);
     }
-    
+
     restoreTempSave() {
         if (!this.currentUser) return;
-        
+
         try {
             const userTempKey = `dualTextWriter_tempSave_${this.currentUser}`;
             const tempData = localStorage.getItem(userTempKey);
             if (tempData) {
                 const data = JSON.parse(tempData);
-                
+
                 const now = Date.now();
                 const dayInMs = 24 * 60 * 60 * 1000;
-                
+
                 if (now - data.timestamp < dayInMs) {
                     if (confirm('임시 저장된 글이 있습니다. 복원하시겠습니까?')) {
                         if (data.refText) {
@@ -1439,11 +1459,11 @@ class DualTextWriter {
             console.error('임시 저장 복원에 실패했습니다:', error);
         }
     }
-    
+
     // Firestore에서 사용자 데이터 로드
     async loadUserData() {
         if (!this.currentUser) return;
-        
+
         try {
             await this.loadSavedTextsFromFirestore();
         this.updateCharacterCount('ref');
@@ -1456,16 +1476,16 @@ class DualTextWriter {
             this.showMessage('데이터를 불러오는데 실패했습니다.', 'error');
         }
     }
-    
+
     // Firestore에서 저장된 텍스트들 불러오기
     async loadSavedTextsFromFirestore() {
         if (!this.currentUser || !this.isFirebaseReady) return;
-        
+
         try {
             const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
             const q = window.firebaseQuery(textsRef, window.firebaseOrderBy('createdAt', 'desc'));
             const querySnapshot = await window.firebaseGetDocs(q);
-            
+
             this.savedTexts = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -1477,30 +1497,25 @@ class DualTextWriter {
                     // 알 수 없는 타입은 편의상 'edit'로 처리
                     normalizedType = 'edit';
                 }
-                // 트래킹 정보 가져오기
-                const trackingData = await this.getTrackingDataForText(doc.id);
-                
                 this.savedTexts.push({
                     id: doc.id,
                     content: data.content,
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
                     characterCount: data.characterCount,
-                    type: normalizedType,
-                    trackingEnabled: trackingData.trackingEnabled || false,
-                    latestMetrics: trackingData.latestMetrics || null
+                    type: normalizedType
                 });
             });
-            
+
             console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
-            
+
         } catch (error) {
             console.error('Firestore에서 텍스트 불러오기 실패:', error);
             this.savedTexts = [];
         }
     }
-    
+
     // 기존 로컬 스토리지 메서드들은 Firestore로 대체됨
-    
+
     cleanupTempSave() {
         if (this.tempSaveInterval) {
             clearInterval(this.tempSaveInterval);
@@ -1509,16 +1524,16 @@ class DualTextWriter {
             clearTimeout(this.tempSaveTimeout);
         }
     }
-    
+
     // ===== 반자동화 포스팅 시스템 =====
-    
+
     // 해시태그 추출 함수
     extractHashtags(content) {
         const hashtagRegex = /#[\w가-힣]+/g;
         const hashtags = content.match(hashtagRegex) || [];
         return hashtags.map(tag => tag.toLowerCase());
     }
-    
+
     // 사용자 정의 해시태그 가져오기
     getUserHashtags() {
         try {
@@ -1533,7 +1548,7 @@ class DualTextWriter {
         }
         return this.defaultHashtags;
     }
-    
+
     // 사용자 정의 해시태그 저장
     saveUserHashtags(hashtags) {
         try {
@@ -1542,25 +1557,25 @@ class DualTextWriter {
                 console.warn('유효하지 않은 해시태그 배열');
                 return false;
             }
-            
+
             // 해시태그가 없는 경우
             if (hashtags.length === 0) {
                 localStorage.setItem('userHashtags', JSON.stringify([]));
                 console.log('해시태그 없이 사용하도록 설정됨');
                 return true;
             }
-            
+
             // 해시태그 형식 검증
             const validHashtags = hashtags
                 .map(tag => tag.trim())
                 .filter(tag => tag.startsWith('#') && tag.length > 1)
                 .filter(tag => tag.length <= 50); // 길이 제한
-            
+
             if (validHashtags.length === 0) {
                 console.warn('유효한 해시태그가 없습니다');
                 return false;
             }
-            
+
             localStorage.setItem('userHashtags', JSON.stringify(validHashtags));
             console.log('해시태그 저장 완료:', validHashtags);
             return true;
@@ -1569,12 +1584,12 @@ class DualTextWriter {
             return false;
         }
     }
-    
+
     // Threads 포맷팅 함수 (XSS 방지 포함, 줄바꿈 보존)
     formatForThreads(content) {
         // XSS 방지를 위한 HTML 이스케이프 (줄바꿈은 보존)
         if (!content) return '';
-        
+
         // 줄바꿈 보존하면서 XSS 방지
         const escapedContent = content
             .replace(/&/g, '&amp;')
@@ -1582,38 +1597,38 @@ class DualTextWriter {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        
+
         // 줄바꿈 정규화 (CRLF -> LF)
         const normalizedContent = escapedContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        
+
         // 연속 줄바꿈 정리 (최대 2개까지만)
         const cleanedContent = normalizedContent.replace(/\n{3,}/g, '\n\n');
-        
+
         return cleanedContent.trim();
     }
-    
+
     // HTML 이스케이프 함수 (보안 강화 - 완전한 XSS 방지)
     escapeHtml(text) {
         if (typeof text !== 'string') {
             return '';
         }
-        
+
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
     // 사용자 입력 검증 함수 (보안 강화)
     validateUserInput(input, type = 'text') {
         if (!input || typeof input !== 'string') {
             throw new Error('유효하지 않은 입력입니다.');
         }
-        
+
         // 길이 제한 검증
         if (input.length > 10000) {
             throw new Error('입력이 너무 깁니다. (최대 10,000자)');
         }
-        
+
         // 위험한 패턴 검증
         const dangerousPatterns = [
             /<script[^>]*>.*?<\/script>/gi,
@@ -1625,43 +1640,43 @@ class DualTextWriter {
             /<link[^>]*>/gi,
             /<meta[^>]*>/gi
         ];
-        
+
         for (const pattern of dangerousPatterns) {
             if (pattern.test(input)) {
                 throw new Error('위험한 코드가 감지되었습니다.');
             }
         }
-        
+
         return true;
     }
-    
+
     // 안전한 텍스트 처리 함수
     sanitizeText(text) {
         this.validateUserInput(text);
-        
+
         // HTML 태그 제거
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = text;
         const cleanText = tempDiv.textContent || tempDiv.innerText || '';
-        
+
         // 특수 문자 정리
         return cleanText
             .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // 제어 문자 제거
             .replace(/\s+/g, ' ') // 연속 공백 정리
             .trim();
     }
-    
+
     // 내용 최적화 엔진 (보안 강화 버전)
     optimizeContentForThreads(content) {
         try {
             // 1단계: 입력 검증 및 정화
             const sanitizedContent = this.sanitizeText(content);
-            
+
             // 2단계: 성능 최적화 - 대용량 텍스트 처리
             if (sanitizedContent.length > 10000) {
                 console.warn('매우 긴 텍스트가 감지되었습니다. 처리 시간이 오래 걸릴 수 있습니다.');
             }
-            
+
             const optimized = {
                 original: sanitizedContent,
                 optimized: '',
@@ -1675,7 +1690,7 @@ class DualTextWriter {
                     inputValidated: true
                 }
             };
-            
+
             // 3단계: 글자 수 최적화 (Threads는 500자 제한)
             if (sanitizedContent.length > 500) {
                 // 단어 단위로 자르기 (더 자연스러운 자르기)
@@ -1687,7 +1702,7 @@ class DualTextWriter {
             } else {
                 optimized.optimized = sanitizedContent;
             }
-            
+
             // 4단계: 해시태그 자동 추출/추가 (보안 검증 포함)
             const hashtags = this.extractHashtags(optimized.optimized);
             if (hashtags.length === 0) {
@@ -1708,34 +1723,34 @@ class DualTextWriter {
                     return !dangerousTags.some(dangerous => tag.toLowerCase().includes(dangerous));
                 });
             }
-            
+
             // 5단계: 최종 포맷팅 적용 (보안 강화)
             optimized.optimized = this.formatForThreads(optimized.optimized);
             optimized.characterCount = optimized.optimized.length;
-            
+
             // 6단계: 보안 검증 완료 표시
             optimized.securityChecks.inputValidated = true;
-            
+
             return optimized;
-            
+
         } catch (error) {
             console.error('내용 최적화 중 오류 발생:', error);
-            
+
             // 보안 오류인 경우 특별 처리
             if (error.message.includes('위험한') || error.message.includes('유효하지 않은')) {
                 throw new Error('보안상의 이유로 내용을 처리할 수 없습니다. 입력을 확인해주세요.');
             }
-            
+
             throw new Error('내용 최적화에 실패했습니다.');
         }
     }
-    
+
     // 폴백 클립보드 복사 함수
     fallbackCopyToClipboard(text) {
         console.log('🔄 폴백 클립보드 복사 시작');
         console.log('📝 폴백 복사할 텍스트:', text);
         console.log('📝 폴백 텍스트 길이:', text ? text.length : 'undefined');
-        
+
         return new Promise((resolve, reject) => {
             try {
                 const textArea = document.createElement('textarea');
@@ -1746,10 +1761,10 @@ class DualTextWriter {
                 textArea.style.opacity = '0';
                 textArea.setAttribute('readonly', '');
                 textArea.setAttribute('aria-hidden', 'true');
-                
+
                 document.body.appendChild(textArea);
                 console.log('✅ textarea 생성 및 DOM 추가 완료');
-                
+
                 // 모바일 지원을 위한 선택 범위 설정
                 if (textArea.setSelectionRange) {
                     textArea.setSelectionRange(0, text.length);
@@ -1758,12 +1773,12 @@ class DualTextWriter {
                     textArea.select();
                     console.log('✅ select() 사용');
                 }
-                
+
                 const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
                 console.log('✅ textarea 제거 완료');
                 console.log('📋 execCommand 결과:', successful);
-                
+
                 if (successful) {
                     console.log('✅ 폴백 복사 성공');
                     resolve(true);
@@ -1777,7 +1792,7 @@ class DualTextWriter {
             }
         });
     }
-    
+
     // 로딩 상태 관리 함수
     showLoadingState(element, isLoading) {
         if (isLoading) {
@@ -1790,44 +1805,44 @@ class DualTextWriter {
             element.classList.remove('loading');
         }
     }
-    
+
     // 클립보드 자동화 (완전한 에러 처리 및 폴백)
     async copyToClipboardWithFormat(content) {
         console.log('🔍 copyToClipboardWithFormat 시작');
         console.log('📝 입력 내용:', content);
         console.log('📝 입력 타입:', typeof content);
-        
+
         const button = document.getElementById('semi-auto-post-btn');
-        
+
         try {
             // 로딩 상태 표시
             if (button) {
                 this.showLoadingState(button, true);
             }
-            
+
             // 1단계: 입력 검증 강화
             if (!content || typeof content !== 'string') {
                 console.error('❌ 유효하지 않은 내용:', content);
                 throw new Error('유효하지 않은 내용입니다.');
             }
-            
+
             console.log('✅ 1단계: 입력 검증 통과');
-            
+
             // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
             console.log('📝 원본 내용 사용 (줄바꿈 보존):', content);
-            
+
             if (!content || content.length === 0) {
                 console.error('❌ 내용이 비어있음');
                 throw new Error('내용이 비어있습니다.');
             }
-            
+
             console.log('✅ 2단계: 검증 완료');
-            
+
             // 클립보드 API 지원 확인
             console.log('🔄 3단계: 클립보드 API 확인...');
             console.log('📋 navigator.clipboard 존재:', !!navigator.clipboard);
             console.log('🔒 isSecureContext:', window.isSecureContext);
-            
+
             if (navigator.clipboard && window.isSecureContext) {
                 try {
                     console.log('📋 클립보드 API로 복사 시도...');
@@ -1843,11 +1858,11 @@ class DualTextWriter {
                 console.warn('❌ Clipboard API 미지원');
                 throw new Error('Clipboard API 미지원');
             }
-            
+
         } catch (error) {
             console.error('❌ 클립보드 복사 실패:', error);
             console.error('❌ 오류 상세:', error.stack);
-            
+
             try {
                 // 폴백 방법 시도
                 console.log('🔄 폴백 방법 시도...');
@@ -1858,7 +1873,7 @@ class DualTextWriter {
             } catch (fallbackError) {
                 console.error('❌ 폴백 복사도 실패:', fallbackError);
                 this.showMessage('❌ 클립보드 복사에 실패했습니다. 수동으로 복사해주세요.', 'error');
-                
+
                 // 수동 복사를 위한 텍스트 영역 표시
                 console.log('🔄 수동 복사 모달 표시...');
                 this.showManualCopyModal(formattedContent);
@@ -1872,7 +1887,7 @@ class DualTextWriter {
             console.log('✅ 로딩 상태 해제 완료');
         }
     }
-    
+
     // 수동 복사 모달 표시 함수
     showManualCopyModal(content) {
         const modal = document.createElement('div');
@@ -1887,32 +1902,32 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // 텍스트 영역 자동 선택
         const textarea = modal.querySelector('.copy-textarea');
         textarea.focus();
         textarea.select();
     }
-    
+
     // 최적화 모달 표시 함수 (접근성 강화)
     showOptimizationModal(optimized, originalContent) {
         // 원본 텍스트 저장 (줄바꿈 보존)
         optimized.originalContent = originalContent;
-        
+
         const modal = document.createElement('div');
         modal.className = 'optimization-modal';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-labelledby', 'modal-title');
         modal.setAttribute('aria-describedby', 'modal-description');
-        
+
         // 현재 언어 감지
         const currentLang = this.detectLanguage();
         console.log('🌍 감지된 언어:', currentLang);
         console.log('📝 원본 텍스트 저장:', originalContent);
-        
+
         modal.innerHTML = `
             <div class="optimization-content" lang="${currentLang}">
                 <h3 id="modal-title">${this.t('optimizationTitle')}</h3>
@@ -1984,19 +1999,19 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // 버튼 클릭 이벤트 직접 바인딩 (동적 생성된 모달)
         setTimeout(() => {
             // 해시태그 토글 스위치
             const hashtagToggle = modal.querySelector('#hashtag-toggle');
             const previewDisplay = modal.querySelector('#preview-content-display');
-            
+
             if (hashtagToggle && previewDisplay) {
                 hashtagToggle.addEventListener('change', () => {
                     console.log('🔄 해시태그 토글 변경:', hashtagToggle.checked);
-                    
+
                     // 미리보기 업데이트
                     if (hashtagToggle.checked) {
                         previewDisplay.innerHTML = this.escapeHtml(originalContent) + 
@@ -2006,7 +2021,7 @@ class DualTextWriter {
                     }
                 });
             }
-            
+
             // 클립보드 복사 버튼
             const copyBtn = modal.querySelector('#copy-only-btn');
             if (copyBtn) {
@@ -2020,7 +2035,7 @@ class DualTextWriter {
                     this.copyToClipboardOnly(content, e);
                 });
             }
-            
+
             // Threads 열기 버튼
             const threadsBtn = modal.querySelector('#threads-only-btn');
             if (threadsBtn) {
@@ -2030,7 +2045,7 @@ class DualTextWriter {
                     this.openThreadsOnly();
                 });
             }
-            
+
             // 둘 다 실행 버튼
             const bothBtn = modal.querySelector('#both-btn');
             if (bothBtn) {
@@ -2044,7 +2059,7 @@ class DualTextWriter {
                     this.proceedWithPosting(content, e);
                 });
             }
-            
+
             // 취소 버튼
             const cancelBtn = modal.querySelector('#cancel-btn');
             if (cancelBtn) {
@@ -2055,17 +2070,17 @@ class DualTextWriter {
                 });
             }
         }, 10);
-        
+
         // 접근성 강화: 포커스 관리
         const firstBtn = modal.querySelector('#copy-only-btn');
-        
+
         // 첫 번째 버튼에 포커스
         setTimeout(() => {
             if (firstBtn) {
                 firstBtn.focus();
             }
         }, 150);
-        
+
         // ESC 키로 모달 닫기
         const handleEscape = (e) => {
             if (e.key === 'Escape') {
@@ -2074,12 +2089,12 @@ class DualTextWriter {
             }
         };
         document.addEventListener('keydown', handleEscape);
-        
+
         // Tab 키 순환 제한 (모달 내에서만)
         const focusableElements = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
-        
+
         if (firstElement && lastElement) {
             const handleTabKey = (e) => {
                 if (e.key === 'Tab') {
@@ -2096,16 +2111,16 @@ class DualTextWriter {
                     }
                 }
             };
-            
+
             modal.addEventListener('keydown', handleTabKey);
         }
-        
+
         // 모달이 제거될 때 이벤트 리스너 정리 (간단한 방식)
         const cleanup = () => {
             document.removeEventListener('keydown', handleEscape);
             console.log('✅ 모달 이벤트 리스너 정리됨');
         };
-        
+
         // 모달 DOM 제거 시 자동 정리
         const observer = new MutationObserver(() => {
             if (!document.body.contains(modal)) {
@@ -2115,16 +2130,16 @@ class DualTextWriter {
         });
         observer.observe(document.body, { childList: true });
     }
-    
+
     // 포스팅 진행 함수 (이벤트 컨텍스트 보존)
     async proceedWithPosting(formattedContent, event = null) {
         console.log('📋🚀 둘 다 실행 시작');
         console.log('🎯 이벤트 컨텍스트:', event ? '보존됨' : '없음');
-        
+
         try {
             // 클립보드에 복사 (이벤트 컨텍스트 보존)
             let success = false;
-            
+
             if (event) {
                 console.log('🚀 이벤트 컨텍스트에서 즉시 복사 시도');
                 success = await this.copyToClipboardImmediate(formattedContent);
@@ -2132,33 +2147,33 @@ class DualTextWriter {
                 console.log('🔄 기존 방법으로 복사 시도');
                 success = await this.copyToClipboardWithFormat(formattedContent);
             }
-            
+
             if (success) {
                 console.log('✅ 클립보드 복사 성공');
             } else {
                 console.warn('⚠️ 클립보드 복사 실패, Threads는 계속 열기');
             }
-            
+
             // Threads 새 탭 열기 (클립보드 복사 성공 여부와 관계없이)
             const threadsUrl = this.getThreadsUrl();
             console.log('🔗 Threads URL:', threadsUrl);
             window.open(threadsUrl, '_blank', 'noopener,noreferrer');
-            
+
             // 사용자 가이드 표시
             this.showPostingGuide();
-            
+
             // 모달 닫기
             const modal = document.querySelector('.optimization-modal');
             if (modal) {
                 modal.remove();
             }
-            
+
         } catch (error) {
             console.error('포스팅 진행 중 오류:', error);
             this.showMessage('포스팅 진행 중 오류가 발생했습니다.', 'error');
         }
     }
-    
+
     // 클립보드 복사만 실행하는 함수 (이벤트 컨텍스트 보존)
     async copyToClipboardOnly(formattedContent, event = null) {
         console.log('📋 클립보드 복사만 실행');
@@ -2166,24 +2181,24 @@ class DualTextWriter {
         console.log('📝 내용 타입:', typeof formattedContent);
         console.log('📝 내용 길이:', formattedContent ? formattedContent.length : 'undefined');
         console.log('🎯 이벤트 컨텍스트:', event ? '보존됨' : '없음');
-        
+
         try {
             // 이벤트가 있으면 즉시 클립보드 복사 시도
             if (event) {
                 console.log('🚀 이벤트 컨텍스트에서 즉시 복사 시도');
                 const success = await this.copyToClipboardImmediate(formattedContent);
-                
+
                 if (success) {
                     this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
                     console.log('✅ 클립보드 복사 완료');
                     return;
                 }
             }
-            
+
             // 이벤트가 없거나 즉시 복사 실패 시 기존 방법 사용
             console.log('🔄 기존 방법으로 복사 시도');
             const success = await this.copyToClipboardWithFormat(formattedContent);
-            
+
             if (success) {
                 this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
                 console.log('✅ 클립보드 복사 완료');
@@ -2196,20 +2211,20 @@ class DualTextWriter {
             this.showMessage('클립보드 복사 중 오류가 발생했습니다: ' + error.message, 'error');
         }
     }
-    
+
     // 즉시 클립보드 복사 (이벤트 컨텍스트 보존)
     async copyToClipboardImmediate(content) {
         console.log('🚀 즉시 클립보드 복사 시작');
-        
+
         try {
             // 1단계: 입력 검증
             if (!content || typeof content !== 'string') {
                 throw new Error('유효하지 않은 내용입니다.');
             }
-            
+
             // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
             console.log('📝 원본 내용 (줄바꿈 보존):', content);
-            
+
             // 3단계: 클립보드 API 시도 (이벤트 컨텍스트 내에서)
             if (navigator.clipboard && window.isSecureContext) {
                 try {
@@ -2226,43 +2241,43 @@ class DualTextWriter {
                 console.log('🔄 클립보드 API 미지원, 폴백 방법 사용');
                 return await this.fallbackCopyToClipboard(content);
             }
-            
+
         } catch (error) {
             console.error('❌ 즉시 클립보드 복사 실패:', error);
             return false;
         }
     }
-    
+
     // Threads 열기만 실행하는 함수
     openThreadsOnly() {
         console.log('🚀 Threads 열기만 실행');
-        
+
         try {
             const threadsUrl = this.getThreadsUrl();
             console.log('🔗 Threads URL:', threadsUrl);
-            
+
             window.open(threadsUrl, '_blank', 'noopener,noreferrer');
-            
+
             this.showMessage('✅ Threads 페이지가 열렸습니다!', 'success');
             console.log('✅ Threads 페이지 열기 완료');
-            
+
             // 간단한 가이드 표시
             this.showSimpleThreadsGuide();
-            
+
         } catch (error) {
             console.error('❌ Threads 열기 중 오류:', error);
             this.showMessage('Threads 열기 중 오류가 발생했습니다: ' + error.message, 'error');
         }
     }
-    
+
     // 간단한 Threads 가이드 표시
     showSimpleThreadsGuide() {
         const currentLang = this.detectLanguage();
-        
+
         const guide = document.createElement('div');
         guide.className = 'simple-threads-guide';
         guide.setAttribute('lang', currentLang);
-        
+
         guide.innerHTML = `
             <div class="guide-content">
                 <h3>✅ Threads 페이지가 열렸습니다!</h3>
@@ -2280,12 +2295,12 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(guide);
-        
+
         // 언어 최적화 적용
         this.applyLanguageOptimization(guide, currentLang);
-        
+
         // 5초 후 자동으로 사라지게 하기
         setTimeout(() => {
             if (guide.parentNode) {
@@ -2293,22 +2308,22 @@ class DualTextWriter {
             }
         }, 8000);
     }
-    
+
     // Threads URL 가져오기 함수
     getThreadsUrl() {
         // 사용자 설정에서 프로필 URL 확인
         const userProfileUrl = localStorage.getItem('threads_profile_url');
-        
+
         if (userProfileUrl && this.isValidThreadsUrl(userProfileUrl)) {
             console.log('✅ 사용자 프로필 URL 사용:', userProfileUrl);
             return userProfileUrl;
         }
-        
+
         // 기본 Threads 메인 페이지
         console.log('✅ 기본 Threads 메인 페이지 사용');
         return 'https://www.threads.com/';
     }
-    
+
     // Threads URL 유효성 검사
     isValidThreadsUrl(url) {
         try {
@@ -2318,7 +2333,7 @@ class DualTextWriter {
             return false;
         }
     }
-    
+
     // 사용자 프로필 URL 설정 함수
     setThreadsProfileUrl(url) {
         if (this.isValidThreadsUrl(url)) {
@@ -2330,7 +2345,7 @@ class DualTextWriter {
             return false;
         }
     }
-    
+
     // 포스팅 가이드 표시 함수
     showPostingGuide() {
         const guide = document.createElement('div');
@@ -2356,9 +2371,9 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(guide);
-        
+
         // 5초 후 자동으로 사라지게 하기
         setTimeout(() => {
             if (guide.parentNode) {
@@ -2366,15 +2381,15 @@ class DualTextWriter {
             }
         }, 10000);
     }
-    
+
     // Threads 프로필 설정 모달 표시
     showThreadsProfileSettings() {
         const currentLang = this.detectLanguage();
-        
+
         const modal = document.createElement('div');
         modal.className = 'threads-profile-modal';
         modal.setAttribute('lang', currentLang);
-        
+
         modal.innerHTML = `
             <div class="modal-content">
                 <h3>⚙️ Threads 프로필 설정</h3>
@@ -2404,12 +2419,12 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // 언어 최적화 적용
         this.applyLanguageOptimization(modal, currentLang);
-        
+
         // 입력 필드에 포커스
         setTimeout(() => {
             const input = modal.querySelector('#threads-profile-url');
@@ -2419,7 +2434,7 @@ class DualTextWriter {
             }
         }, 100);
     }
-    
+
     // Threads 프로필 URL 저장
     saveThreadsProfileUrl() {
         const input = document.getElementById('threads-profile-url');
@@ -2432,7 +2447,7 @@ class DualTextWriter {
                 localStorage.removeItem('threads_profile_url');
                 this.showMessage('✅ 기본 Threads 메인 페이지로 설정되었습니다!', 'success');
             }
-            
+
             // 모달 닫기
             const modal = document.querySelector('.threads-profile-modal');
             if (modal) {
@@ -2440,16 +2455,16 @@ class DualTextWriter {
             }
         }
     }
-    
+
     // 해시태그 설정 모달 표시
     showHashtagSettings() {
         const currentLang = this.detectLanguage();
         const currentHashtags = this.getUserHashtags();
-        
+
         const modal = document.createElement('div');
         modal.className = 'hashtag-settings-modal';
         modal.setAttribute('lang', currentLang);
-        
+
         modal.innerHTML = `
             <div class="modal-content">
                 <h3>📌 해시태그 설정</h3>
@@ -2488,12 +2503,12 @@ class DualTextWriter {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // 언어 최적화 적용
         this.applyLanguageOptimization(modal, currentLang);
-        
+
         // 입력 필드에 포커스
         setTimeout(() => {
             const input = modal.querySelector('#hashtag-input');
@@ -2503,19 +2518,19 @@ class DualTextWriter {
             }
         }, 100);
     }
-    
+
     // 해시태그 설정 저장
     saveHashtagSettings() {
         const input = document.getElementById('hashtag-input');
         if (input) {
             const inputValue = input.value.trim();
-            
+
             // 빈 값 허용 (해시태그 없이 사용)
             if (!inputValue) {
                 this.saveUserHashtags([]);
                 this.showMessage('✅ 해시태그 없이 포스팅하도록 설정되었습니다!', 'success');
                 this.updateHashtagsDisplay();
-                
+
                 // 모달 닫기
                 const modal = document.querySelector('.hashtag-settings-modal');
                 if (modal) {
@@ -2523,17 +2538,17 @@ class DualTextWriter {
                 }
                 return;
             }
-            
+
             // 쉼표로 분리하여 배열로 변환
             const hashtags = inputValue
                 .split(',')
                 .map(tag => tag.trim())
                 .filter(tag => tag.length > 0);
-            
+
             if (this.saveUserHashtags(hashtags)) {
                 this.showMessage('✅ 해시태그가 저장되었습니다!', 'success');
                 this.updateHashtagsDisplay();
-                
+
                 // 모달 닫기
                 const modal = document.querySelector('.hashtag-settings-modal');
                 if (modal) {
@@ -2544,7 +2559,7 @@ class DualTextWriter {
             }
         }
     }
-    
+
     // 해시태그 표시 업데이트
     updateHashtagsDisplay() {
         const display = document.getElementById('current-hashtags-display');
@@ -2558,7 +2573,7 @@ class DualTextWriter {
             }
         }
     }
-    
+
     // 오프라인 지원 함수들
     saveToLocalStorage(key, data) {
         try {
@@ -2569,7 +2584,7 @@ class DualTextWriter {
             return false;
         }
     }
-    
+
     loadFromLocalStorage(key) {
         try {
             const data = localStorage.getItem(key);
@@ -2579,60 +2594,60 @@ class DualTextWriter {
             return null;
         }
     }
-    
+
     // 오프라인 상태 감지
     isOnline() {
         return navigator.onLine;
     }
-    
+
     // 오프라인 알림 표시
     showOfflineNotification() {
         if (!this.isOnline()) {
             this.showMessage('📡 오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.', 'warning');
         }
     }
-    
+
     // 언어 감지 함수
     detectLanguage() {
         // 1. 브라우저 언어 설정 확인
         const browserLang = navigator.language || navigator.userLanguage;
         console.log('🌍 브라우저 언어:', browserLang);
-        
+
         // 2. HTML lang 속성 확인
         const htmlLang = document.documentElement.lang;
         console.log('🌍 HTML 언어:', htmlLang);
-        
+
         // 3. 사용자 설정 언어 확인 (로컬 스토리지)
         const userLang = localStorage.getItem('preferred_language');
         console.log('🌍 사용자 설정 언어:', userLang);
-        
+
         // 우선순위: 사용자 설정 > HTML 속성 > 브라우저 설정
         let detectedLang = userLang || htmlLang || browserLang;
-        
+
         // 언어 코드 정규화 (ko-KR -> ko, en-US -> en)
         if (detectedLang) {
             detectedLang = detectedLang.split('-')[0];
         }
-        
+
         // 지원되는 언어 목록
         const supportedLanguages = ['ko', 'en', 'ja', 'zh'];
-        
+
         // 지원되지 않는 언어는 기본값(한국어)으로 설정
         if (!supportedLanguages.includes(detectedLang)) {
             detectedLang = 'ko';
         }
-        
+
         console.log('🌍 최종 감지된 언어:', detectedLang);
         return detectedLang;
     }
-    
+
     // 언어별 텍스트 최적화 적용
     applyLanguageOptimization(element, language) {
         if (!element) return;
-        
+
         // 언어별 클래스 추가
         element.classList.add(`lang-${language}`);
-        
+
         // 언어별 스타일 적용
         const style = document.createElement('style');
         style.textContent = `
@@ -2641,10 +2656,10 @@ class DualTextWriter {
             }
         `;
         document.head.appendChild(style);
-        
+
         console.log(`🌍 ${language} 언어 최적화 적용됨`);
     }
-    
+
     // 언어별 폰트 설정
     getLanguageFont(language) {
         const fontMap = {
@@ -2653,15 +2668,15 @@ class DualTextWriter {
             'ja': '"Noto Sans JP", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", sans-serif',
             'zh': '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif'
         };
-        
+
         return fontMap[language] || fontMap['ko'];
     }
-    
+
     // 국제화 지원 함수들
     getLanguage() {
         return navigator.language || navigator.userLanguage || 'ko-KR';
     }
-    
+
     getTexts() {
         const lang = this.getLanguage();
         const texts = {
@@ -2711,38 +2726,38 @@ class DualTextWriter {
                 hashtagCount: '個'
             }
         };
-        
+
         return texts[lang] || texts['ko-KR'];
     }
-    
+
     t(key) {
         const texts = this.getTexts();
         return texts[key] || key;
     }
-    
+
     // 성능 모니터링 함수들
     performanceMonitor = {
         startTime: null,
         measurements: {},
-        
+
         start(label) {
             this.startTime = performance.now();
             this.measurements[label] = { start: this.startTime };
         },
-        
+
         end(label) {
             if (this.startTime && this.measurements[label]) {
                 const endTime = performance.now();
                 const duration = endTime - this.startTime;
                 this.measurements[label].duration = duration;
                 this.measurements[label].end = endTime;
-                
+
                 console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`);
                 return duration;
             }
             return 0;
         },
-        
+
         getReport() {
             return Object.keys(this.measurements).map(label => ({
                 label,
@@ -2750,7 +2765,7 @@ class DualTextWriter {
             }));
         }
     };
-    
+
     // 메모리 사용량 체크
     checkMemoryUsage() {
         if (performance.memory) {
@@ -2762,11 +2777,11 @@ class DualTextWriter {
             });
         }
     }
-    
+
     // 종합 테스트 함수
     async runComprehensiveTest() {
         console.log('🧪 종합 테스트 시작...');
-        
+
         const testResults = {
             security: false,
             accessibility: false,
@@ -2775,7 +2790,7 @@ class DualTextWriter {
             offline: false,
             internationalization: false
         };
-        
+
         try {
             // 1. 보안 테스트
             console.log('🔒 보안 테스트...');
@@ -2783,7 +2798,7 @@ class DualTextWriter {
             const sanitized = this.sanitizeText(testContent);
             testResults.security = !sanitized.includes('<script>');
             console.log('보안 테스트:', testResults.security ? '✅ 통과' : '❌ 실패');
-            
+
             // 2. 접근성 테스트
             console.log('♿ 접근성 테스트...');
             const button = document.getElementById('semi-auto-post-btn');
@@ -2791,7 +2806,7 @@ class DualTextWriter {
                 button.getAttribute('aria-label') && 
                 button.getAttribute('role');
             console.log('접근성 테스트:', testResults.accessibility ? '✅ 통과' : '❌ 실패');
-            
+
             // 3. 성능 테스트
             console.log('⚡ 성능 테스트...');
             this.performanceMonitor.start('테스트');
@@ -2799,68 +2814,68 @@ class DualTextWriter {
             const duration = this.performanceMonitor.end('테스트');
             testResults.performance = duration < 100; // 100ms 이하
             console.log('성능 테스트:', testResults.performance ? '✅ 통과' : '❌ 실패');
-            
+
             // 4. 모바일 테스트
             console.log('📱 모바일 테스트...');
             const isMobile = window.innerWidth <= 768;
             testResults.mobile = true; // CSS 미디어 쿼리로 처리됨
             console.log('모바일 테스트:', testResults.mobile ? '✅ 통과' : '❌ 실패');
-            
+
             // 5. 오프라인 테스트
             console.log('💾 오프라인 테스트...');
             testResults.offline = typeof this.isOnline === 'function' && 
                 typeof this.saveToLocalStorage === 'function';
             console.log('오프라인 테스트:', testResults.offline ? '✅ 통과' : '❌ 실패');
-            
+
             // 6. 국제화 테스트
             console.log('🌍 국제화 테스트...');
             testResults.internationalization = typeof this.t === 'function' && 
                 this.t('noContent') !== 'noContent';
             console.log('국제화 테스트:', testResults.internationalization ? '✅ 통과' : '❌ 실패');
-            
+
             // 결과 요약
             const passedTests = Object.values(testResults).filter(result => result).length;
             const totalTests = Object.keys(testResults).length;
-            
+
             console.log(`\n🎯 테스트 완료: ${passedTests}/${totalTests} 통과`);
             console.log('상세 결과:', testResults);
-            
+
             return testResults;
-            
+
         } catch (error) {
             console.error('테스트 중 오류 발생:', error);
             return testResults;
         }
     }
-    
+
     // 반자동화 포스팅 메인 함수 (성능 최적화 + 오프라인 지원 + 모니터링)
     async handleSemiAutoPost() {
         console.log('🔍 반자동화 포스팅 시작');
-        
+
         const content = this.editTextInput.value;
         console.log('📝 입력 내용:', content);
-        
+
         if (!content.trim()) {
             console.warn('❌ 포스팅할 내용이 없습니다');
             this.showMessage('❌ 포스팅할 내용이 없습니다.', 'error');
             return;
         }
-        
+
         const button = document.getElementById('semi-auto-post-btn');
-        
+
         try {
             console.log('✅ 1. 입력 검증 완료');
-            
+
             // 로딩 상태 표시
             if (button) {
                 this.showLoadingState(button, true);
                 console.log('✅ 2. 로딩 상태 표시');
             }
-            
+
             console.log('🔄 3. 내용 최적화 시작...');
             const optimized = await this.optimizeContentForThreadsAsync(content);
             console.log('✅ 4. 내용 최적화 완료:', optimized);
-            
+
             // 오프라인에서도 로컬 저장
             try {
                 this.saveToLocalStorage('lastOptimizedContent', optimized);
@@ -2868,12 +2883,12 @@ class DualTextWriter {
             } catch (saveError) {
                 console.warn('⚠️ 로컬 저장 실패:', saveError);
             }
-            
+
             // 최적화 완료 후 모달 표시 (원본 텍스트 전달)
             console.log('🔄 6. 최적화 모달 표시 시작...');
             this.showOptimizationModal(optimized, content);
             console.log('✅ 7. 최적화 모달 표시 완료');
-            
+
         } catch (error) {
             console.error('❌ 반자동화 포스팅 처리 중 오류:', error);
             console.error('오류 상세:', error.stack);
@@ -2886,7 +2901,7 @@ class DualTextWriter {
             }
         }
     }
-    
+
     // 비동기 내용 최적화 함수 (성능 개선)
     async optimizeContentForThreadsAsync(content) {
         return new Promise((resolve, reject) => {
@@ -2908,13 +2923,13 @@ let dualTextWriter;
 
 document.addEventListener('DOMContentLoaded', () => {
     dualTextWriter = new DualTextWriter();
-    
+
     // 메인 콘텐츠 강제 표시 (로그인 상태와 관계없이)
     const mainContent = document.getElementById('main-content');
     if (mainContent) {
         mainContent.style.display = 'block';
     }
-    
+
     // 전역 디버깅 함수 등록
     window.debugSavedItems = () => dualTextWriter.debugSavedItems();
     window.verifyLLMCharacteristics = () => dualTextWriter.verifyLLMCharacteristics();
@@ -2976,6 +2991,7 @@ style.textContent = `
         }
     }
 `;
+document.head.appendChild(style);
 document.head.appendChild(style);
 
 // ==================== 트래킹 기능 메서드들 ====================
@@ -3142,9 +3158,8 @@ DualTextWriter.prototype.openTrackingModal = function() {
         // 폼 초기화
         document.getElementById('tracking-views').value = '';
         document.getElementById('tracking-likes').value = '';
-        document.getElementById('tracking-replies').value = '';
-        document.getElementById('tracking-reposts').value = '';
-        document.getElementById('tracking-quotes').value = '';
+        document.getElementById('tracking-comments').value = '';
+        document.getElementById('tracking-shares').value = '';
         document.getElementById('tracking-notes').value = '';
     }
 };
@@ -3155,18 +3170,16 @@ DualTextWriter.prototype.saveTrackingData = async function() {
     
     const views = parseInt(document.getElementById('tracking-views').value) || 0;
     const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
-    const replies = parseInt(document.getElementById('tracking-replies').value) || 0;
-    const reposts = parseInt(document.getElementById('tracking-reposts').value) || 0;
-    const quotes = parseInt(document.getElementById('tracking-quotes').value) || 0;
+    const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
+    const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
     const notes = document.getElementById('tracking-notes').value;
     
     const trackingData = {
         timestamp: window.firebaseServerTimestamp(),
         views,
         likes,
-        replies,
-        reposts,
-        quotes,
+        comments,
+        shares,
         notes
     };
     
@@ -3196,13 +3209,8 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             
             this.closeTrackingModal();
             this.renderTrackingPosts();
-            this.updateDashboardSummary();
-            this.updateDashboardInsights();
-            this.updateTopPosts();
+            this.updateTrackingSummary();
             this.updateTrackingChart();
-            
-            // 저장된 글 목록도 새로고침
-            this.loadSavedTexts();
             
             console.log('트래킹 데이터가 저장되었습니다.');
         }
@@ -3231,21 +3239,19 @@ DualTextWriter.prototype.calculateAnalytics = function(metrics) {
     return {
         totalViews: latest.views,
         totalLikes: latest.likes,
-        totalReplies: latest.replies,
-        totalReposts: latest.reposts,
-        totalQuotes: latest.quotes,
+        totalComments: latest.comments,
+        totalShares: latest.shares,
         viewsGrowth: latest.views - first.views,
         likesGrowth: latest.likes - first.likes,
-        repliesGrowth: latest.replies - first.replies,
-        repostsGrowth: latest.reposts - first.reposts,
-        quotesGrowth: latest.quotes - first.quotes,
+        commentsGrowth: latest.comments - first.comments,
+        sharesGrowth: latest.shares - first.shares,
         engagementRate: latest.views > 0 ? 
-            ((latest.likes + latest.replies + latest.reposts + latest.quotes) / latest.views * 100).toFixed(2) : 0
+            ((latest.likes + latest.comments + latest.shares) / latest.views * 100).toFixed(2) : 0
     };
 };
 
-// 대시보드 요약 업데이트
-DualTextWriter.prototype.updateDashboardSummary = function() {
+// 트래킹 요약 업데이트
+DualTextWriter.prototype.updateTrackingSummary = function() {
     const totalPosts = this.trackingPosts.length;
     const totalViews = this.trackingPosts.reduce((sum, post) => {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
@@ -3255,108 +3261,10 @@ DualTextWriter.prototype.updateDashboardSummary = function() {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         return sum + (latest ? latest.likes : 0);
     }, 0);
-    const totalReplies = this.trackingPosts.reduce((sum, post) => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        return sum + (latest ? latest.replies : 0);
-    }, 0);
-    const totalReposts = this.trackingPosts.reduce((sum, post) => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        return sum + (latest ? latest.reposts : 0);
-    }, 0);
-    const totalQuotes = this.trackingPosts.reduce((sum, post) => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        return sum + (latest ? latest.quotes : 0);
-    }, 0);
     
     if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
     if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
     if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
-    if (this.totalRepliesElement) this.totalRepliesElement.textContent = totalReplies.toLocaleString();
-    if (this.totalRepostsElement) this.totalRepostsElement.textContent = totalReposts.toLocaleString();
-    if (this.totalQuotesElement) this.totalQuotesElement.textContent = totalQuotes.toLocaleString();
-};
-
-// 대시보드 인사이트 업데이트
-DualTextWriter.prototype.updateDashboardInsights = function() {
-    if (this.trackingPosts.length === 0) {
-        if (this.avgEngagementElement) this.avgEngagementElement.textContent = '0%';
-        if (this.maxEngagementElement) this.maxEngagementElement.textContent = '0%';
-        if (this.viewsGrowthElement) this.viewsGrowthElement.textContent = '+0';
-        if (this.likesGrowthElement) this.likesGrowthElement.textContent = '+0';
-        return;
-    }
-    
-    // 참여율 계산
-    const engagementRates = this.trackingPosts.map(post => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        if (!latest || latest.views === 0) return 0;
-        return ((latest.likes + latest.replies + latest.reposts + latest.quotes) / latest.views * 100);
-    });
-    
-    const avgEngagement = engagementRates.reduce((sum, rate) => sum + rate, 0) / engagementRates.length;
-    const maxEngagement = Math.max(...engagementRates);
-    
-    // 성장률 계산 (첫 번째와 마지막 메트릭 비교)
-    let totalViewsGrowth = 0;
-    let totalLikesGrowth = 0;
-    
-    this.trackingPosts.forEach(post => {
-        if (post.metrics.length >= 2) {
-            const first = post.metrics[0];
-            const latest = post.metrics[post.metrics.length - 1];
-            totalViewsGrowth += (latest.views - first.views);
-            totalLikesGrowth += (latest.likes - first.likes);
-        }
-    });
-    
-    if (this.avgEngagementElement) this.avgEngagementElement.textContent = avgEngagement.toFixed(1) + '%';
-    if (this.maxEngagementElement) this.maxEngagementElement.textContent = maxEngagement.toFixed(1) + '%';
-    if (this.viewsGrowthElement) this.viewsGrowthElement.textContent = '+' + totalViewsGrowth.toLocaleString();
-    if (this.likesGrowthElement) this.likesGrowthElement.textContent = '+' + totalLikesGrowth.toLocaleString();
-};
-
-// TOP 포스트 업데이트
-DualTextWriter.prototype.updateTopPosts = function() {
-    if (!this.topPostsListElement) return;
-    
-    if (this.trackingPosts.length === 0) {
-        this.topPostsListElement.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #666;">
-                <p>트래킹 중인 포스트가 없습니다.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // 조회수 기준으로 정렬
-    const sortedPosts = this.trackingPosts
-        .map(post => {
-            const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-            return {
-                ...post,
-                latestViews: latest ? latest.views : 0,
-                latestLikes: latest ? latest.likes : 0,
-                latestReplies: latest ? latest.replies : 0,
-                latestReposts: latest ? latest.reposts : 0,
-                latestQuotes: latest ? latest.quotes : 0
-            };
-        })
-        .sort((a, b) => b.latestViews - a.latestViews)
-        .slice(0, 5);
-    
-    this.topPostsListElement.innerHTML = sortedPosts.map((post, index) => `
-        <div class="top-post-item">
-            <div class="post-rank">#${index + 1}</div>
-            <div class="post-content">${post.content.substring(0, 60)}${post.content.length > 60 ? '...' : ''}</div>
-            <div class="post-metrics">
-                <span class="metric">👀 ${post.latestViews}</span>
-                <span class="metric">❤️ ${post.latestLikes}</span>
-                <span class="metric">💬 ${post.latestReplies}</span>
-                <span class="metric">🔄 ${post.latestReposts}</span>
-                <span class="metric">📝 ${post.latestQuotes}</span>
-            </div>
-        </div>
-    `).join('');
 };
 
 // 트래킹 차트 초기화
@@ -3446,180 +3354,6 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     this.trackingChart.update();
 };
 
-// 텍스트별 트래킹 데이터 가져오기
-DualTextWriter.prototype.getTrackingDataForText = async function(textId) {
-    if (!this.currentUser || !this.isFirebaseReady) {
-        return { trackingEnabled: false, latestMetrics: null };
-    }
-    
-    try {
-        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
-        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
-        const querySnapshot = await window.firebaseGetDocs(q);
-        
-        if (querySnapshot.empty) {
-            return { trackingEnabled: false, latestMetrics: null };
-        }
-        
-        const postDoc = querySnapshot.docs[0];
-        const postData = postDoc.data();
-        
-        const latestMetrics = postData.metrics && postData.metrics.length > 0 
-            ? postData.metrics[postData.metrics.length - 1] 
-            : null;
-            
-        return {
-            trackingEnabled: postData.trackingEnabled || false,
-            latestMetrics: latestMetrics
-        };
-        
-    } catch (error) {
-        console.error('트래킹 데이터 가져오기 실패:', error);
-        return { trackingEnabled: false, latestMetrics: null };
-    }
-};
-
-// 인라인 폼 토글
-DualTextWriter.prototype.toggleInlineForm = function(textId) {
-    const form = document.getElementById(`tracking-form-${textId}`);
-    if (form) {
-        const isVisible = form.style.display !== 'none';
-        form.style.display = isVisible ? 'none' : 'block';
-        
-        // 다른 열린 폼들 닫기
-        if (!isVisible) {
-            document.querySelectorAll('.inline-tracking-form').forEach(f => {
-                if (f.id !== `tracking-form-${textId}`) {
-                    f.style.display = 'none';
-                }
-            });
-        }
-    }
-};
-
-// 인라인 폼 닫기
-DualTextWriter.prototype.closeInlineForm = function(textId) {
-    const form = document.getElementById(`tracking-form-${textId}`);
-    if (form) {
-        form.style.display = 'none';
-    }
-};
-
-// 인라인 트래킹 데이터 저장
-DualTextWriter.prototype.saveInlineTracking = async function(textId) {
-    if (!this.currentUser || !this.isFirebaseReady) return;
-    
-    const views = parseInt(document.getElementById(`inline-views-${textId}`).value) || 0;
-    const likes = parseInt(document.getElementById(`inline-likes-${textId}`).value) || 0;
-    const replies = parseInt(document.getElementById(`inline-replies-${textId}`).value) || 0;
-    const reposts = parseInt(document.getElementById(`inline-reposts-${textId}`).value) || 0;
-    const quotes = parseInt(document.getElementById(`inline-quotes-${textId}`).value) || 0;
-    const notes = document.getElementById(`inline-notes-${textId}`).value;
-    
-    const trackingData = {
-        timestamp: window.firebaseServerTimestamp(),
-        views,
-        likes,
-        replies,
-        reposts,
-        quotes,
-        notes
-    };
-    
-    try {
-        // 해당 텍스트의 포스트 찾기
-        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
-        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
-        const querySnapshot = await window.firebaseGetDocs(q);
-        
-        if (querySnapshot.empty) {
-            console.error('트래킹 포스트를 찾을 수 없습니다.');
-            return;
-        }
-        
-        const postDoc = querySnapshot.docs[0];
-        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
-        const postData = postDoc.data();
-        
-        const updatedMetrics = [...(postData.metrics || []), trackingData];
-        const analytics = this.calculateAnalytics(updatedMetrics);
-        
-        await window.firebaseUpdateDoc(postRef, {
-            metrics: updatedMetrics,
-            analytics,
-            updatedAt: window.firebaseServerTimestamp()
-        });
-        
-        // 폼 닫기
-        this.closeInlineForm(textId);
-        
-        // 저장된 글 목록 새로고침
-        this.loadSavedTexts();
-        
-        console.log('인라인 트래킹 데이터가 저장되었습니다.');
-        
-    } catch (error) {
-        console.error('인라인 트래킹 데이터 저장 실패:', error);
-    }
-};
-
-// 저장된 글에서 트래킹 중지
-DualTextWriter.prototype.stopTrackingFromSaved = async function(textId) {
-    if (!this.currentUser || !this.isFirebaseReady) return;
-    
-    try {
-        // 해당 텍스트의 포스트 찾기
-        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
-        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
-        const querySnapshot = await window.firebaseGetDocs(q);
-        
-        if (querySnapshot.empty) {
-            console.error('트래킹 포스트를 찾을 수 없습니다.');
-            return;
-        }
-        
-        const postDoc = querySnapshot.docs[0];
-        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
-        
-        await window.firebaseUpdateDoc(postRef, {
-            trackingEnabled: false,
-            updatedAt: window.firebaseServerTimestamp()
-        });
-        
-        // 저장된 글 목록 새로고침
-        this.loadSavedTexts();
-        
-        console.log('트래킹이 중지되었습니다.');
-        
-    } catch (error) {
-        console.error('트래킹 중지 실패:', error);
-    }
-};
-
-// 저장된 글에 메트릭 추가
-DualTextWriter.prototype.addMetricsToSavedText = async function(textId) {
-    if (!this.currentUser || !this.isFirebaseReady) return;
-    
-    try {
-        // 해당 텍스트의 포스트 찾기
-        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
-        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
-        const querySnapshot = await window.firebaseGetDocs(q);
-        
-        if (querySnapshot.empty) {
-            console.error('트래킹 포스트를 찾을 수 없습니다.');
-            return;
-        }
-        
-        const postDoc = querySnapshot.docs[0];
-        this.currentTrackingPost = postDoc.id;
-        this.openTrackingModal();
-        
-    } catch (error) {
-        console.error('메트릭 추가 실패:', error);
-    }
-};
-
 // 저장된 글에서 트래킹 시작
 DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -3639,7 +3373,6 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
         // 포스트 컬렉션에 추가
         const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
         const postData = {
-            textId: textId, // 원본 텍스트 ID 연결
             content: textData.content,
             type: textData.type || 'edit',
             postedAt: window.firebaseServerTimestamp(),
@@ -3654,10 +3387,11 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
         
         console.log('트래킹 포스트가 생성되었습니다:', docRef.id);
         
-        // 저장된 글 목록 새로고침
-        this.loadSavedTexts();
+        // 트래킹 탭으로 전환
+        this.switchTab('tracking');
         
-        console.log('트래킹이 시작되었습니다. 저장된 글에서 확인하세요.');
+        // 트래킹 포스트 목록 새로고침
+        this.loadTrackingPosts();
         
     } catch (error) {
         console.error('트래킹 시작 실패:', error);
@@ -3665,3 +3399,18 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
 };
 
 // 전역 함수들
+window.saveTrackingData = function() {
+    if (dualTextWriter) {
+        dualTextWriter.saveTrackingData();
+    }
+};
+
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (modalId === 'tracking-modal' && dualTextWriter) {
+        dualTextWriter.closeTrackingModal();
+    }
+};

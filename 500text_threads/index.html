@@ -11,12 +11,12 @@
         <header>
             <h1>📝 500자 미만 글 작성기</h1>
             <p class="subtitle">간단하고 깔끔한 글 작성 도구</p>
-            
+
             <!-- 사용자 인증 섹션 -->
             <div class="user-auth-section" id="user-auth-section">
                 <div class="login-form" id="login-form">
                     <h3>🔐 안전한 로그인</h3>
-                    
+
                     <!-- Google 로그인 버튼 -->
                     <div class="google-login-section">
                         <button id="google-login-btn" class="btn btn-google">
@@ -25,12 +25,12 @@
                         </button>
                         <p class="google-note">Google 계정으로 안전하게 로그인하세요</p>
                     </div>
-                    
+
                     <!-- 구분선 -->
                     <div class="auth-divider">
                         <span>또는</span>
                     </div>
-                    
+
                     <!-- 기존 사용자명 로그인 (폴백) -->
                     <div class="legacy-login-section">
                         <div class="auth-input-group">
@@ -40,7 +40,7 @@
                         <p class="auth-note">기존 사용자명으로 로그인 (보안 수준 낮음)</p>
                     </div>
                 </div>
-                
+
                 <div class="user-info" id="user-info" style="display: none;">
                     <div class="user-welcome">
                         <span class="user-icon">👤</span>
@@ -50,7 +50,7 @@
                 </div>
             </div>
         </header>
-        
+
         <main id="main-content" style="display: none;">
             <!-- 탭 기반 인터페이스 -->
             <div class="tab-container">
@@ -62,8 +62,12 @@
                     <span class="tab-icon">💾</span>
                     <span class="tab-text">저장된 글</span>
                 </button>
+                <button class="tab-button" data-tab="tracking">
+                    <span class="tab-icon">📊</span>
+                    <span class="tab-text">트래킹</span>
+                </button>
             </div>
-            
+
             <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
             <div class="tab-content active" id="writing-tab">
                 <div class="writing-container">
@@ -78,24 +82,24 @@
                                 <span class="unit">자</span>
                             </div>
                         </div>
-                        
+
                         <textarea 
                             id="ref-text-input" 
                             placeholder="참고할 레퍼런스 글을 입력하세요..."
                             maxlength="500"
                         ></textarea>
-                        
+
                         <div class="progress-bar">
                             <div id="ref-progress-fill" class="progress-fill"></div>
                         </div>
-                        
+
                         <div class="panel-controls">
                             <div class="control-group basic-actions">
                                 <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
                                 <button id="ref-save-btn" class="btn btn-primary btn-mobile">저장</button>
                                 <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                             </div>
-                            
+
                             <div class="control-group advanced-actions">
                                 <div class="llm-validation-dropdown">
                                     <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
@@ -141,7 +145,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 수정/작성 글 패널 -->
                     <div class="writing-panel right-panel">
                         <div class="panel-header">
@@ -153,24 +157,24 @@
                                 <span class="unit">자</span>
                             </div>
                         </div>
-                        
+
                         <textarea 
                             id="edit-text-input" 
                             placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
                             maxlength="500"
                         ></textarea>
-                        
+
                         <div class="progress-bar">
                             <div id="edit-progress-fill" class="progress-fill"></div>
                         </div>
-                        
+
                         <div class="panel-controls">
                             <div class="control-group basic-actions">
                                 <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
                                 <button id="edit-save-btn" class="btn btn-primary btn-mobile">저장</button>
                                 <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                             </div>
-                            
+
                             <div class="control-group advanced-actions">
                                 <div class="llm-validation-dropdown">
                                     <button class="btn btn-llm-main btn-mobile" data-panel="writing">🔍 LLM 검증</button>
@@ -219,7 +223,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 저장된 글 탭 콘텐츠 -->
             <div class="tab-content" id="saved-tab">
                 <div class="saved-texts">
@@ -234,12 +238,12 @@
                     <div id="saved-list"></div>
                 </div>
             </div>
-            
+
             <!-- 트래킹 탭 콘텐츠 -->
             <div class="tab-content" id="tracking-tab">
                 <div class="tracking-dashboard">
-                    <h3>📊 전체 성과 대시보드</h3>
-                    <div class="dashboard-summary">
+                    <h3>📊 트래킹 대시보드</h3>
+                    <div class="tracking-summary">
                         <div class="summary-card">
                             <div class="summary-icon">📈</div>
                             <div class="summary-content">
@@ -261,69 +265,12 @@
                                 <div class="summary-value" id="total-likes">0</div>
                             </div>
                         </div>
-                        <div class="summary-card">
-                            <div class="summary-icon">💬</div>
-                            <div class="summary-content">
-                                <div class="summary-label">총 답글</div>
-                                <div class="summary-value" id="total-replies">0</div>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-icon">🔄</div>
-                            <div class="summary-content">
-                                <div class="summary-label">총 리포스트</div>
-                                <div class="summary-value" id="total-reposts">0</div>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-icon">📝</div>
-                            <div class="summary-content">
-                                <div class="summary-label">총 인용</div>
-                                <div class="summary-value" id="total-quotes">0</div>
-                            </div>
-                        </div>
                     </div>
-                    
-                    <div class="dashboard-insights">
-                        <div class="insight-card">
-                            <h4>📊 참여율 분석</h4>
-                            <div class="insight-content">
-                                <div class="insight-metric">
-                                    <span class="metric-label">평균 참여율</span>
-                                    <span class="metric-value" id="avg-engagement">0%</span>
-                                </div>
-                                <div class="insight-metric">
-                                    <span class="metric-label">최고 참여율</span>
-                                    <span class="metric-value" id="max-engagement">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="insight-card">
-                            <h4>📈 성장 트렌드</h4>
-                            <div class="insight-content">
-                                <div class="insight-metric">
-                                    <span class="metric-label">조회수 증가</span>
-                                    <span class="metric-value" id="views-growth">+0</span>
-                                </div>
-                                <div class="insight-metric">
-                                    <span class="metric-label">좋아요 증가</span>
-                                    <span class="metric-value" id="likes-growth">+0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="tracking-chart-container">
-                        <h4>📈 성과 추이 (최근 7일)</h4>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
-                    
-                    <div class="top-performing-posts">
-                        <h4>🏆 인기 포스트 TOP 5</h4>
-                        <div id="top-posts-list">
-                            <!-- 인기 포스트 목록 -->
-                        </div>
+                    <div class="tracking-posts-list" id="tracking-posts-list">
+                        <!-- 트래킹 중인 포스트 목록 -->
                     </div>
                 </div>
             </div>
@@ -333,7 +280,7 @@
                 <span id="temp-save-indicator">💾</span>
                 <span id="temp-save-text">임시 저장됨</span>
             </div>
-            
+
             <!-- 해시태그 설정 바 -->
             <div class="hashtag-settings-bar" id="hashtag-settings-bar">
                 <span class="hashtag-label">추천 해시태그:</span>
@@ -342,13 +289,13 @@
             </div>
         </main>
     </div>
-    
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, signInAnonymously, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
+
         // Firebase 설정 (실제 사용 시 Firebase Console에서 발급받은 설정으로 교체)
         const firebaseConfig = {
             apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
@@ -358,12 +305,12 @@
             messagingSenderId: "84225903613",
             appId: "1:84225903613:web:e0909478d5a334d7046794"
         };
-        
+
         // Firebase 초기화
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
+
         // 전역 변수로 설정
         window.firebaseAuth = auth;
         window.firebaseDb = db;
@@ -383,7 +330,7 @@
         window.firebaseOrderBy = orderBy;
         window.firebaseServerTimestamp = serverTimestamp;
     </script>
-    
+
     <!-- 모달들 -->
     <div id="copy-modal" class="modal">
         <div class="modal-content">
@@ -393,11 +340,45 @@
         </div>
     </div>
     
+    <!-- 트래킹 데이터 입력 모달 -->
+    <div id="tracking-modal" class="modal">
+        <div class="modal-content">
+            <h3>📊 트래킹 데이터 입력</h3>
+            <div class="tracking-form">
+                <div class="form-group">
+                    <label for="tracking-views">👀 조회수</label>
+                    <input type="number" id="tracking-views" min="0" placeholder="조회수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-likes">❤️ 좋아요</label>
+                    <input type="number" id="tracking-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-comments">💬 댓글</label>
+                    <input type="number" id="tracking-comments" min="0" placeholder="댓글 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-shares">🔄 공유</label>
+                    <input type="number" id="tracking-shares" min="0" placeholder="공유 수를 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label for="tracking-notes">📝 메모</label>
+                    <textarea id="tracking-notes" placeholder="추가 메모 (선택사항)"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('tracking-modal')">취소</button>
+                <button class="btn-primary" onclick="saveTrackingData()">저장</button>
+            </div>
+        </div>
+    </div>
 
-    <script src="script.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <script src="script.js"></script>
+
     <!-- 개발자 테스트 스크립트 (프로덕션에서는 제거) -->
     <script src="test-firebase.js"></script>
 </body>
 </html>
-
