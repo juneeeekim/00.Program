@@ -1,4 +1,4 @@
-# Firebase 설정 가이드
+# Firebase 설정 가이드 (Threads 반자동 포스팅 연계)
 
 ## 🔥 Firebase 프로젝트 설정 단계
 
@@ -70,11 +70,16 @@ service cloud.firestore {
 
 3. "게시" 클릭
 
-### 7. GitHub Pages 도메인 추가
+### 7. GitHub Pages 도메인 추가 (승인된 도메인)
 1. "Authentication" > "설정" 탭으로 이동
 2. "승인된 도메인" 섹션에서 "도메인 추가"
 3. GitHub Pages URL 추가 (예: `https://username.github.io`)
 4. "완료" 클릭
+
+### 8. 권장 추가 설정
+1. Authentication > 설정 > 승인된 도메인에 실제 배포 URL 추가
+2. Firestore > 인덱스는 기본값 유지(필요 시 쿼리 사용에 맞춰 생성)
+3. 보안 규칙은 개발/운영 단계에 맞춰 최소 권한 원칙 유지
 
 ## 🚀 배포 후 확인사항
 
@@ -82,6 +87,7 @@ service cloud.firestore {
 2. Firebase Console에서 사용자 인증 로그 확인
 3. Firestore에서 데이터 저장 확인
 4. 다른 기기에서 로그인 테스트
+5. 반자동 포스팅 흐름(클립보드 복사 폴백, Threads 새 탭 열기, 수동 복사 모달) 확인
 
 ## 🔧 문제 해결
 
@@ -90,8 +96,10 @@ service cloud.firestore {
 2. **로그인 실패**: 승인된 도메인 확인
 3. **데이터 저장 실패**: Firestore 규칙 확인
 4. **CORS 오류**: Firebase 설정에서 도메인 추가
+5. **클립보드 복사 실패**: HTTPS 환경 사용, 권한/포커스 확인, execCommand 폴백 또는 수동 복사 모달 확인
 
 ### 디버깅 방법
 1. 브라우저 개발자 도구 콘솔 확인
 2. Firebase Console의 로그 확인
 3. 네트워크 탭에서 API 호출 확인
+4. `runFirebaseTests()` 실행으로 초기 연동 및 LLM/클립보드 항목 점검

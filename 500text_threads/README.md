@@ -36,6 +36,13 @@ Firebase Authentication과 Firestore를 사용하여 멀티유저 지원 및 클
 - ✅ 비용 0원 (API 사용 없음)
 - ✅ 사용자 중심의 검증 프로세스
 
+### 🚀 Threads 반자동 포스팅 (업데이트)
+- ✅ 반자동 포스팅 버튼 제공(오른쪽 패널)
+- ✅ 500자 기준 단어 경계 자르기, 줄바꿈/공백 정규화, HTML 이스케이프
+- ✅ 해시태그 자동 추출/기본값 추가
+- ✅ 클립보드 API → execCommand → 수동 복사 모달의 폴백 체인
+- ✅ Threads 새 탭 열기 또는 간단 가이드 표시(프로필 URL 미설정 시)
+
 ## 🛠️ 기술 스택
 
 ### 프론트엔드
@@ -126,6 +133,7 @@ service cloud.firestore {
 - HTTPS 강제 통신
 - Firestore 보안 규칙 적용
 - 사용자 데이터 암호화 저장
+ - 승인된 도메인(Allowed Domains) 설정
 
 ## 📱 반응형 디자인
 
@@ -146,8 +154,13 @@ MIT License
 
 ## 🔧 개발자 정보
 
-- **시니어 개발자**: Firebase 연동 및 멀티유저 시스템 구현
-- **주니어 개발자**: 프론트엔드 최적화 및 사용자 경험 개선
+- **시니어 개발자**: Firebase 연동, 보안/아키텍처, 반자동 포스팅 기능 설계
+- **주니어 개발자**: UI/UX 최적화, LLM 검증 UX, 접근성/반응형 개선
+
+## 📚 기술 문서
+
+- `report/2510282140_Semi-Automated_Threads_Posting_Solution_Technical_Documentation.md`
+  - Semi-automated Threads posting solution (Firebase multi-user, clipboard fallbacks, accessibility, mobile)
 
 ## 📞 지원
 

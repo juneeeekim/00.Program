@@ -714,6 +714,42 @@ class DualTextWriter {
                                 <span class="metric-value">${item.latestMetrics?.quotes || 0}</span>
                             </div>
                         </div>
+                        <div class="inline-tracking-form" id="tracking-form-${item.id}" style="display: none;">
+                            <div class="form-header">
+                                <h4>📊 트래킹 데이터 입력</h4>
+                                <button class="close-form-btn" onclick="dualTextWriter.closeInlineForm('${item.id}')">✕</button>
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>👀 조회수</label>
+                                    <input type="number" id="inline-views-${item.id}" min="0" placeholder="조회수" value="${item.latestMetrics?.views || 0}">
+                                </div>
+                                <div class="form-group">
+                                    <label>❤️ 좋아요</label>
+                                    <input type="number" id="inline-likes-${item.id}" min="0" placeholder="좋아요" value="${item.latestMetrics?.likes || 0}">
+                                </div>
+                                <div class="form-group">
+                                    <label>💬 답글</label>
+                                    <input type="number" id="inline-replies-${item.id}" min="0" placeholder="답글" value="${item.latestMetrics?.replies || 0}">
+                                </div>
+                                <div class="form-group">
+                                    <label>🔄 리포스트</label>
+                                    <input type="number" id="inline-reposts-${item.id}" min="0" placeholder="리포스트" value="${item.latestMetrics?.reposts || 0}">
+                                </div>
+                                <div class="form-group">
+                                    <label>📝 인용</label>
+                                    <input type="number" id="inline-quotes-${item.id}" min="0" placeholder="인용" value="${item.latestMetrics?.quotes || 0}">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>📝 메모</label>
+                                    <textarea id="inline-notes-${item.id}" placeholder="추가 메모 (선택사항)">${item.latestMetrics?.notes || ''}</textarea>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button class="btn-secondary" onclick="dualTextWriter.closeInlineForm('${item.id}')">취소</button>
+                                <button class="btn-primary" onclick="dualTextWriter.saveInlineTracking('${item.id}')">저장</button>
+                            </div>
+                        </div>
                     ` : `
                         <div class="tracking-status inactive">
                             <span class="status-icon">⏸️</span>
@@ -725,7 +761,8 @@ class DualTextWriter {
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
                     <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
                     ${item.trackingEnabled ? 
-                        `<button class="action-button btn-tracking" data-action="add-metrics" data-item-id="${item.id}">📈 데이터 추가</button>` :
+                        `<button class="action-button btn-tracking" data-action="toggle-form" data-item-id="${item.id}">📈 데이터 추가</button>
+                         <button class="action-button btn-secondary" data-action="stop-tracking" data-item-id="${item.id}">⏸️ 중지</button>` :
                         `<button class="action-button btn-tracking" data-action="start-tracking" data-item-id="${item.id}">📊 트래킹 시작</button>`
                     }
                 </div>
@@ -777,9 +814,12 @@ class DualTextWriter {
             } else if (action === 'start-tracking') {
                 console.log('트래킹 시작 액션 실행:', { itemId });
                 this.startTrackingFromSaved(itemId);
-            } else if (action === 'add-metrics') {
-                console.log('메트릭 추가 액션 실행:', { itemId });
-                this.addMetricsToSavedText(itemId);
+            } else if (action === 'toggle-form') {
+                console.log('폼 토글 액션 실행:', { itemId });
+                this.toggleInlineForm(itemId);
+            } else if (action === 'stop-tracking') {
+                console.log('트래킹 중지 액션 실행:', { itemId });
+                this.stopTrackingFromSaved(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
                 // 드롭다운 메뉴 토글은 CSS로 처리됨
@@ -3549,6 +3589,123 @@ DualTextWriter.prototype.getTrackingDataForText = async function(textId) {
     }
 };
 
+// 인라인 폼 토글
+DualTextWriter.prototype.toggleInlineForm = function(textId) {
+    const form = document.getElementById(`tracking-form-${textId}`);
+    if (form) {
+        const isVisible = form.style.display !== 'none';
+        form.style.display = isVisible ? 'none' : 'block';
+        
+        // 다른 열린 폼들 닫기
+        if (!isVisible) {
+            document.querySelectorAll('.inline-tracking-form').forEach(f => {
+                if (f.id !== `tracking-form-${textId}`) {
+                    f.style.display = 'none';
+                }
+            });
+        }
+    }
+};
+
+// 인라인 폼 닫기
+DualTextWriter.prototype.closeInlineForm = function(textId) {
+    const form = document.getElementById(`tracking-form-${textId}`);
+    if (form) {
+        form.style.display = 'none';
+    }
+};
+
+// 인라인 트래킹 데이터 저장
+DualTextWriter.prototype.saveInlineTracking = async function(textId) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    const views = parseInt(document.getElementById(`inline-views-${textId}`).value) || 0;
+    const likes = parseInt(document.getElementById(`inline-likes-${textId}`).value) || 0;
+    const replies = parseInt(document.getElementById(`inline-replies-${textId}`).value) || 0;
+    const reposts = parseInt(document.getElementById(`inline-reposts-${textId}`).value) || 0;
+    const quotes = parseInt(document.getElementById(`inline-quotes-${textId}`).value) || 0;
+    const notes = document.getElementById(`inline-notes-${textId}`).value;
+    
+    const trackingData = {
+        timestamp: window.firebaseServerTimestamp(),
+        views,
+        likes,
+        replies,
+        reposts,
+        quotes,
+        notes
+    };
+    
+    try {
+        // 해당 텍스트의 포스트 찾기
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        if (querySnapshot.empty) {
+            console.error('트래킹 포스트를 찾을 수 없습니다.');
+            return;
+        }
+        
+        const postDoc = querySnapshot.docs[0];
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+        const postData = postDoc.data();
+        
+        const updatedMetrics = [...(postData.metrics || []), trackingData];
+        const analytics = this.calculateAnalytics(updatedMetrics);
+        
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 폼 닫기
+        this.closeInlineForm(textId);
+        
+        // 저장된 글 목록 새로고침
+        this.loadSavedTexts();
+        
+        console.log('인라인 트래킹 데이터가 저장되었습니다.');
+        
+    } catch (error) {
+        console.error('인라인 트래킹 데이터 저장 실패:', error);
+    }
+};
+
+// 저장된 글에서 트래킹 중지
+DualTextWriter.prototype.stopTrackingFromSaved = async function(textId) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        // 해당 텍스트의 포스트 찾기
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(postsRef, window.firebaseWhere('textId', '==', textId));
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        if (querySnapshot.empty) {
+            console.error('트래킹 포스트를 찾을 수 없습니다.');
+            return;
+        }
+        
+        const postDoc = querySnapshot.docs[0];
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+        
+        await window.firebaseUpdateDoc(postRef, {
+            trackingEnabled: false,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 저장된 글 목록 새로고침
+        this.loadSavedTexts();
+        
+        console.log('트래킹이 중지되었습니다.');
+        
+    } catch (error) {
+        console.error('트래킹 중지 실패:', error);
+    }
+};
+
 // 저장된 글에 메트릭 추가
 DualTextWriter.prototype.addMetricsToSavedText = async function(textId) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -3624,12 +3781,14 @@ window.saveTrackingData = function() {
     }
 };
 
-window.closeModal = function(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
+window.closeInlineForm = function(textId) {
+    if (dualTextWriter) {
+        dualTextWriter.closeInlineForm(textId);
     }
-    if (modalId === 'tracking-modal' && dualTextWriter) {
-        dualTextWriter.closeTrackingModal();
+};
+
+window.saveInlineTracking = function(textId) {
+    if (dualTextWriter) {
+        dualTextWriter.saveInlineTracking(textId);
     }
 };
