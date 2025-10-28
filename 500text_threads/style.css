@@ -195,7 +195,68 @@ header h1 {
     font-size: 0.9rem;
 }
 
-/* Writing Container */
+/* Tab Container */
+.tab-container {
+    display: flex;
+    background: white;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+    margin-bottom: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 16px 12px;
+    background: #f8f9fa;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #666;
+    position: relative;
+    min-height: 60px;
+}
+
+.tab-button:hover {
+    background: #e9ecef;
+    color: #333;
+}
+
+.tab-button.active {
+    background: white;
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+}
+
+.tab-icon {
+    font-size: 18px;
+}
+
+.tab-text {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    background: white;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Writing Container (Legacy - keeping for compatibility) */
 .writing-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1085,13 +1146,21 @@ header h1 {
     font-size: 1.3rem;
 }
 
+/* 개선된 저장된 글 카드 */
 .saved-item {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border-left: 4px solid #667eea;
     position: relative;
+    transition: all 0.3s ease;
+}
+
+.saved-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
 .saved-item:last-child {
@@ -1101,36 +1170,64 @@ header h1 {
 .saved-item-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
 }
 
 .saved-item-type {
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 4px 12px;
+    border-radius: 16px;
     font-size: 0.8rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .saved-item-date {
     font-size: 0.9rem;
     color: #666;
+    font-weight: 500;
 }
 
 .saved-item-content {
     color: #333;
-    line-height: 1.5;
-    margin-bottom: 10px;
-    white-space: pre-wrap; /* 줄바꿈과 공백을 그대로 유지하여 표시 */
+    line-height: 1.6;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    max-height: 120px;
+    overflow: hidden;
+    position: relative;
+}
+
+.saved-item-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, white);
 }
 
 .saved-item-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.action-button {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    min-height: 44px;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
 .btn-small {
@@ -1825,54 +1922,143 @@ header h1 {
     color: #dc3545;
 }
 
-/* Responsive Design */
+/* 모바일 반응형 디자인 개선 */
 @media (max-width: 768px) {
     .container {
-        padding: 15px;
+        padding: 12px;
     }
     
     header h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        margin-bottom: 8px;
     }
     
-    .writing-container {
-        grid-template-columns: 1fr;
-        gap: 15px;
+    .subtitle {
+        font-size: 1rem;
     }
     
+    /* 탭 버튼 모바일 최적화 */
+    .tab-button {
+        padding: 12px 8px;
+        min-height: 56px;
+        font-size: 12px;
+    }
+    
+    .tab-icon {
+        font-size: 16px;
+    }
+    
+    .tab-text {
+        font-size: 11px;
+    }
+    
+    /* 패널 모바일 최적화 */
     .writing-panel {
-        padding: 20px;
-        min-height: 500px;
-        height: 60vh;
+        padding: 16px;
+        min-height: auto;
+        height: auto;
+        border-radius: 0 0 12px 12px;
     }
     
     .writing-panel textarea {
-        min-height: 350px;
+        min-height: 300px;
+        padding: 16px;
+        font-size: 16px; /* 모바일에서 확대 방지 */
     }
     
     .panel-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
+        margin-bottom: 12px;
     }
     
+    .character-counter {
+        font-size: 1rem;
+        margin-bottom: 0;
+    }
+    
+    /* 컨트롤 버튼 모바일 최적화 */
     .panel-controls {
         flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
     }
     
-    .panel-controls .btn {
-        width: 100%;
-        margin-bottom: 5px;
-    }
-    
-    .controls {
+    .control-group {
         flex-direction: column;
-        align-items: center;
+        gap: 8px;
     }
     
-    .btn {
+    .control-group.basic-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
+    .control-group.basic-actions .btn-mobile {
+        font-size: 14px;
+        padding: 12px 8px;
+    }
+    
+    .control-group.advanced-actions {
+        margin-top: 8px;
+    }
+    
+    .control-group.advanced-actions .btn-mobile {
         width: 100%;
-        max-width: 200px;
+        font-size: 14px;
+    }
+    
+    /* 저장된 글 모바일 최적화 */
+    .saved-item {
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .saved-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .saved-item-content {
+        max-height: 100px;
+        font-size: 0.9rem;
+    }
+    
+    .saved-item-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .action-button {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 15px;
+    }
+    
+    /* 해시태그 설정 바 모바일 최적화 */
+    .hashtag-settings-bar {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+        text-align: center;
+    }
+    
+    .hashtag-label {
+        font-size: 0.85rem;
+    }
+    
+    .hashtags-display {
+        font-size: 0.9rem;
+        word-break: break-all;
+    }
+    
+    .btn-hashtag-settings {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
     }
 }
 
@@ -2068,6 +2254,17 @@ header h1 {
     border-radius: 8px;
     flex: 0 0 auto;
     min-width: 80px;
+}
+
+/* 모바일 최적화 버튼 */
+.btn-mobile {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* 기본 버튼 스타일 개선 */

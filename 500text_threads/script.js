@@ -47,6 +47,10 @@ class DualTextWriter {
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
         
+        // 탭 관련 요소들
+        this.tabButtons = document.querySelectorAll('.tab-button');
+        this.tabContents = document.querySelectorAll('.tab-content');
+        
         this.maxLength = 500;
         this.currentUser = null;
         this.savedTexts = [];
@@ -108,6 +112,35 @@ class DualTextWriter {
         });
     }
     
+    // 탭 기능 초기화
+    initTabListeners() {
+        this.tabButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.getAttribute('data-tab');
+                this.switchTab(tabName);
+            });
+        });
+    }
+    
+    // 탭 전환
+    switchTab(tabName) {
+        // 모든 탭 버튼과 콘텐츠에서 active 클래스 제거
+        this.tabButtons.forEach(btn => btn.classList.remove('active'));
+        this.tabContents.forEach(content => content.classList.remove('active'));
+        
+        // 선택된 탭 버튼과 콘텐츠에 active 클래스 추가
+        const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const activeContent = document.getElementById(`${tabName}-tab`);
+        
+        if (activeButton) activeButton.classList.add('active');
+        if (activeContent) activeContent.classList.add('active');
+        
+        // 저장된 글 탭으로 전환할 때 목록 새로고침
+        if (tabName === 'saved') {
+            this.loadSavedTexts();
+        }
+    }
+    
     bindEvents() {
         // 사용자 인증 이벤트
         this.loginBtn.addEventListener('click', () => this.login());
@@ -123,6 +156,9 @@ class DualTextWriter {
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', () => this.googleLogin());
         }
+        
+        // 탭 이벤트 리스너 설정
+        this.initTabListeners();
         
         // 레퍼런스 글 이벤트
         this.refTextInput.addEventListener('input', () => {
@@ -550,14 +586,14 @@ class DualTextWriter {
         this.savedList.innerHTML = this.savedTexts.map((item, index) => `
             <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
                 <div class="saved-item-header">
+                    <span class="saved-item-type">${item.type === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
                     <span class="saved-item-date">${item.date}</span>
                     <span class="saved-item-count">${item.characterCount}자</span>
-                    <span class="saved-item-type">${item.type === 'reference' ? '📖 레퍼런스' : '✏️ 수정작성'}</span>
                 </div>
                 <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
                 <div class="saved-item-actions">
-                    <button class="btn-small btn-edit" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
-                    <button class="btn-small btn-delete" data-action="delete" data-item-id="${item.id}">삭제</button>
+                    <button class="action-button btn-primary" data-action="edit" data-type="${item.type}" data-item-id="${item.id}">편집</button>
+                    <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
                 </div>
             </div>
         `).join('');

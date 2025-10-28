@@ -1,3 +1,7 @@
+
+
+
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -52,9 +56,25 @@
         </header>
         
         <main id="main-content" style="display: none;">
-            <div class="writing-container">
-                <!-- 왼쪽 창: 레퍼런스 글 -->
-                <div class="writing-panel left-panel">
+            <!-- 탭 기반 인터페이스 -->
+            <div class="tab-container">
+                <button class="tab-button active" data-tab="reference">
+                    <span class="tab-icon">📖</span>
+                    <span class="tab-text">레퍼런스</span>
+                </button>
+                <button class="tab-button" data-tab="writing">
+                    <span class="tab-icon">✏️</span>
+                    <span class="tab-text">작성</span>
+                </button>
+                <button class="tab-button" data-tab="saved">
+                    <span class="tab-icon">💾</span>
+                    <span class="tab-text">저장된 글</span>
+                </button>
+            </div>
+            
+            <!-- 레퍼런스 탭 콘텐츠 -->
+            <div class="tab-content active" id="reference-tab">
+                <div class="writing-panel">
                     <div class="panel-header">
                         <h3>📖 레퍼런스 글</h3>
                         <div class="character-counter">
@@ -76,17 +96,15 @@
                     </div>
                     
                     <div class="panel-controls">
-                        <!-- 기본 작업 그룹 -->
                         <div class="control-group basic-actions">
-                            <button id="ref-clear-btn" class="btn btn-secondary btn-small">지우기</button>
-                            <button id="ref-save-btn" class="btn btn-primary btn-primary-large">저장</button>
-                            <button id="ref-download-btn" class="btn btn-success btn-small">TXT 다운로드</button>
+                            <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
+                            <button id="ref-save-btn" class="btn btn-primary btn-mobile">저장</button>
+                            <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                         </div>
                         
-                        <!-- 고급 기능 그룹 -->
                         <div class="control-group advanced-actions">
                             <div class="llm-validation-dropdown">
-                                <button class="btn btn-llm-main" data-panel="reference">🔍 LLM 검증</button>
+                                <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
                                 <div class="llm-dropdown-menu">
                                     <button class="llm-option" data-llm="chatgpt" data-panel="reference">
                                         <div class="llm-option-content">
@@ -129,9 +147,11 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- 오른쪽 창: 수정/작성 글 -->
-                <div class="writing-panel right-panel">
+            </div>
+            
+            <!-- 작성 탭 콘텐츠 -->
+            <div class="tab-content" id="writing-tab">
+                <div class="writing-panel">
                     <div class="panel-header">
                         <h3>✏️ 수정/작성 글</h3>
                         <div class="character-counter">
@@ -153,17 +173,15 @@
                     </div>
                     
                     <div class="panel-controls">
-                        <!-- 기본 작업 그룹 -->
                         <div class="control-group basic-actions">
-                            <button id="edit-clear-btn" class="btn btn-secondary btn-small">지우기</button>
-                            <button id="edit-save-btn" class="btn btn-primary btn-primary-large">저장</button>
-                            <button id="edit-download-btn" class="btn btn-success btn-small">TXT 다운로드</button>
+                            <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
+                            <button id="edit-save-btn" class="btn btn-primary btn-mobile">저장</button>
+                            <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                         </div>
                         
-                        <!-- 고급 기능 그룹 -->
                         <div class="control-group advanced-actions">
                             <div class="llm-validation-dropdown">
-                                <button class="btn btn-llm-main" data-panel="writing">🔍 LLM 검증</button>
+                                <button class="btn btn-llm-main btn-mobile" data-panel="writing">🔍 LLM 검증</button>
                                 <div class="llm-dropdown-menu">
                                     <button class="llm-option" data-llm="chatgpt" data-panel="writing">
                                         <div class="llm-option-content">
@@ -203,9 +221,17 @@
                                     </button>
                                 </div>
                             </div>
-                            <button id="semi-auto-post-btn" class="btn btn-semi-auto">🚀 반자동 포스팅</button>
+                            <button id="semi-auto-post-btn" class="btn btn-semi-auto btn-mobile">🚀 반자동 포스팅</button>
                         </div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- 저장된 글 탭 콘텐츠 -->
+            <div class="tab-content" id="saved-tab">
+                <div class="saved-texts">
+                    <h3>저장된 글</h3>
+                    <div id="saved-list"></div>
                 </div>
             </div>
             
@@ -215,17 +241,11 @@
                 <span id="temp-save-text">임시 저장됨</span>
             </div>
             
-            <!-- 해시태그 설정 버튼 -->
+            <!-- 해시태그 설정 바 -->
             <div class="hashtag-settings-bar" id="hashtag-settings-bar">
                 <span class="hashtag-label">추천 해시태그:</span>
                 <span id="current-hashtags-display" class="hashtags-display">#writing #content #threads</span>
-                <button id="hashtag-settings-btn" class="btn btn-hashtag-settings" title="해시태그 설정">⚙️ 설정</button>
-            </div>
-            
-            <!-- 저장된 글 목록 -->
-            <div class="saved-texts" id="saved-texts">
-                <h3>저장된 글</h3>
-                <div id="saved-list"></div>
+                <button id="hashtag-settings-btn" class="btn btn-hashtag-settings btn-mobile" title="해시태그 설정">⚙️ 설정</button>
             </div>
         </main>
     </div>
