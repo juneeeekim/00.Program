@@ -1,7 +1,3 @@
-
-
-
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -58,13 +54,9 @@
         <main id="main-content" style="display: none;">
             <!-- 탭 기반 인터페이스 -->
             <div class="tab-container">
-                <button class="tab-button active" data-tab="reference">
-                    <span class="tab-icon">📖</span>
-                    <span class="tab-text">레퍼런스</span>
-                </button>
-                <button class="tab-button" data-tab="writing">
+                <button class="tab-button active" data-tab="writing">
                     <span class="tab-icon">✏️</span>
-                    <span class="tab-text">작성</span>
+                    <span class="tab-text">글 작성</span>
                 </button>
                 <button class="tab-button" data-tab="saved">
                     <span class="tab-icon">💾</span>
@@ -72,156 +64,157 @@
                 </button>
             </div>
             
-            <!-- 레퍼런스 탭 콘텐츠 -->
-            <div class="tab-content active" id="reference-tab">
-                <div class="writing-panel">
-                    <div class="panel-header">
-                        <h3>📖 레퍼런스 글</h3>
-                        <div class="character-counter">
-                            <span id="ref-current-count">0</span>
-                            <span class="separator">/</span>
-                            <span id="ref-max-count">500</span>
-                            <span class="unit">자</span>
-                        </div>
-                    </div>
-                    
-                    <textarea 
-                        id="ref-text-input" 
-                        placeholder="참고할 레퍼런스 글을 입력하세요..."
-                        maxlength="500"
-                    ></textarea>
-                    
-                    <div class="progress-bar">
-                        <div id="ref-progress-fill" class="progress-fill"></div>
-                    </div>
-                    
-                    <div class="panel-controls">
-                        <div class="control-group basic-actions">
-                            <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
-                            <button id="ref-save-btn" class="btn btn-primary btn-mobile">저장</button>
-                            <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
+            <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
+            <div class="tab-content active" id="writing-tab">
+                <div class="writing-container">
+                    <!-- 레퍼런스 글 패널 -->
+                    <div class="writing-panel left-panel">
+                        <div class="panel-header">
+                            <h3>📖 레퍼런스 글</h3>
+                            <div class="character-counter">
+                                <span id="ref-current-count">0</span>
+                                <span class="separator">/</span>
+                                <span id="ref-max-count">500</span>
+                                <span class="unit">자</span>
+                            </div>
                         </div>
                         
-                        <div class="control-group advanced-actions">
-                            <div class="llm-validation-dropdown">
-                                <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
-                                <div class="llm-dropdown-menu">
-                                    <button class="llm-option" data-llm="chatgpt" data-panel="reference">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🤖</span>
-                                                <span class="llm-name">ChatGPT</span>
+                        <textarea 
+                            id="ref-text-input" 
+                            placeholder="참고할 레퍼런스 글을 입력하세요..."
+                            maxlength="500"
+                        ></textarea>
+                        
+                        <div class="progress-bar">
+                            <div id="ref-progress-fill" class="progress-fill"></div>
+                        </div>
+                        
+                        <div class="panel-controls">
+                            <div class="control-group basic-actions">
+                                <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
+                                <button id="ref-save-btn" class="btn btn-primary btn-mobile">저장</button>
+                                <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
+                            </div>
+                            
+                            <div class="control-group advanced-actions">
+                                <div class="llm-validation-dropdown">
+                                    <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
+                                    <div class="llm-dropdown-menu">
+                                        <button class="llm-option" data-llm="chatgpt" data-panel="reference">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🤖</span>
+                                                    <span class="llm-name">ChatGPT</span>
+                                                </div>
+                                                <div class="llm-description">창의적이고 자연스러운 글쓰기</div>
                                             </div>
-                                            <div class="llm-description">창의적이고 자연스러운 글쓰기</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="gemini" data-panel="reference">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">💎</span>
-                                                <span class="llm-name">Gemini</span>
+                                        </button>
+                                        <button class="llm-option" data-llm="gemini" data-panel="reference">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">💎</span>
+                                                    <span class="llm-name">Gemini</span>
+                                                </div>
+                                                <div class="llm-description">균형잡힌 분석과 제안</div>
                                             </div>
-                                            <div class="llm-description">균형잡힌 분석과 제안</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="perplexity" data-panel="reference">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🔍</span>
-                                                <span class="llm-name">Perplexity</span>
+                                        </button>
+                                        <button class="llm-option" data-llm="perplexity" data-panel="reference">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🔍</span>
+                                                    <span class="llm-name">Perplexity</span>
+                                                </div>
+                                                <div class="llm-description">정확한 사실 확인과 검증</div>
                                             </div>
-                                            <div class="llm-description">정확한 사실 확인과 검증</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="grok" data-panel="reference">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🚀</span>
-                                                <span class="llm-name">Grok</span>
+                                        </button>
+                                        <button class="llm-option" data-llm="grok" data-panel="reference">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🚀</span>
+                                                    <span class="llm-name">Grok</span>
+                                                </div>
+                                                <div class="llm-description">유머러스하고 트렌디한 스타일</div>
                                             </div>
-                                            <div class="llm-description">유머러스하고 트렌디한 스타일</div>
-                                        </div>
-                                    </button>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- 작성 탭 콘텐츠 -->
-            <div class="tab-content" id="writing-tab">
-                <div class="writing-panel">
-                    <div class="panel-header">
-                        <h3>✏️ 수정/작성 글</h3>
-                        <div class="character-counter">
-                            <span id="edit-current-count">0</span>
-                            <span class="separator">/</span>
-                            <span id="edit-max-count">500</span>
-                            <span class="unit">자</span>
-                        </div>
-                    </div>
                     
-                    <textarea 
-                        id="edit-text-input" 
-                        placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
-                        maxlength="500"
-                    ></textarea>
-                    
-                    <div class="progress-bar">
-                        <div id="edit-progress-fill" class="progress-fill"></div>
-                    </div>
-                    
-                    <div class="panel-controls">
-                        <div class="control-group basic-actions">
-                            <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
-                            <button id="edit-save-btn" class="btn btn-primary btn-mobile">저장</button>
-                            <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
+                    <!-- 수정/작성 글 패널 -->
+                    <div class="writing-panel right-panel">
+                        <div class="panel-header">
+                            <h3>✏️ 수정/작성 글</h3>
+                            <div class="character-counter">
+                                <span id="edit-current-count">0</span>
+                                <span class="separator">/</span>
+                                <span id="edit-max-count">500</span>
+                                <span class="unit">자</span>
+                            </div>
                         </div>
                         
-                        <div class="control-group advanced-actions">
-                            <div class="llm-validation-dropdown">
-                                <button class="btn btn-llm-main btn-mobile" data-panel="writing">🔍 LLM 검증</button>
-                                <div class="llm-dropdown-menu">
-                                    <button class="llm-option" data-llm="chatgpt" data-panel="writing">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🤖</span>
-                                                <span class="llm-name">ChatGPT</span>
-                                            </div>
-                                            <div class="llm-description">창의적이고 자연스러운 글쓰기</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="gemini" data-panel="writing">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">💎</span>
-                                                <span class="llm-name">Gemini</span>
-                                            </div>
-                                            <div class="llm-description">균형잡힌 분석과 제안</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="perplexity" data-panel="writing">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🔍</span>
-                                                <span class="llm-name">Perplexity</span>
-                                            </div>
-                                            <div class="llm-description">정확한 사실 확인과 검증</div>
-                                        </div>
-                                    </button>
-                                    <button class="llm-option" data-llm="grok" data-panel="writing">
-                                        <div class="llm-option-content">
-                                            <div class="llm-option-header">
-                                                <span class="llm-icon">🚀</span>
-                                                <span class="llm-name">Grok</span>
-                                            </div>
-                                            <div class="llm-description">유머러스하고 트렌디한 스타일</div>
-                                        </div>
-                                    </button>
-                                </div>
+                        <textarea 
+                            id="edit-text-input" 
+                            placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
+                            maxlength="500"
+                        ></textarea>
+                        
+                        <div class="progress-bar">
+                            <div id="edit-progress-fill" class="progress-fill"></div>
+                        </div>
+                        
+                        <div class="panel-controls">
+                            <div class="control-group basic-actions">
+                                <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
+                                <button id="edit-save-btn" class="btn btn-primary btn-mobile">저장</button>
+                                <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                             </div>
-                            <button id="semi-auto-post-btn" class="btn btn-semi-auto btn-mobile">🚀 반자동 포스팅</button>
+                            
+                            <div class="control-group advanced-actions">
+                                <div class="llm-validation-dropdown">
+                                    <button class="btn btn-llm-main btn-mobile" data-panel="writing">🔍 LLM 검증</button>
+                                    <div class="llm-dropdown-menu">
+                                        <button class="llm-option" data-llm="chatgpt" data-panel="writing">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🤖</span>
+                                                    <span class="llm-name">ChatGPT</span>
+                                                </div>
+                                                <div class="llm-description">창의적이고 자연스러운 글쓰기</div>
+                                            </div>
+                                        </button>
+                                        <button class="llm-option" data-llm="gemini" data-panel="writing">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">💎</span>
+                                                    <span class="llm-name">Gemini</span>
+                                                </div>
+                                                <div class="llm-description">균형잡힌 분석과 제안</div>
+                                            </div>
+                                        </button>
+                                        <button class="llm-option" data-llm="perplexity" data-panel="writing">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🔍</span>
+                                                    <span class="llm-name">Perplexity</span>
+                                                </div>
+                                                <div class="llm-description">정확한 사실 확인과 검증</div>
+                                            </div>
+                                        </button>
+                                        <button class="llm-option" data-llm="grok" data-panel="writing">
+                                            <div class="llm-option-content">
+                                                <div class="llm-option-header">
+                                                    <span class="llm-icon">🚀</span>
+                                                    <span class="llm-name">Grok</span>
+                                                </div>
+                                                <div class="llm-description">유머러스하고 트렌디한 스타일</div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button id="semi-auto-post-btn" class="btn btn-semi-auto btn-mobile">🚀 반자동 포스팅</button>
+                            </div>
                         </div>
                     </div>
                 </div>

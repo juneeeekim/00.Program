@@ -139,6 +139,11 @@ class DualTextWriter {
         if (tabName === 'saved') {
             this.loadSavedTexts();
         }
+        
+        // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
+        if (tabName === 'writing') {
+            // 이미 writing-container에 두 패널이 모두 포함되어 있음
+        }
     }
     
     bindEvents() {
