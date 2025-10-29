@@ -4306,6 +4306,18 @@ DualTextWriter.prototype.initTrackingChart = function() {
                 borderColor: '#e74c3c',
                 backgroundColor: 'rgba(231, 76, 60, 0.1)',
                 tension: 0.4
+            }, {
+                label: '댓글',
+                data: [],
+                borderColor: '#9b59b6',
+                backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                tension: 0.4
+            }, {
+                label: '공유',
+                data: [],
+                borderColor: '#f39c12',
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4
             }]
         },
         options: {
@@ -4594,6 +4606,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     const dateRange = [];
     const viewsData = [];
     const likesData = [];
+    const commentsData = [];
+    const sharesData = [];
     
     // 범위 계산 함수
     const makeRange = (startDate, endDate, maxDays = 365) => {
@@ -4661,9 +4675,11 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     
     if (this.chartMode === 'total') {
         // 전체 총합 모드: 각 날짜까지의 모든 포스트 최신 메트릭 누적 합계
-        last7Days.forEach((targetDate) => {
+        dateRange.forEach((targetDate) => {
             let dayTotalViews = 0;
             let dayTotalLikes = 0;
+            let dayTotalComments = 0;
+            let dayTotalShares = 0;
             
             // 각 포스트에 대해 해당 날짜까지의 최신 메트릭 찾기
             this.trackingPosts.forEach(post => {
@@ -4686,11 +4702,15 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                 if (latestMetricBeforeDate) {
                     dayTotalViews += latestMetricBeforeDate.views || 0;
                     dayTotalLikes += latestMetricBeforeDate.likes || 0;
+                    dayTotalComments += latestMetricBeforeDate.comments || 0;
+                    dayTotalShares += latestMetricBeforeDate.shares || 0;
                 }
             });
             
             viewsData.push(dayTotalViews);
             likesData.push(dayTotalLikes);
+            commentsData.push(dayTotalComments);
+            sharesData.push(dayTotalShares);
         });
         
         // 차트 제목 업데이트
@@ -4703,6 +4723,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             dateRange.forEach(() => {
                 viewsData.push(0);
                 likesData.push(0);
+                commentsData.push(0);
+                sharesData.push(0);
             });
             this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
         } else {
@@ -4729,6 +4751,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     // 해당 날짜에 입력된 메트릭 찾기
                     let dayViews = 0;
                     let dayLikes = 0;
+                    let dayComments = 0;
+                    let dayShares = 0;
                     
                     selectedPost.metrics.forEach(metric => {
                         const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
@@ -4737,11 +4761,15 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                         if (metricDate.getTime() === targetDate.getTime()) {
                             dayViews += metric.views || 0;
                             dayLikes += metric.likes || 0;
+                            dayComments += metric.comments || 0;
+                            dayShares += metric.shares || 0;
                         }
                     });
                     
                     viewsData.push(dayViews);
                     likesData.push(dayLikes);
+                    commentsData.push(dayComments);
+                    sharesData.push(dayShares);
                 });
                 
                 // 차트 제목 업데이트
@@ -4753,6 +4781,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                 dateRange.forEach(() => {
                     viewsData.push(0);
                     likesData.push(0);
+                    commentsData.push(0);
+                    sharesData.push(0);
                 });
                 this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (데이터 없음)';
             }
@@ -4767,9 +4797,16 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     this.trackingChart.data.labels = dateLabels;
     this.trackingChart.data.datasets[0].data = viewsData;
     this.trackingChart.data.datasets[1].data = likesData;
+    this.trackingChart.data.datasets[2].data = commentsData;
+    this.trackingChart.data.datasets[3].data = sharesData;
     
     // y축 스케일 재계산 (데이터 범위에 맞게 최적화)
-    const maxValue = Math.max(...viewsData, ...likesData);
+    const maxValue = Math.max(
+        ...(viewsData.length ? viewsData : [0]),
+        ...(likesData.length ? likesData : [0]),
+        ...(commentsData.length ? commentsData : [0]),
+        ...(sharesData.length ? sharesData : [0])
+    );
     if (maxValue > 0) {
         // suggestedMax를 데이터 최대값의 약 1.2배로 설정
         const suggestedMax = Math.ceil(maxValue * 1.2);
