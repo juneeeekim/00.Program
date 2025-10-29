@@ -76,11 +76,23 @@ class DualTextWriter {
         this.trackingUpdatedFromInput = document.getElementById('tracking-updated-from');
         this.trackingUpdatedToInput = document.getElementById('tracking-updated-to');
         this.trackingDateClearBtn = document.getElementById('tracking-date-clear');
+        this.minViewsInput = document.getElementById('min-views');
+        this.maxViewsInput = document.getElementById('max-views');
+        this.minLikesInput = document.getElementById('min-likes');
+        this.maxLikesInput = document.getElementById('max-likes');
+        this.minCommentsInput = document.getElementById('min-comments');
+        this.maxCommentsInput = document.getElementById('max-comments');
+        this.minSharesInput = document.getElementById('min-shares');
+        this.maxSharesInput = document.getElementById('max-shares');
+        this.minFollowsInput = document.getElementById('min-follows');
+        this.maxFollowsInput = document.getElementById('max-follows');
+        this.exportCsvBtn = document.getElementById('export-csv');
         this.trackingSort = localStorage.getItem('dtw_tracking_sort') || 'updatedDesc';
         this.trackingStatusFilter = localStorage.getItem('dtw_tracking_status') || 'all';
         this.trackingSearch = localStorage.getItem('dtw_tracking_search') || '';
         this.trackingUpdatedFrom = localStorage.getItem('dtw_tracking_from') || '';
         this.trackingUpdatedTo = localStorage.getItem('dtw_tracking_to') || '';
+        this.rangeFilters = JSON.parse(localStorage.getItem('dtw_tracking_ranges') || '{}');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -339,6 +351,36 @@ class DualTextWriter {
                     localStorage.removeItem('dtw_tracking_to');
                     this.renderTrackingPosts();
                 });
+            }
+
+            // 수치 범위 필터 입력 바인딩
+            const bindRange = (input, key) => {
+                if (!input) return;
+                if (this.rangeFilters[key] !== undefined) input.value = this.rangeFilters[key];
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                        delete this.rangeFilters[key];
+                    } else {
+                        this.rangeFilters[key] = Number(val) || 0;
+                    }
+                    localStorage.setItem('dtw_tracking_ranges', JSON.stringify(this.rangeFilters));
+                    this.renderTrackingPosts();
+                });
+            };
+            bindRange(this.minViewsInput, 'minViews');
+            bindRange(this.maxViewsInput, 'maxViews');
+            bindRange(this.minLikesInput, 'minLikes');
+            bindRange(this.maxLikesInput, 'maxLikes');
+            bindRange(this.minCommentsInput, 'minComments');
+            bindRange(this.maxCommentsInput, 'maxComments');
+            bindRange(this.minSharesInput, 'minShares');
+            bindRange(this.maxSharesInput, 'maxShares');
+            bindRange(this.minFollowsInput, 'minFollows');
+            bindRange(this.maxFollowsInput, 'maxFollows');
+
+            if (this.exportCsvBtn) {
+                this.exportCsvBtn.addEventListener('click', () => this.exportTrackingCsv());
             }
         }, 0);
 
@@ -3455,6 +3497,111 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
     }
 };
 
+// 즐겨찾기 관리
+DualTextWriter.prototype.isFavorite = function(postId) {
+    try {
+        const favs = JSON.parse(localStorage.getItem('dtw_favorites') || '[]');
+        return favs.includes(postId);
+    } catch { return false; }
+};
+
+DualTextWriter.prototype.toggleFavorite = function(postId) {
+    try {
+        const favs = JSON.parse(localStorage.getItem('dtw_favorites') || '[]');
+        const idx = favs.indexOf(postId);
+        if (idx >= 0) favs.splice(idx, 1); else favs.push(postId);
+        localStorage.setItem('dtw_favorites', JSON.stringify(favs));
+        this.renderTrackingPosts();
+    } catch (e) {
+        console.error('즐겨찾기 저장 실패', e);
+    }
+};
+
+// CSV 내보내기 (현재 필터/정렬 적용된 리스트 기준)
+DualTextWriter.prototype.exportTrackingCsv = function() {
+    if (!this.trackingPosts || this.trackingPosts.length === 0) {
+        this.showMessage('내보낼 데이터가 없습니다.', 'info');
+        return;
+    }
+    // renderTrackingPosts의 필터/정렬 로직을 재사용하기 위해 동일 계산 수행
+    const getLatest = (p) => (p.metrics && p.metrics.length > 0) ? p.metrics[p.metrics.length - 1] : null;
+    let list = [...this.trackingPosts];
+    // 상태
+    if (this.trackingStatusFilter === 'active') list = list.filter(p => !!p.trackingEnabled);
+    else if (this.trackingStatusFilter === 'inactive') list = list.filter(p => !p.trackingEnabled);
+    else if (this.trackingStatusFilter === 'hasData') list = list.filter(p => (p.metrics && p.metrics.length > 0));
+    else if (this.trackingStatusFilter === 'noData') list = list.filter(p => !(p.metrics && p.metrics.length > 0));
+    // 검색
+    if (this.trackingSearch && this.trackingSearch.trim()) {
+        const tokens = this.trackingSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        list = list.filter(p => {
+            const text = (p.content || '').toLowerCase();
+            return tokens.every(tk => text.includes(tk));
+        });
+    }
+    // 기간
+    if (this.trackingUpdatedFrom || this.trackingUpdatedTo) {
+        const fromMs = this.trackingUpdatedFrom ? new Date(this.trackingUpdatedFrom + 'T00:00:00').getTime() : null;
+        const toMs = this.trackingUpdatedTo ? new Date(this.trackingUpdatedTo + 'T23:59:59').getTime() : null;
+        list = list.filter(p => {
+            const lt = getLatest(p)?.timestamp; if (!lt) return false;
+            const ms = lt.toDate ? lt.toDate().getTime() : new Date(lt).getTime();
+            if (fromMs && ms < fromMs) return false; if (toMs && ms > toMs) return false; return true;
+        });
+    }
+    // 수치 범위
+    const rf = this.rangeFilters || {};
+    const inRange = (val, min, max) => {
+        if (min !== undefined && min !== '' && val < Number(min)) return false;
+        if (max !== undefined && max !== '' && val > Number(max)) return false;
+        return true;
+    };
+    list = list.filter(p => {
+        const lt = getLatest(p) || {};
+        return (
+            inRange(lt.views || 0, rf.minViews, rf.maxViews) &&
+            inRange(lt.likes || 0, rf.minLikes, rf.maxLikes) &&
+            inRange(lt.comments || 0, rf.minComments, rf.maxComments) &&
+            inRange(lt.shares || 0, rf.minShares, rf.maxShares) &&
+            inRange(lt.follows || 0, rf.minFollows, rf.maxFollows)
+        );
+    });
+    // 정렬 (간단 버전: favoritesFirst만 별도 처리)
+    if (this.trackingSort === 'favoritesFirst') {
+        list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id)));
+    }
+
+    // CSV 작성
+    const header = ['postId','title','active','entries','lastUpdated','views','likes','comments','shares','follows'];
+    const rows = [header.join(',')];
+    list.forEach(p => {
+        const lt = getLatest(p) || {};
+        const dt = lt.timestamp ? (lt.timestamp.toDate ? lt.timestamp.toDate() : new Date(lt.timestamp)) : null;
+        const title = (p.content || '').replace(/\n/g,' ').replace(/"/g,'""');
+        const csvTitle = `"${title.substring(0,80)}${title.length>80?'...':''}"`;
+        rows.push([
+            p.id,
+            csvTitle,
+            p.trackingEnabled ? 'Y':'N',
+            p.metrics?.length || 0,
+            dt ? dt.toISOString() : '',
+            lt.views||0,
+            lt.likes||0,
+            lt.comments||0,
+            lt.shares||0,
+            lt.follows||0
+        ].join(','));
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tracking_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
 // 원본 텍스트 존재 여부 검증
 DualTextWriter.prototype.validateSourceTexts = async function() {
     if (!this.currentUser || !this.isFirebaseReady || !this.trackingPosts) return;
@@ -3593,10 +3740,13 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
     // 정렬 기준 계산에 필요한 최신 메트릭
     const getLatest = (p) => (p.metrics && p.metrics.length > 0) ? p.metrics[p.metrics.length - 1] : null;
     
-    // 검색(제목)
+    // 검색(제목/키워드/해시태그)
     if (this.trackingSearch && this.trackingSearch.trim()) {
-        const q = this.trackingSearch.trim().toLowerCase();
-        list = list.filter(p => (p.content || '').toLowerCase().includes(q));
+        const tokens = this.trackingSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        list = list.filter(p => {
+            const text = (p.content || '').toLowerCase();
+            return tokens.every(tk => text.includes(tk));
+        });
     }
     
     // 기간(최종 업데이트) 필터
@@ -3612,9 +3762,34 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             return true;
         });
     }
+
+    // 수치 범위 필터 (최신 메트릭 기준)
+    const inRange = (val, min, max) => {
+        if (min !== undefined && min !== null && min !== '' && val < Number(min)) return false;
+        if (max !== undefined && max !== null && max !== '' && val > Number(max)) return false;
+        return true;
+    };
+    const rf = this.rangeFilters || {};
+    list = list.filter(p => {
+        const lt = getLatest(p) || {};
+        const v = lt.views || 0;
+        const l = lt.likes || 0;
+        const c = lt.comments || 0;
+        const s = lt.shares || 0;
+        const f = lt.follows || 0;
+        return (
+            inRange(v, rf.minViews, rf.maxViews) &&
+            inRange(l, rf.minLikes, rf.maxLikes) &&
+            inRange(c, rf.minComments, rf.maxComments) &&
+            inRange(s, rf.minShares, rf.maxShares) &&
+            inRange(f, rf.minFollows, rf.maxFollows)
+        );
+    });
     
     // 정렬 적용
     switch (this.trackingSort) {
+        case 'favoritesFirst':
+            list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id))); break;
         case 'viewsDesc':
             list.sort((a, b) => ((getLatest(b)?.views || 0) - (getLatest(a)?.views || 0))); break;
         case 'likesDesc':
@@ -3642,6 +3817,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         const hasMetrics = post.metrics.length > 0;
         const metricsCount = post.metrics.length;
+        const isFav = this.isFavorite(post.id);
         
         // 상태 정보
         const statusClass = post.trackingEnabled ? 'active' : 'inactive';
@@ -3693,7 +3869,8 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         return `
             <div class="tracking-post-item ${statusClass} ${orphanClass}" data-post-id="${post.id}" data-is-orphan="${post.isOrphan ? 'true' : 'false'}">
                 <div class="tracking-post-header">
-                    <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap;">
+                <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap; gap:8px;">
+                        <button class="fav-toggle" title="즐겨찾기" onclick="dualTextWriter.toggleFavorite('${post.id}')" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem;">${isFav ? '⭐' : '☆'}</button>
                         ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
                         ${orphanBadge}
                     </div>
