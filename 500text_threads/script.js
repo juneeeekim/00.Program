@@ -70,6 +70,17 @@ class DualTextWriter {
         this.totalLikesElement = document.getElementById('total-likes');
         this.totalCommentsElement = document.getElementById('total-comments');
         this.totalSharesElement = document.getElementById('total-shares');
+        this.trackingSortSelect = document.getElementById('tracking-sort');
+        this.trackingStatusSelect = document.getElementById('tracking-status-filter');
+        this.trackingSearchInput = document.getElementById('tracking-search');
+        this.trackingUpdatedFromInput = document.getElementById('tracking-updated-from');
+        this.trackingUpdatedToInput = document.getElementById('tracking-updated-to');
+        this.trackingDateClearBtn = document.getElementById('tracking-date-clear');
+        this.trackingSort = localStorage.getItem('dtw_tracking_sort') || 'updatedDesc';
+        this.trackingStatusFilter = localStorage.getItem('dtw_tracking_status') || 'all';
+        this.trackingSearch = localStorage.getItem('dtw_tracking_search') || '';
+        this.trackingUpdatedFrom = localStorage.getItem('dtw_tracking_from') || '';
+        this.trackingUpdatedTo = localStorage.getItem('dtw_tracking_to') || '';
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -270,6 +281,66 @@ class DualTextWriter {
         } else {
             console.error('❌ 반자동화 포스팅 버튼을 찾을 수 없습니다!');
         }
+
+        // 트래킹 필터 이벤트
+        setTimeout(() => {
+            if (this.trackingSortSelect) {
+                this.trackingSortSelect.value = this.trackingSort;
+                this.trackingSortSelect.addEventListener('change', (e) => {
+                    this.trackingSort = e.target.value;
+                    localStorage.setItem('dtw_tracking_sort', this.trackingSort);
+                    this.renderTrackingPosts();
+                });
+            }
+            if (this.trackingStatusSelect) {
+                this.trackingStatusSelect.value = this.trackingStatusFilter;
+                this.trackingStatusSelect.addEventListener('change', (e) => {
+                    this.trackingStatusFilter = e.target.value;
+                    localStorage.setItem('dtw_tracking_status', this.trackingStatusFilter);
+                    this.renderTrackingPosts();
+                });
+            }
+            if (this.trackingSearchInput) {
+                this.trackingSearchInput.value = this.trackingSearch;
+                this.trackingSearchDebounce = null;
+                this.trackingSearchInput.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    clearTimeout(this.trackingSearchDebounce);
+                    this.trackingSearchDebounce = setTimeout(() => {
+                        this.trackingSearch = val;
+                        localStorage.setItem('dtw_tracking_search', this.trackingSearch);
+                        this.renderTrackingPosts();
+                    }, 200);
+                });
+            }
+            if (this.trackingUpdatedFromInput) {
+                this.trackingUpdatedFromInput.value = this.trackingUpdatedFrom;
+                this.trackingUpdatedFromInput.addEventListener('change', (e) => {
+                    this.trackingUpdatedFrom = e.target.value;
+                    localStorage.setItem('dtw_tracking_from', this.trackingUpdatedFrom);
+                    this.renderTrackingPosts();
+                });
+            }
+            if (this.trackingUpdatedToInput) {
+                this.trackingUpdatedToInput.value = this.trackingUpdatedTo;
+                this.trackingUpdatedToInput.addEventListener('change', (e) => {
+                    this.trackingUpdatedTo = e.target.value;
+                    localStorage.setItem('dtw_tracking_to', this.trackingUpdatedTo);
+                    this.renderTrackingPosts();
+                });
+            }
+            if (this.trackingDateClearBtn) {
+                this.trackingDateClearBtn.addEventListener('click', () => {
+                    this.trackingUpdatedFrom = '';
+                    this.trackingUpdatedTo = '';
+                    if (this.trackingUpdatedFromInput) this.trackingUpdatedFromInput.value = '';
+                    if (this.trackingUpdatedToInput) this.trackingUpdatedToInput.value = '';
+                    localStorage.removeItem('dtw_tracking_from');
+                    localStorage.removeItem('dtw_tracking_to');
+                    this.renderTrackingPosts();
+                });
+            }
+        }, 0);
 
         // 해시태그 설정 버튼 이벤트 바인딩
         const hashtagSettingsBtn = document.getElementById('hashtag-settings-btn');
@@ -3507,7 +3578,67 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         </div>
     ` : '';
     
-    this.trackingPostsList.innerHTML = orphanBannerHtml + this.trackingPosts.map(post => {
+    // 상태/검색/기간 필터 적용
+    let list = [...this.trackingPosts];
+    if (this.trackingStatusFilter === 'active') {
+        list = list.filter(p => !!p.trackingEnabled);
+    } else if (this.trackingStatusFilter === 'inactive') {
+        list = list.filter(p => !p.trackingEnabled);
+    } else if (this.trackingStatusFilter === 'hasData') {
+        list = list.filter(p => (p.metrics && p.metrics.length > 0));
+    } else if (this.trackingStatusFilter === 'noData') {
+        list = list.filter(p => !(p.metrics && p.metrics.length > 0));
+    }
+
+    // 정렬 기준 계산에 필요한 최신 메트릭
+    const getLatest = (p) => (p.metrics && p.metrics.length > 0) ? p.metrics[p.metrics.length - 1] : null;
+    
+    // 검색(제목)
+    if (this.trackingSearch && this.trackingSearch.trim()) {
+        const q = this.trackingSearch.trim().toLowerCase();
+        list = list.filter(p => (p.content || '').toLowerCase().includes(q));
+    }
+    
+    // 기간(최종 업데이트) 필터
+    if (this.trackingUpdatedFrom || this.trackingUpdatedTo) {
+        const fromMs = this.trackingUpdatedFrom ? new Date(this.trackingUpdatedFrom + 'T00:00:00').getTime() : null;
+        const toMs = this.trackingUpdatedTo ? new Date(this.trackingUpdatedTo + 'T23:59:59').getTime() : null;
+        list = list.filter(p => {
+            const lt = getLatest(p)?.timestamp;
+            if (!lt) return false;
+            const ms = lt.toDate ? lt.toDate().getTime() : new Date(lt).getTime();
+            if (fromMs && ms < fromMs) return false;
+            if (toMs && ms > toMs) return false;
+            return true;
+        });
+    }
+    
+    // 정렬 적용
+    switch (this.trackingSort) {
+        case 'viewsDesc':
+            list.sort((a, b) => ((getLatest(b)?.views || 0) - (getLatest(a)?.views || 0))); break;
+        case 'likesDesc':
+            list.sort((a, b) => ((getLatest(b)?.likes || 0) - (getLatest(a)?.likes || 0))); break;
+        case 'commentsDesc':
+            list.sort((a, b) => ((getLatest(b)?.comments || 0) - (getLatest(a)?.comments || 0))); break;
+        case 'sharesDesc':
+            list.sort((a, b) => ((getLatest(b)?.shares || 0) - (getLatest(a)?.shares || 0))); break;
+        case 'followsDesc':
+            list.sort((a, b) => ((getLatest(b)?.follows || 0) - (getLatest(a)?.follows || 0))); break;
+        case 'entriesDesc':
+            list.sort((a, b) => ((b.metrics?.length || 0) - (a.metrics?.length || 0))); break;
+        case 'updatedDesc':
+        default:
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return bMs - aMs;
+            });
+            break;
+    }
+
+    this.trackingPostsList.innerHTML = orphanBannerHtml + list.map(post => {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         const hasMetrics = post.metrics.length > 0;
         const metricsCount = post.metrics.length;
