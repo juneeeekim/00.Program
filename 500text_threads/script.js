@@ -3108,16 +3108,58 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
     
     this.trackingPostsList.innerHTML = this.trackingPosts.map(post => {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        const hasMetrics = post.metrics.length > 0;
+        const metricsCount = post.metrics.length;
+        
+        // 상태 정보
         const statusClass = post.trackingEnabled ? 'active' : 'inactive';
+        const statusIcon = post.trackingEnabled ? '🟢' : '⚪';
         const statusText = post.trackingEnabled ? '활성' : '비활성';
         
+        // 메트릭 데이터 표시
+        const metricsBadgeClass = hasMetrics ? 'has-data' : 'no-data';
+        const metricsBadgeText = hasMetrics ? `📊 ${metricsCount}회 입력` : '📭 데이터 없음';
+        
+        // 마지막 업데이트 날짜
+        let lastUpdateText = '';
+        if (latestMetrics && latestMetrics.timestamp) {
+            try {
+                const updateDate = latestMetrics.timestamp.toDate ? latestMetrics.timestamp.toDate() : new Date(latestMetrics.timestamp);
+                lastUpdateText = updateDate.toLocaleDateString('ko-KR', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                lastUpdateText = '';
+            }
+        }
+        
         return `
-            <div class="tracking-post-item" data-post-id="${post.id}">
+            <div class="tracking-post-item ${statusClass}" data-post-id="${post.id}">
                 <div class="tracking-post-header">
                     <div class="tracking-post-title">
                         ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
                     </div>
-                    <div class="tracking-post-status ${statusClass}">${statusText}</div>
+                    <div class="tracking-post-status-group">
+                        <div class="tracking-post-status ${statusClass}" aria-label="트래킹 상태: ${statusText}">
+                            <span class="status-icon" aria-hidden="true">${statusIcon}</span>
+                            <span class="status-text">${statusText}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tracking-post-info">
+                    <div class="tracking-post-metrics-badge ${metricsBadgeClass}">
+                        ${metricsBadgeText}
+                    </div>
+                    ${lastUpdateText ? `
+                        <div class="tracking-post-update-date">
+                            마지막 업데이트: ${lastUpdateText}
+                        </div>
+                    ` : ''}
                 </div>
                 
                 ${latestMetrics ? `
@@ -3143,14 +3185,19 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                             <div class="metric-label">공유</div>
                         </div>
                     </div>
-                ` : ''}
+                ` : `
+                    <div class="tracking-post-no-data">
+                        <span class="no-data-icon">📭</span>
+                        <span class="no-data-text">아직 데이터가 입력되지 않았습니다. "데이터 추가" 버튼을 클릭하여 성과 데이터를 입력하세요.</span>
+                    </div>
+                `}
                 
                 <div class="tracking-post-actions">
                     ${post.trackingEnabled ? 
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.addTrackingData('${post.id}')">데이터 추가</button>` :
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.startTracking('${post.id}')">트래킹 시작</button>`
+                        `<button class="tracking-btn primary" onclick="dualTextWriter.addTrackingData('${post.id}')" aria-label="성과 데이터 추가">데이터 추가</button>` :
+                        `<button class="tracking-btn primary" onclick="dualTextWriter.startTracking('${post.id}')" aria-label="트래킹 시작">트래킹 시작</button>`
                     }
-                    <button class="tracking-btn secondary" onclick="dualTextWriter.stopTracking('${post.id}')">트래킹 중지</button>
+                    <button class="tracking-btn secondary" onclick="dualTextWriter.stopTracking('${post.id}')" aria-label="트래킹 중지">트래킹 중지</button>
                 </div>
             </div>
         `;
@@ -3173,6 +3220,9 @@ DualTextWriter.prototype.startTracking = async function(postId) {
         if (post) {
             post.trackingEnabled = true;
             this.renderTrackingPosts();
+            
+            // 시각적 피드백: 성공 메시지
+            this.showMessage('✅ 트래킹이 시작되었습니다!', 'success');
         }
         
         console.log('트래킹이 시작되었습니다.');
@@ -3198,6 +3248,9 @@ DualTextWriter.prototype.stopTracking = async function(postId) {
         if (post) {
             post.trackingEnabled = false;
             this.renderTrackingPosts();
+            
+            // 시각적 피드백: 성공 메시지
+            this.showMessage('⏸️ 트래킹이 중지되었습니다.', 'info');
         }
         
         console.log('트래킹이 중지되었습니다.');
@@ -3210,6 +3263,16 @@ DualTextWriter.prototype.stopTracking = async function(postId) {
 // 트래킹 데이터 추가
 DualTextWriter.prototype.addTrackingData = function(postId) {
     this.currentTrackingPost = postId;
+    
+    // 선택된 포스트에 시각적 피드백 (선택 효과)
+    const postElement = document.querySelector(`.tracking-post-item[data-post-id="${postId}"]`);
+    if (postElement) {
+        postElement.classList.add('selected');
+        setTimeout(() => {
+            postElement.classList.remove('selected');
+        }, 500);
+    }
+    
     this.openTrackingModal();
 };
 
@@ -3274,6 +3337,9 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             this.renderTrackingPosts();
             this.updateTrackingSummary();
             this.updateTrackingChart();
+            
+            // 시각적 피드백: 성공 메시지
+            this.showMessage('✅ 성과 데이터가 저장되었습니다!', 'success');
             
             console.log('트래킹 데이터가 저장되었습니다.');
         }

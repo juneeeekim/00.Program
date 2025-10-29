@@ -2597,21 +2597,123 @@
         color: #333;
     }
     
+    .tracking-post-status-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
     .tracking-post-status {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .tracking-post-status .status-icon {
+        font-size: 0.9rem;
     }
     
     .tracking-post-status.active {
         background: #e8f5e8;
         color: #2e7d32;
+        border: 1px solid #4caf50;
+    }
+    
+    .tracking-post-status.active:hover {
+        background: #c8e6c9;
     }
     
     .tracking-post-status.inactive {
         background: #f5f5f5;
         color: #666;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .tracking-post-status.inactive:hover {
+        background: #eeeeee;
+    }
+    
+    /* 트래킹 포스트 정보 영역 */
+    .tracking-post-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .tracking-post-metrics-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .tracking-post-metrics-badge.has-data {
+        background: #e3f2fd;
+        color: #1976d2;
+        border: 1px solid #90caf9;
+    }
+    
+    .tracking-post-metrics-badge.no-data {
+        background: #fff3e0;
+        color: #f57c00;
+        border: 1px solid #ffb74d;
+    }
+    
+    .tracking-post-update-date {
+        font-size: 0.8rem;
+        color: #666;
+        font-style: italic;
+    }
+    
+    /* 데이터 없음 표시 */
+    .tracking-post-no-data {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        border: 1px dashed #d0d0d0;
+    }
+    
+    .tracking-post-no-data .no-data-icon {
+        font-size: 1.5rem;
+    }
+    
+    .tracking-post-no-data .no-data-text {
+        color: #666;
+        font-size: 0.9rem;
+        flex: 1;
+    }
+    
+    /* 선택된 포스트 강조 효과 */
+    .tracking-post-item.selected {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        transform: scale(1.01);
+    }
+    
+    /* 활성/비활성 상태에 따른 포스트 아이템 스타일 */
+    .tracking-post-item.active {
+        border-left: 4px solid #4caf50;
+    }
+    
+    .tracking-post-item.inactive {
+        border-left: 4px solid #e0e0e0;
+        opacity: 0.85;
     }
     
     .tracking-post-metrics {
