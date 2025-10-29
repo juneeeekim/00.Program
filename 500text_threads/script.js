@@ -1045,30 +1045,92 @@ class DualTextWriter {
         }
     }
 
-    // Firestore에서 텍스트 삭제
+    // Firestore에서 텍스트 삭제 (연결된 트래킹 포스트도 함께 삭제)
     async deleteText(id) {
         console.log('삭제 버튼 클릭:', { id });
-        if (confirm('이 글을 삭제하시겠습니까?')) {
-            if (!this.currentUser || !this.isFirebaseReady) {
-                this.showMessage('로그인이 필요합니다.', 'error');
+        
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('로그인이 필요합니다.', 'error');
+            return;
+        }
+
+        try {
+            // 연결된 트래킹 포스트 찾기
+            const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+            const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', id));
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            const connectedPosts = [];
+            querySnapshot.forEach((doc) => {
+                connectedPosts.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            const postCount = connectedPosts.length;
+            const metricsCount = connectedPosts.reduce((sum, post) => sum + (post.metrics?.length || 0), 0);
+            
+            // 경고 메시지 구성
+            let confirmMessage = '이 글을 삭제하시겠습니까?';
+            if (postCount > 0) {
+                confirmMessage = `이 글을 삭제하시겠습니까?\n\n` +
+                    `⚠️ 연결된 트래킹 데이터:\n` +
+                    `   - 트래킹 포스트: ${postCount}개\n` +
+                    `   - 트래킹 기록: ${metricsCount}개\n\n` +
+                    `이 모든 데이터가 함께 삭제됩니다.`;
+            }
+            
+            if (!confirm(confirmMessage)) {
+                console.log('사용자가 삭제 취소');
                 return;
             }
-
-            try {
-                console.log('Firestore에서 삭제 시작:', id);
-                // Firestore에서 삭제
-                await window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id));
-
-                // 로컬 배열에서도 제거
+            
+            console.log('Firestore에서 삭제 시작:', { id, connectedPostsCount: postCount });
+            
+            // 연결된 트래킹 포스트 삭제 (캐스케이드 삭제)
+            const deletePromises = connectedPosts.map(post => {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+                return window.firebaseDeleteDoc(postRef);
+            });
+            
+            // 포스트 삭제와 텍스트 삭제를 병렬로 처리
+            await Promise.all([
+                ...deletePromises,
+                window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id))
+            ]);
+            
+            // 로컬 배열에서도 제거
             this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
-            this.renderSavedTexts();
-            this.showMessage('글이 삭제되었습니다.', 'info');
-                console.log('삭제 완료');
-
-            } catch (error) {
-                console.error('텍스트 삭제 실패:', error);
-                this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
+            
+            // 로컬 트래킹 포스트 배열에서도 제거
+            if (this.trackingPosts) {
+                this.trackingPosts = this.trackingPosts.filter(post => post.sourceTextId !== id);
             }
+            
+            // UI 업데이트
+            this.renderSavedTexts();
+            
+            // 트래킹 탭이 활성화되어 있으면 트래킹 목록도 새로고침
+            const trackingTab = document.getElementById('tracking-tab');
+            if (trackingTab && trackingTab.classList.contains('active')) {
+                await this.loadTrackingPosts();
+                this.updateTrackingSummary();
+                this.updateTrackingChart();
+            }
+            
+            // 성공 메시지
+            let successMessage = '글이 삭제되었습니다.';
+            if (postCount > 0) {
+                successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
+            }
+            this.showMessage(successMessage, 'success');
+            
+            console.log('삭제 완료', { id, deletedPosts: postCount });
+
+        } catch (error) {
+            console.error('텍스트 삭제 실패:', error);
+            this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
 
@@ -3661,10 +3723,17 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
         }
         
         this.closeTrackingModal();
+        
+        // 트래킹 포스트 목록을 최신 데이터로 새로고침 (Firebase에서 다시 가져오기)
+        if (this.loadTrackingPosts) {
+            await this.loadTrackingPosts();
+        }
+        
+        // UI 업데이트
         this.renderSavedTexts(); // 저장된 글 목록 새로고침 (타임라인 업데이트)
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.updateTrackingChart();
+        this.renderTrackingPosts(); // 트래킹 탭 목록 새로고침
+        this.updateTrackingSummary(); // 트래킹 요약 업데이트
+        this.updateTrackingChart(); // 트래킹 차트 업데이트
         
         // 초기화
         this.currentTrackingTextId = null;
