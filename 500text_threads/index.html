@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>500자 미만 글 작성기</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -83,11 +85,7 @@
                             </div>
                         </div>
 
-                        <textarea 
-                            id="ref-text-input" 
-                            placeholder="참고할 레퍼런스 글을 입력하세요..."
-                            maxlength="500"
-                        ></textarea>
+                        <textarea id="ref-text-input" placeholder="참고할 레퍼런스 글을 입력하세요..." maxlength="500"></textarea>
 
                         <div class="progress-bar">
                             <div id="ref-progress-fill" class="progress-fill"></div>
@@ -102,7 +100,8 @@
 
                             <div class="control-group advanced-actions">
                                 <div class="llm-validation-dropdown">
-                                    <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
+                                    <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM
+                                        검증</button>
                                     <div class="llm-dropdown-menu">
                                         <button class="llm-option" data-llm="chatgpt" data-panel="reference">
                                             <div class="llm-option-content">
@@ -158,11 +157,8 @@
                             </div>
                         </div>
 
-                        <textarea 
-                            id="edit-text-input" 
-                            placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
-                            maxlength="500"
-                        ></textarea>
+                        <textarea id="edit-text-input" placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
+                            maxlength="500"></textarea>
 
                         <div class="progress-bar">
                             <div id="edit-progress-fill" class="progress-fill"></div>
@@ -230,12 +226,17 @@
                     <h3>저장된 글</h3>
                     <div class="saved-filters">
                         <div class="segmented-control" role="tablist" aria-label="저장된 글 필터">
-                            <button class="segment-btn active" data-filter="all" role="tab" aria-selected="true">전체</button>
-                            <button class="segment-btn" data-filter="edit" role="tab" aria-selected="false">✏️ 작성</button>
-                            <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
+                            <button class="segment-btn active" data-filter="all" role="tab"
+                                aria-selected="true">전체</button>
+                            <button class="segment-btn" data-filter="edit" role="tab" aria-selected="false">✏️
+                                작성</button>
+                            <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖
+                                레퍼런스</button>
                         </div>
-                        <div class="migration-tools" style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-                            <button id="batch-migration-btn" class="btn btn-secondary btn-small" title="모든 저장된 글을 트래킹 포스트로 변환" style="font-size: 0.85rem; padding: 8px 16px;">
+                        <div class="migration-tools"
+                            style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                            <button id="batch-migration-btn" class="btn btn-secondary btn-small"
+                                title="모든 저장된 글을 트래킹 포스트로 변환" style="font-size: 0.85rem; padding: 8px 16px;">
                                 📊 모든 글 트래킹 시작
                             </button>
                         </div>
@@ -248,7 +249,7 @@
             <div class="tab-content" id="tracking-tab">
                 <div class="tracking-dashboard">
                     <h3>📊 트래킹 대시보드</h3>
-                    
+
                     <!-- 개선된 통계 요약 -->
                     <div class="tracking-summary">
                         <div class="summary-card">
@@ -300,29 +301,76 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 차트 컨테이너 -->
+
+                    <!-- 인사이트 섹션 (NEW!) -->
+                    <div class="tracking-insights" id="tracking-insights" style="display: none;">
+                        <h4>💡 인사이트</h4>
+                        <div class="insights-grid" id="insights-grid">
+                            <!-- 동적으로 생성됨 -->
+                        </div>
+                    </div>
+
+                    <!-- 차트 컨테이너 (개선 버전) -->
                     <div class="tracking-chart-container">
                         <div class="chart-header">
-                            <h4>📈 최근 7일 성과 추이</h4>
-                            <div class="chart-legend">
-                                <span class="legend-item"><span class="legend-color" style="background: #667eea;"></span> 조회수</span>
-                                <span class="legend-item"><span class="legend-color" style="background: #e74c3c;"></span> 좋아요</span>
-                                <span class="legend-item"><span class="legend-color" style="background: #3498db;"></span> 공유</span>
-                                <span class="legend-item"><span class="legend-color" style="background: #f39c12;"></span> 댓글</span>
+                            <h4>📈 성과 추이</h4>
+                            <div class="chart-controls">
+                                <!-- 기간 선택 -->
+                                <div class="chart-period-selector">
+                                    <button class="period-btn active" data-period="7"
+                                        onclick="dualTextWriter.changeChartPeriod(7)">7일</button>
+                                    <button class="period-btn" data-period="14"
+                                        onclick="dualTextWriter.changeChartPeriod(14)">14일</button>
+                                    <button class="period-btn" data-period="30"
+                                        onclick="dualTextWriter.changeChartPeriod(30)">30일</button>
+                                    <button class="period-btn" data-period="all"
+                                        onclick="dualTextWriter.changeChartPeriod('all')">전체</button>
+                                </div>
+                                <!-- 데이터셋 토글 -->
+                                <div class="chart-dataset-toggle">
+                                    <button class="dataset-toggle-btn active" data-dataset="all"
+                                        onclick="dualTextWriter.toggleChartDataset('all')" title="전체 표시">
+                                        <span class="toggle-icon">📊</span>
+                                    </button>
+                                    <button class="dataset-toggle-btn" data-dataset="views"
+                                        onclick="dualTextWriter.toggleChartDataset('views')" title="조회수만">
+                                        <span class="toggle-icon">👀</span>
+                                    </button>
+                                    <button class="dataset-toggle-btn" data-dataset="engagement"
+                                        onclick="dualTextWriter.toggleChartDataset('engagement')" title="참여 지표">
+                                        <span class="toggle-icon">❤️</span>
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+                        <div class="chart-legend">
+                            <span class="legend-item" data-dataset="views">
+                                <span class="legend-color" style="background: #667eea;"></span> 조회수
+                            </span>
+                            <span class="legend-item" data-dataset="likes">
+                                <span class="legend-color" style="background: #e74c3c;"></span> 좋아요
+                            </span>
+                            <span class="legend-item" data-dataset="shares">
+                                <span class="legend-color" style="background: #3498db;"></span> 공유
+                            </span>
+                            <span class="legend-item" data-dataset="comments">
+                                <span class="legend-color" style="background: #f39c12;"></span> 댓글
+                            </span>
                         </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
-                    
+
                     <!-- 포스트 목록 -->
                     <div class="tracking-posts-section">
                         <div class="section-header">
                             <h4>📝 트래킹 중인 포스트</h4>
                             <div class="section-actions">
-                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('all')">전체</button>
-                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('active')">활성</button>
-                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('inactive')">비활성</button>
+                                <button class="btn-filter"
+                                    onclick="dualTextWriter.filterTrackingPosts('all')">전체</button>
+                                <button class="btn-filter"
+                                    onclick="dualTextWriter.filterTrackingPosts('active')">활성</button>
+                                <button class="btn-filter"
+                                    onclick="dualTextWriter.filterTrackingPosts('inactive')">비활성</button>
                             </div>
                         </div>
                         <div class="tracking-posts-list" id="tracking-posts-list">
@@ -331,7 +379,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 임시 저장 상태 -->
             <div class="temp-save-status" id="temp-save-status">
                 <span id="temp-save-indicator">💾</span>
@@ -342,7 +390,8 @@
             <div class="hashtag-settings-bar" id="hashtag-settings-bar">
                 <span class="hashtag-label">추천 해시태그:</span>
                 <span id="current-hashtags-display" class="hashtags-display">#writing #content #threads</span>
-                <button id="hashtag-settings-btn" class="btn btn-hashtag-settings btn-mobile" title="해시태그 설정">⚙️ 설정</button>
+                <button id="hashtag-settings-btn" class="btn btn-hashtag-settings btn-mobile" title="해시태그 설정">⚙️
+                    설정</button>
             </div>
         </main>
     </div>
@@ -397,7 +446,7 @@
             <button class="btn-primary" onclick="closeModal('copy-modal')">확인</button>
         </div>
     </div>
-    
+
     <!-- 트래킹 데이터 입력 모달 (개선 버전) -->
     <div id="tracking-modal" class="modal">
         <div class="modal-content tracking-modal-enhanced">
@@ -405,7 +454,7 @@
                 <h3>📊 트래킹 데이터 입력</h3>
                 <button class="modal-close-btn" onclick="dualTextWriter.closeTrackingModal()" aria-label="닫기">×</button>
             </div>
-            
+
             <!-- 포스트 정보 표시 -->
             <div class="tracking-modal-post-info" id="tracking-modal-post-info">
                 <div class="post-preview">
@@ -419,7 +468,7 @@
                     </span>
                 </div>
             </div>
-            
+
             <!-- 이전 데이터 표시 -->
             <div class="tracking-modal-previous-data" id="tracking-modal-previous-data" style="display: none;">
                 <h4>📋 이전 데이터 (참고용)</h4>
@@ -445,7 +494,7 @@
                     마지막 업데이트: <span id="prev-date">-</span>
                 </div>
             </div>
-            
+
             <!-- 입력 폼 -->
             <div class="tracking-form">
                 <div class="form-group">
@@ -457,7 +506,7 @@
                     <input type="number" id="tracking-views" min="0" placeholder="현재 조회수를 입력하세요" required>
                     <div class="input-growth" id="growth-views" style="display: none;"></div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="tracking-likes">
                         <span class="label-icon">❤️</span>
@@ -467,7 +516,7 @@
                     <input type="number" id="tracking-likes" min="0" placeholder="현재 좋아요 수를 입력하세요" required>
                     <div class="input-growth" id="growth-likes" style="display: none;"></div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="tracking-comments">
                         <span class="label-icon">💬</span>
@@ -476,7 +525,7 @@
                     <input type="number" id="tracking-comments" min="0" placeholder="현재 댓글 수를 입력하세요">
                     <div class="input-growth" id="growth-comments" style="display: none;"></div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="tracking-shares">
                         <span class="label-icon">🔄</span>
@@ -485,7 +534,7 @@
                     <input type="number" id="tracking-shares" min="0" placeholder="현재 공유 수를 입력하세요">
                     <div class="input-growth" id="growth-shares" style="display: none;"></div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="tracking-notes">
                         <span class="label-icon">📝</span>
@@ -495,16 +544,16 @@
                     <textarea id="tracking-notes" placeholder="특별한 이벤트나 캠페인 정보를 기록하세요" rows="3"></textarea>
                 </div>
             </div>
-            
+
             <!-- 입력 가이드 -->
             <div class="tracking-modal-guide">
                 <div class="guide-icon">💡</div>
                 <div class="guide-text">
-                    <strong>입력 팁:</strong> Threads 앱에서 포스트를 열고 현재 수치를 확인한 후 입력하세요. 
+                    <strong>입력 팁:</strong> Threads 앱에서 포스트를 열고 현재 수치를 확인한 후 입력하세요.
                     이전 데이터와 비교하여 증가량이 자동으로 계산됩니다.
                 </div>
             </div>
-            
+
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="dualTextWriter.closeTrackingModal()">취소</button>
                 <button class="btn-primary" onclick="dualTextWriter.saveTrackingData()">💾 저장</button>
@@ -514,10 +563,11 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <script src="script.js"></script>
 
     <!-- 개발자 테스트 스크립트 (프로덕션에서는 제거) -->
     <script src="test-firebase.js"></script>
 </body>
+
 </html>

@@ -160,6 +160,7 @@ class DualTextWriter {
             this.loadTrackingPosts();
             this.updateTrackingSummary();
             this.initTrackingChart();
+            this.generateInsights(); // 인사이트 생성
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -3632,9 +3633,13 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
     }
 };
 
-// 트래킹 차트 초기화
+// 트래킹 차트 초기화 (개선 버전)
 DualTextWriter.prototype.initTrackingChart = function() {
     if (!this.trackingChartCanvas) return;
+    
+    // 기본 설정
+    this.chartPeriod = this.chartPeriod || 7;
+    this.chartDataset = this.chartDataset || 'all';
     
     const ctx = this.trackingChartCanvas.getContext('2d');
     
@@ -3652,27 +3657,80 @@ DualTextWriter.prototype.initTrackingChart = function() {
                 data: [],
                 borderColor: '#667eea',
                 backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                tension: 0.4
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
             }, {
                 label: '좋아요',
                 data: [],
                 borderColor: '#e74c3c',
                 backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                tension: 0.4
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: '공유',
+                data: [],
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }, {
+                label: '댓글',
+                data: [],
+                borderColor: '#f39c12',
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
-                title: {
-                    display: true,
-                    text: '포스트 성과 추이'
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed.y.toLocaleString();
+                            return label;
+                        }
+                    }
+                },
+                legend: {
+                    display: false // 커스텀 범례 사용
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    }
                 }
             }
         }
@@ -3681,21 +3739,74 @@ DualTextWriter.prototype.initTrackingChart = function() {
     this.updateTrackingChart();
 };
 
-// 트래킹 차트 업데이트 (개선 버전)
+// 트래킹 차트 업데이트 (개선 버전 - 기간 선택 지원)
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
     
-    // 최근 7일간의 데이터만 표시
-    const last7Days = [];
+    const period = this.chartPeriod || 7;
+    const dataset = this.chartDataset || 'all';
+    
+    // 기간 계산
+    let days = period === 'all' ? 90 : parseInt(period); // 전체는 최대 90일
+    
+    // 날짜 배열 생성
+    const dates = [];
     const viewsData = [];
     const likesData = [];
     const sharesData = [];
     const commentsData = [];
     
-    for (let i = 6; i >= 0; i--) {
+    // 실제 데이터가 있는 날짜 범위 계산
+    let oldestDate = new Date();
+    let newestDate = new Date(0);
+    
+    this.trackingPosts.forEach(post => {
+        if (!post.metrics || post.metrics.length === 0) return;
+        
+        post.metrics.forEach(metric => {
+            try {
+                let metricDate;
+                if (metric.timestamp && metric.timestamp.toDate) {
+                    metricDate = metric.timestamp.toDate();
+                } else if (metric.timestamp instanceof Date) {
+                    metricDate = metric.timestamp;
+                } else if (typeof metric.timestamp === 'string' || typeof metric.timestamp === 'number') {
+                    metricDate = new Date(metric.timestamp);
+                } else {
+                    return;
+                }
+                
+                if (metricDate < oldestDate) oldestDate = metricDate;
+                if (metricDate > newestDate) newestDate = metricDate;
+            } catch (error) {
+                console.warn('날짜 처리 오류:', error);
+            }
+        });
+    });
+    
+    // 전체 기간인 경우 실제 데이터 범위 사용
+    if (period === 'all') {
+        const daysDiff = Math.ceil((newestDate - oldestDate) / (1000 * 60 * 60 * 24));
+        days = Math.max(daysDiff + 1, 7); // 최소 7일
+    }
+    
+    // 날짜별 데이터 집계
+    for (let i = days - 1; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        last7Days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
+        date.setHours(0, 0, 0, 0);
+        
+        // 날짜 레이블 포맷
+        let dateLabel;
+        if (days <= 7) {
+            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+        } else if (days <= 30) {
+            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        } else {
+            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        }
+        
+        dates.push(dateLabel);
         
         // 해당 날짜의 모든 포스트 데이터 합계
         let dayViews = 0;
@@ -3708,31 +3819,27 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             
             post.metrics.forEach(metric => {
                 try {
-                    // 안전한 날짜 변환
                     let metricDate;
                     if (metric.timestamp && metric.timestamp.toDate) {
-                        // Firestore Timestamp
                         metricDate = metric.timestamp.toDate();
                     } else if (metric.timestamp instanceof Date) {
-                        // JavaScript Date
                         metricDate = metric.timestamp;
                     } else if (typeof metric.timestamp === 'string' || typeof metric.timestamp === 'number') {
-                        // String 또는 Number
                         metricDate = new Date(metric.timestamp);
                     } else {
-                        // 변환 불가능한 경우 건너뜀
                         return;
                     }
                     
-                    // 날짜 비교 (시간 제외)
-                    if (metricDate.toDateString() === date.toDateString()) {
+                    metricDate.setHours(0, 0, 0, 0);
+                    
+                    if (metricDate.getTime() === date.getTime()) {
                         dayViews += metric.views || 0;
                         dayLikes += metric.likes || 0;
                         dayShares += metric.shares || 0;
                         dayComments += metric.comments || 0;
                     }
                 } catch (error) {
-                    console.warn('차트 데이터 처리 중 오류:', error, metric);
+                    console.warn('차트 데이터 처리 중 오류:', error);
                 }
             });
         });
@@ -3744,29 +3851,32 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     }
     
     // 차트 데이터 업데이트
-    this.trackingChart.data.labels = last7Days;
-    this.trackingChart.data.datasets[0].data = viewsData;
-    this.trackingChart.data.datasets[1].data = likesData;
+    this.trackingChart.data.labels = dates;
     
-    // 공유와 댓글 데이터셋 추가 (선택적)
-    if (this.trackingChart.data.datasets.length < 4) {
-        this.trackingChart.data.datasets.push({
-            label: '공유',
-            data: sharesData,
-            borderColor: '#3498db',
-            backgroundColor: 'rgba(52, 152, 219, 0.1)',
-            tension: 0.4
-        });
-        this.trackingChart.data.datasets.push({
-            label: '댓글',
-            data: commentsData,
-            borderColor: '#f39c12',
-            backgroundColor: 'rgba(243, 156, 18, 0.1)',
-            tension: 0.4
-        });
-    } else {
+    // 데이터셋 표시/숨김
+    if (dataset === 'all') {
+        this.trackingChart.data.datasets[0].data = viewsData;
+        this.trackingChart.data.datasets[0].hidden = false;
+        this.trackingChart.data.datasets[1].data = likesData;
+        this.trackingChart.data.datasets[1].hidden = false;
         this.trackingChart.data.datasets[2].data = sharesData;
+        this.trackingChart.data.datasets[2].hidden = false;
         this.trackingChart.data.datasets[3].data = commentsData;
+        this.trackingChart.data.datasets[3].hidden = false;
+    } else if (dataset === 'views') {
+        this.trackingChart.data.datasets[0].data = viewsData;
+        this.trackingChart.data.datasets[0].hidden = false;
+        this.trackingChart.data.datasets[1].hidden = true;
+        this.trackingChart.data.datasets[2].hidden = true;
+        this.trackingChart.data.datasets[3].hidden = true;
+    } else if (dataset === 'engagement') {
+        this.trackingChart.data.datasets[0].hidden = true;
+        this.trackingChart.data.datasets[1].data = likesData;
+        this.trackingChart.data.datasets[1].hidden = false;
+        this.trackingChart.data.datasets[2].data = sharesData;
+        this.trackingChart.data.datasets[2].hidden = false;
+        this.trackingChart.data.datasets[3].data = commentsData;
+        this.trackingChart.data.datasets[3].hidden = false;
     }
     
     this.trackingChart.update();
@@ -4026,4 +4136,203 @@ DualTextWriter.prototype.filterTrackingPosts = function(filter) {
             item.style.display = item.classList.contains('inactive') ? 'block' : 'none';
         }
     });
+};
+
+
+// 차트 기간 변경
+DualTextWriter.prototype.changeChartPeriod = function(period) {
+    this.chartPeriod = period;
+    
+    // 버튼 활성화 상태 업데이트
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-period') == period) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // 차트 업데이트
+    this.updateTrackingChart();
+};
+
+// 차트 데이터셋 토글
+DualTextWriter.prototype.toggleChartDataset = function(dataset) {
+    this.chartDataset = dataset;
+    
+    // 버튼 활성화 상태 업데이트
+    document.querySelectorAll('.dataset-toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-dataset') === dataset) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // 범례 표시/숨김
+    document.querySelectorAll('.legend-item').forEach(item => {
+        const itemDataset = item.getAttribute('data-dataset');
+        if (dataset === 'all') {
+            item.style.display = 'flex';
+        } else if (dataset === 'views') {
+            item.style.display = itemDataset === 'views' ? 'flex' : 'none';
+        } else if (dataset === 'engagement') {
+            item.style.display = ['likes', 'shares', 'comments'].includes(itemDataset) ? 'flex' : 'none';
+        }
+    });
+    
+    // 차트 업데이트
+    this.updateTrackingChart();
+};
+
+
+// 인사이트 생성 및 표시
+DualTextWriter.prototype.generateInsights = function() {
+    const insightsSection = document.getElementById('tracking-insights');
+    const insightsGrid = document.getElementById('insights-grid');
+    
+    if (!insightsSection || !insightsGrid) return;
+    
+    // 데이터가 있는 포스트만 필터링
+    const postsWithData = this.trackingPosts.filter(post => post.metrics && post.metrics.length > 0);
+    
+    if (postsWithData.length === 0) {
+        insightsSection.style.display = 'none';
+        return;
+    }
+    
+    const insights = [];
+    
+    // 1. 최고 성과 포스트
+    let bestPost = null;
+    let maxViews = 0;
+    
+    postsWithData.forEach(post => {
+        const latestMetric = post.metrics[post.metrics.length - 1];
+        if (latestMetric.views > maxViews) {
+            maxViews = latestMetric.views;
+            bestPost = post;
+        }
+    });
+    
+    if (bestPost) {
+        const previewText = bestPost.content.substring(0, 40);
+        insights.push({
+            icon: '🏆',
+            title: '최고 성과 포스트',
+            description: `"${previewText}..."`,
+            value: `${maxViews.toLocaleString()} 조회수`,
+            type: 'success'
+        });
+    }
+    
+    // 2. 평균 대비 성과
+    const avgViews = postsWithData.reduce((sum, post) => {
+        const latest = post.metrics[post.metrics.length - 1];
+        return sum + (latest.views || 0);
+    }, 0) / postsWithData.length;
+    
+    if (bestPost && maxViews > avgViews * 1.5) {
+        const percentAbove = ((maxViews / avgViews - 1) * 100).toFixed(0);
+        insights.push({
+            icon: '📊',
+            title: '평균 대비 성과',
+            description: '최고 포스트가 평균보다',
+            value: `${percentAbove}% 높음`,
+            type: 'info'
+        });
+    }
+    
+    // 3. 참여율 분석
+    const avgEngagement = postsWithData.reduce((sum, post) => {
+        const latest = post.metrics[post.metrics.length - 1];
+        const engagement = (latest.likes || 0) + (latest.shares || 0) + (latest.comments || 0);
+        const views = latest.views || 1;
+        return sum + (engagement / views);
+    }, 0) / postsWithData.length;
+    
+    const engagementPercent = (avgEngagement * 100).toFixed(2);
+    
+    insights.push({
+        icon: '🎯',
+        title: '평균 참여율',
+        description: '조회수 대비 인터랙션',
+        value: `${engagementPercent}%`,
+        type: engagementPercent > 5 ? 'success' : 'warning'
+    });
+    
+    // 4. 포스트 타입별 성과
+    const editPosts = postsWithData.filter(p => p.type === 'edit');
+    const refPosts = postsWithData.filter(p => p.type === 'reference');
+    
+    if (editPosts.length > 0 && refPosts.length > 0) {
+        const editAvgViews = editPosts.reduce((sum, post) => {
+            const latest = post.metrics[post.metrics.length - 1];
+            return sum + (latest.views || 0);
+        }, 0) / editPosts.length;
+        
+        const refAvgViews = refPosts.reduce((sum, post) => {
+            const latest = post.metrics[post.metrics.length - 1];
+            return sum + (latest.views || 0);
+        }, 0) / refPosts.length;
+        
+        const betterType = editAvgViews > refAvgViews ? '작성 글' : '레퍼런스 글';
+        const diff = Math.abs(editAvgViews - refAvgViews);
+        const diffPercent = ((diff / Math.min(editAvgViews, refAvgViews)) * 100).toFixed(0);
+        
+        insights.push({
+            icon: '📝',
+            title: '타입별 성과',
+            description: `${betterType}이 더 높은 성과`,
+            value: `+${diffPercent}%`,
+            type: 'info'
+        });
+    }
+    
+    // 5. 최근 트렌드
+    if (postsWithData.length >= 2) {
+        const recentPosts = postsWithData.slice(0, Math.min(3, postsWithData.length));
+        const olderPosts = postsWithData.slice(Math.min(3, postsWithData.length));
+        
+        if (olderPosts.length > 0) {
+            const recentAvg = recentPosts.reduce((sum, post) => {
+                const latest = post.metrics[post.metrics.length - 1];
+                return sum + (latest.views || 0);
+            }, 0) / recentPosts.length;
+            
+            const olderAvg = olderPosts.reduce((sum, post) => {
+                const latest = post.metrics[post.metrics.length - 1];
+                return sum + (latest.views || 0);
+            }, 0) / olderPosts.length;
+            
+            const trendPercent = ((recentAvg / olderAvg - 1) * 100).toFixed(0);
+            const trendIcon = trendPercent > 0 ? '📈' : '📉';
+            const trendType = trendPercent > 0 ? 'success' : 'warning';
+            const trendText = trendPercent > 0 ? '증가' : '감소';
+            
+            insights.push({
+                icon: trendIcon,
+                title: '최근 트렌드',
+                description: `최근 포스트 성과 ${trendText}`,
+                value: `${Math.abs(trendPercent)}%`,
+                type: trendType
+            });
+        }
+    }
+    
+    // 인사이트 렌더링
+    if (insights.length > 0) {
+        insightsGrid.innerHTML = insights.map(insight => `
+            <div class="insight-card ${insight.type}">
+                <div class="insight-icon">${insight.icon}</div>
+                <div class="insight-content">
+                    <div class="insight-title">${insight.title}</div>
+                    <div class="insight-description">${insight.description}</div>
+                    <div class="insight-value">${insight.value}</div>
+                </div>
+            </div>
+        `).join('');
+        
+        insightsSection.style.display = 'block';
+    } else {
+        insightsSection.style.display = 'none';
+    }
 };
