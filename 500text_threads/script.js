@@ -16,6 +16,7 @@ class DualTextWriter {
         this.chartMode = 'total'; // 차트 모드: 'total' (전체 총합) 또는 'individual' (개별 포스트)
         this.selectedChartPostId = null; // 개별 포스트 모드에서 선택된 포스트 ID
         this.allTrackingPostsForSelector = []; // 포스트 선택기용 전체 포스트 목록
+        this.chartRange = '7d'; // '7d' | '30d' | 'all'
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -4395,6 +4396,27 @@ DualTextWriter.prototype.setChartMode = function(mode) {
     this.updateTrackingChart();
 };
 
+// 차트 범위 설정
+DualTextWriter.prototype.setChartRange = function(range) {
+    this.chartRange = range; // '7d' | '30d' | 'all'
+    // 버튼 스타일 업데이트
+    const ranges = ['7d', '30d', 'all'];
+    ranges.forEach(r => {
+        const btn = document.getElementById(`chart-range-${r}`);
+        if (!btn) return;
+        if (r === range) {
+            btn.classList.add('active');
+            btn.style.background = 'white';
+            btn.style.color = '#667eea';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = '#666';
+        }
+    });
+    this.updateTrackingChart();
+};
+
 // 포스트 선택 드롭다운 채우기 (검색 가능한 커스텀 드롭다운)
 DualTextWriter.prototype.populatePostSelector = function() {
     if (!this.trackingPosts || this.trackingPosts.length === 0) return;
@@ -4568,17 +4590,73 @@ DualTextWriter.prototype.updateChartPostSelection = function() {
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
     
-    // 최근 7일간의 데이터만 표시
-    const last7Days = [];
+    // 선택된 범위에 따른 날짜 배열 생성
+    const dateRange = [];
     const viewsData = [];
     const likesData = [];
     
-    // 날짜 배열 생성
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0); // 시간을 자정으로 설정
-        last7Days.push(date);
+    // 범위 계산 함수
+    const makeRange = (startDate, endDate, maxDays = 365) => {
+        const days = [];
+        const start = new Date(startDate.getTime());
+        const end = new Date(endDate.getTime());
+        start.setHours(0,0,0,0);
+        end.setHours(0,0,0,0);
+        let current = start;
+        let cnt = 0;
+        while (current.getTime() <= end.getTime() && cnt < maxDays) {
+            days.push(new Date(current.getTime()));
+            current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+            cnt++;
+        }
+        return days;
+    };
+    
+    // 범위 결정
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (this.chartRange === '7d') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+            dateRange.push(d);
+        }
+    } else if (this.chartRange === '30d') {
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+            dateRange.push(d);
+        }
+    } else {
+        // 'all' 범위
+        if (this.chartMode === 'individual' && this.selectedChartPostId) {
+            const post = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+            if (post && post.metrics && post.metrics.length > 0) {
+                const first = post.metrics[0].timestamp?.toDate ? post.metrics[0].timestamp.toDate() : new Date(post.metrics[0].timestamp);
+                const last = post.metrics[post.metrics.length - 1].timestamp?.toDate ? post.metrics[post.metrics.length - 1].timestamp.toDate() : new Date(post.metrics[post.metrics.length - 1].timestamp);
+                dateRange.push(...makeRange(first, last));
+            } else {
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                    dateRange.push(d);
+                }
+            }
+        } else {
+            let minDate = null; let maxDate = null;
+            this.trackingPosts.forEach(post => {
+                (post.metrics || []).forEach(m => {
+                    const dt = m.timestamp?.toDate ? m.timestamp.toDate() : new Date(m.timestamp);
+                    dt.setHours(0,0,0,0);
+                    if (!minDate || dt < minDate) minDate = new Date(dt);
+                    if (!maxDate || dt > maxDate) maxDate = new Date(dt);
+                });
+            });
+            if (minDate && maxDate) {
+                dateRange.push(...makeRange(minDate, maxDate));
+            } else {
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                    dateRange.push(d);
+                }
+            }
+        }
     }
     
     if (this.chartMode === 'total') {
@@ -4622,7 +4700,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         // 개별 포스트 모드: 선택된 포스트의 날짜별 데이터
         if (!this.selectedChartPostId) {
             // 포스트가 선택되지 않았으면 빈 데이터
-            last7Days.forEach(() => {
+            dateRange.forEach(() => {
                 viewsData.push(0);
                 likesData.push(0);
             });
@@ -4631,7 +4709,23 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
             
             if (selectedPost && selectedPost.metrics) {
-                last7Days.forEach((targetDate) => {
+                // 범위에 데이터가 없으면 자동으로 전체 범위로 전환
+                if (dateRange.length > 0) {
+                    const firstDate = dateRange[0].getTime();
+                    const lastDate = dateRange[dateRange.length - 1].getTime();
+                    const hasAnyInRange = selectedPost.metrics.some(metric => {
+                        const md = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                        md.setHours(0,0,0,0);
+                        const t = md.getTime();
+                        return t >= firstDate && t <= lastDate;
+                    });
+                    if (!hasAnyInRange && this.chartRange !== 'all') {
+                        this.setChartRange('all');
+                        return;
+                    }
+                }
+
+                dateRange.forEach((targetDate) => {
                     // 해당 날짜에 입력된 메트릭 찾기
                     let dayViews = 0;
                     let dayLikes = 0;
@@ -4656,7 +4750,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     : selectedPost.content;
                 this.trackingChart.options.plugins.title.text = `포스트 성과 추이: ${contentPreview}`;
             } else {
-                last7Days.forEach(() => {
+                dateRange.forEach(() => {
                     viewsData.push(0);
                     likesData.push(0);
                 });
@@ -4666,7 +4760,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     }
     
     // 날짜 레이블 포맷팅
-    const dateLabels = last7Days.map(date => 
+    const dateLabels = dateRange.map(date => 
         date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     );
     
