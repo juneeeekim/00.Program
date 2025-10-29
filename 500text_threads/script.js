@@ -155,6 +155,10 @@ class DualTextWriter {
         if (tabName === 'saved') {
             this.loadSavedTexts();
             this.initSavedFilters();
+            // 미트래킹 글 버튼 상태 업데이트
+            if (this.updateBatchMigrationButton) {
+                this.updateBatchMigrationButton();
+            }
         }
 
         // 트래킹 탭으로 전환 시 데이터 로드
@@ -742,6 +746,66 @@ class DualTextWriter {
             this.setupSavedItemEventListeners();
             this.bindDirectEventListeners(); // 직접 이벤트 바인딩도 추가
         }, 100);
+        
+        // 미트래킹 글 개수 확인 및 버튼 조건부 표시
+        this.updateBatchMigrationButton();
+    }
+    
+    // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
+    async updateBatchMigrationButton() {
+        if (!this.batchMigrationBtn || !this.currentUser || !this.isFirebaseReady) return;
+        
+        try {
+            // 전체 저장된 글 중 미트래킹 글 찾기
+            const untrackedTexts = [];
+            
+            for (const textItem of this.savedTexts) {
+                // 로컬에서 먼저 확인
+                let hasTracking = false;
+                if (this.trackingPosts) {
+                    hasTracking = this.trackingPosts.some(p => p.sourceTextId === textItem.id);
+                }
+                
+                // 로컬에 없으면 Firebase에서 확인
+                if (!hasTracking) {
+                    try {
+                        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                        const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textItem.id));
+                        const querySnapshot = await window.firebaseGetDocs(q);
+                        hasTracking = !querySnapshot.empty;
+                    } catch (error) {
+                        console.error('트래킹 확인 실패:', error);
+                    }
+                }
+                
+                if (!hasTracking) {
+                    untrackedTexts.push(textItem);
+                }
+            }
+            
+            // 버튼 조건부 표시
+            const migrationTools = document.querySelector('.migration-tools');
+            if (migrationTools) {
+                if (untrackedTexts.length > 0) {
+                    // 미트래킹 글이 있으면 버튼 표시 및 개수 표시
+                    migrationTools.style.display = 'flex';
+                    this.batchMigrationBtn.style.display = 'block';
+                    this.batchMigrationBtn.textContent = `📊 미트래킹 글 ${untrackedTexts.length}개 일괄 트래킹 시작`;
+                    this.batchMigrationBtn.title = `${untrackedTexts.length}개의 저장된 글이 아직 트래킹되지 않았습니다. 모두 트래킹을 시작하시겠습니까?`;
+                } else {
+                    // 미트래킹 글이 없으면 버튼 숨김
+                    migrationTools.style.display = 'none';
+                    this.batchMigrationBtn.style.display = 'none';
+                }
+            }
+            
+        } catch (error) {
+            console.error('미트래킹 글 확인 실패:', error);
+            // 에러 발생 시 버튼은 숨김
+            if (this.batchMigrationBtn) {
+                this.batchMigrationBtn.style.display = 'none';
+            }
+        }
     }
 
     // 트래킹 타임라인 렌더링
@@ -1674,9 +1738,14 @@ class DualTextWriter {
             }
         this.updateCharacterCount('ref');
         this.updateCharacterCount('edit');
-        this.renderSavedTexts();
+        await this.renderSavedTexts();
         this.startTempSave();
         this.restoreTempSave();
+        
+        // 미트래킹 글 버튼 상태 업데이트
+        if (this.updateBatchMigrationButton) {
+            await this.updateBatchMigrationButton();
+        }
         } catch (error) {
             console.error('사용자 데이터 로드 실패:', error);
             this.showMessage('데이터를 불러오는데 실패했습니다.', 'error');
@@ -4626,32 +4695,63 @@ DualTextWriter.prototype.cleanupOrphanPosts = async function() {
 };
 
 // 일괄 마이그레이션 확인 대화상자 표시
-DualTextWriter.prototype.showBatchMigrationConfirm = function() {
+DualTextWriter.prototype.showBatchMigrationConfirm = async function() {
     if (!this.currentUser || !this.isFirebaseReady) {
         this.showMessage('로그인이 필요합니다.', 'error');
         return;
     }
     
-    const textCount = this.savedTexts.length;
-    if (textCount === 0) {
-        this.showMessage('📭 마이그레이션할 저장된 글이 없습니다.', 'info');
+    // 미트래킹 글만 찾기
+    const untrackedTexts = [];
+    
+    for (const textItem of this.savedTexts) {
+        // 로컬에서 먼저 확인
+        let hasTracking = false;
+        if (this.trackingPosts) {
+            hasTracking = this.trackingPosts.some(p => p.sourceTextId === textItem.id);
+        }
+        
+        // 로컬에 없으면 Firebase에서 확인
+        if (!hasTracking) {
+            try {
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textItem.id));
+                const querySnapshot = await window.firebaseGetDocs(q);
+                hasTracking = !querySnapshot.empty;
+            } catch (error) {
+                console.error('트래킹 확인 실패:', error);
+            }
+        }
+        
+        if (!hasTracking) {
+            untrackedTexts.push(textItem);
+        }
+    }
+    
+    if (untrackedTexts.length === 0) {
+        this.showMessage('✅ 모든 저장된 글이 이미 트래킹 중입니다!', 'success');
+        // 버튼 상태 업데이트
+        this.updateBatchMigrationButton();
         return;
     }
     
-    const confirmMessage = `모든 저장된 글(${textCount}개)을 트래킹 포스트로 변환하시겠습니까?\n\n` +
+    const confirmMessage = `트래킹이 시작되지 않은 저장된 글 ${untrackedTexts.length}개를 트래킹 포스트로 변환하시겠습니까?\n\n` +
         `⚠️ 주의사항:\n` +
-        `- 이미 포스트가 있는 텍스트도 새 포스트가 생성됩니다\n` +
+        `- 이미 트래킹 중인 글은 제외됩니다\n` +
         `- 중복 생성 방지를 위해 각 텍스트의 기존 포스트를 확인합니다\n` +
         `- 마이그레이션 중에는 페이지를 닫지 마세요`;
     
     if (confirm(confirmMessage)) {
-        this.executeBatchMigration();
+        // 미트래킹 글만 마이그레이션 실행
+        this.executeBatchMigrationForUntracked(untrackedTexts);
     }
 };
 
-// 일괄 마이그레이션 실행
-DualTextWriter.prototype.executeBatchMigration = async function() {
-    if (!this.currentUser || !this.isFirebaseReady) return;
+// 미트래킹 글만 일괄 마이그레이션 실행
+DualTextWriter.prototype.executeBatchMigrationForUntracked = async function(untrackedTexts) {
+    if (!this.currentUser || !this.isFirebaseReady || !untrackedTexts || untrackedTexts.length === 0) {
+        return;
+    }
     
     const button = this.batchMigrationBtn;
     let successCount = 0;
@@ -4665,14 +4765,14 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
             button.textContent = '마이그레이션 진행 중...';
         }
         
-        this.showMessage('🔄 일괄 마이그레이션을 시작합니다...', 'info');
+        this.showMessage(`🔄 미트래킹 글 ${untrackedTexts.length}개의 트래킹을 시작합니다...`, 'info');
         
-        // 각 텍스트에 대해 포스트 생성
-        for (let i = 0; i < this.savedTexts.length; i++) {
-            const textItem = this.savedTexts[i];
+        // 각 미트래킹 텍스트에 대해 포스트 생성
+        for (let i = 0; i < untrackedTexts.length; i++) {
+            const textItem = untrackedTexts[i];
             
             try {
-                // 기존 포스트 확인
+                // 기존 포스트 확인 (안전장치)
                 const existingPosts = await this.checkExistingPostForText(textItem.id);
                 if (existingPosts.length > 0) {
                     console.log(`텍스트 ${textItem.id}: 이미 ${existingPosts.length}개의 포스트 존재, 건너뜀`);
@@ -4709,8 +4809,8 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
                 successCount++;
                 
                 // 진행 상황 표시 (마지막 항목이 아닐 때만)
-                if (i < this.savedTexts.length - 1) {
-                    const progress = Math.round((i + 1) / this.savedTexts.length * 100);
+                if (i < untrackedTexts.length - 1) {
+                    const progress = Math.round((i + 1) / untrackedTexts.length * 100);
                     if (button) {
                         button.textContent = `마이그레이션 진행 중... (${progress}%)`;
                     }
@@ -4726,7 +4826,7 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
         }
         
         // 결과 메시지
-        const resultMessage = `✅ 마이그레이션 완료!\n` +
+        const resultMessage = `✅ 미트래킹 글 마이그레이션 완료!\n` +
             `- 성공: ${successCount}개\n` +
             `- 건너뜀: ${skipCount}개 (이미 포스트 존재)\n` +
             `- 실패: ${errorCount}개`;
@@ -4734,19 +4834,24 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
         this.showMessage(resultMessage, 'success');
         console.log('일괄 마이그레이션 결과:', { successCount, skipCount, errorCount });
         
-        // 트래킹 탭으로 전환 및 목록 새로고침
-        this.switchTab('tracking');
-        await this.loadTrackingPosts();
+        // 트래킹 포스트 목록 새로고침 (트래킹 탭이 활성화되어 있으면)
+        if (this.loadTrackingPosts) {
+            await this.loadTrackingPosts();
+        }
+        
+        // 저장된 글 목록도 새로고침 (버튼 상태 업데이트를 위해)
+        await this.renderSavedTexts();
         
     } catch (error) {
         console.error('일괄 마이그레이션 중 오류:', error);
         this.showMessage('❌ 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
     } finally {
-        // 버튼 복원
+        // 버튼 복원 및 상태 업데이트
         if (button) {
             button.disabled = false;
-            button.textContent = '📊 모든 글 트래킹 시작';
         }
+        // 버튼 텍스트는 updateBatchMigrationButton에서 업데이트됨
+        await this.updateBatchMigrationButton();
     }
 };
 
