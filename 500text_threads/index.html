@@ -284,11 +284,24 @@
                                     </button>
                                 </div>
                             </div>
-                            <div id="post-selector-container" class="post-selector-container" style="display: none; min-width: 250px;">
-                                <label for="chart-post-selector" style="font-weight: 600; color: #333; font-size: 0.95rem; margin-right: 8px; display: block; margin-bottom: 4px;">포스트 선택:</label>
-                                <select id="chart-post-selector" onchange="dualTextWriter.updateChartPostSelection()" style="width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 0.9rem; background: white; cursor: pointer; transition: border-color 0.2s;">
-                                    <option value="">포스트를 선택하세요</option>
-                                </select>
+                            <div id="post-selector-container" class="post-selector-container" style="display: none; min-width: 280px;">
+                                <label for="chart-post-search" style="font-weight: 600; color: #333; font-size: 0.95rem; margin-right: 8px; display: block; margin-bottom: 4px;">포스트 선택:</label>
+                                <div class="custom-post-selector" style="position: relative;">
+                                    <input 
+                                        type="text" 
+                                        id="chart-post-search" 
+                                        placeholder="포스트를 검색하세요..."
+                                        autocomplete="off"
+                                        onfocus="dualTextWriter.showPostSelectorDropdown()"
+                                        oninput="dualTextWriter.filterPostSelector(this.value)"
+                                        onclick="dualTextWriter.showPostSelectorDropdown()"
+                                        style="width: 100%; padding: 10px 35px 10px 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 0.9rem; background: white; cursor: text; transition: border-color 0.2s; box-sizing: border-box;"
+                                    />
+                                    <span class="search-icon" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #666; pointer-events: none;">🔍</span>
+                                    <div id="post-selector-dropdown" class="post-selector-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e1e5e9; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; z-index: 1000; margin-top: 4px;">
+                                        <!-- 포스트 목록이 여기에 동적으로 추가됨 -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>

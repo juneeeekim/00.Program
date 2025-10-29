@@ -15,6 +15,7 @@ class DualTextWriter {
         this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
         this.chartMode = 'total'; // 차트 모드: 'total' (전체 총합) 또는 'individual' (개별 포스트)
         this.selectedChartPostId = null; // 개별 포스트 모드에서 선택된 포스트 ID
+        this.allTrackingPostsForSelector = []; // 포스트 선택기용 전체 포스트 목록
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -4365,6 +4366,16 @@ DualTextWriter.prototype.setChartMode = function(mode) {
         
         postSelectorContainer.style.display = 'none';
         this.selectedChartPostId = null;
+        // 전체 총합 모드로 전환 시 검색 입력창 초기화
+        const searchInput = document.getElementById('chart-post-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        const dropdown = document.getElementById('post-selector-dropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+        document.removeEventListener('click', this.handlePostSelectorClickOutside);
     } else {
         individualBtn.classList.add('active');
         individualBtn.style.background = 'white';
@@ -4384,38 +4395,173 @@ DualTextWriter.prototype.setChartMode = function(mode) {
     this.updateTrackingChart();
 };
 
-// 포스트 선택 드롭다운 채우기
+// 포스트 선택 드롭다운 채우기 (검색 가능한 커스텀 드롭다운)
 DualTextWriter.prototype.populatePostSelector = function() {
-    const selector = document.getElementById('chart-post-selector');
-    if (!selector) return;
+    if (!this.trackingPosts || this.trackingPosts.length === 0) return;
     
-    // 기존 옵션 제거 (첫 번째 옵션 제외)
-    while (selector.options.length > 1) {
-        selector.remove(1);
-    }
-    
-    // 트래킹 중인 포스트 목록 추가
-    this.trackingPosts.forEach(post => {
-        const option = document.createElement('option');
-        option.value = post.id;
-        const contentPreview = post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content;
-        option.textContent = contentPreview;
-        selector.appendChild(option);
+    // 전체 포스트 목록 저장 (검색 필터링용)
+    this.allTrackingPostsForSelector = [...this.trackingPosts].sort((a, b) => {
+        // 최근 포스트 우선 정렬
+        const dateA = a.postedAt instanceof Date ? a.postedAt : (a.postedAt?.toDate ? a.postedAt.toDate() : new Date(0));
+        const dateB = b.postedAt instanceof Date ? b.postedAt : (b.postedAt?.toDate ? b.postedAt.toDate() : new Date(0));
+        return dateB.getTime() - dateA.getTime();
     });
     
-    // 선택된 포스트가 있으면 다시 선택
+    // 드롭다운 렌더링
+    this.renderPostSelectorDropdown('');
+    
+    // 선택된 포스트가 있으면 검색 입력창에 표시
     if (this.selectedChartPostId) {
-        selector.value = this.selectedChartPostId;
+        const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+        if (selectedPost) {
+            const searchInput = document.getElementById('chart-post-search');
+            if (searchInput) {
+                const contentPreview = selectedPost.content.length > 50 ? selectedPost.content.substring(0, 50) + '...' : selectedPost.content;
+                searchInput.value = contentPreview;
+            }
+        }
     }
 };
 
-// 포스트 선택 변경
-DualTextWriter.prototype.updateChartPostSelection = function() {
-    const selector = document.getElementById('chart-post-selector');
-    if (!selector) return;
+// 포스트 선택 드롭다운 렌더링
+DualTextWriter.prototype.renderPostSelectorDropdown = function(searchTerm = '') {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (!dropdown) return;
     
-    this.selectedChartPostId = selector.value || null;
+    // 검색어로 필터링
+    let filteredPosts = this.allTrackingPostsForSelector;
+    if (searchTerm && searchTerm.trim()) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filteredPosts = this.allTrackingPostsForSelector.filter(post => {
+            const content = post.content.toLowerCase();
+            return content.includes(lowerSearchTerm);
+        });
+    }
+    
+    // 최근 포스트 우선 정렬 (이미 정렬되어 있지만 확실히)
+    filteredPosts = [...filteredPosts].sort((a, b) => {
+        const dateA = a.postedAt instanceof Date ? a.postedAt : (a.postedAt?.toDate ? a.postedAt.toDate() : new Date(0));
+        const dateB = b.postedAt instanceof Date ? b.postedAt : (b.postedAt?.toDate ? b.postedAt.toDate() : new Date(0));
+        return dateB.getTime() - dateA.getTime();
+    });
+    
+    if (filteredPosts.length === 0) {
+        dropdown.innerHTML = `
+            <div class="post-selector-empty" style="padding: 20px; text-align: center; color: #666;">
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">🔍</div>
+                <div>검색 결과가 없습니다.</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // 포스트 목록 HTML 생성
+    dropdown.innerHTML = filteredPosts.map(post => {
+        const contentPreview = post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content;
+        const isSelected = this.selectedChartPostId === post.id;
+        const metricsCount = post.metrics?.length || 0;
+        const lastUpdate = post.metrics && post.metrics.length > 0 
+            ? post.metrics[post.metrics.length - 1] 
+            : null;
+        
+        return `
+            <div 
+                class="post-selector-item ${isSelected ? 'selected' : ''}" 
+                data-post-id="${post.id}"
+                onclick="dualTextWriter.selectPostFromDropdown('${post.id}')"
+                style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s; ${isSelected ? 'background-color: #e3f2fd;' : ''}"
+                onmouseover="this.style.backgroundColor='#f5f5f5'"
+                onmouseout="this.style.backgroundColor=${isSelected ? "'#e3f2fd'" : "'transparent'"}">
+                <div style="font-weight: ${isSelected ? '600' : '500'}; color: #333; margin-bottom: 4px; line-height: 1.4;">
+                    ${this.escapeHtml(contentPreview)}
+                </div>
+                <div style="font-size: 0.8rem; color: #666; display: flex; gap: 12px; align-items: center;">
+                    <span>📊 ${metricsCount}회 입력</span>
+                    ${lastUpdate ? `<span>최근: ${lastUpdate.views || 0} 조회</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// 포스트 선택 드롭다운 표시
+DualTextWriter.prototype.showPostSelectorDropdown = function() {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    const searchInput = document.getElementById('chart-post-search');
+    
+    if (!dropdown || !searchInput) return;
+    
+    // 드롭다운 표시
+    dropdown.style.display = 'block';
+    
+    // 검색어가 없으면 전체 목록 표시, 있으면 필터링
+    const searchTerm = searchInput.value || '';
+    this.renderPostSelectorDropdown(searchTerm);
+    
+    // 외부 클릭 시 드롭다운 닫기
+    setTimeout(() => {
+        document.addEventListener('click', this.handlePostSelectorClickOutside);
+    }, 100);
+};
+
+// 외부 클릭 처리
+DualTextWriter.prototype.handlePostSelectorClickOutside = function(event) {
+    const container = document.querySelector('.post-selector-container');
+    const dropdown = document.getElementById('post-selector-dropdown');
+    
+    if (!container || !dropdown) return;
+    
+    if (!container.contains(event.target) && dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+        document.removeEventListener('click', dualTextWriter.handlePostSelectorClickOutside);
+    }
+};
+
+// 포스트 선택 필터링
+DualTextWriter.prototype.filterPostSelector = function(searchTerm) {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (!dropdown) return;
+    
+    // 드롭다운이 닫혀있으면 열기
+    if (dropdown.style.display === 'none') {
+        dropdown.style.display = 'block';
+    }
+    
+    // 검색어로 필터링하여 렌더링
+    this.renderPostSelectorDropdown(searchTerm);
+};
+
+// 드롭다운에서 포스트 선택
+DualTextWriter.prototype.selectPostFromDropdown = function(postId) {
+    const selectedPost = this.trackingPosts.find(p => p.id === postId);
+    if (!selectedPost) return;
+    
+    this.selectedChartPostId = postId;
+    
+    // 검색 입력창에 선택된 포스트 제목 표시
+    const searchInput = document.getElementById('chart-post-search');
+    if (searchInput) {
+        const contentPreview = selectedPost.content.length > 50 ? selectedPost.content.substring(0, 50) + '...' : selectedPost.content;
+        searchInput.value = contentPreview;
+    }
+    
+    // 드롭다운 닫기
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+    
+    // 외부 클릭 이벤트 리스너 제거
+    document.removeEventListener('click', this.handlePostSelectorClickOutside);
+    
+    // 차트 업데이트
     this.updateTrackingChart();
+};
+
+// 포스트 선택 변경 (구버전 호환, 더 이상 사용 안 함)
+DualTextWriter.prototype.updateChartPostSelection = function() {
+    // 새로운 검색 가능한 드롭다운 사용 중이므로 이 함수는 더 이상 사용되지 않음
+    // 호환성을 위해 유지
 };
 
 // 트래킹 차트 업데이트
