@@ -2923,6 +2923,7 @@ class DualTextWriter {
                         metrics: [],
                         analytics: {},
                         sourceTextId: sourceTextId || null, // 원본 텍스트 참조 (있는 경우)
+                        sourceType: 'edit', // 원본 텍스트 타입
                         createdAt: window.firebaseServerTimestamp(),
                         updatedAt: window.firebaseServerTimestamp()
                     };
@@ -3078,7 +3079,9 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
                 postedAt: data.postedAt ? data.postedAt.toDate() : new Date(),
                 trackingEnabled: data.trackingEnabled || false,
                 metrics: data.metrics || [],
-                analytics: data.analytics || {}
+                analytics: data.analytics || {},
+                sourceTextId: data.sourceTextId || null, // 원본 텍스트 참조
+                sourceType: data.sourceType || data.type || 'edit' // 원본 텍스트 타입
             });
         });
         
@@ -3494,10 +3497,17 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
         
         if (!textDoc.exists()) {
             console.error('텍스트를 찾을 수 없습니다.');
+            this.showMessage('❌ 원본 텍스트를 찾을 수 없습니다.', 'error');
             return;
         }
         
         const textData = textDoc.data();
+        
+        // 데이터 일관성 검증: 원본 텍스트가 유효한지 확인
+        if (!textData.content || textData.content.trim().length === 0) {
+            console.warn('원본 텍스트 내용이 비어있습니다.');
+            this.showMessage('⚠️ 원본 텍스트 내용이 비어있습니다.', 'warning');
+        }
         
         // 포스트 컬렉션에 추가
         const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
@@ -3508,6 +3518,8 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
             trackingEnabled: true,
             metrics: [],
             analytics: {},
+            sourceTextId: textId, // 원본 텍스트 참조
+            sourceType: textData.type || 'edit', // 원본 텍스트 타입
             createdAt: window.firebaseServerTimestamp(),
             updatedAt: window.firebaseServerTimestamp()
         };
