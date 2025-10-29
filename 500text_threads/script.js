@@ -49,6 +49,7 @@ class DualTextWriter {
 
         // 공통 요소들
         this.savedList = document.getElementById('saved-list');
+        this.batchMigrationBtn = document.getElementById('batch-migration-btn');
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
 
@@ -275,6 +276,17 @@ class DualTextWriter {
             console.log('✅ 해시태그 설정 버튼 이벤트 바인딩 완료');
         } else {
             console.error('❌ 해시태그 설정 버튼을 찾을 수 없습니다!');
+        }
+
+        // 일괄 마이그레이션 버튼 이벤트 바인딩
+        if (this.batchMigrationBtn) {
+            this.batchMigrationBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showBatchMigrationConfirm();
+            });
+            console.log('✅ 일괄 마이그레이션 버튼 이벤트 바인딩 완료');
+        } else {
+            console.log('⚠️ 일괄 마이그레이션 버튼을 찾을 수 없습니다 (선택적 기능)');
         }
 
         // 개발 모드에서 자동 테스트 실행
@@ -3509,6 +3521,16 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
             this.showMessage('⚠️ 원본 텍스트 내용이 비어있습니다.', 'warning');
         }
         
+        // 중복 확인: 이미 이 텍스트에서 포스트가 생성되었는지 확인 (선택적)
+        const existingPosts = await this.checkExistingPostForText(textId);
+        if (existingPosts.length > 0) {
+            const confirmMessage = `이 텍스트에서 이미 ${existingPosts.length}개의 포스트가 생성되었습니다.\n계속해서 새 포스트를 생성하시겠습니까?`;
+            if (!confirm(confirmMessage)) {
+                console.log('사용자가 중복 생성 취소');
+                return;
+            }
+        }
+        
         // 포스트 컬렉션에 추가
         const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
         const postData = {
@@ -3536,6 +3558,156 @@ DualTextWriter.prototype.startTrackingFromSaved = async function(textId) {
         
     } catch (error) {
         console.error('트래킹 시작 실패:', error);
+        this.showMessage('❌ 트래킹 시작에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+// 특정 텍스트에서 생성된 포스트 확인
+DualTextWriter.prototype.checkExistingPostForText = async function(textId) {
+    if (!this.currentUser || !this.isFirebaseReady) return [];
+    
+    try {
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId));
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        const existingPosts = [];
+        querySnapshot.forEach((doc) => {
+            existingPosts.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        return existingPosts;
+    } catch (error) {
+        console.error('기존 포스트 확인 실패:', error);
+        return [];
+    }
+};
+
+// 일괄 마이그레이션 확인 대화상자 표시
+DualTextWriter.prototype.showBatchMigrationConfirm = function() {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    const textCount = this.savedTexts.length;
+    if (textCount === 0) {
+        this.showMessage('📭 마이그레이션할 저장된 글이 없습니다.', 'info');
+        return;
+    }
+    
+    const confirmMessage = `모든 저장된 글(${textCount}개)을 트래킹 포스트로 변환하시겠습니까?\n\n` +
+        `⚠️ 주의사항:\n` +
+        `- 이미 포스트가 있는 텍스트도 새 포스트가 생성됩니다\n` +
+        `- 중복 생성 방지를 위해 각 텍스트의 기존 포스트를 확인합니다\n` +
+        `- 마이그레이션 중에는 페이지를 닫지 마세요`;
+    
+    if (confirm(confirmMessage)) {
+        this.executeBatchMigration();
+    }
+};
+
+// 일괄 마이그레이션 실행
+DualTextWriter.prototype.executeBatchMigration = async function() {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    const button = this.batchMigrationBtn;
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+    
+    try {
+        // 버튼 비활성화
+        if (button) {
+            button.disabled = true;
+            button.textContent = '마이그레이션 진행 중...';
+        }
+        
+        this.showMessage('🔄 일괄 마이그레이션을 시작합니다...', 'info');
+        
+        // 각 텍스트에 대해 포스트 생성
+        for (let i = 0; i < this.savedTexts.length; i++) {
+            const textItem = this.savedTexts[i];
+            
+            try {
+                // 기존 포스트 확인
+                const existingPosts = await this.checkExistingPostForText(textItem.id);
+                if (existingPosts.length > 0) {
+                    console.log(`텍스트 ${textItem.id}: 이미 ${existingPosts.length}개의 포스트 존재, 건너뜀`);
+                    skipCount++;
+                    continue;
+                }
+                
+                // 포스트 생성 (트래킹 탭 전환 없이 백그라운드 처리)
+                const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', textItem.id);
+                const textDoc = await window.firebaseGetDoc(textRef);
+                
+                if (!textDoc.exists()) {
+                    errorCount++;
+                    continue;
+                }
+                
+                const textData = textDoc.data();
+                
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const postData = {
+                    content: textData.content,
+                    type: textData.type || 'edit',
+                    postedAt: window.firebaseServerTimestamp(),
+                    trackingEnabled: true,
+                    metrics: [],
+                    analytics: {},
+                    sourceTextId: textItem.id,
+                    sourceType: textData.type || 'edit',
+                    createdAt: window.firebaseServerTimestamp(),
+                    updatedAt: window.firebaseServerTimestamp()
+                };
+                
+                await window.firebaseAddDoc(postsRef, postData);
+                successCount++;
+                
+                // 진행 상황 표시 (마지막 항목이 아닐 때만)
+                if (i < this.savedTexts.length - 1) {
+                    const progress = Math.round((i + 1) / this.savedTexts.length * 100);
+                    if (button) {
+                        button.textContent = `마이그레이션 진행 중... (${progress}%)`;
+                    }
+                }
+                
+                // 너무 빠른 요청 방지 (Firebase 할당량 고려)
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (error) {
+                console.error(`텍스트 ${textItem.id} 마이그레이션 실패:`, error);
+                errorCount++;
+            }
+        }
+        
+        // 결과 메시지
+        const resultMessage = `✅ 마이그레이션 완료!\n` +
+            `- 성공: ${successCount}개\n` +
+            `- 건너뜀: ${skipCount}개 (이미 포스트 존재)\n` +
+            `- 실패: ${errorCount}개`;
+        
+        this.showMessage(resultMessage, 'success');
+        console.log('일괄 마이그레이션 결과:', { successCount, skipCount, errorCount });
+        
+        // 트래킹 탭으로 전환 및 목록 새로고침
+        this.switchTab('tracking');
+        await this.loadTrackingPosts();
+        
+    } catch (error) {
+        console.error('일괄 마이그레이션 중 오류:', error);
+        this.showMessage('❌ 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
+    } finally {
+        // 버튼 복원
+        if (button) {
+            button.disabled = false;
+            button.textContent = '📊 모든 글 트래킹 시작';
+        }
     }
 };
 
