@@ -3291,21 +3291,143 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
     this.openTrackingModal();
 };
 
-// 트래킹 모달 열기
+// 트래킹 모달 열기 (개선 버전)
 DualTextWriter.prototype.openTrackingModal = function() {
     const modal = document.getElementById('tracking-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        // 폼 초기화
-        document.getElementById('tracking-views').value = '';
-        document.getElementById('tracking-likes').value = '';
-        document.getElementById('tracking-comments').value = '';
-        document.getElementById('tracking-shares').value = '';
-        document.getElementById('tracking-notes').value = '';
+    if (!modal || !this.currentTrackingPost) return;
+    
+    // 현재 포스트 정보 가져오기
+    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
+    if (!post) return;
+    
+    // 포스트 정보 표시
+    const postTextElement = document.getElementById('tracking-modal-post-text');
+    if (postTextElement) {
+        const previewText = post.content.substring(0, 80);
+        postTextElement.textContent = previewText + (post.content.length > 80 ? '...' : '');
     }
+    
+    // 데이터 입력 횟수 표시
+    const dataCountElement = document.getElementById('tracking-modal-data-count');
+    if (dataCountElement) {
+        dataCountElement.textContent = post.metrics.length;
+    }
+    
+    // 이전 데이터 표시
+    const previousDataSection = document.getElementById('tracking-modal-previous-data');
+    if (post.metrics.length > 0) {
+        const latestMetric = post.metrics[post.metrics.length - 1];
+        
+        // 이전 데이터 섹션 표시
+        if (previousDataSection) {
+            previousDataSection.style.display = 'block';
+        }
+        
+        // 이전 값 표시
+        document.getElementById('prev-views').textContent = (latestMetric.views || 0).toLocaleString();
+        document.getElementById('prev-likes').textContent = (latestMetric.likes || 0).toLocaleString();
+        document.getElementById('prev-comments').textContent = (latestMetric.comments || 0).toLocaleString();
+        document.getElementById('prev-shares').textContent = (latestMetric.shares || 0).toLocaleString();
+        
+        // 이전 날짜 표시
+        const prevDateElement = document.getElementById('prev-date');
+        if (prevDateElement && latestMetric.timestamp) {
+            try {
+                const date = latestMetric.timestamp.toDate ? latestMetric.timestamp.toDate() : new Date(latestMetric.timestamp);
+                prevDateElement.textContent = date.toLocaleString('ko-KR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                prevDateElement.textContent = '-';
+            }
+        }
+    } else {
+        // 이전 데이터가 없으면 섹션 숨김
+        if (previousDataSection) {
+            previousDataSection.style.display = 'none';
+        }
+    }
+    
+    // 폼 초기화
+    document.getElementById('tracking-views').value = '';
+    document.getElementById('tracking-likes').value = '';
+    document.getElementById('tracking-comments').value = '';
+    document.getElementById('tracking-shares').value = '';
+    document.getElementById('tracking-notes').value = '';
+    
+    // 증가량 표시 초기화
+    ['views', 'likes', 'comments', 'shares'].forEach(metric => {
+        const growthElement = document.getElementById(`growth-${metric}`);
+        if (growthElement) {
+            growthElement.style.display = 'none';
+            growthElement.textContent = '';
+        }
+    });
+    
+    // 입력 필드에 이벤트 리스너 추가 (증가량 자동 계산)
+    this.setupTrackingInputListeners(post);
+    
+    // 모달 표시
+    modal.style.display = 'flex';
+    
+    // 첫 번째 입력 필드에 포커스
+    setTimeout(() => {
+        document.getElementById('tracking-views').focus();
+    }, 100);
 };
 
-// 트래킹 데이터 저장
+// 트래킹 입력 필드 이벤트 리스너 설정
+DualTextWriter.prototype.setupTrackingInputListeners = function(post) {
+    const metrics = ['views', 'likes', 'comments', 'shares'];
+    const latestMetric = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+    
+    metrics.forEach(metric => {
+        const inputElement = document.getElementById(`tracking-${metric}`);
+        const growthElement = document.getElementById(`growth-${metric}`);
+        
+        if (!inputElement || !growthElement) return;
+        
+        // 기존 이벤트 리스너 제거
+        inputElement.removeEventListener('input', inputElement._trackingInputHandler);
+        
+        // 새 이벤트 리스너 추가
+        inputElement._trackingInputHandler = (e) => {
+            const currentValue = parseInt(e.target.value) || 0;
+            
+            if (latestMetric && currentValue > 0) {
+                const previousValue = latestMetric[metric] || 0;
+                const growth = currentValue - previousValue;
+                const growthPercent = previousValue > 0 ? ((growth / previousValue) * 100).toFixed(1) : 0;
+                
+                if (growth !== 0) {
+                    const growthIcon = growth > 0 ? '📈' : '📉';
+                    const growthClass = growth > 0 ? 'positive' : 'negative';
+                    const growthSign = growth > 0 ? '+' : '';
+                    
+                    growthElement.className = `input-growth ${growthClass}`;
+                    growthElement.innerHTML = `
+                        <span class="growth-icon">${growthIcon}</span>
+                        <span class="growth-value">${growthSign}${growth.toLocaleString()}</span>
+                        <span class="growth-percent">(${growthSign}${growthPercent}%)</span>
+                    `;
+                    growthElement.style.display = 'flex';
+                } else {
+                    growthElement.style.display = 'none';
+                }
+            } else {
+                growthElement.style.display = 'none';
+            }
+        };
+        
+        inputElement.addEventListener('input', inputElement._trackingInputHandler);
+    });
+};
+
+// 트래킹 데이터 저장 (개선 버전)
 DualTextWriter.prototype.saveTrackingData = async function() {
     if (!this.currentTrackingPost || !this.currentUser || !this.isFirebaseReady) return;
     
@@ -3313,7 +3435,33 @@ DualTextWriter.prototype.saveTrackingData = async function() {
     const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
     const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
     const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
-    const notes = document.getElementById('tracking-notes').value;
+    const notes = document.getElementById('tracking-notes').value.trim();
+    
+    // 유효성 검증
+    if (views === 0 && likes === 0) {
+        this.showMessage('⚠️ 조회수 또는 좋아요 중 하나는 반드시 입력해야 합니다.', 'warning');
+        return;
+    }
+    
+    // 이전 데이터와 비교하여 감소 확인
+    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
+    if (post && post.metrics.length > 0) {
+        const latestMetric = post.metrics[post.metrics.length - 1];
+        
+        // 조회수나 좋아요가 감소한 경우 경고
+        if (views < (latestMetric.views || 0) || likes < (latestMetric.likes || 0)) {
+            const confirmMessage = '⚠️ 이전 데이터보다 낮은 값이 입력되었습니다.\n' +
+                                 '계속 저장하시겠습니까?\n\n' +
+                                 `이전 조회수: ${(latestMetric.views || 0).toLocaleString()}\n` +
+                                 `현재 조회수: ${views.toLocaleString()}\n\n` +
+                                 `이전 좋아요: ${(latestMetric.likes || 0).toLocaleString()}\n` +
+                                 `현재 좋아요: ${likes.toLocaleString()}`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+        }
+    }
     
     const trackingData = {
         timestamp: window.firebaseServerTimestamp(),
@@ -3342,7 +3490,6 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             });
             
             // 로컬 데이터 업데이트
-            const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
             if (post) {
                 post.metrics = updatedMetrics;
                 post.analytics = analytics;
@@ -3353,10 +3500,21 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             this.updateTrackingSummary();
             this.updateTrackingChart();
             
-            // 시각적 피드백: 성공 메시지
-            this.showMessage('✅ 성과 데이터가 저장되었습니다!', 'success');
+            // 시각적 피드백: 성공 메시지 (증가량 표시)
+            let successMessage = '✅ 성과 데이터가 저장되었습니다!';
+            if (post && post.metrics.length > 1) {
+                const previousMetric = post.metrics[post.metrics.length - 2];
+                const viewsGrowth = views - (previousMetric.views || 0);
+                const likesGrowth = likes - (previousMetric.likes || 0);
+                
+                if (viewsGrowth > 0 || likesGrowth > 0) {
+                    successMessage += `\n📈 조회수 +${viewsGrowth.toLocaleString()}, 좋아요 +${likesGrowth.toLocaleString()}`;
+                }
+            }
             
-            console.log('트래킹 데이터가 저장되었습니다.');
+            this.showMessage(successMessage, 'success');
+            
+            console.log('트래킹 데이터가 저장되었습니다:', trackingData);
         }
         
     } catch (error) {
@@ -3394,21 +3552,84 @@ DualTextWriter.prototype.calculateAnalytics = function(metrics) {
     };
 };
 
-// 트래킹 요약 업데이트
+// 트래킹 요약 업데이트 (개선 버전)
 DualTextWriter.prototype.updateTrackingSummary = function() {
     const totalPosts = this.trackingPosts.length;
-    const totalViews = this.trackingPosts.reduce((sum, post) => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        return sum + (latest ? latest.views : 0);
-    }, 0);
-    const totalLikes = this.trackingPosts.reduce((sum, post) => {
-        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-        return sum + (latest ? latest.likes : 0);
-    }, 0);
     
-    if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
-    if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
-    if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
+    // 모든 메트릭 집계
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalShares = 0;
+    let totalComments = 0;
+    let postsWithData = 0;
+    
+    this.trackingPosts.forEach(post => {
+        if (post.metrics && post.metrics.length > 0) {
+            postsWithData++;
+            const latest = post.metrics[post.metrics.length - 1];
+            totalViews += latest.views || 0;
+            totalLikes += latest.likes || 0;
+            totalShares += latest.shares || 0;
+            totalComments += latest.comments || 0;
+        }
+    });
+    
+    // 평균 계산
+    const avgViews = postsWithData > 0 ? Math.round(totalViews / postsWithData) : 0;
+    const avgLikes = postsWithData > 0 ? Math.round(totalLikes / postsWithData) : 0;
+    
+    // 참여율 계산 (총 인터랙션 / 총 조회수)
+    const totalEngagement = totalLikes + totalShares + totalComments;
+    const engagementRate = totalViews > 0 ? ((totalEngagement / totalViews) * 100).toFixed(2) : 0;
+    
+    // 기본 통계 업데이트
+    if (this.totalPostsElement) {
+        this.totalPostsElement.textContent = totalPosts;
+    }
+    if (this.totalViewsElement) {
+        this.totalViewsElement.textContent = totalViews.toLocaleString();
+        // 평균 표시 추가
+        const avgElement = this.totalViewsElement.parentElement.querySelector('.avg-value');
+        if (avgElement) {
+            avgElement.textContent = `평균 ${avgViews.toLocaleString()}`;
+        }
+    }
+    if (this.totalLikesElement) {
+        this.totalLikesElement.textContent = totalLikes.toLocaleString();
+        // 평균 표시 추가
+        const avgElement = this.totalLikesElement.parentElement.querySelector('.avg-value');
+        if (avgElement) {
+            avgElement.textContent = `평균 ${avgLikes.toLocaleString()}`;
+        }
+    }
+    
+    // 추가 통계 업데이트 (HTML에 요소가 있는 경우)
+    const totalSharesElement = document.getElementById('total-shares');
+    if (totalSharesElement) {
+        totalSharesElement.textContent = totalShares.toLocaleString();
+    }
+    
+    const totalCommentsElement = document.getElementById('total-comments');
+    if (totalCommentsElement) {
+        totalCommentsElement.textContent = totalComments.toLocaleString();
+    }
+    
+    const engagementRateElement = document.getElementById('engagement-rate');
+    if (engagementRateElement) {
+        engagementRateElement.textContent = `${engagementRate}%`;
+    }
+    
+    // 데이터 없는 포스트 수 표시
+    const postsWithoutDataElement = document.getElementById('posts-without-data');
+    if (postsWithoutDataElement) {
+        const withoutData = totalPosts - postsWithData;
+        postsWithoutDataElement.textContent = withoutData;
+        if (withoutData > 0) {
+            postsWithoutDataElement.parentElement.style.display = 'flex';
+        } else {
+            postsWithoutDataElement.parentElement.style.display = 'none';
+        }
+    }
 };
 
 // 트래킹 차트 초기화
@@ -3460,7 +3681,7 @@ DualTextWriter.prototype.initTrackingChart = function() {
     this.updateTrackingChart();
 };
 
-// 트래킹 차트 업데이트
+// 트래킹 차트 업데이트 (개선 버전)
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
     
@@ -3468,6 +3689,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     const last7Days = [];
     const viewsData = [];
     const likesData = [];
+    const sharesData = [];
+    const commentsData = [];
     
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
@@ -3477,24 +3700,75 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         // 해당 날짜의 모든 포스트 데이터 합계
         let dayViews = 0;
         let dayLikes = 0;
+        let dayShares = 0;
+        let dayComments = 0;
         
         this.trackingPosts.forEach(post => {
+            if (!post.metrics || post.metrics.length === 0) return;
+            
             post.metrics.forEach(metric => {
-                const metricDate = metric.timestamp.toDate();
-                if (metricDate.toDateString() === date.toDateString()) {
-                    dayViews += metric.views || 0;
-                    dayLikes += metric.likes || 0;
+                try {
+                    // 안전한 날짜 변환
+                    let metricDate;
+                    if (metric.timestamp && metric.timestamp.toDate) {
+                        // Firestore Timestamp
+                        metricDate = metric.timestamp.toDate();
+                    } else if (metric.timestamp instanceof Date) {
+                        // JavaScript Date
+                        metricDate = metric.timestamp;
+                    } else if (typeof metric.timestamp === 'string' || typeof metric.timestamp === 'number') {
+                        // String 또는 Number
+                        metricDate = new Date(metric.timestamp);
+                    } else {
+                        // 변환 불가능한 경우 건너뜀
+                        return;
+                    }
+                    
+                    // 날짜 비교 (시간 제외)
+                    if (metricDate.toDateString() === date.toDateString()) {
+                        dayViews += metric.views || 0;
+                        dayLikes += metric.likes || 0;
+                        dayShares += metric.shares || 0;
+                        dayComments += metric.comments || 0;
+                    }
+                } catch (error) {
+                    console.warn('차트 데이터 처리 중 오류:', error, metric);
                 }
             });
         });
         
         viewsData.push(dayViews);
         likesData.push(dayLikes);
+        sharesData.push(dayShares);
+        commentsData.push(dayComments);
     }
     
+    // 차트 데이터 업데이트
     this.trackingChart.data.labels = last7Days;
     this.trackingChart.data.datasets[0].data = viewsData;
     this.trackingChart.data.datasets[1].data = likesData;
+    
+    // 공유와 댓글 데이터셋 추가 (선택적)
+    if (this.trackingChart.data.datasets.length < 4) {
+        this.trackingChart.data.datasets.push({
+            label: '공유',
+            data: sharesData,
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4
+        });
+        this.trackingChart.data.datasets.push({
+            label: '댓글',
+            data: commentsData,
+            borderColor: '#f39c12',
+            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+            tension: 0.4
+        });
+    } else {
+        this.trackingChart.data.datasets[2].data = sharesData;
+        this.trackingChart.data.datasets[3].data = commentsData;
+    }
+    
     this.trackingChart.update();
 };
 
@@ -3726,4 +4000,30 @@ window.closeModal = function(modalId) {
     if (modalId === 'tracking-modal' && dualTextWriter) {
         dualTextWriter.closeTrackingModal();
     }
+};
+
+// 
+트래킹 포스트 필터링
+DualTextWriter.prototype.filterTrackingPosts = function(filter) {
+    // 필터 버튼 활성화 상태 업데이트
+    const filterButtons = document.querySelectorAll('.btn-filter');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(filter) || 
+            (filter === 'all' && btn.textContent === '전체')) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // 포스트 필터링
+    const postItems = document.querySelectorAll('.tracking-post-item');
+    postItems.forEach(item => {
+        if (filter === 'all') {
+            item.style.display = 'block';
+        } else if (filter === 'active') {
+            item.style.display = item.classList.contains('active') ? 'block' : 'none';
+        } else if (filter === 'inactive') {
+            item.style.display = item.classList.contains('inactive') ? 'block' : 'none';
+        }
+    });
 };

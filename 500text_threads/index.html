@@ -248,12 +248,17 @@
             <div class="tab-content" id="tracking-tab">
                 <div class="tracking-dashboard">
                     <h3>📊 트래킹 대시보드</h3>
+                    
+                    <!-- 개선된 통계 요약 -->
                     <div class="tracking-summary">
                         <div class="summary-card">
                             <div class="summary-icon">📈</div>
                             <div class="summary-content">
                                 <div class="summary-label">총 포스팅</div>
                                 <div class="summary-value" id="total-posts">0</div>
+                                <div class="summary-subtitle" id="posts-without-data-container" style="display: none;">
+                                    <span id="posts-without-data">0</span>개 데이터 미입력
+                                </div>
                             </div>
                         </div>
                         <div class="summary-card">
@@ -261,6 +266,7 @@
                             <div class="summary-content">
                                 <div class="summary-label">총 조회수</div>
                                 <div class="summary-value" id="total-views">0</div>
+                                <div class="summary-subtitle avg-value">평균 0</div>
                             </div>
                         </div>
                         <div class="summary-card">
@@ -268,14 +274,60 @@
                             <div class="summary-content">
                                 <div class="summary-label">총 좋아요</div>
                                 <div class="summary-value" id="total-likes">0</div>
+                                <div class="summary-subtitle avg-value">평균 0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">🔄</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 공유</div>
+                                <div class="summary-value" id="total-shares">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-icon">💬</div>
+                            <div class="summary-content">
+                                <div class="summary-label">총 댓글</div>
+                                <div class="summary-value" id="total-comments">0</div>
+                            </div>
+                        </div>
+                        <div class="summary-card highlight">
+                            <div class="summary-icon">🎯</div>
+                            <div class="summary-content">
+                                <div class="summary-label">참여율</div>
+                                <div class="summary-value" id="engagement-rate">0%</div>
+                                <div class="summary-subtitle">좋아요+공유+댓글/조회수</div>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 차트 컨테이너 -->
                     <div class="tracking-chart-container">
+                        <div class="chart-header">
+                            <h4>📈 최근 7일 성과 추이</h4>
+                            <div class="chart-legend">
+                                <span class="legend-item"><span class="legend-color" style="background: #667eea;"></span> 조회수</span>
+                                <span class="legend-item"><span class="legend-color" style="background: #e74c3c;"></span> 좋아요</span>
+                                <span class="legend-item"><span class="legend-color" style="background: #3498db;"></span> 공유</span>
+                                <span class="legend-item"><span class="legend-color" style="background: #f39c12;"></span> 댓글</span>
+                            </div>
+                        </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
-                    <div class="tracking-posts-list" id="tracking-posts-list">
-                        <!-- 트래킹 중인 포스트 목록 -->
+                    
+                    <!-- 포스트 목록 -->
+                    <div class="tracking-posts-section">
+                        <div class="section-header">
+                            <h4>📝 트래킹 중인 포스트</h4>
+                            <div class="section-actions">
+                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('all')">전체</button>
+                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('active')">활성</button>
+                                <button class="btn-filter" onclick="dualTextWriter.filterTrackingPosts('inactive')">비활성</button>
+                            </div>
+                        </div>
+                        <div class="tracking-posts-list" id="tracking-posts-list">
+                            <!-- 트래킹 중인 포스트 목록 -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -346,35 +398,116 @@
         </div>
     </div>
     
-    <!-- 트래킹 데이터 입력 모달 -->
+    <!-- 트래킹 데이터 입력 모달 (개선 버전) -->
     <div id="tracking-modal" class="modal">
-        <div class="modal-content">
-            <h3>📊 트래킹 데이터 입력</h3>
-            <div class="tracking-form">
-                <div class="form-group">
-                    <label for="tracking-views">👀 조회수</label>
-                    <input type="number" id="tracking-views" min="0" placeholder="조회수를 입력하세요">
+        <div class="modal-content tracking-modal-enhanced">
+            <div class="modal-header">
+                <h3>📊 트래킹 데이터 입력</h3>
+                <button class="modal-close-btn" onclick="dualTextWriter.closeTrackingModal()" aria-label="닫기">×</button>
+            </div>
+            
+            <!-- 포스트 정보 표시 -->
+            <div class="tracking-modal-post-info" id="tracking-modal-post-info">
+                <div class="post-preview">
+                    <span class="post-preview-label">포스트:</span>
+                    <span class="post-preview-text" id="tracking-modal-post-text"></span>
                 </div>
-                <div class="form-group">
-                    <label for="tracking-likes">❤️ 좋아요</label>
-                    <input type="number" id="tracking-likes" min="0" placeholder="좋아요 수를 입력하세요">
-                </div>
-                <div class="form-group">
-                    <label for="tracking-comments">💬 댓글</label>
-                    <input type="number" id="tracking-comments" min="0" placeholder="댓글 수를 입력하세요">
-                </div>
-                <div class="form-group">
-                    <label for="tracking-shares">🔄 공유</label>
-                    <input type="number" id="tracking-shares" min="0" placeholder="공유 수를 입력하세요">
-                </div>
-                <div class="form-group">
-                    <label for="tracking-notes">📝 메모</label>
-                    <textarea id="tracking-notes" placeholder="추가 메모 (선택사항)"></textarea>
+                <div class="post-stats">
+                    <span class="post-stat-item">
+                        <span class="stat-icon">📊</span>
+                        <span id="tracking-modal-data-count">0</span>회 입력
+                    </span>
                 </div>
             </div>
+            
+            <!-- 이전 데이터 표시 -->
+            <div class="tracking-modal-previous-data" id="tracking-modal-previous-data" style="display: none;">
+                <h4>📋 이전 데이터 (참고용)</h4>
+                <div class="previous-data-grid">
+                    <div class="previous-data-item">
+                        <span class="data-label">👀 조회수</span>
+                        <span class="data-value" id="prev-views">-</span>
+                    </div>
+                    <div class="previous-data-item">
+                        <span class="data-label">❤️ 좋아요</span>
+                        <span class="data-value" id="prev-likes">-</span>
+                    </div>
+                    <div class="previous-data-item">
+                        <span class="data-label">💬 댓글</span>
+                        <span class="data-value" id="prev-comments">-</span>
+                    </div>
+                    <div class="previous-data-item">
+                        <span class="data-label">🔄 공유</span>
+                        <span class="data-value" id="prev-shares">-</span>
+                    </div>
+                </div>
+                <div class="previous-data-date">
+                    마지막 업데이트: <span id="prev-date">-</span>
+                </div>
+            </div>
+            
+            <!-- 입력 폼 -->
+            <div class="tracking-form">
+                <div class="form-group">
+                    <label for="tracking-views">
+                        <span class="label-icon">👀</span>
+                        <span class="label-text">조회수</span>
+                        <span class="label-required">*</span>
+                    </label>
+                    <input type="number" id="tracking-views" min="0" placeholder="현재 조회수를 입력하세요" required>
+                    <div class="input-growth" id="growth-views" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tracking-likes">
+                        <span class="label-icon">❤️</span>
+                        <span class="label-text">좋아요</span>
+                        <span class="label-required">*</span>
+                    </label>
+                    <input type="number" id="tracking-likes" min="0" placeholder="현재 좋아요 수를 입력하세요" required>
+                    <div class="input-growth" id="growth-likes" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tracking-comments">
+                        <span class="label-icon">💬</span>
+                        <span class="label-text">댓글</span>
+                    </label>
+                    <input type="number" id="tracking-comments" min="0" placeholder="현재 댓글 수를 입력하세요">
+                    <div class="input-growth" id="growth-comments" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tracking-shares">
+                        <span class="label-icon">🔄</span>
+                        <span class="label-text">공유</span>
+                    </label>
+                    <input type="number" id="tracking-shares" min="0" placeholder="현재 공유 수를 입력하세요">
+                    <div class="input-growth" id="growth-shares" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tracking-notes">
+                        <span class="label-icon">📝</span>
+                        <span class="label-text">메모</span>
+                        <span class="label-optional">(선택사항)</span>
+                    </label>
+                    <textarea id="tracking-notes" placeholder="특별한 이벤트나 캠페인 정보를 기록하세요" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <!-- 입력 가이드 -->
+            <div class="tracking-modal-guide">
+                <div class="guide-icon">💡</div>
+                <div class="guide-text">
+                    <strong>입력 팁:</strong> Threads 앱에서 포스트를 열고 현재 수치를 확인한 후 입력하세요. 
+                    이전 데이터와 비교하여 증가량이 자동으로 계산됩니다.
+                </div>
+            </div>
+            
             <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeModal('tracking-modal')">취소</button>
-                <button class="btn-primary" onclick="saveTrackingData()">저장</button>
+                <button class="btn-secondary" onclick="dualTextWriter.closeTrackingModal()">취소</button>
+                <button class="btn-primary" onclick="dualTextWriter.saveTrackingData()">💾 저장</button>
             </div>
         </div>
     </div>
