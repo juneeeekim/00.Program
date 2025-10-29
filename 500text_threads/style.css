@@ -2563,6 +2563,13 @@
         padding: 20px;
         margin-bottom: 30px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        height: 450px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .tracking-chart-container canvas {
+        max-height: 350px;
     }
     
     .tracking-posts-list {

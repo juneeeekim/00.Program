@@ -4248,7 +4248,24 @@ DualTextWriter.prototype.initTrackingChart = function() {
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        maxTicksLimit: 8,
+                        precision: 0,
+                        stepSize: 1 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
+                    },
+                    max: 10 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
+                }
+            },
+            animation: {
+                duration: 0 // 애니메이션 비활성화로 스크롤 문제 방지
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 10,
+                    left: 10,
+                    right: 10
                 }
             }
         }
@@ -4441,7 +4458,25 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     this.trackingChart.data.labels = dateLabels;
     this.trackingChart.data.datasets[0].data = viewsData;
     this.trackingChart.data.datasets[1].data = likesData;
-    this.trackingChart.update();
+    
+    // y축 스케일 재계산 (데이터 범위에 맞게 최적화)
+    const maxValue = Math.max(...viewsData, ...likesData);
+    if (maxValue > 0) {
+        // suggestedMax를 데이터 최대값의 약 1.2배로 설정
+        const suggestedMax = Math.ceil(maxValue * 1.2);
+        // stepSize를 최대값의 약 1/8 정도로 설정 (최소 1)
+        const stepSize = Math.max(1, Math.ceil(maxValue / 8));
+        
+        this.trackingChart.options.scales.y.max = suggestedMax;
+        this.trackingChart.options.scales.y.ticks.stepSize = stepSize;
+    } else {
+        // 데이터가 없으면 기본값
+        this.trackingChart.options.scales.y.max = 10;
+        this.trackingChart.options.scales.y.ticks.stepSize = 1;
+    }
+    
+    // 애니메이션 없이 업데이트 (스크롤 문제 방지)
+    this.trackingChart.update('none');
 };
 
 // 저장된 글에서 트래킹 시작
