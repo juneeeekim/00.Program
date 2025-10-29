@@ -272,6 +272,25 @@
                         </div>
                     </div>
                     <div class="tracking-chart-container">
+                        <div class="chart-controls" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div class="chart-mode-toggle" style="display: flex; gap: 10px; align-items: center;">
+                                <span style="font-weight: 600; color: #333; font-size: 0.95rem;">그래프 모드:</span>
+                                <div class="mode-toggle-buttons" style="display: flex; background: #f1f3f5; border-radius: 8px; padding: 4px;">
+                                    <button id="chart-mode-total" class="mode-toggle-btn active" onclick="dualTextWriter.setChartMode('total')" style="padding: 8px 16px; border: none; background: white; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #667eea; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        전체 총합
+                                    </button>
+                                    <button id="chart-mode-individual" class="mode-toggle-btn" onclick="dualTextWriter.setChartMode('individual')" style="padding: 8px 16px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #666;">
+                                        개별 포스트
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="post-selector-container" class="post-selector-container" style="display: none; min-width: 250px;">
+                                <label for="chart-post-selector" style="font-weight: 600; color: #333; font-size: 0.95rem; margin-right: 8px; display: block; margin-bottom: 4px;">포스트 선택:</label>
+                                <select id="chart-post-selector" onchange="dualTextWriter.updateChartPostSelection()" style="width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 0.9rem; background: white; cursor: pointer; transition: border-color 0.2s;">
+                                    <option value="">포스트를 선택하세요</option>
+                                </select>
+                            </div>
+                        </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
                     <div class="tracking-posts-list" id="tracking-posts-list">

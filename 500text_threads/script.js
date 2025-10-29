@@ -13,6 +13,8 @@ class DualTextWriter {
         this.trackingPosts = []; // 트래킹 중인 포스트 목록
         this.trackingChart = null; // Chart.js 인스턴스
         this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
+        this.chartMode = 'total'; // 차트 모드: 'total' (전체 총합) 또는 'individual' (개별 포스트)
+        this.selectedChartPostId = null; // 개별 포스트 모드에서 선택된 포스트 ID
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -3294,6 +3296,11 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
         // 데이터 무결성 검증: 각 포스트의 sourceTextId가 유효한지 확인
         await this.validateSourceTexts();
         
+        // 포스트 선택 드롭다운 업데이트 (개별 포스트 모드일 때)
+        if (this.chartMode === 'individual') {
+            this.populatePostSelector();
+        }
+        
         this.renderTrackingPosts();
         
     } catch (error) {
@@ -4250,6 +4257,81 @@ DualTextWriter.prototype.initTrackingChart = function() {
     this.updateTrackingChart();
 };
 
+// 차트 모드 설정
+DualTextWriter.prototype.setChartMode = function(mode) {
+    this.chartMode = mode;
+    
+    // 버튼 스타일 업데이트
+    const totalBtn = document.getElementById('chart-mode-total');
+    const individualBtn = document.getElementById('chart-mode-individual');
+    const postSelectorContainer = document.getElementById('post-selector-container');
+    
+    if (mode === 'total') {
+        totalBtn.classList.add('active');
+        totalBtn.style.background = 'white';
+        totalBtn.style.color = '#667eea';
+        totalBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        
+        individualBtn.classList.remove('active');
+        individualBtn.style.background = 'transparent';
+        individualBtn.style.color = '#666';
+        individualBtn.style.boxShadow = 'none';
+        
+        postSelectorContainer.style.display = 'none';
+        this.selectedChartPostId = null;
+    } else {
+        individualBtn.classList.add('active');
+        individualBtn.style.background = 'white';
+        individualBtn.style.color = '#667eea';
+        individualBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        
+        totalBtn.classList.remove('active');
+        totalBtn.style.background = 'transparent';
+        totalBtn.style.color = '#666';
+        totalBtn.style.boxShadow = 'none';
+        
+        postSelectorContainer.style.display = 'block';
+        this.populatePostSelector();
+    }
+    
+    // 차트 업데이트
+    this.updateTrackingChart();
+};
+
+// 포스트 선택 드롭다운 채우기
+DualTextWriter.prototype.populatePostSelector = function() {
+    const selector = document.getElementById('chart-post-selector');
+    if (!selector) return;
+    
+    // 기존 옵션 제거 (첫 번째 옵션 제외)
+    while (selector.options.length > 1) {
+        selector.remove(1);
+    }
+    
+    // 트래킹 중인 포스트 목록 추가
+    this.trackingPosts.forEach(post => {
+        const option = document.createElement('option');
+        option.value = post.id;
+        const contentPreview = post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content;
+        option.textContent = contentPreview;
+        selector.appendChild(option);
+    });
+    
+    // 선택된 포스트가 있으면 다시 선택
+    if (this.selectedChartPostId) {
+        selector.value = this.selectedChartPostId;
+    }
+};
+
+// 포스트 선택 변경
+DualTextWriter.prototype.updateChartPostSelection = function() {
+    const selector = document.getElementById('chart-post-selector');
+    if (!selector) return;
+    
+    this.selectedChartPostId = selector.value || null;
+    this.updateTrackingChart();
+};
+
 // 트래킹 차트 업데이트
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
@@ -4259,30 +4341,104 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     const viewsData = [];
     const likesData = [];
     
+    // 날짜 배열 생성
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        last7Days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
-        
-        // 해당 날짜의 모든 포스트 데이터 합계
-        let dayViews = 0;
-        let dayLikes = 0;
-        
-        this.trackingPosts.forEach(post => {
-            post.metrics.forEach(metric => {
-                const metricDate = metric.timestamp.toDate();
-                if (metricDate.toDateString() === date.toDateString()) {
-                    dayViews += metric.views || 0;
-                    dayLikes += metric.likes || 0;
-                }
-            });
-        });
-        
-        viewsData.push(dayViews);
-        likesData.push(dayLikes);
+        date.setHours(0, 0, 0, 0); // 시간을 자정으로 설정
+        last7Days.push(date);
     }
     
-    this.trackingChart.data.labels = last7Days;
+    if (this.chartMode === 'total') {
+        // 전체 총합 모드: 각 날짜까지의 모든 포스트 최신 메트릭 누적 합계
+        last7Days.forEach((targetDate) => {
+            let dayTotalViews = 0;
+            let dayTotalLikes = 0;
+            
+            // 각 포스트에 대해 해당 날짜까지의 최신 메트릭 찾기
+            this.trackingPosts.forEach(post => {
+                if (!post.metrics || post.metrics.length === 0) return;
+                
+                // 해당 날짜 이전 또는 당일의 가장 최근 메트릭 찾기
+                let latestMetricBeforeDate = null;
+                for (let i = post.metrics.length - 1; i >= 0; i--) {
+                    const metric = post.metrics[i];
+                    const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                    metricDate.setHours(0, 0, 0, 0);
+                    
+                    if (metricDate.getTime() <= targetDate.getTime()) {
+                        latestMetricBeforeDate = metric;
+                        break;
+                    }
+                }
+                
+                // 최신 메트릭이 있으면 합산 (없으면 해당 포스트는 0으로 처리)
+                if (latestMetricBeforeDate) {
+                    dayTotalViews += latestMetricBeforeDate.views || 0;
+                    dayTotalLikes += latestMetricBeforeDate.likes || 0;
+                }
+            });
+            
+            viewsData.push(dayTotalViews);
+            likesData.push(dayTotalLikes);
+        });
+        
+        // 차트 제목 업데이트
+        this.trackingChart.options.plugins.title.text = '전체 포스트 누적 총합 추이';
+        
+    } else {
+        // 개별 포스트 모드: 선택된 포스트의 날짜별 데이터
+        if (!this.selectedChartPostId) {
+            // 포스트가 선택되지 않았으면 빈 데이터
+            last7Days.forEach(() => {
+                viewsData.push(0);
+                likesData.push(0);
+            });
+            this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
+        } else {
+            const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+            
+            if (selectedPost && selectedPost.metrics) {
+                last7Days.forEach((targetDate) => {
+                    // 해당 날짜에 입력된 메트릭 찾기
+                    let dayViews = 0;
+                    let dayLikes = 0;
+                    
+                    selectedPost.metrics.forEach(metric => {
+                        const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                        metricDate.setHours(0, 0, 0, 0);
+                        
+                        if (metricDate.getTime() === targetDate.getTime()) {
+                            dayViews += metric.views || 0;
+                            dayLikes += metric.likes || 0;
+                        }
+                    });
+                    
+                    viewsData.push(dayViews);
+                    likesData.push(dayLikes);
+                });
+                
+                // 차트 제목 업데이트
+                const contentPreview = selectedPost.content.length > 30 
+                    ? selectedPost.content.substring(0, 30) + '...' 
+                    : selectedPost.content;
+                this.trackingChart.options.plugins.title.text = `포스트 성과 추이: ${contentPreview}`;
+            } else {
+                last7Days.forEach(() => {
+                    viewsData.push(0);
+                    likesData.push(0);
+                });
+                this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (데이터 없음)';
+            }
+        }
+    }
+    
+    // 날짜 레이블 포맷팅
+    const dateLabels = last7Days.map(date => 
+        date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+    );
+    
+    this.trackingChart.data.labels = dateLabels;
     this.trackingChart.data.datasets[0].data = viewsData;
     this.trackingChart.data.datasets[1].data = likesData;
     this.trackingChart.update();
