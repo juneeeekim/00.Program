@@ -2716,6 +2716,45 @@
         opacity: 0.85;
     }
     
+    /* Orphan 포스트 스타일 (원본이 삭제된 포스트) */
+    .tracking-post-item.orphan-post {
+        border-left: 4px solid #dc3545;
+        background: #fff5f5;
+        opacity: 0.9;
+    }
+    
+    .tracking-post-item.orphan-post:hover {
+        background: #ffe5e5;
+    }
+    
+    .orphan-badge {
+        background: #dc3545;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    /* Orphan 포스트 경고 배너 */
+    .orphan-posts-warning {
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     .tracking-post-metrics {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));

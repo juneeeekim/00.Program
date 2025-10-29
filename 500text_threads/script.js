@@ -3260,7 +3260,6 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-document.head.appendChild(style);
 
 // ==================== 트래킹 기능 메서드들 ====================
 
@@ -3285,16 +3284,87 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
                 metrics: data.metrics || [],
                 analytics: data.analytics || {},
                 sourceTextId: data.sourceTextId || null, // 원본 텍스트 참조
-                sourceType: data.sourceType || data.type || 'edit' // 원본 텍스트 타입
+                sourceType: data.sourceType || data.type || 'edit', // 원본 텍스트 타입
+                sourceTextExists: null // 검증 결과 (나중에 설정)
             });
         });
         
         console.log(`${this.trackingPosts.length}개의 트래킹 포스트를 불러왔습니다.`);
+        
+        // 데이터 무결성 검증: 각 포스트의 sourceTextId가 유효한지 확인
+        await this.validateSourceTexts();
+        
         this.renderTrackingPosts();
         
     } catch (error) {
         console.error('트래킹 포스트 불러오기 실패:', error);
         this.trackingPosts = [];
+    }
+};
+
+// 원본 텍스트 존재 여부 검증
+DualTextWriter.prototype.validateSourceTexts = async function() {
+    if (!this.currentUser || !this.isFirebaseReady || !this.trackingPosts) return;
+    
+    try {
+        // sourceTextId가 있는 포스트들만 검증
+        const postsToValidate = this.trackingPosts.filter(post => post.sourceTextId);
+        
+        if (postsToValidate.length === 0) {
+            // sourceTextId가 없는 포스트들은 orphan으로 표시
+            this.trackingPosts.forEach(post => {
+                if (!post.sourceTextId) {
+                    post.sourceTextExists = false;
+                    post.isOrphan = true;
+                }
+            });
+            return;
+        }
+        
+        // 모든 sourceTextId 수집
+        const sourceTextIds = [...new Set(postsToValidate.map(post => post.sourceTextId))];
+        
+        // 원본 텍스트 존재 여부 일괄 확인
+        const validationPromises = sourceTextIds.map(async (textId) => {
+            try {
+                const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', textId);
+                const textDoc = await window.firebaseGetDoc(textRef);
+                return { textId, exists: textDoc.exists() };
+            } catch (error) {
+                console.error(`원본 텍스트 검증 실패 (${textId}):`, error);
+                return { textId, exists: false };
+            }
+        });
+        
+        const validationResults = await Promise.all(validationPromises);
+        const validationMap = new Map(validationResults.map(r => [r.textId, r.exists]));
+        
+        // 각 포스트에 검증 결과 적용
+        this.trackingPosts.forEach(post => {
+            if (post.sourceTextId) {
+                post.sourceTextExists = validationMap.get(post.sourceTextId) || false;
+                post.isOrphan = !post.sourceTextExists;
+            } else {
+                // sourceTextId가 없으면 orphan으로 표시 (업그레이드 전 데이터)
+                post.sourceTextExists = false;
+                post.isOrphan = true;
+            }
+        });
+        
+        const orphanCount = this.trackingPosts.filter(p => p.isOrphan).length;
+        if (orphanCount > 0) {
+            console.log(`⚠️ ${orphanCount}개의 orphan 포스트가 발견되었습니다.`);
+        }
+        
+    } catch (error) {
+        console.error('원본 텍스트 검증 실패:', error);
+        // 에러 발생 시 모든 포스트를 검증 실패로 표시하지 않고, sourceTextId가 없는 것만 orphan으로 표시
+        this.trackingPosts.forEach(post => {
+            if (!post.sourceTextId) {
+                post.isOrphan = true;
+                post.sourceTextExists = false;
+            }
+        });
     }
 };
 
@@ -3313,7 +3383,49 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         return;
     }
     
-    this.trackingPostsList.innerHTML = this.trackingPosts.map(post => {
+    // Orphan 포스트 개수 확인
+    const orphanPosts = this.trackingPosts.filter(post => post.isOrphan);
+    const orphanCount = orphanPosts.length;
+    
+    // Orphan 포스트 경고 배너 HTML
+    const orphanBannerHtml = orphanCount > 0 ? `
+        <div class="orphan-posts-warning" style="
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #fdcb6e;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        ">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 1.2rem;">⚠️</span>
+                    <strong style="color: #856404; font-size: 1rem;">원본이 삭제된 포스트 ${orphanCount}개 발견</strong>
+                </div>
+                <div style="color: #856404; font-size: 0.9rem; margin-left: 28px;">
+                    원본 글(저장된 글)이 삭제되어 연결이 끊어진 포스트입니다.
+                </div>
+            </div>
+            <button 
+                class="btn btn-danger" 
+                onclick="dualTextWriter.cleanupOrphanPosts()"
+                style="
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    white-space: nowrap;
+                "
+            >
+                🗑️ 정리하기
+            </button>
+        </div>
+    ` : '';
+    
+    this.trackingPostsList.innerHTML = orphanBannerHtml + this.trackingPosts.map(post => {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         const hasMetrics = post.metrics.length > 0;
         const metricsCount = post.metrics.length;
@@ -3322,6 +3434,24 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         const statusClass = post.trackingEnabled ? 'active' : 'inactive';
         const statusIcon = post.trackingEnabled ? '🟢' : '⚪';
         const statusText = post.trackingEnabled ? '활성' : '비활성';
+        
+        // Orphan 포스트 표시
+        const orphanBadge = post.isOrphan ? `
+            <div class="orphan-badge" style="
+                background: #dc3545;
+                color: white;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                margin-left: 8px;
+            ">
+                ⚠️ 원본 삭제됨
+            </div>
+        ` : '';
         
         // 메트릭 데이터 표시
         const metricsBadgeClass = hasMetrics ? 'has-data' : 'no-data';
@@ -3344,11 +3474,15 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             }
         }
         
+        // Orphan 포스트는 시각적으로 다르게 표시
+        const orphanClass = post.isOrphan ? 'orphan-post' : '';
+        
         return `
-            <div class="tracking-post-item ${statusClass}" data-post-id="${post.id}">
+            <div class="tracking-post-item ${statusClass} ${orphanClass}" data-post-id="${post.id}" data-is-orphan="${post.isOrphan ? 'true' : 'false'}">
                 <div class="tracking-post-header">
-                    <div class="tracking-post-title">
+                    <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap;">
                         ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
+                        ${orphanBadge}
                     </div>
                     <div class="tracking-post-status-group">
                         <div class="tracking-post-status ${statusClass}" aria-label="트래킹 상태: ${statusText}">
@@ -4239,6 +4373,64 @@ DualTextWriter.prototype.checkExistingPostForText = async function(textId) {
     } catch (error) {
         console.error('기존 포스트 확인 실패:', error);
         return [];
+    }
+};
+
+// Orphan 포스트 정리 (원본이 삭제된 포스트 일괄 삭제)
+DualTextWriter.prototype.cleanupOrphanPosts = async function() {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    // Orphan 포스트 필터링
+    const orphanPosts = this.trackingPosts.filter(post => post.isOrphan);
+    
+    if (orphanPosts.length === 0) {
+        this.showMessage('✅ 정리할 orphan 포스트가 없습니다.', 'success');
+        return;
+    }
+    
+    // 삭제 전 확인
+    const metricsCount = orphanPosts.reduce((sum, post) => sum + (post.metrics?.length || 0), 0);
+    const confirmMessage = `원본이 삭제된 포스트 ${orphanPosts.length}개를 삭제하시겠습니까?\n\n` +
+        `⚠️ 삭제될 데이터:\n` +
+        `   - 트래킹 포스트: ${orphanPosts.length}개\n` +
+        `   - 트래킹 기록: ${metricsCount}개\n\n` +
+        `이 작업은 되돌릴 수 없습니다.`;
+    
+    if (!confirm(confirmMessage)) {
+        console.log('사용자가 orphan 포스트 정리 취소');
+        return;
+    }
+    
+    try {
+        // 진행 중 메시지
+        this.showMessage('🔄 Orphan 포스트를 정리하는 중...', 'info');
+        
+        // 모든 orphan 포스트 삭제 (병렬 처리)
+        const deletePromises = orphanPosts.map(post => {
+            const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+            return window.firebaseDeleteDoc(postRef);
+        });
+        
+        await Promise.all(deletePromises);
+        
+        // 로컬 배열에서도 제거
+        this.trackingPosts = this.trackingPosts.filter(post => !post.isOrphan);
+        
+        // UI 업데이트
+        this.renderTrackingPosts();
+        this.updateTrackingSummary();
+        this.updateTrackingChart();
+        
+        // 성공 메시지
+        this.showMessage(`✅ Orphan 포스트 ${orphanPosts.length}개가 정리되었습니다!`, 'success');
+        console.log('Orphan 포스트 정리 완료', { deletedCount: orphanPosts.length });
+        
+    } catch (error) {
+        console.error('Orphan 포스트 정리 실패:', error);
+        this.showMessage('❌ Orphan 포스트 정리에 실패했습니다: ' + error.message, 'error');
     }
 };
 
