@@ -403,9 +403,9 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+            }
         }
-    }
     }
 
     // Firebase Auth 상태 리스너가 자동으로 처리함
@@ -443,7 +443,7 @@ class DualTextWriter {
 
             this.showMessage(`${username}님, 환영합니다!`, 'success');
 
-                } catch (error) {
+        } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
@@ -3553,93 +3553,26 @@ DualTextWriter.prototype.calculateAnalytics = function(metrics) {
     };
 };
 
-// 트래킹 요약 업데이트 (개선 버전)
+// 트래킹 요약 업데이트
 DualTextWriter.prototype.updateTrackingSummary = function() {
     const totalPosts = this.trackingPosts.length;
+    const totalViews = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.views : 0);
+    }, 0);
+    const totalLikes = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.likes : 0);
+    }, 0);
     
-    // 모든 메트릭 집계
-    let totalViews = 0;
-    let totalLikes = 0;
-    let totalShares = 0;
-    let totalComments = 0;
-    let postsWithData = 0;
-    
-    this.trackingPosts.forEach(post => {
-        if (post.metrics && post.metrics.length > 0) {
-            postsWithData++;
-            const latest = post.metrics[post.metrics.length - 1];
-            totalViews += latest.views || 0;
-            totalLikes += latest.likes || 0;
-            totalShares += latest.shares || 0;
-            totalComments += latest.comments || 0;
-        }
-    });
-    
-    // 평균 계산
-    const avgViews = postsWithData > 0 ? Math.round(totalViews / postsWithData) : 0;
-    const avgLikes = postsWithData > 0 ? Math.round(totalLikes / postsWithData) : 0;
-    
-    // 참여율 계산 (총 인터랙션 / 총 조회수)
-    const totalEngagement = totalLikes + totalShares + totalComments;
-    const engagementRate = totalViews > 0 ? ((totalEngagement / totalViews) * 100).toFixed(2) : 0;
-    
-    // 기본 통계 업데이트
-    if (this.totalPostsElement) {
-        this.totalPostsElement.textContent = totalPosts;
-    }
-    if (this.totalViewsElement) {
-        this.totalViewsElement.textContent = totalViews.toLocaleString();
-        // 평균 표시 추가
-        const avgElement = this.totalViewsElement.parentElement.querySelector('.avg-value');
-        if (avgElement) {
-            avgElement.textContent = `평균 ${avgViews.toLocaleString()}`;
-        }
-    }
-    if (this.totalLikesElement) {
-        this.totalLikesElement.textContent = totalLikes.toLocaleString();
-        // 평균 표시 추가
-        const avgElement = this.totalLikesElement.parentElement.querySelector('.avg-value');
-        if (avgElement) {
-            avgElement.textContent = `평균 ${avgLikes.toLocaleString()}`;
-        }
-    }
-    
-    // 추가 통계 업데이트 (HTML에 요소가 있는 경우)
-    const totalSharesElement = document.getElementById('total-shares');
-    if (totalSharesElement) {
-        totalSharesElement.textContent = totalShares.toLocaleString();
-    }
-    
-    const totalCommentsElement = document.getElementById('total-comments');
-    if (totalCommentsElement) {
-        totalCommentsElement.textContent = totalComments.toLocaleString();
-    }
-    
-    const engagementRateElement = document.getElementById('engagement-rate');
-    if (engagementRateElement) {
-        engagementRateElement.textContent = `${engagementRate}%`;
-    }
-    
-    // 데이터 없는 포스트 수 표시
-    const postsWithoutDataElement = document.getElementById('posts-without-data');
-    if (postsWithoutDataElement) {
-        const withoutData = totalPosts - postsWithData;
-        postsWithoutDataElement.textContent = withoutData;
-        if (withoutData > 0) {
-            postsWithoutDataElement.parentElement.style.display = 'flex';
-        } else {
-            postsWithoutDataElement.parentElement.style.display = 'none';
-        }
-    }
+    if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
+    if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
+    if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
 };
 
-// 트래킹 차트 초기화 (개선 버전)
+// 트래킹 차트 초기화
 DualTextWriter.prototype.initTrackingChart = function() {
     if (!this.trackingChartCanvas) return;
-    
-    // 기본 설정
-    this.chartPeriod = this.chartPeriod || 7;
-    this.chartDataset = this.chartDataset || 'all';
     
     const ctx = this.trackingChartCanvas.getContext('2d');
     
@@ -3657,80 +3590,27 @@ DualTextWriter.prototype.initTrackingChart = function() {
                 data: [],
                 borderColor: '#667eea',
                 backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                tension: 0.4
             }, {
                 label: '좋아요',
                 data: [],
                 borderColor: '#e74c3c',
                 backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }, {
-                label: '공유',
-                data: [],
-                borderColor: '#3498db',
-                backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }, {
-                label: '댓글',
-                data: [],
-                borderColor: '#f39c12',
-                backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                tension: 0.4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
             plugins: {
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: {
-                        size: 14,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        size: 13
-                    },
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed.y.toLocaleString();
-                            return label;
-                        }
-                    }
-                },
-                legend: {
-                    display: false // 커스텀 범례 사용
+                title: {
+                    display: true,
+                    text: '포스트 성과 추이'
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value.toLocaleString();
-                        }
-                    }
+                    beginAtZero: true
                 }
             }
         }
@@ -3739,146 +3619,41 @@ DualTextWriter.prototype.initTrackingChart = function() {
     this.updateTrackingChart();
 };
 
-// 트래킹 차트 업데이트 (개선 버전 - 기간 선택 지원)
+// 트래킹 차트 업데이트
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
     
-    const period = this.chartPeriod || 7;
-    const dataset = this.chartDataset || 'all';
-    
-    // 기간 계산
-    let days = period === 'all' ? 90 : parseInt(period); // 전체는 최대 90일
-    
-    // 날짜 배열 생성
-    const dates = [];
+    // 최근 7일간의 데이터만 표시
+    const last7Days = [];
     const viewsData = [];
     const likesData = [];
-    const sharesData = [];
-    const commentsData = [];
     
-    // 실제 데이터가 있는 날짜 범위 계산
-    let oldestDate = new Date();
-    let newestDate = new Date(0);
-    
-    this.trackingPosts.forEach(post => {
-        if (!post.metrics || post.metrics.length === 0) return;
-        
-        post.metrics.forEach(metric => {
-            try {
-                let metricDate;
-                if (metric.timestamp && metric.timestamp.toDate) {
-                    metricDate = metric.timestamp.toDate();
-                } else if (metric.timestamp instanceof Date) {
-                    metricDate = metric.timestamp;
-                } else if (typeof metric.timestamp === 'string' || typeof metric.timestamp === 'number') {
-                    metricDate = new Date(metric.timestamp);
-                } else {
-                    return;
-                }
-                
-                if (metricDate < oldestDate) oldestDate = metricDate;
-                if (metricDate > newestDate) newestDate = metricDate;
-            } catch (error) {
-                console.warn('날짜 처리 오류:', error);
-            }
-        });
-    });
-    
-    // 전체 기간인 경우 실제 데이터 범위 사용
-    if (period === 'all') {
-        const daysDiff = Math.ceil((newestDate - oldestDate) / (1000 * 60 * 60 * 24));
-        days = Math.max(daysDiff + 1, 7); // 최소 7일
-    }
-    
-    // 날짜별 데이터 집계
-    for (let i = days - 1; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        
-        // 날짜 레이블 포맷
-        let dateLabel;
-        if (days <= 7) {
-            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
-        } else if (days <= 30) {
-            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-        } else {
-            dateLabel = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-        }
-        
-        dates.push(dateLabel);
+        last7Days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
         
         // 해당 날짜의 모든 포스트 데이터 합계
         let dayViews = 0;
         let dayLikes = 0;
-        let dayShares = 0;
-        let dayComments = 0;
         
         this.trackingPosts.forEach(post => {
-            if (!post.metrics || post.metrics.length === 0) return;
-            
             post.metrics.forEach(metric => {
-                try {
-                    let metricDate;
-                    if (metric.timestamp && metric.timestamp.toDate) {
-                        metricDate = metric.timestamp.toDate();
-                    } else if (metric.timestamp instanceof Date) {
-                        metricDate = metric.timestamp;
-                    } else if (typeof metric.timestamp === 'string' || typeof metric.timestamp === 'number') {
-                        metricDate = new Date(metric.timestamp);
-                    } else {
-                        return;
-                    }
-                    
-                    metricDate.setHours(0, 0, 0, 0);
-                    
-                    if (metricDate.getTime() === date.getTime()) {
-                        dayViews += metric.views || 0;
-                        dayLikes += metric.likes || 0;
-                        dayShares += metric.shares || 0;
-                        dayComments += metric.comments || 0;
-                    }
-                } catch (error) {
-                    console.warn('차트 데이터 처리 중 오류:', error);
+                const metricDate = metric.timestamp.toDate();
+                if (metricDate.toDateString() === date.toDateString()) {
+                    dayViews += metric.views || 0;
+                    dayLikes += metric.likes || 0;
                 }
             });
         });
         
         viewsData.push(dayViews);
         likesData.push(dayLikes);
-        sharesData.push(dayShares);
-        commentsData.push(dayComments);
     }
     
-    // 차트 데이터 업데이트
-    this.trackingChart.data.labels = dates;
-    
-    // 데이터셋 표시/숨김
-    if (dataset === 'all') {
-        this.trackingChart.data.datasets[0].data = viewsData;
-        this.trackingChart.data.datasets[0].hidden = false;
-        this.trackingChart.data.datasets[1].data = likesData;
-        this.trackingChart.data.datasets[1].hidden = false;
-        this.trackingChart.data.datasets[2].data = sharesData;
-        this.trackingChart.data.datasets[2].hidden = false;
-        this.trackingChart.data.datasets[3].data = commentsData;
-        this.trackingChart.data.datasets[3].hidden = false;
-    } else if (dataset === 'views') {
-        this.trackingChart.data.datasets[0].data = viewsData;
-        this.trackingChart.data.datasets[0].hidden = false;
-        this.trackingChart.data.datasets[1].hidden = true;
-        this.trackingChart.data.datasets[2].hidden = true;
-        this.trackingChart.data.datasets[3].hidden = true;
-    } else if (dataset === 'engagement') {
-        this.trackingChart.data.datasets[0].hidden = true;
-        this.trackingChart.data.datasets[1].data = likesData;
-        this.trackingChart.data.datasets[1].hidden = false;
-        this.trackingChart.data.datasets[2].data = sharesData;
-        this.trackingChart.data.datasets[2].hidden = false;
-        this.trackingChart.data.datasets[3].data = commentsData;
-        this.trackingChart.data.datasets[3].hidden = false;
-    }
-    
+    this.trackingChart.data.labels = last7Days;
+    this.trackingChart.data.datasets[0].data = viewsData;
+    this.trackingChart.data.datasets[1].data = likesData;
     this.trackingChart.update();
 };
 
@@ -4112,8 +3887,7 @@ window.closeModal = function(modalId) {
     }
 };
 
-// 
-트래킹 포스트 필터링
+// 트래킹 포스트 필터링
 DualTextWriter.prototype.filterTrackingPosts = function(filter) {
     // 필터 버튼 활성화 상태 업데이트
     const filterButtons = document.querySelectorAll('.btn-filter');
