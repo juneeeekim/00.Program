@@ -859,7 +859,8 @@ class DualTextWriter {
                                     <span class="metric-badge views">👀 조회수: ${metric.views || 0}</span>
                                     <span class="metric-badge likes">❤️ 좋아요: ${metric.likes || 0}</span>
                                     <span class="metric-badge comments">💬 댓글: ${metric.comments || 0}</span>
-                                    <span class="metric-badge shares">🔄 공유: ${metric.shares || 0}</span>
+                    <span class="metric-badge shares">🔄 공유: ${metric.shares || 0}</span>
+                    <span class="metric-badge follows">👥 팔로우: ${metric.follows || 0}</span>
                                     ${metric.notes ? `<div class="timeline-notes">📝 ${this.escapeHtml(metric.notes)}</div>` : ''}
                                 </div>
                             </div>
@@ -3709,6 +3710,8 @@ DualTextWriter.prototype.openTrackingModal = function(textId = null) {
         document.getElementById('tracking-likes').value = '';
         document.getElementById('tracking-comments').value = '';
         document.getElementById('tracking-shares').value = '';
+        const followsInput = document.getElementById('tracking-follows');
+        if (followsInput) followsInput.value = '';
         document.getElementById('tracking-notes').value = '';
         
         // 저장된 글에서 호출한 경우 textId 저장
@@ -3733,6 +3736,7 @@ DualTextWriter.prototype.saveTrackingData = async function() {
     const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
     const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
     const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
+    const follows = parseInt((document.getElementById('tracking-follows')||{value:''}).value) || 0;
     const notes = document.getElementById('tracking-notes').value;
     
     // 날짜 처리: 사용자가 선택한 날짜를 Timestamp로 변환
@@ -3752,6 +3756,7 @@ DualTextWriter.prototype.saveTrackingData = async function() {
         likes,
         comments,
         shares,
+        follows,
         notes
     };
     
@@ -3873,6 +3878,7 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
         const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
         const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
         const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
+        const follows = parseInt((document.getElementById('tracking-follows')||{value:''}).value) || 0;
         const notes = document.getElementById('tracking-notes').value;
         
         // 날짜 처리
@@ -3891,6 +3897,7 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
             likes,
             comments,
             shares,
+            follows,
             notes
         };
         
@@ -4028,6 +4035,8 @@ DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndex
     document.getElementById('tracking-edit-likes').value = metric.likes || 0;
     document.getElementById('tracking-edit-comments').value = metric.comments || 0;
     document.getElementById('tracking-edit-shares').value = metric.shares || 0;
+    const editFollows = document.getElementById('tracking-edit-follows');
+    if (editFollows) editFollows.value = metric.follows || 0;
     document.getElementById('tracking-edit-notes').value = metric.notes || '';
     
     // 수정할 데이터 저장
@@ -4085,6 +4094,7 @@ DualTextWriter.prototype.updateTrackingDataItem = async function() {
         const likes = parseInt(document.getElementById('tracking-edit-likes').value) || 0;
         const comments = parseInt(document.getElementById('tracking-edit-comments').value) || 0;
         const shares = parseInt(document.getElementById('tracking-edit-shares').value) || 0;
+        const follows = parseInt((document.getElementById('tracking-edit-follows')||{value:''}).value) || 0;
         const notes = document.getElementById('tracking-edit-notes').value;
         
         // 날짜 처리
@@ -4105,6 +4115,7 @@ DualTextWriter.prototype.updateTrackingDataItem = async function() {
             likes,
             comments,
             shares,
+            follows,
             notes
         };
         
@@ -4283,12 +4294,18 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         return sum + (latest ? latest.shares || 0 : 0);
     }, 0);
+    const totalFollows = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.follows || 0 : 0);
+    }, 0);
     
     if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
     if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
     if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
     if (this.totalCommentsElement) this.totalCommentsElement.textContent = totalComments.toLocaleString();
     if (this.totalSharesElement) this.totalSharesElement.textContent = totalShares.toLocaleString();
+    const totalFollowsElement = document.getElementById('total-follows');
+    if (totalFollowsElement) totalFollowsElement.textContent = totalFollows.toLocaleString();
 };
 
 // 트래킹 차트 초기화
@@ -4329,6 +4346,12 @@ DualTextWriter.prototype.initTrackingChart = function() {
                 data: [],
                 borderColor: '#f39c12',
                 backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4
+            }, {
+                label: '팔로우',
+                data: [],
+                borderColor: '#16a085',
+                backgroundColor: 'rgba(22, 160, 133, 0.1)',
                 tension: 0.4
             }]
         },
@@ -4620,6 +4643,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     const likesData = [];
     const commentsData = [];
     const sharesData = [];
+    const followsData = [];
     
     // 범위 계산 함수
     const makeRange = (startDate, endDate, maxDays = 365) => {
@@ -4692,6 +4716,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             let dayTotalLikes = 0;
             let dayTotalComments = 0;
             let dayTotalShares = 0;
+            let dayTotalFollows = 0;
             
             // 각 포스트에 대해 해당 날짜까지의 최신 메트릭 찾기
             this.trackingPosts.forEach(post => {
@@ -4716,6 +4741,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     dayTotalLikes += latestMetricBeforeDate.likes || 0;
                     dayTotalComments += latestMetricBeforeDate.comments || 0;
                     dayTotalShares += latestMetricBeforeDate.shares || 0;
+                    dayTotalFollows += latestMetricBeforeDate.follows || 0;
                 }
             });
             
@@ -4723,6 +4749,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             likesData.push(dayTotalLikes);
             commentsData.push(dayTotalComments);
             sharesData.push(dayTotalShares);
+            followsData.push(dayTotalFollows);
         });
         
         // 차트 제목 업데이트
@@ -4737,6 +4764,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                 likesData.push(0);
                 commentsData.push(0);
                 sharesData.push(0);
+                followsData.push(0);
             });
             this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
         } else {
@@ -4765,6 +4793,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     let dayLikes = 0;
                     let dayComments = 0;
                     let dayShares = 0;
+                    let dayFollows = 0;
                     
                     selectedPost.metrics.forEach(metric => {
                         const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
@@ -4775,6 +4804,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                             dayLikes += metric.likes || 0;
                             dayComments += metric.comments || 0;
                             dayShares += metric.shares || 0;
+                            dayFollows += metric.follows || 0;
                         }
                     });
                     
@@ -4782,6 +4812,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     likesData.push(dayLikes);
                     commentsData.push(dayComments);
                     sharesData.push(dayShares);
+                    followsData.push(dayFollows);
                 });
                 
                 // 차트 제목 업데이트
@@ -4795,6 +4826,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     likesData.push(0);
                     commentsData.push(0);
                     sharesData.push(0);
+                    followsData.push(0);
                 });
                 this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (데이터 없음)';
             }
@@ -4811,13 +4843,17 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     this.trackingChart.data.datasets[1].data = likesData;
     this.trackingChart.data.datasets[2].data = commentsData;
     this.trackingChart.data.datasets[3].data = sharesData;
+    if (this.trackingChart.data.datasets[4]) {
+        this.trackingChart.data.datasets[4].data = followsData;
+    }
     
     // y축 스케일 재계산 (데이터 범위에 맞게 최적화)
     const maxValue = Math.max(
         ...(viewsData.length ? viewsData : [0]),
         ...(likesData.length ? likesData : [0]),
         ...(commentsData.length ? commentsData : [0]),
-        ...(sharesData.length ? sharesData : [0])
+        ...(sharesData.length ? sharesData : [0]),
+        ...(followsData.length ? followsData : [0])
     );
     if (maxValue > 0) {
         // suggestedMax를 데이터 최대값의 약 1.2배로 설정
