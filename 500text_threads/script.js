@@ -17,6 +17,7 @@ class DualTextWriter {
         this.selectedChartPostId = null; // 개별 포스트 모드에서 선택된 포스트 ID
         this.allTrackingPostsForSelector = []; // 포스트 선택기용 전체 포스트 목록
         this.chartRange = '7d'; // '7d' | '30d' | 'all'
+        this.scaleMode = 'combined'; // 'combined' | 'split'
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -4373,6 +4374,17 @@ DualTextWriter.prototype.initTrackingChart = function() {
                         stepSize: 1 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
                     },
                     max: 10 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
+                },
+                y2: {
+                    beginAtZero: true,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        maxTicksLimit: 8,
+                        precision: 0,
+                        stepSize: 1
+                    },
+                    max: 10
                 }
             },
             animation: {
@@ -4392,6 +4404,30 @@ DualTextWriter.prototype.initTrackingChart = function() {
     this.updateTrackingChart();
 };
 
+// 스케일 모드 설정
+DualTextWriter.prototype.setScaleMode = function(mode) {
+    this.scaleMode = mode; // 'combined' | 'split'
+    const combinedBtn = document.getElementById('chart-scale-combined');
+    const splitBtn = document.getElementById('chart-scale-split');
+    if (combinedBtn && splitBtn) {
+        if (mode === 'combined') {
+            combinedBtn.classList.add('active');
+            combinedBtn.style.background = 'white';
+            combinedBtn.style.color = '#667eea';
+            splitBtn.classList.remove('active');
+            splitBtn.style.background = 'transparent';
+            splitBtn.style.color = '#666';
+        } else {
+            splitBtn.classList.add('active');
+            splitBtn.style.background = 'white';
+            splitBtn.style.color = '#667eea';
+            combinedBtn.classList.remove('active');
+            combinedBtn.style.background = 'transparent';
+            combinedBtn.style.color = '#666';
+        }
+    }
+    this.updateTrackingChart();
+};
 // 차트 모드 설정
 DualTextWriter.prototype.setChartMode = function(mode) {
     this.chartMode = mode;
@@ -4839,12 +4875,24 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     );
     
     this.trackingChart.data.labels = dateLabels;
-    this.trackingChart.data.datasets[0].data = viewsData;
-    this.trackingChart.data.datasets[1].data = likesData;
-    this.trackingChart.data.datasets[2].data = commentsData;
-    this.trackingChart.data.datasets[3].data = sharesData;
-    if (this.trackingChart.data.datasets[4]) {
-        this.trackingChart.data.datasets[4].data = followsData;
+    // 데이터 바인딩
+    const datasets = this.trackingChart.data.datasets;
+    datasets[0].data = viewsData;
+    datasets[1].data = likesData;
+    datasets[2].data = commentsData;
+    datasets[3].data = sharesData;
+    if (datasets[4]) datasets[4].data = followsData;
+    
+    // 축 배치: combined는 모두 y, split은 조회수 y / 나머지 y2
+    if (this.scaleMode === 'split') {
+        datasets[0].yAxisID = 'y';
+        for (let i = 1; i < datasets.length; i++) {
+            datasets[i].yAxisID = 'y2';
+        }
+    } else {
+        for (let i = 0; i < datasets.length; i++) {
+            datasets[i].yAxisID = 'y';
+        }
     }
     
     // y축 스케일 재계산 (데이터 범위에 맞게 최적화)
@@ -4855,18 +4903,39 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         ...(sharesData.length ? sharesData : [0]),
         ...(followsData.length ? followsData : [0])
     );
-    if (maxValue > 0) {
-        // suggestedMax를 데이터 최대값의 약 1.2배로 설정
-        const suggestedMax = Math.ceil(maxValue * 1.2);
-        // stepSize를 최대값의 약 1/8 정도로 설정 (최소 1)
-        const stepSize = Math.max(1, Math.ceil(maxValue / 8));
+    // 스케일 계산
+    if (this.scaleMode === 'split') {
+        // 왼쪽 y: 조회수 전용
+        const maxViews = Math.max(...(viewsData.length ? viewsData : [0]));
+        const yMax = maxViews > 0 ? Math.ceil(maxViews * 1.2) : 10;
+        const yStep = Math.max(1, Math.ceil((yMax || 10) / 8));
+        this.trackingChart.options.scales.y.max = yMax;
+        this.trackingChart.options.scales.y.ticks.stepSize = yStep;
         
-        this.trackingChart.options.scales.y.max = suggestedMax;
-        this.trackingChart.options.scales.y.ticks.stepSize = stepSize;
+        // 오른쪽 y2: 나머지 지표
+        const maxOthers = Math.max(
+            ...(likesData.length ? likesData : [0]),
+            ...(commentsData.length ? commentsData : [0]),
+            ...(sharesData.length ? sharesData : [0]),
+            ...(followsData.length ? followsData : [0])
+        );
+        const y2Max = maxOthers > 0 ? Math.ceil(maxOthers * 1.8) : 10;
+        const y2Step = Math.max(1, Math.ceil((y2Max || 10) / 6));
+        this.trackingChart.options.scales.y2.max = y2Max;
+        this.trackingChart.options.scales.y2.ticks.stepSize = y2Step;
     } else {
-        // 데이터가 없으면 기본값
-        this.trackingChart.options.scales.y.max = 10;
-        this.trackingChart.options.scales.y.ticks.stepSize = 1;
+        if (maxValue > 0) {
+            const suggestedMax = Math.ceil(maxValue * 1.2);
+            const stepSize = Math.max(1, Math.ceil(suggestedMax / 8));
+            this.trackingChart.options.scales.y.max = suggestedMax;
+            this.trackingChart.options.scales.y.ticks.stepSize = stepSize;
+        } else {
+            this.trackingChart.options.scales.y.max = 10;
+            this.trackingChart.options.scales.y.ticks.stepSize = 1;
+        }
+        // y2는 비활성처럼 동일 값으로 최소화
+        this.trackingChart.options.scales.y2.max = this.trackingChart.options.scales.y.max;
+        this.trackingChart.options.scales.y2.ticks.stepSize = this.trackingChart.options.scales.y.ticks.stepSize;
     }
     
     // 애니메이션 없이 업데이트 (스크롤 문제 방지)

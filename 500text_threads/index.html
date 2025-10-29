@@ -313,6 +313,13 @@
                                     <button id="chart-range-all" class="range-toggle-btn" onclick="dualTextWriter.setChartRange('all')" style="padding: 6px 12px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666;">전체</button>
                                 </div>
                             </div>
+                            <div class="chart-scale-toggle" style="display: flex; gap: 8px; align-items: center;">
+                                <span style="font-weight: 600; color: #333; font-size: 0.95rem;">스케일:</span>
+                                <div class="scale-toggle-buttons" style="display: flex; background: #f1f3f5; border-radius: 8px; padding: 4px;">
+                                    <button id="chart-scale-combined" class="scale-toggle-btn active" onclick="dualTextWriter.setScaleMode('combined')" style="padding: 6px 12px; border: none; background: white; border-radius: 6px; font-weight: 600; cursor: pointer; color: #667eea;">공동</button>
+                                    <button id="chart-scale-split" class="scale-toggle-btn" onclick="dualTextWriter.setScaleMode('split')" style="padding: 6px 12px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666;">분리</button>
+                                </div>
+                            </div>
                             <div id="post-selector-container" class="post-selector-container" style="display: none; min-width: 280px;">
                                 <label for="chart-post-search" style="font-weight: 600; color: #333; font-size: 0.95rem; margin-right: 8px; display: block; margin-bottom: 4px;">포스트 선택:</label>
                                 <div class="custom-post-selector" style="position: relative;">
