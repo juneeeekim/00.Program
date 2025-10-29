@@ -67,6 +67,8 @@ class DualTextWriter {
         this.totalPostsElement = document.getElementById('total-posts');
         this.totalViewsElement = document.getElementById('total-views');
         this.totalLikesElement = document.getElementById('total-likes');
+        this.totalCommentsElement = document.getElementById('total-comments');
+        this.totalSharesElement = document.getElementById('total-shares');
         
         this.maxLength = 500;
         this.currentUser = null;
@@ -4273,10 +4275,20 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         return sum + (latest ? latest.likes : 0);
     }, 0);
+    const totalComments = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.comments || 0 : 0);
+    }, 0);
+    const totalShares = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.shares || 0 : 0);
+    }, 0);
     
     if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
     if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
     if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
+    if (this.totalCommentsElement) this.totalCommentsElement.textContent = totalComments.toLocaleString();
+    if (this.totalSharesElement) this.totalSharesElement.textContent = totalShares.toLocaleString();
 };
 
 // 트래킹 차트 초기화
