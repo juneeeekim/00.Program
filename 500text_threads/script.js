@@ -2884,10 +2884,73 @@ class DualTextWriter {
                 console.warn('⚠️ 로컬 저장 실패:', saveError);
             }
 
+            // 자동 트래킹 시작: posts 컬렉션에 포스트 생성
+            console.log('🔄 6. 자동 트래킹 시작...');
+            let sourceTextId = null;
+            
+            // 현재 텍스트를 texts 컬렉션에 먼저 저장 (원본 보존)
+            if (this.currentUser && this.isFirebaseReady) {
+                try {
+                    const textData = {
+                        content: content, // 원본 내용 (최적화 전)
+                        type: 'edit',
+                        characterCount: this.getKoreanCharacterCount(content),
+                        createdAt: window.firebaseServerTimestamp(),
+                        updatedAt: window.firebaseServerTimestamp()
+                    };
+                    
+                    const textDocRef = await window.firebaseAddDoc(
+                        window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
+                        textData
+                    );
+                    
+                    sourceTextId = textDocRef.id;
+                    console.log('✅ 원본 텍스트 저장 완료:', sourceTextId);
+                } catch (textSaveError) {
+                    console.warn('⚠️ 원본 텍스트 저장 실패 (트래킹은 계속 진행):', textSaveError);
+                }
+            }
+            
+            // posts 컬렉션에 트래킹 포스트 자동 생성
+            if (this.currentUser && this.isFirebaseReady) {
+                try {
+                    const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                    const postData = {
+                        content: content, // 원본 내용 (최적화 전, 트래킹용)
+                        type: 'edit',
+                        postedAt: window.firebaseServerTimestamp(),
+                        trackingEnabled: true, // 자동으로 트래킹 활성화
+                        metrics: [],
+                        analytics: {},
+                        sourceTextId: sourceTextId || null, // 원본 텍스트 참조 (있는 경우)
+                        createdAt: window.firebaseServerTimestamp(),
+                        updatedAt: window.firebaseServerTimestamp()
+                    };
+                    
+                    const postDocRef = await window.firebaseAddDoc(postsRef, postData);
+                    console.log('✅ 트래킹 포스트 자동 생성 완료:', postDocRef.id);
+                    
+                    // 트래킹 탭 목록 새로고침 (백그라운드에서)
+                    if (this.trackingPosts && this.loadTrackingPosts) {
+                        this.loadTrackingPosts().catch(err => {
+                            console.warn('⚠️ 트래킹 목록 새로고침 실패:', err);
+                        });
+                    }
+                    
+                    // 사용자 피드백 메시지
+                    this.showMessage('📊 트래킹이 자동으로 시작되었습니다!', 'success');
+                    
+                } catch (postError) {
+                    console.error('❌ 트래킹 포스트 생성 실패:', postError);
+                    // 트래킹 생성 실패해도 포스팅은 계속 진행
+                    this.showMessage('⚠️ 트래킹 시작에 실패했지만 포스팅은 계속할 수 있습니다.', 'warning');
+                }
+            }
+
             // 최적화 완료 후 모달 표시 (원본 텍스트 전달)
-            console.log('🔄 6. 최적화 모달 표시 시작...');
+            console.log('🔄 7. 최적화 모달 표시 시작...');
             this.showOptimizationModal(optimized, content);
-            console.log('✅ 7. 최적화 모달 표시 완료');
+            console.log('✅ 8. 최적화 모달 표시 완료');
 
         } catch (error) {
             console.error('❌ 반자동화 포스팅 처리 중 오류:', error);
