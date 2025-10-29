@@ -3894,7 +3894,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                 </div>
                 
                 ${latestMetrics ? `
-                    <div class="tracking-post-metrics">
+                    <div class="tracking-post-metrics" onclick="dualTextWriter.showPostInChart('${post.id}')" title="그래프에서 보기">
                         <div class="metric-item">
                             <div class="metric-icon">👀</div>
                             <div class="metric-value">${latestMetrics.views || 0}</div>
@@ -3914,6 +3914,11 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                             <div class="metric-icon">🔄</div>
                             <div class="metric-value">${latestMetrics.shares || 0}</div>
                             <div class="metric-label">공유</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-icon">👥</div>
+                            <div class="metric-value">${latestMetrics.follows || 0}</div>
+                            <div class="metric-label">팔로우</div>
                         </div>
                     </div>
                 ` : `
@@ -4969,6 +4974,28 @@ DualTextWriter.prototype.selectPostFromDropdown = function(postId) {
     
     // 차트 업데이트
     this.updateTrackingChart();
+};
+
+// 트래킹 목록에서 클릭 시 차트에 표시
+DualTextWriter.prototype.showPostInChart = function(postId) {
+    // 모드 전환 및 포스트 선택
+    this.setChartMode('individual');
+    this.selectedChartPostId = postId;
+    // 검색 입력창에 제목 표시
+    const selectedPost = this.trackingPosts.find(p => p.id === postId);
+    const searchInput = document.getElementById('chart-post-search');
+    if (selectedPost && searchInput) {
+        const preview = selectedPost.content.length > 50 ? selectedPost.content.substring(0,50) + '...' : selectedPost.content;
+        searchInput.value = preview;
+    }
+    // 드롭다운 목록 갱신
+    this.populatePostSelector();
+    // 차트 업데이트
+    this.updateTrackingChart();
+    // 차트 영역 포커스/스크롤
+    if (this.trackingChartCanvas && this.trackingChartCanvas.scrollIntoView) {
+        this.trackingChartCanvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 };
 
 // 포스트 선택 변경 (구버전 호환, 더 이상 사용 안 함)
