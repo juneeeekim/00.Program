@@ -160,7 +160,6 @@ class DualTextWriter {
             this.loadTrackingPosts();
             this.updateTrackingSummary();
             this.initTrackingChart();
-            this.generateInsights(); // 인사이트 생성
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -403,9 +402,9 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
-            }
+            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
         }
+    }
     }
 
     // Firebase Auth 상태 리스너가 자동으로 처리함
@@ -443,7 +442,7 @@ class DualTextWriter {
 
             this.showMessage(`${username}님, 환영합니다!`, 'success');
 
-        } catch (error) {
+                } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
@@ -3292,143 +3291,21 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
     this.openTrackingModal();
 };
 
-// 트래킹 모달 열기 (개선 버전)
+// 트래킹 모달 열기
 DualTextWriter.prototype.openTrackingModal = function() {
     const modal = document.getElementById('tracking-modal');
-    if (!modal || !this.currentTrackingPost) return;
-    
-    // 현재 포스트 정보 가져오기
-    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
-    if (!post) return;
-    
-    // 포스트 정보 표시
-    const postTextElement = document.getElementById('tracking-modal-post-text');
-    if (postTextElement) {
-        const previewText = post.content.substring(0, 80);
-        postTextElement.textContent = previewText + (post.content.length > 80 ? '...' : '');
+    if (modal) {
+        modal.style.display = 'flex';
+        // 폼 초기화
+        document.getElementById('tracking-views').value = '';
+        document.getElementById('tracking-likes').value = '';
+        document.getElementById('tracking-comments').value = '';
+        document.getElementById('tracking-shares').value = '';
+        document.getElementById('tracking-notes').value = '';
     }
-    
-    // 데이터 입력 횟수 표시
-    const dataCountElement = document.getElementById('tracking-modal-data-count');
-    if (dataCountElement) {
-        dataCountElement.textContent = post.metrics.length;
-    }
-    
-    // 이전 데이터 표시
-    const previousDataSection = document.getElementById('tracking-modal-previous-data');
-    if (post.metrics.length > 0) {
-        const latestMetric = post.metrics[post.metrics.length - 1];
-        
-        // 이전 데이터 섹션 표시
-        if (previousDataSection) {
-            previousDataSection.style.display = 'block';
-        }
-        
-        // 이전 값 표시
-        document.getElementById('prev-views').textContent = (latestMetric.views || 0).toLocaleString();
-        document.getElementById('prev-likes').textContent = (latestMetric.likes || 0).toLocaleString();
-        document.getElementById('prev-comments').textContent = (latestMetric.comments || 0).toLocaleString();
-        document.getElementById('prev-shares').textContent = (latestMetric.shares || 0).toLocaleString();
-        
-        // 이전 날짜 표시
-        const prevDateElement = document.getElementById('prev-date');
-        if (prevDateElement && latestMetric.timestamp) {
-            try {
-                const date = latestMetric.timestamp.toDate ? latestMetric.timestamp.toDate() : new Date(latestMetric.timestamp);
-                prevDateElement.textContent = date.toLocaleString('ko-KR', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } catch (e) {
-                prevDateElement.textContent = '-';
-            }
-        }
-    } else {
-        // 이전 데이터가 없으면 섹션 숨김
-        if (previousDataSection) {
-            previousDataSection.style.display = 'none';
-        }
-    }
-    
-    // 폼 초기화
-    document.getElementById('tracking-views').value = '';
-    document.getElementById('tracking-likes').value = '';
-    document.getElementById('tracking-comments').value = '';
-    document.getElementById('tracking-shares').value = '';
-    document.getElementById('tracking-notes').value = '';
-    
-    // 증가량 표시 초기화
-    ['views', 'likes', 'comments', 'shares'].forEach(metric => {
-        const growthElement = document.getElementById(`growth-${metric}`);
-        if (growthElement) {
-            growthElement.style.display = 'none';
-            growthElement.textContent = '';
-        }
-    });
-    
-    // 입력 필드에 이벤트 리스너 추가 (증가량 자동 계산)
-    this.setupTrackingInputListeners(post);
-    
-    // 모달 표시
-    modal.style.display = 'flex';
-    
-    // 첫 번째 입력 필드에 포커스
-    setTimeout(() => {
-        document.getElementById('tracking-views').focus();
-    }, 100);
 };
 
-// 트래킹 입력 필드 이벤트 리스너 설정
-DualTextWriter.prototype.setupTrackingInputListeners = function(post) {
-    const metrics = ['views', 'likes', 'comments', 'shares'];
-    const latestMetric = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-    
-    metrics.forEach(metric => {
-        const inputElement = document.getElementById(`tracking-${metric}`);
-        const growthElement = document.getElementById(`growth-${metric}`);
-        
-        if (!inputElement || !growthElement) return;
-        
-        // 기존 이벤트 리스너 제거
-        inputElement.removeEventListener('input', inputElement._trackingInputHandler);
-        
-        // 새 이벤트 리스너 추가
-        inputElement._trackingInputHandler = (e) => {
-            const currentValue = parseInt(e.target.value) || 0;
-            
-            if (latestMetric && currentValue > 0) {
-                const previousValue = latestMetric[metric] || 0;
-                const growth = currentValue - previousValue;
-                const growthPercent = previousValue > 0 ? ((growth / previousValue) * 100).toFixed(1) : 0;
-                
-                if (growth !== 0) {
-                    const growthIcon = growth > 0 ? '📈' : '📉';
-                    const growthClass = growth > 0 ? 'positive' : 'negative';
-                    const growthSign = growth > 0 ? '+' : '';
-                    
-                    growthElement.className = `input-growth ${growthClass}`;
-                    growthElement.innerHTML = `
-                        <span class="growth-icon">${growthIcon}</span>
-                        <span class="growth-value">${growthSign}${growth.toLocaleString()}</span>
-                        <span class="growth-percent">(${growthSign}${growthPercent}%)</span>
-                    `;
-                    growthElement.style.display = 'flex';
-                } else {
-                    growthElement.style.display = 'none';
-                }
-            } else {
-                growthElement.style.display = 'none';
-            }
-        };
-        
-        inputElement.addEventListener('input', inputElement._trackingInputHandler);
-    });
-};
-
-// 트래킹 데이터 저장 (개선 버전)
+// 트래킹 데이터 저장
 DualTextWriter.prototype.saveTrackingData = async function() {
     if (!this.currentTrackingPost || !this.currentUser || !this.isFirebaseReady) return;
     
@@ -3436,33 +3313,7 @@ DualTextWriter.prototype.saveTrackingData = async function() {
     const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
     const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
     const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
-    const notes = document.getElementById('tracking-notes').value.trim();
-    
-    // 유효성 검증
-    if (views === 0 && likes === 0) {
-        this.showMessage('⚠️ 조회수 또는 좋아요 중 하나는 반드시 입력해야 합니다.', 'warning');
-        return;
-    }
-    
-    // 이전 데이터와 비교하여 감소 확인
-    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
-    if (post && post.metrics.length > 0) {
-        const latestMetric = post.metrics[post.metrics.length - 1];
-        
-        // 조회수나 좋아요가 감소한 경우 경고
-        if (views < (latestMetric.views || 0) || likes < (latestMetric.likes || 0)) {
-            const confirmMessage = '⚠️ 이전 데이터보다 낮은 값이 입력되었습니다.\n' +
-                                 '계속 저장하시겠습니까?\n\n' +
-                                 `이전 조회수: ${(latestMetric.views || 0).toLocaleString()}\n` +
-                                 `현재 조회수: ${views.toLocaleString()}\n\n` +
-                                 `이전 좋아요: ${(latestMetric.likes || 0).toLocaleString()}\n` +
-                                 `현재 좋아요: ${likes.toLocaleString()}`;
-            
-            if (!confirm(confirmMessage)) {
-                return;
-            }
-        }
-    }
+    const notes = document.getElementById('tracking-notes').value;
     
     const trackingData = {
         timestamp: window.firebaseServerTimestamp(),
@@ -3491,6 +3342,7 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             });
             
             // 로컬 데이터 업데이트
+            const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
             if (post) {
                 post.metrics = updatedMetrics;
                 post.analytics = analytics;
@@ -3501,21 +3353,10 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             this.updateTrackingSummary();
             this.updateTrackingChart();
             
-            // 시각적 피드백: 성공 메시지 (증가량 표시)
-            let successMessage = '✅ 성과 데이터가 저장되었습니다!';
-            if (post && post.metrics.length > 1) {
-                const previousMetric = post.metrics[post.metrics.length - 2];
-                const viewsGrowth = views - (previousMetric.views || 0);
-                const likesGrowth = likes - (previousMetric.likes || 0);
-                
-                if (viewsGrowth > 0 || likesGrowth > 0) {
-                    successMessage += `\n📈 조회수 +${viewsGrowth.toLocaleString()}, 좋아요 +${likesGrowth.toLocaleString()}`;
-                }
-            }
+            // 시각적 피드백: 성공 메시지
+            this.showMessage('✅ 성과 데이터가 저장되었습니다!', 'success');
             
-            this.showMessage(successMessage, 'success');
-            
-            console.log('트래킹 데이터가 저장되었습니다:', trackingData);
+            console.log('트래킹 데이터가 저장되었습니다.');
         }
         
     } catch (error) {
@@ -3884,229 +3725,5 @@ window.closeModal = function(modalId) {
     }
     if (modalId === 'tracking-modal' && dualTextWriter) {
         dualTextWriter.closeTrackingModal();
-    }
-};
-
-// 트래킹 포스트 필터링
-DualTextWriter.prototype.filterTrackingPosts = function(filter) {
-    // 필터 버튼 활성화 상태 업데이트
-    const filterButtons = document.querySelectorAll('.btn-filter');
-    filterButtons.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(filter) || 
-            (filter === 'all' && btn.textContent === '전체')) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 포스트 필터링
-    const postItems = document.querySelectorAll('.tracking-post-item');
-    postItems.forEach(item => {
-        if (filter === 'all') {
-            item.style.display = 'block';
-        } else if (filter === 'active') {
-            item.style.display = item.classList.contains('active') ? 'block' : 'none';
-        } else if (filter === 'inactive') {
-            item.style.display = item.classList.contains('inactive') ? 'block' : 'none';
-        }
-    });
-};
-
-
-// 차트 기간 변경
-DualTextWriter.prototype.changeChartPeriod = function(period) {
-    this.chartPeriod = period;
-    
-    // 버튼 활성화 상태 업데이트
-    document.querySelectorAll('.period-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-period') == period) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 차트 업데이트
-    this.updateTrackingChart();
-};
-
-// 차트 데이터셋 토글
-DualTextWriter.prototype.toggleChartDataset = function(dataset) {
-    this.chartDataset = dataset;
-    
-    // 버튼 활성화 상태 업데이트
-    document.querySelectorAll('.dataset-toggle-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-dataset') === dataset) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 범례 표시/숨김
-    document.querySelectorAll('.legend-item').forEach(item => {
-        const itemDataset = item.getAttribute('data-dataset');
-        if (dataset === 'all') {
-            item.style.display = 'flex';
-        } else if (dataset === 'views') {
-            item.style.display = itemDataset === 'views' ? 'flex' : 'none';
-        } else if (dataset === 'engagement') {
-            item.style.display = ['likes', 'shares', 'comments'].includes(itemDataset) ? 'flex' : 'none';
-        }
-    });
-    
-    // 차트 업데이트
-    this.updateTrackingChart();
-};
-
-
-// 인사이트 생성 및 표시
-DualTextWriter.prototype.generateInsights = function() {
-    const insightsSection = document.getElementById('tracking-insights');
-    const insightsGrid = document.getElementById('insights-grid');
-    
-    if (!insightsSection || !insightsGrid) return;
-    
-    // 데이터가 있는 포스트만 필터링
-    const postsWithData = this.trackingPosts.filter(post => post.metrics && post.metrics.length > 0);
-    
-    if (postsWithData.length === 0) {
-        insightsSection.style.display = 'none';
-        return;
-    }
-    
-    const insights = [];
-    
-    // 1. 최고 성과 포스트
-    let bestPost = null;
-    let maxViews = 0;
-    
-    postsWithData.forEach(post => {
-        const latestMetric = post.metrics[post.metrics.length - 1];
-        if (latestMetric.views > maxViews) {
-            maxViews = latestMetric.views;
-            bestPost = post;
-        }
-    });
-    
-    if (bestPost) {
-        const previewText = bestPost.content.substring(0, 40);
-        insights.push({
-            icon: '🏆',
-            title: '최고 성과 포스트',
-            description: `"${previewText}..."`,
-            value: `${maxViews.toLocaleString()} 조회수`,
-            type: 'success'
-        });
-    }
-    
-    // 2. 평균 대비 성과
-    const avgViews = postsWithData.reduce((sum, post) => {
-        const latest = post.metrics[post.metrics.length - 1];
-        return sum + (latest.views || 0);
-    }, 0) / postsWithData.length;
-    
-    if (bestPost && maxViews > avgViews * 1.5) {
-        const percentAbove = ((maxViews / avgViews - 1) * 100).toFixed(0);
-        insights.push({
-            icon: '📊',
-            title: '평균 대비 성과',
-            description: '최고 포스트가 평균보다',
-            value: `${percentAbove}% 높음`,
-            type: 'info'
-        });
-    }
-    
-    // 3. 참여율 분석
-    const avgEngagement = postsWithData.reduce((sum, post) => {
-        const latest = post.metrics[post.metrics.length - 1];
-        const engagement = (latest.likes || 0) + (latest.shares || 0) + (latest.comments || 0);
-        const views = latest.views || 1;
-        return sum + (engagement / views);
-    }, 0) / postsWithData.length;
-    
-    const engagementPercent = (avgEngagement * 100).toFixed(2);
-    
-    insights.push({
-        icon: '🎯',
-        title: '평균 참여율',
-        description: '조회수 대비 인터랙션',
-        value: `${engagementPercent}%`,
-        type: engagementPercent > 5 ? 'success' : 'warning'
-    });
-    
-    // 4. 포스트 타입별 성과
-    const editPosts = postsWithData.filter(p => p.type === 'edit');
-    const refPosts = postsWithData.filter(p => p.type === 'reference');
-    
-    if (editPosts.length > 0 && refPosts.length > 0) {
-        const editAvgViews = editPosts.reduce((sum, post) => {
-            const latest = post.metrics[post.metrics.length - 1];
-            return sum + (latest.views || 0);
-        }, 0) / editPosts.length;
-        
-        const refAvgViews = refPosts.reduce((sum, post) => {
-            const latest = post.metrics[post.metrics.length - 1];
-            return sum + (latest.views || 0);
-        }, 0) / refPosts.length;
-        
-        const betterType = editAvgViews > refAvgViews ? '작성 글' : '레퍼런스 글';
-        const diff = Math.abs(editAvgViews - refAvgViews);
-        const diffPercent = ((diff / Math.min(editAvgViews, refAvgViews)) * 100).toFixed(0);
-        
-        insights.push({
-            icon: '📝',
-            title: '타입별 성과',
-            description: `${betterType}이 더 높은 성과`,
-            value: `+${diffPercent}%`,
-            type: 'info'
-        });
-    }
-    
-    // 5. 최근 트렌드
-    if (postsWithData.length >= 2) {
-        const recentPosts = postsWithData.slice(0, Math.min(3, postsWithData.length));
-        const olderPosts = postsWithData.slice(Math.min(3, postsWithData.length));
-        
-        if (olderPosts.length > 0) {
-            const recentAvg = recentPosts.reduce((sum, post) => {
-                const latest = post.metrics[post.metrics.length - 1];
-                return sum + (latest.views || 0);
-            }, 0) / recentPosts.length;
-            
-            const olderAvg = olderPosts.reduce((sum, post) => {
-                const latest = post.metrics[post.metrics.length - 1];
-                return sum + (latest.views || 0);
-            }, 0) / olderPosts.length;
-            
-            const trendPercent = ((recentAvg / olderAvg - 1) * 100).toFixed(0);
-            const trendIcon = trendPercent > 0 ? '📈' : '📉';
-            const trendType = trendPercent > 0 ? 'success' : 'warning';
-            const trendText = trendPercent > 0 ? '증가' : '감소';
-            
-            insights.push({
-                icon: trendIcon,
-                title: '최근 트렌드',
-                description: `최근 포스트 성과 ${trendText}`,
-                value: `${Math.abs(trendPercent)}%`,
-                type: trendType
-            });
-        }
-    }
-    
-    // 인사이트 렌더링
-    if (insights.length > 0) {
-        insightsGrid.innerHTML = insights.map(insight => `
-            <div class="insight-card ${insight.type}">
-                <div class="insight-icon">${insight.icon}</div>
-                <div class="insight-content">
-                    <div class="insight-title">${insight.title}</div>
-                    <div class="insight-description">${insight.description}</div>
-                    <div class="insight-value">${insight.value}</div>
-                </div>
-            </div>
-        `).join('');
-        
-        insightsSection.style.display = 'block';
-    } else {
-        insightsSection.style.display = 'none';
     }
 };
