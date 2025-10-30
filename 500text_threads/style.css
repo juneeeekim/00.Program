@@ -2612,21 +2612,23 @@
     }
 
     /* Tracking Dashboard: responsive icon sizing and compact mobile spacing */
-    .tracking-summary .summary-icon {
-        font-size: 14px; /* Mobile default */
+    .tracking-dashboard .tracking-summary .summary-icon {
+        font-size: 14px !important; /* Mobile default, force override */
         line-height: 1;
         vertical-align: middle;
         display: inline-block;
+        width: 1em;
+        height: 1em;
         transform: translateY(1px);
     }
     @media (min-width: 769px) {
-        .tracking-summary .summary-icon {
-            font-size: 18px; /* Tablet */
+        .tracking-dashboard .tracking-summary .summary-icon {
+            font-size: 18px !important; /* Tablet */
         }
     }
     @media (min-width: 1024px) {
-        .tracking-summary .summary-icon {
-            font-size: 20px; /* Desktop */
+        .tracking-dashboard .tracking-summary .summary-icon {
+            font-size: 20px !important; /* Desktop */
         }
     }
     @media (max-width: 768px) {
