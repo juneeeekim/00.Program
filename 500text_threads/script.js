@@ -838,6 +838,8 @@ class DualTextWriter {
         }));
 
         this.savedList.innerHTML = itemsWithTracking.map(({ item, postData, index }) => {
+            const metaText = `${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'} · ${item.date} · ${item.characterCount}자`;
+            const expanded = (localStorage.getItem(`savedItemExpanded:${item.id}`) === '1');
             // 타임라인 HTML 생성
             const timelineHtml = this.renderTrackingTimeline(postData?.metrics || []);
             
@@ -845,10 +847,10 @@ class DualTextWriter {
             <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
                 <div class="saved-item-header">
                     <span class="saved-item-type">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
-                    <span class="saved-item-date">${item.date}</span>
-                    <span class="saved-item-count">${item.characterCount}자</span>
                 </div>
-                <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
+                <div class="saved-item-meta">${metaText}</div>
+                <div class="saved-item-content ${expanded ? 'expanded' : ''}">${this.escapeHtml(item.content)}</div>
+                <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}">${expanded ? '접기' : '더보기'}</button>
                 ${timelineHtml ? `<div class="saved-item-tracking">${timelineHtml}</div>` : ''}
                 <div class="saved-item-actions">
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
@@ -1039,7 +1041,16 @@ class DualTextWriter {
                 return;
             }
 
-            if (action === 'edit') {
+            if (action === 'toggle') {
+                const contentEl = button.closest('.saved-item').querySelector('.saved-item-content');
+                if (contentEl) {
+                    const nowExpanded = contentEl.classList.toggle('expanded');
+                    button.textContent = nowExpanded ? '접기' : '더보기';
+                    try {
+                        localStorage.setItem(`savedItemExpanded:${itemId}`, nowExpanded ? '1' : '0');
+                    } catch (e) { /* ignore quota */ }
+                }
+            } else if (action === 'edit') {
                 const type = button.getAttribute('data-type');
                 console.log('편집 액션 실행:', { itemId, type });
                 this.editText(itemId, type);
