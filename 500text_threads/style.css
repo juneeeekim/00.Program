@@ -1083,6 +1083,18 @@
     .modal-actions .btn {
     width: 100%;
     }
+
+    /* Saved filters layout adjustments on mobile */
+    .saved-filters {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .segmented-control { width: 100%; justify-content: space-between; }
+    .segment-btn { flex: 1 1 0; text-align: center; min-width: 0; }
+    .migration-tools { display: block !important; margin-top: 4px; }
+    #batch-migration-btn { width: 100%; min-height: 44px; font-size: 14px; }
     }
     
     /* 다크 모드 지원 */
@@ -1180,6 +1192,8 @@
     margin-bottom: 12px;
     display: flex;
     justify-content: center;
+    align-items: stretch;
+    gap: 12px;
     }
     
     .segmented-control {
@@ -1193,7 +1207,7 @@
     .segment-btn {
     background: transparent;
     border: none;
-    padding: 8px 14px;
+    padding: 10px 14px;
     border-radius: 999px;
     font-weight: 600;
     color: #555;
