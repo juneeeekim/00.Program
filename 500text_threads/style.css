@@ -2610,6 +2610,34 @@
         font-size: 1.8rem;
         font-weight: 700;
     }
+
+    /* Tracking Dashboard: responsive icon sizing and compact mobile spacing */
+    .tracking-summary .summary-icon {
+        font-size: 14px; /* Mobile default */
+        line-height: 1;
+        vertical-align: middle;
+        display: inline-block;
+        transform: translateY(1px);
+    }
+    @media (min-width: 769px) {
+        .tracking-summary .summary-icon {
+            font-size: 18px; /* Tablet */
+        }
+    }
+    @media (min-width: 1024px) {
+        .tracking-summary .summary-icon {
+            font-size: 20px; /* Desktop */
+        }
+    }
+    @media (max-width: 768px) {
+        .summary-card {
+            padding: 14px 16px; /* compact mobile */
+            gap: 10px;
+        }
+        .summary-value {
+            font-size: 1.6rem; /* keep number dominant but tighter */
+        }
+    }
     
     .tracking-chart-container {
         background: white;
