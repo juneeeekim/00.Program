@@ -2582,9 +2582,10 @@
         border-radius: 12px;
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
         transition: transform 0.2s ease;
+        white-space: nowrap; /* keep one line */
     }
     
     .summary-card:hover {
@@ -2598,17 +2599,22 @@
     
     .summary-content {
         flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
     }
     
     .summary-label {
         font-size: 0.9rem;
-        opacity: 0.8;
-        margin-bottom: 5px;
+        opacity: 0.9;
+        margin: 0; /* inline */
     }
     
     .summary-value {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 700;
+        margin-left: 6px;
     }
 
     /* Tracking Dashboard: responsive icon sizing and compact mobile spacing */
@@ -2636,9 +2642,9 @@
             padding: 12px 14px; /* more compact mobile */
             gap: 8px;
         }
-        .summary-value {
-            font-size: 1.6rem; /* keep number dominant but tighter */
-        }
+        .summary-content { gap: 6px; }
+        .summary-label { font-size: 0.85rem; }
+        .summary-value { font-size: 1.4rem; }
     }
     
     .tracking-chart-container {
