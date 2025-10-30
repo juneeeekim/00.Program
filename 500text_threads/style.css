@@ -235,7 +235,9 @@
     }
     
     .tab-icon {
-    font-size: 18px;
+    font-size: 14px; /* emoji/icon normalized */
+    line-height: 1;
+    vertical-align: middle;
     }
     
     .tab-text {
@@ -1213,6 +1215,9 @@
     color: #555;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     }
     
     .segment-btn:hover {
