@@ -239,6 +239,41 @@
     line-height: 1;
     vertical-align: middle;
     }
+
+/* Tracking: emoji/icon normalization within metrics chips and timeline */
+.metrics-chips .emoji,
+.post-item .metrics .emoji,
+.tracking-timeline .emoji,
+.tracking-timeline .badge .emoji,
+.tracking-timeline .metric .emoji {
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* Tracking: chip sizing and spacing for mobile consistency */
+.metrics-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.metrics-chips .chip,
+.post-item .metrics .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 8px;
+    white-space: nowrap;
+}
+
+.tracking-timeline .badge,
+.tracking-timeline .metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
     
     .tab-text {
     font-size: 12px;
