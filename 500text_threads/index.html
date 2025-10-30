@@ -342,7 +342,7 @@
                         </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
-                    <div class="tracking-filters" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 10px 0 16px; flex-wrap: wrap;">
+                    <div class="tracking-filters sticky" style="display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 10px 0 16px; flex-wrap: wrap;">
                         <div class="tracking-search" style="flex:1; min-width: 220px;">
                             <input id="tracking-search" type="text" placeholder="제목/키워드/해시태그 검색 (공백으로 여러 개)" style="width: 100%; padding: 10px 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 0.9rem;"/>
                         </div>
@@ -465,8 +465,9 @@
     </div>
     
     <!-- 트래킹 데이터 입력 모달 -->
-    <div id="tracking-modal" class="modal">
+    <div id="tracking-modal" class="modal bottom-sheet">
         <div class="modal-content">
+            <div class="sheet-handle"></div>
             <h3>📊 트래킹 데이터 입력</h3>
             <div class="tracking-form">
                 <div class="form-group">
@@ -507,8 +508,9 @@
     </div>
     
     <!-- 트래킹 데이터 수정 모달 -->
-    <div id="tracking-edit-modal" class="modal">
+    <div id="tracking-edit-modal" class="modal bottom-sheet">
         <div class="modal-content">
+            <div class="sheet-handle"></div>
             <h3>✏️ 트래킹 데이터 수정</h3>
             <div class="tracking-form">
                 <div class="form-group">

@@ -2582,8 +2582,8 @@
     .tracking-post-item {
         border: 1px solid #e1e5e9;
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
+        padding: 12px;
+        margin-bottom: 12px;
         transition: all 0.2s ease;
     }
     
@@ -2649,10 +2649,10 @@
     .tracking-post-info {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
         align-items: center;
-        margin-bottom: 12px;
-        padding: 8px 0;
+        margin-bottom: 8px;
+        padding: 6px 0;
         border-bottom: 1px solid #f0f0f0;
     }
     
@@ -2765,13 +2765,13 @@
     .tracking-post-metrics {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 10px;
-        margin-bottom: 10px;
+        gap: 8px;
+        margin-bottom: 8px;
     }
     
     .metric-item {
         text-align: center;
-        padding: 8px;
+        padding: 6px;
         background: #f8f9fa;
         border-radius: 6px;
     }
@@ -2789,6 +2789,66 @@
     .metric-label {
         font-size: 0.8rem;
         color: #666;
+    }
+
+    /* Compact chips layout for tracking metrics */
+    .metrics-chips {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .metrics-chips .metric-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: #f6f7fb;
+        border-radius: 999px;
+    }
+    .metrics-chips .metric-icon { margin: 0; }
+    .metrics-chips .metric-label { display: none; }
+
+    /* Sticky tracking filters on mobile/desktop */
+    .tracking-filters.sticky {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #ffffff;
+        padding-top: 8px;
+        border-radius: 8px;
+    }
+
+    /* Timeline collapsed - show latest only by default */
+    .tracking-timeline-content.collapsed .timeline-item:not(:last-child) {
+        display: none;
+    }
+    .timeline-toggle-btn.small {
+        font-size: 0.85rem;
+        color: #555;
+    }
+
+    /* Bottom sheet modal variant */
+    .modal.bottom-sheet {
+        align-items: flex-end;
+    }
+    .modal.bottom-sheet .modal-content {
+        width: 100%;
+        max-width: none;
+        border-radius: 12px 12px 0 0;
+        transform: translateY(100%);
+        animation: sheetUp 0.25s ease-out forwards;
+    }
+    @keyframes sheetUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    .modal.bottom-sheet .sheet-handle {
+        width: 40px;
+        height: 5px;
+        background: #ddd;
+        border-radius: 999px;
+        margin: 0 auto 12px auto;
     }
     
     .tracking-post-actions {

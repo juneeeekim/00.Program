@@ -941,13 +941,14 @@ class DualTextWriter {
             return dateA - dateB;
         });
 
+        const totalCount = sortedMetrics.length;
         return `
             <div class="tracking-timeline-container">
                 <div class="tracking-timeline-header">
                     <span class="timeline-title">📊 트래킹 기록</span>
-                    <button class="timeline-toggle-btn" onclick="dualTextWriter.toggleTimeline(this)" aria-label="타임라인 접기/펼치기">▼</button>
+                    <button class="timeline-toggle-btn small" onclick="dualTextWriter.toggleTimelineCollapse(this)" aria-label="기록 더보기/접기">기록 ${totalCount}개 더보기</button>
                 </div>
-                <div class="tracking-timeline-content">
+                <div class="tracking-timeline-content collapsed">
                     ${sortedMetrics.map((metric, sortedIdx) => {
                         const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
                                     (metric.timestamp instanceof Date ? metric.timestamp : new Date());
@@ -996,18 +997,17 @@ class DualTextWriter {
         return `${year}년 ${month}월 ${day}일`;
     }
 
-    // 타임라인 접기/펼치기
-    toggleTimeline(button) {
+    // 타임라인 더보기/접기 (최신 1개 기본)
+    toggleTimelineCollapse(button) {
         const container = button.closest('.tracking-timeline-container');
         const content = container.querySelector('.tracking-timeline-content');
-        const isExpanded = content.style.display !== 'none';
-        
-        if (isExpanded) {
-            content.style.display = 'none';
-            button.textContent = '▶';
+        if (!content) return;
+        const collapsed = content.classList.toggle('collapsed');
+        const total = content.querySelectorAll('.timeline-item').length;
+        if (collapsed) {
+            button.textContent = `기록 ${total}개 더보기`;
         } else {
-            content.style.display = 'block';
-            button.textContent = '▼';
+            button.textContent = '접기';
         }
     }
 
@@ -3416,6 +3416,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 });
+// Bottom sheet helpers
+DualTextWriter.prototype.openBottomSheet = function(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const content = modalElement.querySelector('.modal-content');
+    // backdrop click
+    modalElement._backdropHandler = (e) => {
+        if (e.target === modalElement) this.closeBottomSheet(modalElement);
+    };
+    modalElement.addEventListener('click', modalElement._backdropHandler);
+    // ESC close
+    modalElement._escHandler = (e) => { if (e.key === 'Escape') this.closeBottomSheet(modalElement); };
+    document.addEventListener('keydown', modalElement._escHandler);
+    // drag to close from handle or top area
+    let startY = null; let currentY = 0; let dragging = false;
+    const threshold = 100;
+    const handle = content.querySelector('.sheet-handle') || content;
+    const onStart = (y) => { dragging = true; startY = y; content.style.transition = 'none'; };
+    const onMove = (y) => {
+        if (!dragging) return; currentY = Math.max(0, y - startY); content.style.transform = `translateY(${currentY}px)`;
+    };
+    const onEnd = () => {
+        if (!dragging) return; content.style.transition = '';
+        if (currentY > threshold) { this.closeBottomSheet(modalElement); }
+        else { content.style.transform = 'translateY(0)'; }
+        dragging = false; startY = null; currentY = 0;
+    };
+    modalElement._touchStart = (e) => onStart(e.touches ? e.touches[0].clientY : e.clientY);
+    modalElement._touchMove = (e) => onMove(e.touches ? e.touches[0].clientY : e.clientY);
+    modalElement._touchEnd = () => onEnd();
+    handle.addEventListener('touchstart', modalElement._touchStart);
+    handle.addEventListener('touchmove', modalElement._touchMove);
+    handle.addEventListener('touchend', modalElement._touchEnd);
+    handle.addEventListener('mousedown', modalElement._touchStart);
+    window.addEventListener('mousemove', modalElement._touchMove);
+    window.addEventListener('mouseup', modalElement._touchEnd);
+};
+
+DualTextWriter.prototype.closeBottomSheet = function(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.display = 'none';
+    document.body.style.overflow = '';
+    // cleanup listeners
+    if (modalElement._backdropHandler) modalElement.removeEventListener('click', modalElement._backdropHandler);
+    if (modalElement._escHandler) document.removeEventListener('keydown', modalElement._escHandler);
+    const content = modalElement.querySelector('.modal-content');
+    const handle = content ? (content.querySelector('.sheet-handle') || content) : null;
+    if (handle) {
+        if (modalElement._touchStart) handle.removeEventListener('touchstart', modalElement._touchStart);
+        if (modalElement._touchMove) handle.removeEventListener('touchmove', modalElement._touchMove);
+        if (modalElement._touchEnd) handle.removeEventListener('touchend', modalElement._touchEnd);
+        if (modalElement._touchStart) handle.removeEventListener('mousedown', modalElement._touchStart);
+        window.removeEventListener('mousemove', modalElement._touchMove || (()=>{}));
+        window.removeEventListener('mouseup', modalElement._touchEnd || (()=>{}));
+    }
+};
 
 // 페이지 언로드 시 정리 작업
 window.addEventListener('beforeunload', () => {
@@ -3894,7 +3951,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                 </div>
                 
                 ${latestMetrics ? `
-                    <div class="tracking-post-metrics" onclick="dualTextWriter.showPostInChart('${post.id}')" title="그래프에서 보기">
+                    <div class="tracking-post-metrics metrics-chips" onclick="dualTextWriter.showPostInChart('${post.id}')" title="그래프에서 보기">
                         <div class="metric-item">
                             <div class="metric-icon">👀</div>
                             <div class="metric-value">${latestMetrics.views || 0}</div>
@@ -4016,7 +4073,7 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
 DualTextWriter.prototype.openTrackingModal = function(textId = null) {
     const modal = document.getElementById('tracking-modal');
     if (modal) {
-        modal.style.display = 'flex';
+        this.openBottomSheet(modal);
         // 폼 초기화
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('tracking-date').value = today;
@@ -4286,7 +4343,7 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
 DualTextWriter.prototype.closeTrackingModal = function() {
     const modal = document.getElementById('tracking-modal');
     if (modal) {
-        modal.style.display = 'none';
+        this.closeBottomSheet(modal);
     }
     this.currentTrackingPost = null;
     this.currentTrackingTextId = null;
@@ -4363,7 +4420,7 @@ DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndex
     // 수정 모달 열기
     const editModal = document.getElementById('tracking-edit-modal');
     if (editModal) {
-        editModal.style.display = 'flex';
+        this.openBottomSheet(editModal);
     }
 };
 
@@ -4460,7 +4517,7 @@ DualTextWriter.prototype.updateTrackingDataItem = async function() {
         // 모달 닫기
         const editModal = document.getElementById('tracking-edit-modal');
         if (editModal) {
-            editModal.style.display = 'none';
+            this.closeBottomSheet(editModal);
         }
         
         this.editingMetricData = null;
