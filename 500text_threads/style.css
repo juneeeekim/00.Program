@@ -2574,6 +2574,14 @@
         gap: 20px;
         margin-bottom: 30px;
     }
+
+    /* Mobile: show two columns to avoid long single column list */
+    @media (max-width: 768px) {
+        .tracking-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+    }
     
     .summary-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -2603,12 +2611,16 @@
         align-items: center;
         gap: 8px;
         min-width: 0;
+        justify-content: space-between; /* keep label and value on one line */
     }
     
     .summary-label {
         font-size: 0.9rem;
         opacity: 0.9;
         margin: 0; /* inline */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .summary-value {
@@ -2645,6 +2657,15 @@
         .summary-content { gap: 6px; }
         .summary-label { font-size: 0.85rem; }
         .summary-value { font-size: 1.4rem; }
+    }
+
+    /* Prevent wrapping inside chart controls and tracking filters buttons */
+    .tracking-chart-container .chart-controls button,
+    .tracking-filters button,
+    .chart-mode-toggle button,
+    .chart-range-toggle button,
+    .chart-scale-toggle button {
+        white-space: nowrap;
     }
     
     .tracking-chart-container {
