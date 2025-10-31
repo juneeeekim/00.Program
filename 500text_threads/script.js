@@ -850,7 +850,7 @@ class DualTextWriter {
                 </div>
                 <div class="saved-item-meta">${metaText}</div>
                 <div class="saved-item-content ${expanded ? 'expanded' : ''}">${this.escapeHtml(item.content)}</div>
-                <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}">${expanded ? '접기' : '더보기'}</button>
+                <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}">${expanded ? '접기' : '더보기'}</button>
                 ${timelineHtml ? `<div class="saved-item-tracking">${timelineHtml}</div>` : ''}
                 <div class="saved-item-actions">
                     <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
@@ -1046,6 +1046,7 @@ class DualTextWriter {
                 if (contentEl) {
                     const nowExpanded = contentEl.classList.toggle('expanded');
                     button.textContent = nowExpanded ? '접기' : '더보기';
+                    button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
                     try {
                         localStorage.setItem(`savedItemExpanded:${itemId}`, nowExpanded ? '1' : '0');
                     } catch (e) { /* ignore quota */ }
@@ -3939,7 +3940,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                 <div class="tracking-post-header">
                 <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap; gap:8px;">
                         <button class="fav-toggle" title="즐겨찾기" onclick="dualTextWriter.toggleFavorite('${post.id}')" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem;">${isFav ? '⭐' : '☆'}</button>
-                        ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
+                        <span class="card-title line-clamp-2">${this.escapeHtml(post.content.substring(0, 50))}${post.content.length > 50 ? '...' : ''}</span>
                         ${orphanBadge}
                     </div>
                     <div class="tracking-post-status-group">

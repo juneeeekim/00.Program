@@ -1360,6 +1360,42 @@
 }
 .saved-item-toggle:hover { background: rgba(102,126,234,0.08); }
     
+/* Text clamp utilities */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.clamp-gradient {
+    position: relative;
+}
+
+.clamp-gradient::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, white);
+}
+
+.is-expanded {
+    display: block;
+    -webkit-line-clamp: initial;
+    line-clamp: initial;
+    overflow: visible;
+}
+
+.is-expanded.clamp-gradient::after { display: none; }
+
+/* Card title: always clamp to 2 lines */
+.card-title {
+    overflow-wrap: anywhere;
+}
     .saved-item-actions {
     display: flex;
     gap: 12px;
