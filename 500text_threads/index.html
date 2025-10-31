@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>500자 미만 글 작성기</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -293,6 +297,10 @@
                             </div>
                     </div>
                     <div class="tracking-chart-container">
+                        <div class="chart-header" id="chart-header" style="margin-bottom: 16px; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div class="chart-header-title" style="font-weight: 600; color: #333; font-size: 0.95rem; margin-bottom: 4px;" id="chart-post-title">전체 포스트 누적 총합 추이</div>
+                            <div class="chart-header-update" style="font-size: 0.85rem; color: #666;" id="chart-last-update">최근 업데이트: -</div>
+                        </div>
                         <div class="chart-controls" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                             <div class="chart-mode-toggle" style="display: flex; gap: 10px; align-items: center;">
                                 <span style="font-weight: 600; color: #333; font-size: 0.95rem;">그래프 모드:</span>
@@ -306,11 +314,10 @@
                                 </div>
                             </div>
                             <div class="chart-range-toggle" style="display: flex; gap: 8px; align-items: center;">
-                                <span style="font-weight: 600; color: #333; font-size: 0.95rem;">범위:</span>
-                                <div class="range-toggle-buttons" style="display: flex; background: #f1f3f5; border-radius: 8px; padding: 4px;">
-                                    <button id="chart-range-7d" class="range-toggle-btn active" onclick="dualTextWriter.setChartRange('7d')" style="padding: 6px 12px; border: none; background: white; border-radius: 6px; font-weight: 600; cursor: pointer; color: #667eea;">7일</button>
-                                    <button id="chart-range-30d" class="range-toggle-btn" onclick="dualTextWriter.setChartRange('30d')" style="padding: 6px 12px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666;">30일</button>
-                                    <button id="chart-range-all" class="range-toggle-btn" onclick="dualTextWriter.setChartRange('all')" style="padding: 6px 12px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666;">전체</button>
+                                <div class="range-toggle-buttons" style="display: flex; background: #f1f3f5; border-radius: 8px; padding: 4px; gap: 4px;">
+                                    <button id="chart-range-7d" class="range-toggle-btn active" onclick="dualTextWriter.setChartRange('7d')" title="7일" aria-label="7일 범위" style="padding: 8px 10px; border: none; background: white; border-radius: 6px; font-weight: 600; cursor: pointer; color: #667eea; font-size: 1rem; min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center;">📅</button>
+                                    <button id="chart-range-30d" class="range-toggle-btn" onclick="dualTextWriter.setChartRange('30d')" title="30일" aria-label="30일 범위" style="padding: 8px 10px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666; font-size: 1rem; min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center;">📊</button>
+                                    <button id="chart-range-all" class="range-toggle-btn" onclick="dualTextWriter.setChartRange('all')" title="전체" aria-label="전체 범위" style="padding: 8px 10px; border: none; background: transparent; border-radius: 6px; font-weight: 600; cursor: pointer; color: #666; font-size: 1rem; min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center;">📈</button>
                                 </div>
                             </div>
                             <div class="chart-scale-toggle" style="display: flex; gap: 8px; align-items: center;">
@@ -339,6 +346,14 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="chart-legend-tabs" style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                            <span style="font-weight: 600; color: #333; font-size: 0.9rem; margin-right: 4px;">범례:</span>
+                            <button class="legend-tab" data-dataset="0" data-axis="y" style="padding: 8px 12px; border: 2px solid #667eea; background: #e3f2fd; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #1976d2; min-height: 44px; min-width: 44px;" onclick="dualTextWriter.toggleLegend(this, 0)">👀 조회수</button>
+                            <button class="legend-tab" data-dataset="1" data-axis="y2" style="padding: 8px 12px; border: 2px solid #e74c3c; background: #ffebee; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #c62828; min-height: 44px; min-width: 44px;" onclick="dualTextWriter.toggleLegend(this, 1)">❤️ 좋아요</button>
+                            <button class="legend-tab" data-dataset="2" data-axis="y2" style="padding: 8px 12px; border: 2px solid #9b59b6; background: #f3e5f5; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #7b1fa2; min-height: 44px; min-width: 44px;" onclick="dualTextWriter.toggleLegend(this, 2)">💬 댓글</button>
+                            <button class="legend-tab" data-dataset="3" data-axis="y2" style="padding: 8px 12px; border: 2px solid #f39c12; background: #fff3e0; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #e65100; min-height: 44px; min-width: 44px;" onclick="dualTextWriter.toggleLegend(this, 3)">🔄 공유</button>
+                            <button class="legend-tab" data-dataset="4" data-axis="y2" style="padding: 8px 12px; border: 2px solid #16a085; background: #e0f2f1; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #00695c; min-height: 44px; min-width: 44px;" onclick="dualTextWriter.toggleLegend(this, 4)">👥 팔로우</button>
                         </div>
                         <canvas id="tracking-chart" width="400" height="200"></canvas>
                     </div>
@@ -472,28 +487,52 @@
             <div class="tracking-form">
                 <div class="form-group">
                     <label for="tracking-date">📅 날짜</label>
-                    <input type="date" id="tracking-date" required>
-                    <small style="color: #666; font-size: 0.85rem; margin-top: 4px; display: block;">기록할 날짜를 선택하세요 (기본값: 오늘)</small>
+                    <div class="date-selector-tabs">
+                        <button type="button" class="date-tab active" data-date="today">오늘</button>
+                        <button type="button" class="date-tab" data-date="yesterday">어제</button>
+                        <button type="button" class="date-tab" data-date="custom">직접입력</button>
+                    </div>
+                    <input type="date" id="tracking-date" required style="margin-top: 8px; display: none;">
                 </div>
                 <div class="form-group">
                     <label for="tracking-views">👀 조회수</label>
-                    <input type="number" id="tracking-views" min="0" placeholder="조회수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-views" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-views" min="0" placeholder="조회수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-views" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-likes">❤️ 좋아요</label>
-                    <input type="number" id="tracking-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-likes" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-likes" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-comments">💬 댓글</label>
-                    <input type="number" id="tracking-comments" min="0" placeholder="댓글 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-comments" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-comments" min="0" placeholder="댓글 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-comments" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-shares">🔄 공유</label>
-                    <input type="number" id="tracking-shares" min="0" placeholder="공유 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-shares" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-shares" min="0" placeholder="공유 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-shares" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-follows">👥 팔로우</label>
-                    <input type="number" id="tracking-follows" min="0" placeholder="팔로우 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-follows" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-follows" min="0" placeholder="팔로우 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-follows" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-notes">📝 메모</label>
@@ -515,27 +554,52 @@
             <div class="tracking-form">
                 <div class="form-group">
                     <label for="tracking-edit-date">📅 날짜</label>
-                    <input type="date" id="tracking-edit-date" required>
+                    <div class="date-selector-tabs">
+                        <button type="button" class="date-tab" data-date="today">오늘</button>
+                        <button type="button" class="date-tab" data-date="yesterday">어제</button>
+                        <button type="button" class="date-tab active" data-date="custom">직접입력</button>
+                    </div>
+                    <input type="date" id="tracking-edit-date" required style="margin-top: 8px;">
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-views">👀 조회수</label>
-                    <input type="number" id="tracking-edit-views" min="0" placeholder="조회수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-views" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-edit-views" min="0" placeholder="조회수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-views" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-likes">❤️ 좋아요</label>
-                    <input type="number" id="tracking-edit-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-likes" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-edit-likes" min="0" placeholder="좋아요 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-likes" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-comments">💬 댓글</label>
-                    <input type="number" id="tracking-edit-comments" min="0" placeholder="댓글 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-comments" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-edit-comments" min="0" placeholder="댓글 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-comments" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-shares">🔄 공유</label>
-                    <input type="number" id="tracking-edit-shares" min="0" placeholder="공유 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-shares" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-edit-shares" min="0" placeholder="공유 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-shares" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-follows">👥 팔로우</label>
-                    <input type="number" id="tracking-edit-follows" min="0" placeholder="팔로우 수를 입력하세요">
+                    <div class="number-input-group">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-follows" data-action="decrease" aria-label="감소">-</button>
+                        <input type="number" id="tracking-edit-follows" min="0" placeholder="팔로우 수를 입력하세요">
+                        <button type="button" class="number-stepper" data-target="tracking-edit-follows" data-action="increase" aria-label="증가">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="tracking-edit-notes">📝 메모</label>

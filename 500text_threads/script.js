@@ -318,11 +318,15 @@ class DualTextWriter {
                 this.trackingSearchInput.addEventListener('input', (e) => {
                     const val = e.target.value;
                     clearTimeout(this.trackingSearchDebounce);
+                    // debounce로 성능 최적화 및 sticky 필터바 충돌 방지
                     this.trackingSearchDebounce = setTimeout(() => {
                         this.trackingSearch = val;
                         localStorage.setItem('dtw_tracking_search', this.trackingSearch);
-                        this.renderTrackingPosts();
-                    }, 200);
+                        // requestAnimationFrame으로 렌더링하여 sticky 레이아웃 충돌 방지
+                        requestAnimationFrame(() => {
+                            this.renderTrackingPosts();
+                        });
+                    }, 300);
                 });
             }
             if (this.trackingUpdatedFromInput) {
@@ -801,9 +805,28 @@ class DualTextWriter {
             const emptyMsg = this.savedFilter === 'all'
                 ? '저장된 글이 없습니다.'
                 : (this.savedFilter === 'edit' ? '작성 글이 없습니다.' : '레퍼런스 글이 없습니다.');
-            this.savedList.innerHTML = `<p style="color: #666; text-align: center; padding: 20px;">${emptyMsg}</p>`;
+            this.savedList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">${emptyMsg}</div>
+                    <div class="empty-state-subtext">글을 작성하고 저장해보세요!</div>
+                </div>
+            `;
             return;
         }
+        
+        // 로딩 스켈레톤 표시 (데이터 조회 중)
+        this.savedList.innerHTML = `
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-card-content"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+            </div>
+        `;
 
         // 각 저장된 글에 대한 트래킹 데이터 조회 (비동기)
         const itemsWithTracking = await Promise.all(list.map(async (item, index) => {
@@ -837,38 +860,89 @@ class DualTextWriter {
             return { item, postData, index };
         }));
 
-        this.savedList.innerHTML = itemsWithTracking.map(({ item, postData, index }) => {
-            const metaText = `${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'} · ${item.date} · ${item.characterCount}자`;
-            const expanded = (localStorage.getItem(`savedItemExpanded:${item.id}`) === '1');
-            // 타임라인 HTML 생성
-            const timelineHtml = this.renderTrackingTimeline(postData?.metrics || []);
+        // 성능 최적화: 많은 카드 렌더링 시 배치 처리
+        const batchSize = 10;
+        const totalItems = itemsWithTracking.length;
+        
+        if (totalItems > batchSize) {
+            // 대량 렌더링: 첫 번째 배치만 즉시 렌더링, 나머지는 requestAnimationFrame으로 처리
+            const firstBatch = itemsWithTracking.slice(0, batchSize);
+            this.savedList.innerHTML = firstBatch.map(({ item, postData, index }) => {
+                return this.renderSavedItemCard(item, postData, index);
+            }).join('');
             
-            return `
-            <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
-                <div class="saved-item-header">
-                    <span class="saved-item-type">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
-                </div>
-                <div class="saved-item-meta">${metaText}</div>
-                <div class="saved-item-content ${expanded ? 'expanded' : ''}">${this.escapeHtml(item.content)}</div>
-                <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}">${expanded ? '접기' : '더보기'}</button>
-                ${timelineHtml ? `<div class="saved-item-tracking">${timelineHtml}</div>` : ''}
-                <div class="saved-item-actions">
-                    <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
-                    <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
-                    <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${item.id}">📊 데이터 입력</button>
+            // 나머지 배치를 점진적으로 렌더링
+            let currentIndex = batchSize;
+            const renderNextBatch = () => {
+                if (currentIndex >= totalItems) return;
+                
+                const batch = itemsWithTracking.slice(currentIndex, currentIndex + batchSize);
+                const batchHtml = batch.map(({ item, postData, index }) => {
+                    return this.renderSavedItemCard(item, postData, index);
+                }).join('');
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = batchHtml;
+                while (tempDiv.firstChild) {
+                    this.savedList.appendChild(tempDiv.firstChild);
+                }
+                
+                currentIndex += batchSize;
+                if (currentIndex < totalItems) {
+                    requestAnimationFrame(renderNextBatch);
+                } else {
+                    // DOM 렌더링 완료 후 이벤트 리스너 설정
+                    setTimeout(() => {
+                        this.setupSavedItemEventListeners();
+                    }, 100);
+                }
+            };
+            
+            requestAnimationFrame(renderNextBatch);
+        } else {
+            // 소량 렌더링: 즉시 렌더링
+            this.savedList.innerHTML = itemsWithTracking.map(({ item, postData, index }) => {
+                return this.renderSavedItemCard(item, postData, index);
+            }).join('');
+        }
+        
+        // DOM 렌더링 완료 후 이벤트 리스너 설정 (즉시 렌더링된 경우)
+        if (totalItems <= batchSize) {
+            setTimeout(() => {
+                this.setupSavedItemEventListeners();
+            }, 100);
+        }
+    }
+    
+    // 저장된 항목 카드 렌더링 함수 (재사용 가능하게 분리)
+    renderSavedItemCard(item, postData, index) {
+        const metaText = `${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'} · ${item.date} · ${item.characterCount}자`;
+        // 통일된 스키마: card:{itemId}:expanded
+        const expanded = (localStorage.getItem(`card:${item.id}:expanded`) === '1');
+        // 타임라인 HTML 생성
+        const timelineHtml = this.renderTrackingTimeline(postData?.metrics || [], item.id);
+        
+        return `
+        <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
+            <div class="saved-item-header" id="item-header-${item.id}">
+                <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+            </div>
+            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
+            <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
+            <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>
+            ${timelineHtml ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>` : ''}
+            <div class="saved-item-actions actions--primary" role="group" aria-label="카드 작업 버튼">
+                <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글 편집' : '작성 글 편집'}">편집</button>
+                <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${item.id}" aria-label="트래킹 데이터 입력">📊 데이터 입력</button>
+                <div class="more-menu actions--more">
+                    <button class="more-menu-btn" data-action="more" data-item-id="${item.id}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
+                    <div class="more-menu-list" role="menu" aria-label="기타 작업">
+                        <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${item.id}" aria-label="글 삭제">삭제</button>
+                    </div>
                 </div>
             </div>
+        </div>
         `;
-        }).join('');
-
-        // DOM 렌더링 완료 후 이벤트 리스너 설정
-        setTimeout(() => {
-            this.setupSavedItemEventListeners();
-            this.bindDirectEventListeners(); // 직접 이벤트 바인딩도 추가
-        }, 100);
-        
-        // 미트래킹 글 개수 확인 및 버튼 조건부 표시
-        this.updateBatchMigrationButton();
     }
     
     // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
@@ -944,18 +1018,27 @@ class DualTextWriter {
         });
 
         const totalCount = sortedMetrics.length;
+        
+        // localStorage에서 접기/펼치기 상태 복원 (per-post)
+        // saved-item의 data-item-id를 사용하여 키 생성
+        // 이 함수는 saved-item 내부에서 호출되므로, 클로저나 파라미터로 itemId 전달 필요
+        const savedItemId = arguments[1] || null; // 두 번째 파라미터로 itemId 전달
+        // 통일된 스키마: card:{itemId}:details (타임라인 접기/펼치기)
+        const isExpanded = savedItemId ? (localStorage.getItem(`card:${savedItemId}:details`) === '1') : false;
+        const collapsedClass = isExpanded ? '' : 'collapsed';
+        const buttonText = isExpanded ? '접기' : `기록 ${totalCount}개 더보기`;
+        
         return `
             <div class="tracking-timeline-container">
                 <div class="tracking-timeline-header">
                     <span class="timeline-title">📊 트래킹 기록</span>
-                    <button class="timeline-toggle-btn small" onclick="dualTextWriter.toggleTimelineCollapse(this)" aria-label="기록 더보기/접기">기록 ${totalCount}개 더보기</button>
+                    <button class="timeline-toggle-btn small" onclick="dualTextWriter.toggleTimelineCollapse(this)" aria-label="기록 더보기/접기" aria-expanded="${isExpanded ? 'true' : 'false'}">${buttonText}</button>
                 </div>
-                <div class="tracking-timeline-content collapsed">
+                <div class="tracking-timeline-content ${collapsedClass}">
                     ${sortedMetrics.map((metric, sortedIdx) => {
                         const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
                                     (metric.timestamp instanceof Date ? metric.timestamp : new Date());
                         const dateStr = this.formatDateForDisplay(date);
-                        // 원본 metrics 배열에서의 인덱스 찾기
                         const originalIndex = metrics.findIndex(m => {
                             const mDate = m.timestamp?.toDate ? m.timestamp.toDate().getTime() : 
                                          (m.timestamp instanceof Date ? m.timestamp.getTime() : 0);
@@ -965,20 +1048,14 @@ class DualTextWriter {
                         });
                         const metricIndex = originalIndex >= 0 ? originalIndex : sortedIdx;
                         return `
-                            <div class="timeline-item" data-metric-index="${metricIndex}">
-                                <div class="timeline-item-header">
-                                    <span class="timeline-date">📅 ${dateStr}</span>
-                                    <div class="timeline-item-actions">
-                                        <button class="timeline-edit-btn" onclick="dualTextWriter.editTrackingMetric(this, '${metricIndex}')" aria-label="수정">✏️</button>
-                                    </div>
-                                </div>
+                            <div class="timeline-item" data-metric-index="${metricIndex}" role="button" aria-label="기록 편집">
+                                <span class="timeline-date">📅 ${dateStr}</span>
                                 <div class="timeline-item-data">
-                                    <span class="metric-badge views">👀 조회수: ${metric.views || 0}</span>
-                                    <span class="metric-badge likes">❤️ 좋아요: ${metric.likes || 0}</span>
-                                    <span class="metric-badge comments">💬 댓글: ${metric.comments || 0}</span>
-                    <span class="metric-badge shares">🔄 공유: ${metric.shares || 0}</span>
-                    <span class="metric-badge follows">👥 팔로우: ${metric.follows || 0}</span>
-                                    ${metric.notes ? `<div class="timeline-notes">📝 ${this.escapeHtml(metric.notes)}</div>` : ''}
+                                    <span class="metric-badge views">👀 ${metric.views || 0}</span>
+                                    <span class="metric-badge likes">❤️ ${metric.likes || 0}</span>
+                                    <span class="metric-badge comments">💬 ${metric.comments || 0}</span>
+                                    <span class="metric-badge shares">🔄 ${metric.shares || 0}</span>
+                                    <span class="metric-badge follows">👥 ${metric.follows || 0}</span>
                                 </div>
                             </div>
                         `;
@@ -1004,8 +1081,24 @@ class DualTextWriter {
         const container = button.closest('.tracking-timeline-container');
         const content = container.querySelector('.tracking-timeline-content');
         if (!content) return;
+        
+        // 저장된 글 아이템 ID 확인 (per-post 키 생성용)
+        const savedItem = button.closest('.saved-item');
+        const itemId = savedItem ? savedItem.getAttribute('data-item-id') : null;
+        
         const collapsed = content.classList.toggle('collapsed');
         const total = content.querySelectorAll('.timeline-item').length;
+        
+        // 상태 localStorage에 저장 (per-post)
+        if (itemId) {
+            try {
+                // 통일된 스키마: card:{itemId}:details
+                const key = `card:${itemId}:details`;
+                localStorage.setItem(key, collapsed ? '0' : '1');
+            } catch (e) { /* ignore quota */ }
+        }
+        
+        button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         if (collapsed) {
             button.textContent = `기록 ${total}개 더보기`;
         } else {
@@ -1027,7 +1120,15 @@ class DualTextWriter {
             console.log('저장된 글 영역 클릭:', event.target);
             const button = event.target.closest('button');
             if (!button) {
-                console.log('버튼이 아님');
+                // 버튼이 아니면 타임라인 행 탭 처리
+                const row = event.target.closest('.timeline-item');
+                if (row) {
+                    const metricIndex = row.getAttribute('data-metric-index');
+                    if (metricIndex != null) {
+                        this.editTrackingMetric(row.querySelector('.timeline-edit-btn') || row, metricIndex);
+                        return;
+                    }
+                }
                 return;
             }
 
@@ -1041,14 +1142,30 @@ class DualTextWriter {
                 return;
             }
 
-            if (action === 'toggle') {
+            if (action === 'more') {
+                const menu = button.nextElementSibling;
+                if (menu && menu.classList.contains('more-menu-list')) {
+                    const isOpen = menu.classList.toggle('open');
+                    button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    
+                    // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+                    if (isOpen) {
+                        const firstMenuItem = menu.querySelector('.more-menu-item');
+                        if (firstMenuItem) {
+                            setTimeout(() => firstMenuItem.focus(), 50);
+                        }
+                    }
+                }
+                return;
+            } else if (action === 'toggle') {
                 const contentEl = button.closest('.saved-item').querySelector('.saved-item-content');
                 if (contentEl) {
                     const nowExpanded = contentEl.classList.toggle('expanded');
                     button.textContent = nowExpanded ? '접기' : '더보기';
                     button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
                     try {
-                        localStorage.setItem(`savedItemExpanded:${itemId}`, nowExpanded ? '1' : '0');
+                        // 통일된 스키마: card:{itemId}:expanded
+                        localStorage.setItem(`card:${itemId}:expanded`, nowExpanded ? '1' : '0');
                     } catch (e) { /* ignore quota */ }
                 }
             } else if (action === 'edit') {
@@ -1080,6 +1197,100 @@ class DualTextWriter {
 
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
+
+        // 타임라인 제스처(롱프레스 삭제, 스와이프 좌/우)
+        if (!this._timelineGestureBound) {
+            this._timelineGestureBound = true;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartTime = 0;
+            let longPressTimer = null;
+            const LONG_PRESS_MS = 550;
+            const SWIPE_THRESHOLD = 60;
+
+            this.savedList.addEventListener('touchstart', (e) => {
+                const row = e.target.closest('.timeline-item');
+                if (!row) return;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                const metricIndex = row.getAttribute('data-metric-index');
+                if (metricIndex == null) return;
+                longPressTimer = setTimeout(() => {
+                    // 롱프레스 → 삭제 확인
+                    this.editingMetricData = this.editingMetricData || { metricIndex: Number(metricIndex) };
+                    // editTrackingMetric은 모달 기반이므로 직접 삭제 호출 준비를 위해 context 보장 필요
+                    // 간단히 삭제 확인 후 진행
+                    if (confirm('이 기록을 삭제할까요?')) {
+                        // edit modal 컨텍스트 없이도 삭제 수행을 위해 임시 컨텍스트 구성
+                        const parentSaved = row.closest('.saved-item');
+                        const itemId = parentSaved ? parentSaved.getAttribute('data-item-id') : null;
+                        // textId 기반으로 editingMetricData 셋업
+                        this.editingMetricData = { postId: null, textId: itemId, metricIndex: Number(metricIndex) };
+                        this.deleteTrackingDataItem();
+                    }
+                }, LONG_PRESS_MS);
+            }, { passive: true });
+
+            this.savedList.addEventListener('touchmove', (e) => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            }, { passive: true });
+
+            this.savedList.addEventListener('touchend', (e) => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                const row = e.target.closest('.timeline-item');
+                if (!row) return;
+                const dx = (e.changedTouches && e.changedTouches[0].clientX || 0) - touchStartX;
+                const dy = (e.changedTouches && e.changedTouches[0].clientY || 0) - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD) {
+                    const metricIndex = row.getAttribute('data-metric-index');
+                    if (metricIndex == null) return;
+                    if (dx < 0) {
+                        // 좌스와이프 → 편집
+                        this.editTrackingMetric(row, metricIndex);
+                    } else {
+                        // 우스와이프 → 삭제 확인
+                        const parentSaved = row.closest('.saved-item');
+                        const itemId = parentSaved ? parentSaved.getAttribute('data-item-id') : null;
+                        this.editingMetricData = { postId: null, textId: itemId, metricIndex: Number(metricIndex) };
+                        if (confirm('이 기록을 삭제할까요?')) {
+                            this.deleteTrackingDataItem();
+                        }
+                    }
+                }
+            }, { passive: true });
+        }
+
+        // 바깥 클릭 시 모든 more 메뉴 닫기
+        document.addEventListener('click', (e) => {
+            const isInsideMenu = e.target.closest('.more-menu');
+            if (!isInsideMenu) {
+                document.querySelectorAll('.more-menu-list.open').forEach(el => {
+                    el.classList.remove('open');
+                    // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
+                    const menuBtn = el.previousElementSibling;
+                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                        menuBtn.focus();
+                    }
+                });
+                document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+            }
+        }, { capture: true });
+        
+        // ESC 키로 메뉴 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openMenu = document.querySelector('.more-menu-list.open');
+                if (openMenu) {
+                    openMenu.classList.remove('open');
+                    const menuBtn = openMenu.previousElementSibling;
+                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                        menuBtn.setAttribute('aria-expanded', 'false');
+                        menuBtn.focus();
+                    }
+                }
+            }
+        });
         console.log('이벤트 리스너 등록 완료');
     }
 
@@ -1283,48 +1494,104 @@ class DualTextWriter {
                 return;
             }
             
-            console.log('Firestore에서 삭제 시작:', { id, connectedPostsCount: postCount });
+            // 낙관적 업데이트를 위한 백업 데이터
+            const itemBackup = { ...itemToDelete };
+            const connectedPostsBackup = connectedPosts.map(post => ({ ...post }));
             
-            // 연결된 트래킹 포스트 삭제 (캐스케이드 삭제)
-            const deletePromises = connectedPosts.map(post => {
-                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
-                return window.firebaseDeleteDoc(postRef);
-            });
-            
-            // 포스트 삭제와 텍스트 삭제를 병렬로 처리
-            await Promise.all([
-                ...deletePromises,
-                window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id))
-            ]);
-            
-            // 로컬 배열에서도 제거
+            // 낙관적 업데이트: UI 먼저 업데이트
             this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
-            
-            // 로컬 트래킹 포스트 배열에서도 제거
             if (this.trackingPosts) {
                 this.trackingPosts = this.trackingPosts.filter(post => post.sourceTextId !== id);
             }
             
-            // UI 업데이트
+            // UI 즉시 업데이트
             this.renderSavedTexts();
-            
-            // 트래킹 탭이 활성화되어 있으면 트래킹 목록도 새로고침
             const trackingTab = document.getElementById('tracking-tab');
             if (trackingTab && trackingTab.classList.contains('active')) {
-                await this.loadTrackingPosts();
+                this.renderTrackingPosts();
                 this.updateTrackingSummary();
                 this.updateTrackingChart();
             }
             
-            // 성공 메시지
-            let successMessage = '글이 삭제되었습니다.';
-            if (postCount > 0) {
-                successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
-            }
-            this.showMessage(successMessage, 'success');
+            console.log('Firestore에서 삭제 시작:', { id, connectedPostsCount: postCount });
             
-            console.log('삭제 완료', { id, deletedPosts: postCount });
+            try {
+                // 실제 Firestore 삭제
+                const deletePromises = connectedPosts.map(post => {
+                    const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+                    return window.firebaseDeleteDoc(postRef);
+                });
+                
+                // 포스트 삭제와 텍스트 삭제를 병렬로 처리
+                await Promise.all([
+                    ...deletePromises,
+                    window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id))
+                ]);
+                
+                // 성공 메시지 (스낵바 형태 - 되돌리기 포함)
+                let successMessage = '글이 삭제되었습니다.';
+                if (postCount > 0) {
+                    successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
+                }
+                
+                // 되돌리기 액션 정의
+                const undoAction = async () => {
+                    try {
+                        // 백업 데이터 복원
+                        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', itemBackup.id);
+                        await window.firebaseSetDoc(textRef, {
+                            content: itemBackup.content,
+                            type: itemBackup.type || 'edit',
+                            characterCount: itemBackup.characterCount || 0,
+                            createdAt: window.firebaseTimestamp.fromDate(new Date(itemBackup.createdAt || new Date())),
+                            updatedAt: window.firebaseServerTimestamp()
+                        });
+                        
+                        // 연결된 포스트 복원
+                        for (const post of connectedPostsBackup) {
+                            const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+                            await window.firebaseSetDoc(postRef, post);
+                        }
+                        
+                        // UI 새로고침
+                        await this.loadSavedTexts();
+                        await this.loadTrackingPosts();
+                        this.renderSavedTexts();
+                        this.renderTrackingPosts();
+                        this.showMessage('삭제가 되돌려졌습니다.', 'success');
+                    } catch (error) {
+                        console.error('되돌리기 실패:', error);
+                        this.showMessage('되돌리기에 실패했습니다.', 'error');
+                    }
+                };
+                
+                this.showSnackbar(successMessage, 'success', undoAction, 5000);
+                
+                console.log('삭제 완료', { id, deletedPosts: postCount });
 
+            } catch (error) {
+                console.error('텍스트 삭제 실패:', error);
+                
+                // 실패 복구: 백업 데이터로 복원
+                this.savedTexts.push(itemBackup);
+                if (this.trackingPosts) {
+                    connectedPostsBackup.forEach(post => {
+                        if (!this.trackingPosts.find(p => p.id === post.id)) {
+                            this.trackingPosts.push(post);
+                        }
+                    });
+                }
+                
+                // UI 복원
+                this.renderSavedTexts();
+                if (trackingTab && trackingTab.classList.contains('active')) {
+                    this.renderTrackingPosts();
+                    this.updateTrackingSummary();
+                    this.updateTrackingChart();
+                }
+                
+                this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
+            }
         } catch (error) {
             console.error('텍스트 삭제 실패:', error);
             this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
@@ -3459,6 +3726,141 @@ DualTextWriter.prototype.openBottomSheet = function(modalElement) {
     modalElement._touchStart = (e) => onStart(e.touches ? e.touches[0].clientY : e.clientY);
     modalElement._touchMove = (e) => onMove(e.touches ? e.touches[0].clientY : e.clientY);
     modalElement._touchEnd = () => onEnd();
+    
+    // Number stepper handlers
+    content.querySelectorAll('.number-stepper').forEach(stepper => {
+        stepper.onclick = (e) => {
+            e.preventDefault();
+            const targetId = stepper.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const action = stepper.getAttribute('data-action');
+            const current = parseInt(input.value) || 0;
+            const min = parseInt(input.getAttribute('min')) || 0;
+            const max = parseInt(input.getAttribute('max')) || Infinity;
+            
+            let newValue = current;
+            if (action === 'increase') {
+                newValue = Math.min(current + 1, max);
+            } else if (action === 'decrease') {
+                newValue = Math.max(current - 1, min);
+            }
+            
+            // 유효성 검증: min/max 범위 내인지 확인
+            if (newValue >= min && newValue <= max) {
+                input.value = newValue;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // 실시간 유효성 피드백: 범위를 벗어나면 스테퍼 비활성화
+                const increaseBtn = input.parentElement.querySelector('.number-stepper[data-action="increase"]');
+                const decreaseBtn = input.parentElement.querySelector('.number-stepper[data-action="decrease"]');
+                if (increaseBtn) {
+                    increaseBtn.disabled = newValue >= max;
+                    increaseBtn.style.opacity = newValue >= max ? '0.5' : '1';
+                }
+                if (decreaseBtn) {
+                    decreaseBtn.disabled = newValue <= min;
+                    decreaseBtn.style.opacity = newValue <= min ? '0.5' : '1';
+                }
+            }
+        };
+    });
+    
+    // Date tab handlers
+    content.querySelectorAll('.date-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            e.preventDefault();
+            const tabs = tab.closest('.date-selector-tabs');
+            const dateInputId = tabs ? tabs.querySelector('input[type="date"]')?.id : null;
+            if (!dateInputId) return;
+            const dateInput = document.getElementById(dateInputId);
+            if (!dateInput) return;
+            
+            tabs.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            const dateType = tab.getAttribute('data-date');
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (dateType === 'today') {
+                const todayStr = today.toISOString().split('T')[0];
+                dateInput.value = todayStr;
+                dateInput.style.display = 'none';
+                // input 이벤트 트리거하여 폼 검증 업데이트
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (dateType === 'yesterday') {
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                dateInput.value = yesterdayStr;
+                dateInput.style.display = 'none';
+                // input 이벤트 트리거하여 폼 검증 업데이트
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            } else if (dateType === 'custom') {
+                dateInput.style.display = 'block';
+                dateInput.focus();
+                // 사용자 입력을 위해 현재 값을 유지하거나 오늘 날짜로 설정
+                if (!dateInput.value) {
+                    dateInput.value = today.toISOString().split('T')[0];
+                }
+                // input 이벤트 트리거
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+    });
+    
+    // Focus scroll correction: 키패드가 가려지지 않도록 (안드로이드/아이폰 호환)
+    content.querySelectorAll('input, textarea').forEach(field => {
+        const handleFocus = (e) => {
+            // 여러 번 호출 방지
+            if (field._scrollHandled) return;
+            field._scrollHandled = true;
+            
+            setTimeout(() => {
+                const rect = field.getBoundingClientRect();
+                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+                
+                // 플랫폼별 키패드 높이 추정
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                const keyboardHeight = isIOS ? Math.max(300, viewportHeight * 0.35) :
+                                       isAndroid ? Math.max(250, viewportHeight * 0.4) :
+                                       Math.max(250, viewportHeight * 0.4);
+                
+                const fieldBottom = rect.bottom;
+                const visibleArea = viewportHeight - keyboardHeight;
+                
+                if (fieldBottom > visibleArea) {
+                    const scrollOffset = fieldBottom - visibleArea + 30; // 여유 공간 증가
+                    
+                    // 모달 컨텐츠 스크롤
+                    if (content.scrollHeight > content.clientHeight) {
+                        content.scrollTop += scrollOffset;
+                    }
+                    
+                    // 전체 페이지 스크롤 (필요시)
+                    const modalRect = modalElement.getBoundingClientRect();
+                    if (modalRect.bottom > visibleArea) {
+                        // 부드러운 스크롤
+                        field.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center', 
+                            inline: 'nearest' 
+                        });
+                    }
+                }
+                
+                field._scrollHandled = false;
+            }, isIOS ? 500 : 300); // iOS는 키패드 애니메이션이 더 길 수 있음
+        };
+        
+        field.addEventListener('focus', handleFocus, { passive: true });
+        
+        // blur 시 플래그 리셋
+        field.addEventListener('blur', () => {
+            field._scrollHandled = false;
+        }, { passive: true });
+    });
     handle.addEventListener('touchstart', modalElement._touchStart);
     handle.addEventListener('touchmove', modalElement._touchMove);
     handle.addEventListener('touchend', modalElement._touchEnd);
@@ -3469,12 +3871,51 @@ DualTextWriter.prototype.openBottomSheet = function(modalElement) {
 
 DualTextWriter.prototype.closeBottomSheet = function(modalElement) {
     if (!modalElement) return;
+    
+    // 폼 값 초기화 전략: 바텀시트 닫을 때 모든 입력 필드 초기화
+    const content = modalElement.querySelector('.modal-content');
+    if (content) {
+        // 모든 input, textarea, select 초기화
+        const inputs = content.querySelectorAll('input:not([type="hidden"]), textarea, select');
+        inputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                input.checked = false;
+            } else if (input.type === 'date') {
+                input.value = '';
+            } else {
+                input.value = '';
+            }
+        });
+        
+        // 날짜 탭 초기화
+        const dateTabs = content.querySelectorAll('.date-tab');
+        dateTabs.forEach(tab => tab.classList.remove('active'));
+        const todayTab = content.querySelector('.date-tab[data-date="today"]');
+        if (todayTab) todayTab.classList.add('active');
+        
+        // 스테퍼 버튼 상태 초기화
+        const steppers = content.querySelectorAll('.number-stepper');
+        steppers.forEach(stepper => {
+            stepper.disabled = false;
+            stepper.style.opacity = '1';
+        });
+        
+        // 폼 검증 메시지 제거
+        const errorMessages = content.querySelectorAll('.error-message, .validation-error');
+        errorMessages.forEach(msg => msg.remove());
+        
+        // 입력 필드의 에러 상태 제거
+        inputs.forEach(input => {
+            input.classList.remove('error', 'invalid');
+        });
+    }
+    
     modalElement.style.display = 'none';
     document.body.style.overflow = '';
+    
     // cleanup listeners
     if (modalElement._backdropHandler) modalElement.removeEventListener('click', modalElement._backdropHandler);
     if (modalElement._escHandler) document.removeEventListener('keydown', modalElement._escHandler);
-    const content = modalElement.querySelector('.modal-content');
     const handle = content ? (content.querySelector('.sheet-handle') || content) : null;
     if (handle) {
         if (modalElement._touchStart) handle.removeEventListener('touchstart', modalElement._touchStart);
@@ -3484,6 +3925,10 @@ DualTextWriter.prototype.closeBottomSheet = function(modalElement) {
         window.removeEventListener('mousemove', modalElement._touchMove || (()=>{}));
         window.removeEventListener('mouseup', modalElement._touchEnd || (()=>{}));
     }
+    
+    // 모달 상태 초기화
+    this.currentTrackingTextId = null;
+    this.editingMetricData = null;
 };
 
 // 페이지 언로드 시 정리 작업
@@ -3517,6 +3962,28 @@ style.textContent = `
             transform: translateX(100%);
         }
     }
+    
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+    
+    @keyframes slideOutDown {
+        from {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(-50%) translateY(100%);
+        }
+    }
 `;
 document.head.appendChild(style);
 
@@ -3525,6 +3992,24 @@ document.head.appendChild(style);
 // 트래킹 포스트 로드
 DualTextWriter.prototype.loadTrackingPosts = async function() {
     if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    // 로딩 스켈레톤 표시
+    if (this.trackingPostsList) {
+        this.trackingPostsList.innerHTML = `
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-chip"></div>
+                <div class="skeleton skeleton-chip"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-chip"></div>
+            </div>
+        `;
+    }
     
     try {
         const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
@@ -3743,10 +4228,10 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
     
     if (this.trackingPosts.length === 0) {
         this.trackingPostsList.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #666;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">📊</div>
-                <h3>트래킹 중인 포스트가 없습니다</h3>
-                <p>저장된 글에서 트래킹을 시작해보세요!</p>
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-text">트래킹 중인 포스트가 없습니다</div>
+                <div class="empty-state-subtext">저장된 글에서 트래킹을 시작해보세요!</div>
             </div>
         `;
         return;
@@ -3882,6 +4367,51 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             break;
     }
 
+    // 이벤트 위임 설정 (최초 1회만)
+    if (!this._trackingPostsEventBound) {
+        this._trackingPostsEventBound = true;
+        if (this.trackingPostsList) {
+            this.trackingPostsList.addEventListener('click', (e) => {
+                const button = e.target.closest('button[data-action], [data-action][role="button"]');
+                if (!button) return;
+                
+                const action = button.getAttribute('data-action');
+                const postId = button.getAttribute('data-post-id');
+                
+                if (!postId) return;
+                
+                switch(action) {
+                    case 'toggle-favorite':
+                        e.preventDefault();
+                        this.toggleFavorite(postId);
+                        break;
+                    case 'show-chart':
+                        e.preventDefault();
+                        this.showPostInChart(postId);
+                        break;
+                    case 'add-tracking-data':
+                        e.preventDefault();
+                        this.addTrackingData(postId);
+                        break;
+                    case 'start-tracking':
+                        e.preventDefault();
+                        this.startTracking(postId);
+                        break;
+                    case 'stop-tracking':
+                        e.preventDefault();
+                        this.stopTracking(postId);
+                        break;
+                    case 'more-menu':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const trackingEnabled = button.getAttribute('data-tracking-enabled') === 'true';
+                        this.toggleTrackingMoreMenu(button, postId, trackingEnabled);
+                        break;
+                }
+            });
+        }
+    }
+
     this.trackingPostsList.innerHTML = orphanBannerHtml + list.map(post => {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         const hasMetrics = post.metrics.length > 0;
@@ -3939,7 +4469,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             <div class="tracking-post-item ${statusClass} ${orphanClass}" data-post-id="${post.id}" data-is-orphan="${post.isOrphan ? 'true' : 'false'}">
                 <div class="tracking-post-header">
                 <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap; gap:8px;">
-                        <button class="fav-toggle" title="즐겨찾기" onclick="dualTextWriter.toggleFavorite('${post.id}')" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem;">${isFav ? '⭐' : '☆'}</button>
+                        <button class="fav-toggle" data-action="toggle-favorite" data-post-id="${post.id}" title="즐겨찾기" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem; min-height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center;">${isFav ? '⭐' : '☆'}</button>
                         <span class="card-title line-clamp-2">${this.escapeHtml(post.content.substring(0, 50))}${post.content.length > 50 ? '...' : ''}</span>
                         ${orphanBadge}
                     </div>
@@ -3963,7 +4493,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                 </div>
                 
                 ${latestMetrics ? `
-                    <div class="tracking-post-metrics metrics-chips" onclick="dualTextWriter.showPostInChart('${post.id}')" title="그래프에서 보기">
+                    <div class="tracking-post-metrics metrics-chips" data-action="show-chart" data-post-id="${post.id}" title="그래프에서 보기" role="button" tabindex="0" aria-label="그래프에서 보기">
                         <div class="metric-item">
                             <div class="metric-icon">👀</div>
                             <div class="metric-value">${latestMetrics.views || 0}</div>
@@ -3997,16 +4527,58 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                     </div>
                 `}
                 
-                <div class="tracking-post-actions">
+                <div class="tracking-post-actions actions--primary">
                     ${post.trackingEnabled ? 
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.addTrackingData('${post.id}')" aria-label="성과 데이터 추가">데이터 추가</button>` :
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.startTracking('${post.id}')" aria-label="트래킹 시작">트래킹 시작</button>`
+                        `<button class="tracking-btn primary" data-action="add-tracking-data" data-post-id="${post.id}" aria-label="성과 데이터 추가">데이터 추가</button>` :
+                        `<button class="tracking-btn primary" data-action="start-tracking" data-post-id="${post.id}" aria-label="트래킹 시작">트래킹 시작</button>`
                     }
-                    <button class="tracking-btn secondary" onclick="dualTextWriter.stopTracking('${post.id}')" aria-label="트래킹 중지">트래킹 중지</button>
+                    <div class="more-menu actions--more">
+                        <button class="more-menu-btn" data-action="more-menu" data-post-id="${post.id}" data-tracking-enabled="${post.trackingEnabled ? 'true' : 'false'}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업">⋯</button>
+                        <div class="more-menu-list" role="menu">
+                            ${post.trackingEnabled ? 
+                                `<button class="more-menu-item" role="menuitem" data-action="stop-tracking" data-post-id="${post.id}">트래킹 중지</button>` :
+                                ''
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
+};
+
+// 트래킹 카드 ⋯ 메뉴 토글
+DualTextWriter.prototype.toggleTrackingMoreMenu = function(button, postId, trackingEnabled) {
+    const menu = button.nextElementSibling;
+    if (menu && menu.classList.contains('more-menu-list')) {
+        const isOpen = menu.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        
+        // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+        if (isOpen) {
+            const firstMenuItem = menu.querySelector('.more-menu-item');
+            if (firstMenuItem) {
+                setTimeout(() => firstMenuItem.focus(), 50);
+            }
+        }
+    }
+    // 바깥 클릭 시 모든 메뉴 닫기 (이벤트 위임으로 처리)
+    setTimeout(() => {
+        document.addEventListener('click', function closeHandler(e) {
+            if (!e.target.closest('.more-menu')) {
+                document.querySelectorAll('.more-menu-list.open').forEach(el => {
+                    el.classList.remove('open');
+                    // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
+                    const menuBtn = el.previousElementSibling;
+                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                        menuBtn.focus();
+                    }
+                });
+                document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                document.removeEventListener('click', closeHandler);
+            }
+        }, { once: true });
+    }, 0);
 };
 
 // 트래킹 시작
@@ -4088,7 +4660,14 @@ DualTextWriter.prototype.openTrackingModal = function(textId = null) {
         this.openBottomSheet(modal);
         // 폼 초기화
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById('tracking-date').value = today;
+        const dateInput = document.getElementById('tracking-date');
+        dateInput.value = today;
+        // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
+        modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+        const todayTab = modal.querySelector('.date-tab[data-date="today"]');
+        if (todayTab) todayTab.classList.add('active');
+        dateInput.style.display = 'none';
+        
         document.getElementById('tracking-views').value = '';
         document.getElementById('tracking-likes').value = '';
         document.getElementById('tracking-comments').value = '';
@@ -4433,6 +5012,33 @@ DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndex
     const editModal = document.getElementById('tracking-edit-modal');
     if (editModal) {
         this.openBottomSheet(editModal);
+        // 날짜 탭 초기화: 현재 날짜에 따라 탭 설정
+        const editDateInput = document.getElementById('tracking-edit-date');
+        if (editDateInput && metric.timestamp) {
+            const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+            const metricDateStr = metricDate.toISOString().split('T')[0];
+            editDateInput.value = metricDateStr;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            editModal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+            if (metricDateStr === today) {
+                const todayTab = editModal.querySelector('.date-tab[data-date="today"]');
+                if (todayTab) todayTab.classList.add('active');
+                editDateInput.style.display = 'none';
+            } else if (metricDateStr === yesterdayStr) {
+                const yesterdayTab = editModal.querySelector('.date-tab[data-date="yesterday"]');
+                if (yesterdayTab) yesterdayTab.classList.add('active');
+                editDateInput.style.display = 'none';
+            } else {
+                const customTab = editModal.querySelector('.date-tab[data-date="custom"]');
+                if (customTab) customTab.classList.add('active');
+                editDateInput.style.display = 'block';
+            }
+        }
     }
 };
 
@@ -4743,8 +5349,11 @@ DualTextWriter.prototype.initTrackingChart = function() {
             maintainAspectRatio: false,
             plugins: {
                 title: {
-                    display: true,
+                    display: false, // HTML 헤더 사용으로 차트 내부 제목 숨김
                     text: '포스트 성과 추이'
+                },
+                legend: {
+                    display: false // 범례는 탭으로 표시
                 }
             },
             scales: {
@@ -4788,6 +5397,7 @@ DualTextWriter.prototype.initTrackingChart = function() {
 
 // 스케일 모드 설정
 DualTextWriter.prototype.setScaleMode = function(mode) {
+    // 그래프 스케일 모드 변경 시 즉시 반영 및 축 반응형 유지
     this.scaleMode = mode; // 'combined' | 'split'
     const combinedBtn = document.getElementById('chart-scale-combined');
     const splitBtn = document.getElementById('chart-scale-split');
@@ -4812,6 +5422,7 @@ DualTextWriter.prototype.setScaleMode = function(mode) {
 };
 // 차트 모드 설정
 DualTextWriter.prototype.setChartMode = function(mode) {
+    // 그래프 모드 변경 시 즉시 반영
     this.chartMode = mode;
     
     // 버튼 스타일 업데이트
@@ -4863,6 +5474,7 @@ DualTextWriter.prototype.setChartMode = function(mode) {
 
 // 차트 범위 설정
 DualTextWriter.prototype.setChartRange = function(range) {
+    // 그래프 범위 변경 시 즉시 반영 및 축 반응형 유지
     this.chartRange = range; // '7d' | '30d' | 'all'
     // 버튼 스타일 업데이트
     const ranges = ['7d', '30d', 'all'];
@@ -5073,6 +5685,35 @@ DualTextWriter.prototype.updateChartPostSelection = function() {
     // 호환성을 위해 유지
 };
 
+// 그래프 헤더 업데이트
+DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
+    const titleEl = document.getElementById('chart-post-title');
+    const updateEl = document.getElementById('chart-last-update');
+    
+    if (titleEl) {
+        const maxLength = 50;
+        const displayTitle = postTitle && postTitle.length > maxLength 
+            ? postTitle.substring(0, maxLength) + '...' 
+            : postTitle || '전체 포스트 누적 총합 추이';
+        titleEl.textContent = displayTitle;
+    }
+    
+    if (updateEl) {
+        if (lastUpdate) {
+            const formattedDate = lastUpdate.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            updateEl.textContent = `최근 업데이트: ${formattedDate}`;
+        } else {
+            updateEl.textContent = '최근 업데이트: -';
+        }
+    }
+};
+
 // 트래킹 차트 업데이트
 DualTextWriter.prototype.updateTrackingChart = function() {
     if (!this.trackingChart) return;
@@ -5194,6 +5835,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         
         // 차트 제목 업데이트
         this.trackingChart.options.plugins.title.text = '전체 포스트 누적 총합 추이';
+        // 헤더 업데이트
+        this.updateChartHeader('전체 포스트 누적 총합 추이', null);
         
     } else {
         // 개별 포스트 모드: 선택된 포스트의 날짜별 데이터
@@ -5206,7 +5849,8 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                 sharesData.push(0);
                 followsData.push(0);
             });
-            this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
+                this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
+                this.updateChartHeader('포스트 성과 추이 (포스트를 선택하세요)', null);
         } else {
             const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
             
@@ -5260,6 +5904,16 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     ? selectedPost.content.substring(0, 30) + '...' 
                     : selectedPost.content;
                 this.trackingChart.options.plugins.title.text = `포스트 성과 추이: ${contentPreview}`;
+                
+                // 헤더 업데이트: 포스트 제목과 최근 업데이트
+                const latestMetric = selectedPost.metrics && selectedPost.metrics.length > 0 
+                    ? selectedPost.metrics[selectedPost.metrics.length - 1] 
+                    : null;
+                let lastUpdate = null;
+                if (latestMetric && latestMetric.timestamp) {
+                    lastUpdate = latestMetric.timestamp?.toDate ? latestMetric.timestamp.toDate() : new Date(latestMetric.timestamp);
+                }
+                this.updateChartHeader(selectedPost.content, lastUpdate);
             } else {
                 dateRange.forEach(() => {
                     viewsData.push(0);
@@ -5269,6 +5923,7 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     followsData.push(0);
                 });
                 this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (데이터 없음)';
+                this.updateChartHeader('포스트 성과 추이 (데이터 없음)', null);
             }
         }
     }
@@ -5344,6 +5999,37 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     
     // 애니메이션 없이 업데이트 (스크롤 문제 방지)
     this.trackingChart.update('none');
+};
+
+// 범례 탭 토글 (데이터셋 show/hide)
+DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
+    if (!this.trackingChart) return;
+    
+    const dataset = this.trackingChart.data.datasets[datasetIndex];
+    if (!dataset) return;
+    
+    // 데이터셋 표시/숨김 토글 (즉시 반영)
+    const isVisible = dataset.hidden !== true;
+    dataset.hidden = isVisible;
+    
+    // 버튼 스타일 업데이트
+    if (isVisible) {
+        button.style.opacity = '0.4';
+        button.style.textDecoration = 'line-through';
+        button.setAttribute('aria-pressed', 'false');
+    } else {
+        button.style.opacity = '1';
+        button.style.textDecoration = 'none';
+        button.setAttribute('aria-pressed', 'true');
+    }
+    
+    // 차트 즉시 업데이트 및 축 반응형 유지
+    this.trackingChart.update('none');
+    
+    // 축 반응형 재계산
+    if (this.trackingChart && this.trackingChart.options && this.trackingChart.options.scales) {
+        this.updateTrackingChart(); // 전체 차트 업데이트로 축 재계산
+    }
 };
 
 // 저장된 글에서 트래킹 시작
