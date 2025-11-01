@@ -4623,6 +4623,11 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                         e.preventDefault();
                         this.stopTracking(postId);
                         break;
+                    case 'manage-metrics':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.manageMetrics(postId);
+                        break;
                     case 'more-menu':
                         e.preventDefault();
                         e.stopPropagation();
@@ -4757,6 +4762,10 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                     <div class="more-menu actions--more">
                         <button class="more-menu-btn" data-action="more-menu" data-post-id="${post.id}" data-tracking-enabled="${post.trackingEnabled ? 'true' : 'false'}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업">⋯</button>
                         <div class="more-menu-list" role="menu">
+                            ${hasMetrics ? 
+                                `<button class="more-menu-item" role="menuitem" data-action="manage-metrics" data-post-id="${post.id}">📊 메트릭 관리</button>` :
+                                ''
+                            }
                             ${post.trackingEnabled ? 
                                 `<button class="more-menu-item" role="menuitem" data-action="stop-tracking" data-post-id="${post.id}">트래킹 중지</button>` :
                                 ''
@@ -5168,6 +5177,328 @@ DualTextWriter.prototype.closeTrackingModal = function() {
     this.currentTrackingTextId = null;
 };
 
+// 메트릭 관리 모달 열기 (트래킹 탭에서 사용)
+DualTextWriter.prototype.manageMetrics = async function(postId) {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        if (this.trackingPosts) {
+            postData = this.trackingPosts.find(p => p.id === postId);
+        }
+        
+        // 로컬에 없으면 Firebase에서 조회
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            try {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+                const postDoc = await window.firebaseGetDoc(postRef);
+                
+                if (postDoc.exists()) {
+                    const data = postDoc.data();
+                    postData = {
+                        id: postDoc.id,
+                        content: data.content || '',
+                        metrics: data.metrics || [],
+                        sourceTextId: data.sourceTextId || null
+                    };
+                }
+            } catch (error) {
+                console.error('포스트 조회 실패:', error);
+            }
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            this.showMessage('메트릭 데이터가 없습니다.', 'warning');
+            return;
+        }
+        
+        // 메트릭 목록 렌더링
+        const metricsHtml = this.renderMetricsListForManage(postData.metrics, postData.id, postData.sourceTextId);
+        
+        // 모달 열기
+        const modal = document.getElementById('metrics-manage-modal');
+        const content = document.getElementById('metrics-manage-content');
+        if (modal && content) {
+            content.innerHTML = `
+                <div style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(postData.content.substring(0, 50))}${postData.content.length > 50 ? '...' : ''}</div>
+                    <div style="font-size: 0.85rem; color: #666;">메트릭 ${postData.metrics.length}개</div>
+                </div>
+                ${metricsHtml}
+            `;
+            this.openBottomSheet(modal);
+            
+            // 모달 내부의 수정/삭제 버튼 이벤트 바인딩
+            this.bindMetricsManageEvents(postData.id, postData.sourceTextId);
+        }
+        
+    } catch (error) {
+        console.error('메트릭 관리 모달 열기 실패:', error);
+        this.showMessage('메트릭 데이터를 불러오는데 실패했습니다.', 'error');
+    }
+};
+
+// 메트릭 관리 모달용 메트릭 목록 렌더링
+DualTextWriter.prototype.renderMetricsListForManage = function(metrics, postId, textId) {
+    if (!metrics || metrics.length === 0) {
+        return '<div style="text-align: center; padding: 40px; color: #666;">메트릭 데이터가 없습니다.</div>';
+    }
+    
+    // 날짜 순으로 정렬 (최신 것부터)
+    const sortedMetrics = [...metrics].sort((a, b) => {
+        const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
+                     (a.timestamp instanceof Date ? a.timestamp.getTime() : 0);
+        const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
+                     (b.timestamp instanceof Date ? b.timestamp.getTime() : 0);
+        return dateB - dateA; // 최신 것부터
+    });
+    
+    return `
+        <div class="metrics-manage-list">
+            ${sortedMetrics.map((metric, sortedIdx) => {
+                // 원본 인덱스 찾기
+                const originalIndex = metrics.findIndex(m => {
+                    const mDate = m.timestamp?.toDate ? m.timestamp.toDate().getTime() : 
+                                 (m.timestamp instanceof Date ? m.timestamp.getTime() : 0);
+                    const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate().getTime() : 
+                                      (metric.timestamp instanceof Date ? metric.timestamp.getTime() : 0);
+                    return mDate === metricDate && 
+                           m.views === metric.views && 
+                           m.likes === metric.likes &&
+                           m.comments === metric.comments &&
+                           m.shares === metric.shares;
+                });
+                const metricIndex = originalIndex >= 0 ? originalIndex : sortedIdx;
+                
+                // 메트릭 인덱스가 유효한지 확인 (원본 배열 범위 내)
+                const finalMetricIndex = metricIndex < metrics.length ? metricIndex : sortedIdx;
+                
+                const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                            (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+                const dateStr = date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div class="metric-manage-item" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}">
+                        <div class="metric-manage-header">
+                            <div class="metric-manage-date">📅 ${dateStr}</div>
+                            <div class="metric-manage-actions">
+                                <button class="btn-edit-metric" data-action="edit-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="수정">✏️ 수정</button>
+                                <button class="btn-delete-metric" data-action="delete-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="삭제">🗑️ 삭제</button>
+                            </div>
+                        </div>
+                        <div class="metric-manage-data">
+                            <div class="metric-chip"><span class="metric-icon">👀</span> <span class="metric-value">${metric.views || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">❤️</span> <span class="metric-value">${metric.likes || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">💬</span> <span class="metric-value">${metric.comments || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">🔄</span> <span class="metric-value">${metric.shares || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">👥</span> <span class="metric-value">${metric.follows || 0}</span></div>
+                            ${metric.notes ? `<div class="metric-notes">📝 ${this.escapeHtml(metric.notes)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+};
+
+// 메트릭 관리 모달 내부 이벤트 바인딩
+DualTextWriter.prototype.bindMetricsManageEvents = function(postId, textId) {
+    const content = document.getElementById('metrics-manage-content');
+    if (!content) return;
+    
+    // 기존 리스너 제거하고 새로 바인딩
+    content.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        
+        const action = button.getAttribute('data-action');
+        const metricIndex = parseInt(button.getAttribute('data-metric-index'));
+        const buttonPostId = button.getAttribute('data-post-id') || postId;
+        const buttonTextId = button.getAttribute('data-text-id') || textId;
+        
+        if (action === 'edit-metric') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editMetricFromManage(buttonPostId, buttonTextId, metricIndex);
+        } else if (action === 'delete-metric') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (confirm('정말로 이 메트릭을 삭제하시겠습니까?')) {
+                this.deleteMetricFromManage(buttonPostId, buttonTextId, metricIndex);
+            }
+        }
+    }, { once: false });
+};
+
+// 메트릭 관리 모달에서 메트릭 수정
+DualTextWriter.prototype.editMetricFromManage = async function(postId, textId, metricIndex) {
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        if (this.trackingPosts) {
+            postData = this.trackingPosts.find(p => p.id === postId);
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+            // Firebase에서 조회
+            try {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+                const postDoc = await window.firebaseGetDoc(postRef);
+                
+                if (postDoc.exists()) {
+                    const data = postDoc.data();
+                    postData = {
+                        id: postDoc.id,
+                        metrics: data.metrics || []
+                    };
+                }
+            } catch (error) {
+                console.error('포스트 조회 실패:', error);
+            }
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+            this.showMessage('메트릭을 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const metric = postData.metrics[metricIndex];
+        
+        // 편집 데이터 설정
+        this.editingMetricData = {
+            postId: postId,
+            textId: textId,
+            metricIndex: metricIndex
+        };
+        
+        // 메트릭 관리 모달 닫기
+        const manageModal = document.getElementById('metrics-manage-modal');
+        if (manageModal) {
+            this.closeBottomSheet(manageModal);
+        }
+        
+        // 기존 editTrackingMetric의 모달 열기 로직 재사용
+        const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                    (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+        const dateStr = date.toISOString().split('T')[0];
+        
+        document.getElementById('tracking-edit-date').value = dateStr;
+        document.getElementById('tracking-edit-views').value = metric.views || 0;
+        document.getElementById('tracking-edit-likes').value = metric.likes || 0;
+        document.getElementById('tracking-edit-comments').value = metric.comments || 0;
+        document.getElementById('tracking-edit-shares').value = metric.shares || 0;
+        const followsInput = document.getElementById('tracking-edit-follows');
+        if (followsInput) followsInput.value = metric.follows || 0;
+        document.getElementById('tracking-edit-notes').value = metric.notes || '';
+        
+        // 수정 모달 열기
+        const editModal = document.getElementById('tracking-edit-modal');
+        if (editModal) {
+            // 날짜 탭 설정
+            editModal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+            const customTab = editModal.querySelector('.date-tab[data-date="custom"]');
+            if (customTab) customTab.classList.add('active');
+            document.getElementById('tracking-edit-date').style.display = 'block';
+            
+            this.openBottomSheet(editModal);
+        }
+        
+    } catch (error) {
+        console.error('메트릭 수정 실패:', error);
+        this.showMessage('메트릭을 불러오는데 실패했습니다.', 'error');
+    }
+};
+
+// 메트릭 관리 모달에서 메트릭 삭제
+DualTextWriter.prototype.deleteMetricFromManage = async function(postId, textId, metricIndex) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    if (!confirm('정말로 이 트래킹 데이터를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        let postRef = null;
+        
+        try {
+            // postId로 직접 조회
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+            const postDoc = await window.firebaseGetDoc(postRef);
+            
+            if (postDoc.exists()) {
+                postData = postDoc.data();
+            } else if (textId) {
+                // textId로 찾기
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const textQuerySnapshot = await window.firebaseGetDocs(window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId)));
+                if (!textQuerySnapshot.empty) {
+                    const postDoc = textQuerySnapshot.docs[0];
+                    postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+                    postData = postDoc.data();
+                }
+            }
+        } catch (error) {
+            console.error('포스트 조회 실패:', error);
+        }
+        
+        if (!postData || !postRef) {
+            this.showMessage('포스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 메트릭 배열에서 해당 항목 제거
+        const updatedMetrics = postData.metrics.filter((_, idx) => idx !== metricIndex);
+        
+        // 분석 데이터 계산
+        const analytics = updatedMetrics.length > 0 ? this.calculateAnalytics(updatedMetrics) : {};
+        
+        // Firebase 업데이트
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts?.find(p => p.id === postRef.id || p.sourceTextId === textId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+        }
+        
+        // 메트릭 관리 모달 새로고침
+        const refreshPostId = postRef.id || postId;
+        setTimeout(() => {
+            this.manageMetrics(refreshPostId);
+        }, 300);
+        
+        // UI 업데이트
+        this.renderTrackingPosts();
+        this.updateTrackingSummary();
+        this.updateTrackingChart();
+        this.renderSavedTexts();
+        
+        this.showMessage('✅ 트래킹 데이터가 삭제되었습니다!', 'success');
+        
+    } catch (error) {
+        console.error('트래킹 데이터 삭제 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 삭제에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
 // 트래킹 메트릭 수정 모달 열기
 DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndexStr) {
     const metricIndex = parseInt(metricIndexStr);
@@ -5360,19 +5691,31 @@ DualTextWriter.prototype.updateTrackingDataItem = async function() {
             post.analytics = analytics;
         }
         
-        // 모달 닫기
+        // 수정 모달 닫기
         const editModal = document.getElementById('tracking-edit-modal');
         if (editModal) {
             this.closeBottomSheet(editModal);
         }
         
-        this.editingMetricData = null;
+        // 메트릭 관리 모달이 열려있으면 새로고침
+        const manageModal = document.getElementById('metrics-manage-modal');
+        const isManageModalOpen = manageModal && (manageModal.classList.contains('bottom-sheet-open') || manageModal.style.display !== 'none');
         
-        // 화면 새로고침
-        this.renderSavedTexts();
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.updateTrackingChart();
+        if (isManageModalOpen) {
+            // 메트릭 관리 모달 새로고침
+            const refreshPostId = postRef.id || postId;
+            setTimeout(() => {
+                this.manageMetrics(refreshPostId);
+            }, 300);
+        } else {
+            // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
+            this.renderSavedTexts();
+            this.renderTrackingPosts();
+            this.updateTrackingSummary();
+            this.updateTrackingChart();
+        }
+        
+        this.editingMetricData = null;
         
         this.showMessage('✅ 트래킹 데이터가 수정되었습니다!', 'success');
         console.log('트래킹 데이터 수정 완료');

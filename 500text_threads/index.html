@@ -614,6 +614,20 @@
         </div>
     </div>
 
+    <!-- 메트릭 관리 모달 -->
+    <div id="metrics-manage-modal" class="modal bottom-sheet">
+        <div class="modal-content">
+            <div class="sheet-handle"></div>
+            <h3>📊 메트릭 관리</h3>
+            <div id="metrics-manage-content" class="metrics-manage-content">
+                <!-- 메트릭 목록이 여기에 동적으로 표시됩니다 -->
+            </div>
+            <div class="modal-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e1e5e9;">
+                <button class="btn btn-secondary" onclick="closeModal('metrics-manage-modal')">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
