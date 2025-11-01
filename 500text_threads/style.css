@@ -1411,6 +1411,8 @@ body {
     border-left: 4px solid #667eea;
     position: relative;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column; /* 세로 방향 레이아웃 보장 */
     }
     
     .saved-item:hover {
@@ -1551,6 +1553,8 @@ body {
     margin-bottom: 12px;
     white-space: pre-wrap;
     font-size: 0.95rem;
+    width: 100%; /* 명시적 너비 설정으로 콘텐츠 감싸기 보장 */
+    box-sizing: border-box; /* 패딩 포함 너비 계산 */
     /* 한글 줄바꿈 최적화 */
     word-break: keep-all; /* 한글 단어 단위로 줄바꿈 */
     overflow-wrap: break-word; /* 긴 단어 처리 */
@@ -1578,9 +1582,12 @@ body {
     -webkit-line-clamp: initial;
     line-clamp: initial;
     overflow: visible;
+    width: 100%; /* 명시적 너비 설정으로 콘텐츠 감싸기 보장 */
+    clear: both; /* float 요소와의 간섭 방지 */
     margin-bottom: 24px; /* 충분한 간격 */
     padding-bottom: 16px; /* 추가 패딩 */
     border-bottom: 1px solid #f0f0f0; /* 시각적 구분선 */
+    box-sizing: border-box; /* 패딩 포함 너비 계산 */
 }
 
 .saved-item-content.expanded::after { display: none; }
@@ -1602,6 +1609,7 @@ body {
     min-height: 44px;
     transition: all 0.2s ease;
     position: relative; /* 레이아웃 안정성 */
+    clear: both; /* 콘텐츠 영역과 명확히 분리 */
 }
 
 .saved-item-toggle:hover {
@@ -1796,7 +1804,10 @@ body {
     .saved-item-actions {
     display: flex;
     gap: 12px;
-    margin-top: 16px;
+    margin-top: 24px; /* 간격 증가 (16px → 24px) */
+    clear: both; /* 콘텐츠 영역과 명확히 분리 */
+    position: relative; /* 레이아웃 안정성 */
+    z-index: 1; /* 콘텐츠와 겹침 방지 */
     }
     
     .saved-item-actions.actions--primary {
@@ -2645,20 +2656,26 @@ body {
     }
     
     .saved-item-content.expanded {
+        width: 100%; /* 모바일에서도 명시적 너비 설정 */
+        clear: both; /* float 요소와의 간섭 방지 */
         margin-bottom: 20px;
         padding-bottom: 12px;
+        box-sizing: border-box; /* 패딩 포함 너비 계산 */
     }
     
     .saved-item-toggle {
         width: 100%; /* 모바일에서는 전체 너비 */
         padding: 14px 20px;
-        margin-bottom: 16px;
+        margin-bottom: 20px; /* 간격 증가 (16px → 20px) */
         min-height: 48px; /* 터치 타겟 크기 보장 */
+        clear: both; /* 콘텐츠 영역과 명확히 분리 */
     }
     
     .saved-item-actions {
-    flex-direction: column;
-    gap: 8px;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 20px; /* 모바일에서도 간격 증가 */
+        clear: both; /* 콘텐츠 영역과 명확히 분리 */
     }
     
     .action-button {
