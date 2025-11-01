@@ -478,7 +478,7 @@ class DualTextWriter {
 
     setSavedFilter(filter) {
         // 에러 처리: 필터 값이 예상 범위를 벗어난 경우 처리
-        const validFilters = ['all', 'edit', 'reference', 'reference-unused'];
+        const validFilters = ['all', 'edit', 'reference', 'reference-used'];
         if (!validFilters.includes(filter)) {
             console.warn('setSavedFilter: 잘못된 필터 값:', filter);
             return;
@@ -838,8 +838,8 @@ class DualTextWriter {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
             list = list.filter(item => item.type === 'reference');
-        } else if (this.savedFilter === 'reference-unused') {
-            // 사용 안된 레퍼런스만 필터링 (usageCount === 0 또는 undefined)
+        } else if (this.savedFilter === 'reference-used') {
+            // 사용된 레퍼런스만 필터링 (usageCount > 0)
             // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
             // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
             list = list.filter(item => (item.type || 'edit') === 'reference');
@@ -852,8 +852,8 @@ class DualTextWriter {
                 emptyMsg = '작성 글이 없습니다.';
             } else if (this.savedFilter === 'reference') {
                 emptyMsg = '레퍼런스 글이 없습니다.';
-            } else if (this.savedFilter === 'reference-unused') {
-                emptyMsg = '사용 안된 레퍼런스가 없습니다.';
+            } else if (this.savedFilter === 'reference-used') {
+                emptyMsg = '사용된 레퍼런스가 없습니다.';
             }
             this.savedList.innerHTML = `
                 <div class="empty-state">
@@ -932,10 +932,10 @@ class DualTextWriter {
             // 사용 여부를 item 객체에 추가하여 캐싱
             const itemWithUsage = { ...item, usageCount };
             
-            // reference-unused 필터인 경우, usageCount가 0인 항목만 포함
-            if (this.savedFilter === 'reference-unused') {
+            // reference-used 필터인 경우, usageCount가 1 이상인 항목만 포함
+            if (this.savedFilter === 'reference-used') {
                 const isReference = (item.type || 'edit') === 'reference';
-                if (!isReference || usageCount !== 0) {
+                if (!isReference || usageCount === 0) {
                     return null; // 필터링 대상에서 제외
                 }
             }
@@ -943,8 +943,8 @@ class DualTextWriter {
             return { item: itemWithUsage, postData, index };
         }));
         
-        // reference-unused 필터인 경우 null인 항목 제거
-        const filteredItemsWithTracking = this.savedFilter === 'reference-unused' 
+        // reference-used 필터인 경우 null인 항목 제거
+        const filteredItemsWithTracking = this.savedFilter === 'reference-used' 
             ? itemsWithTracking.filter(result => result !== null)
             : itemsWithTracking;
         
@@ -955,8 +955,8 @@ class DualTextWriter {
                 emptyMsg = '작성 글이 없습니다.';
             } else if (this.savedFilter === 'reference') {
                 emptyMsg = '레퍼런스 글이 없습니다.';
-            } else if (this.savedFilter === 'reference-unused') {
-                emptyMsg = '사용 안된 레퍼런스가 없습니다.';
+            } else if (this.savedFilter === 'reference-used') {
+                emptyMsg = '사용된 레퍼런스가 없습니다.';
             }
             this.savedList.innerHTML = `
                 <div class="empty-state">
@@ -977,7 +977,7 @@ class DualTextWriter {
         // 접근성: 필터 결과를 스크린 리더에 전달 (aria-live="polite"로 자동 전달됨)
         const filterDescription = this.savedFilter === 'edit' ? '작성 글' 
             : this.savedFilter === 'reference' ? '레퍼런스 글'
-            : this.savedFilter === 'reference-unused' ? '사용 안된 레퍼런스'
+            : this.savedFilter === 'reference-used' ? '사용된 레퍼런스'
             : '저장된 글';
         this.savedList.setAttribute('aria-label', `저장된 글 목록: ${filterDescription} ${totalItems}개`);
         
@@ -7819,6 +7819,9 @@ DualTextWriter.prototype.markReferenceAsUsed = async function(referenceTextId) {
         
         // 성공 메시지
         this.showMessage('✅ 레퍼런스가 사용됨으로 표시되었습니다.', 'success');
+        
+        // "사용됨" 탭으로 자동 이동
+        this.setSavedFilter('reference-used');
         
         // UI 즉시 업데이트 (새로고침 없이)
         await this.refreshSavedTextsUI();
