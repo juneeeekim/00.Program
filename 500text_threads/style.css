@@ -43,7 +43,7 @@ body {
 }
 
 body {
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", "맑은 고딕", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     color: #333;
@@ -253,7 +253,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 6px; /* 아이콘-텍스트 간격 증가 (4px → 6px) */
     font-size: 14px;
     color: #666;
     position: relative;
@@ -273,14 +273,10 @@ body {
     }
     
     .tab-icon {
-    font-size: 14px; /* emoji/icon normalized */
+    font-size: 18px; /* emoji/icon normalized - 크기 증가 (14px → 18px) */
     line-height: 1;
     vertical-align: middle;
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-feature-settings: "liga" on, "calt" on;
-    /* 이모지 렌더링 강제 */
-    text-rendering: optimizeLegibility;
-    -webkit-font-feature-settings: "liga" on, "calt" on;
+    font-feature-settings: "liga" on;
     }
 
 /* Tracking: emoji/icon normalization within metrics chips and timeline */
@@ -322,8 +318,16 @@ body {
 }
     
     .tab-text {
-    font-size: 12px;
+    font-size: 13px; /* 폰트 크기 증가 (12px → 13px) */
     font-weight: 600;
+    line-height: 1.2; /* line-height 개선 */
+    }
+    
+    /* 데스크톱에서 더 큰 폰트 크기 */
+    @media (min-width: 768px) {
+        .tab-text {
+            font-size: 14px; /* 데스크톱: 14px */
+        }
     }
     
     /* Tab Content */
@@ -452,10 +456,14 @@ body {
     border: 2px solid #e1e5e9;
     border-radius: 10px;
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
+    /* 한글 줄바꿈 최적화 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    hyphens: none;
     }
     
     /* Panel textarea styles */
@@ -466,13 +474,17 @@ body {
     border: 2px solid #e1e5e9;
     border-radius: 10px;
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
     flex: 1;
     box-sizing: border-box;
     margin: 10px 0;
+    /* 한글 줄바꿈 최적화 */
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    hyphens: none;
     }
     
     #text-input:focus {
@@ -1365,10 +1377,14 @@ body {
     
 .saved-item-content {
     color: #333;
-    line-height: 1.6;
+    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
     margin-bottom: 12px;
     white-space: pre-wrap;
     font-size: 0.95rem;
+    /* 한글 줄바꿈 최적화 */
+    word-break: keep-all; /* 한글 단어 단위로 줄바꿈 */
+    overflow-wrap: break-word; /* 긴 단어 처리 */
+    hyphens: none; /* 한글 하이픈 사용 안 함 */
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
