@@ -29,6 +29,7 @@ class DualTextWriter {
         this.usernameInput = document.getElementById('username-input');
         this.loginBtn = document.getElementById('login-btn');
         this.logoutBtn = document.getElementById('logout-btn');
+        this.refreshBtn = document.getElementById('refresh-btn');
         this.loginForm = document.getElementById('login-form');
         this.userInfo = document.getElementById('user-info');
         this.usernameDisplay = document.getElementById('username-display');
@@ -216,6 +217,11 @@ class DualTextWriter {
         // 사용자 인증 이벤트
         this.loginBtn.addEventListener('click', () => this.login());
         this.logoutBtn.addEventListener('click', () => this.logout());
+        
+        // 새로고침 버튼 이벤트 리스너 (PC 전용)
+        if (this.refreshBtn) {
+            this.refreshBtn.addEventListener('click', () => this.refreshAllData());
+        }
         this.usernameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.login();
@@ -2576,6 +2582,80 @@ class DualTextWriter {
         } catch (error) {
             console.error('사용자 데이터 로드 실패:', error);
             this.showMessage('데이터를 불러오는데 실패했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 모든 데이터를 새로고침합니다.
+     * 
+     * Firebase에서 최신 데이터를 다시 불러와 UI를 업데이트합니다.
+     * 저장된 글, 트래킹 포스트, 통계 등을 모두 새로고침합니다.
+     */
+    async refreshAllData() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('⚠️ 로그인이 필요합니다.', 'warning');
+            return;
+        }
+
+        // 로딩 상태 표시
+        const refreshBtn = this.refreshBtn;
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+            if (refreshIcon) {
+                refreshIcon.style.animation = 'spin 0.6s linear infinite';
+            }
+        }
+
+        try {
+            // 저장된 글 및 트래킹 포스트 모두 새로고침
+            await this.loadSavedTextsFromFirestore();
+            if (this.loadTrackingPosts) {
+                await this.loadTrackingPosts();
+            }
+            
+            // UI 업데이트
+            this.updateCharacterCount('ref');
+            this.updateCharacterCount('edit');
+            await this.renderSavedTexts();
+            
+            // 미트래킹 글 버튼 상태 업데이트
+            if (this.updateBatchMigrationButton) {
+                await this.updateBatchMigrationButton();
+            }
+            
+            // 모든 탭의 데이터 강제 새로고침
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+
+            // 성공 메시지
+            this.showMessage('✅ 데이터가 새로고침되었습니다!', 'success');
+            console.log('✅ 모든 데이터 새로고침 완료');
+
+        } catch (error) {
+            console.error('데이터 새로고침 실패:', error);
+            this.showMessage('❌ 데이터 새로고침에 실패했습니다: ' + error.message, 'error');
+        } finally {
+            // 로딩 상태 해제
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+                if (refreshIcon) {
+                    refreshIcon.style.animation = '';
+                    // 회전 애니메이션 효과
+                    refreshIcon.style.transform = 'rotate(180deg)';
+                    setTimeout(() => {
+                        if (refreshIcon) {
+                            refreshIcon.style.transform = '';
+                        }
+                    }, 300);
+                }
+            }
         }
     }
 

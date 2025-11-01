@@ -232,6 +232,82 @@ body {
     font-size: 0.9rem;
     }
     
+    /* 새로고침 버튼 스타일 (PC 전용) */
+    .btn-refresh {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 15px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .btn-refresh:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    
+    .btn-refresh:active {
+        transform: translateY(0);
+    }
+    
+    .btn-refresh:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .refresh-icon {
+        font-size: 1rem;
+        transition: transform 0.3s ease;
+        display: inline-block;
+    }
+    
+    .refresh-text {
+        font-size: 0.9rem;
+    }
+    
+    /* 회전 애니메이션 */
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    /* PC 버전에서만 텍스트 표시 */
+    .desktop-only {
+        display: none;
+    }
+    
+    @media (min-width: 769px) {
+        .desktop-only {
+            display: inline;
+        }
+        
+        /* PC 버전: 버튼이 더 넓게 */
+        .btn-refresh {
+            padding: 8px 16px;
+        }
+    }
+    
+    /* 모바일: PC 전용 버튼은 숨김 */
+    @media (max-width: 768px) {
+        .btn-refresh {
+            display: none;
+        }
+    }
+    
     /* Tab Container */
     .tab-container {
     display: flex;
