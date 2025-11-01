@@ -1532,11 +1532,12 @@ body {
 .more-menu-list {
     position: absolute;
     right: 0;
-    top: calc(100% + 6px);
+    bottom: calc(100% + 6px); /* 버튼 위로 표시 */
+    top: auto; /* top 속성 제거 */
     background: #fff;
     border: 1px solid #e1e5e9;
     border-radius: 8px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.12); /* 위쪽 그림자 방향 조정 */
     min-width: 140px;
     padding: 6px;
     display: none;
