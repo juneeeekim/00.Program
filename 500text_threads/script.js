@@ -101,6 +101,7 @@ class DualTextWriter {
         this.tempSaveInterval = null;
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
+        this.outsideClickHandler = null; // 바깥 클릭 핸들러 참조
 
         // LLM 검증 시스템 초기화
         this.initializeLLMValidation();
@@ -1106,7 +1107,12 @@ class DualTextWriter {
         }
     }
 
-    // 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
+    /**
+     * 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
+     * - 메뉴 열기/닫기, 삭제, 트래킹 등 저장된 글 관련 모든 이벤트 처리
+     * - 이벤트 리스너 중복 등록 방지를 위해 기존 핸들러 제거 후 새 핸들러 등록
+     * @returns {void}
+     */
     setupSavedItemEventListeners() {
         console.log('setupSavedItemEventListeners 호출됨');
 
@@ -1143,8 +1149,19 @@ class DualTextWriter {
             }
 
             if (action === 'more') {
-                const menu = button.nextElementSibling;
-                if (menu && menu.classList.contains('more-menu-list')) {
+                // 이벤트 전파 제어: 이벤트 버블링 방지로 바깥 클릭 핸들러가 즉시 실행되지 않도록 함
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // DOM 탐색 방식 개선: closest + querySelector 사용으로 더 안정적인 탐색
+                const moreMenuContainer = button.closest('.more-menu');
+                if (!moreMenuContainer) {
+                    console.warn('[more menu] Container not found:', { itemId, button });
+                    return;
+                }
+                
+                const menu = moreMenuContainer.querySelector('.more-menu-list');
+                if (menu) {
                     const isOpen = menu.classList.toggle('open');
                     button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                     
@@ -1155,6 +1172,9 @@ class DualTextWriter {
                             setTimeout(() => firstMenuItem.focus(), 50);
                         }
                     }
+                } else {
+                    // 메뉴를 찾지 못한 경우 디버깅 로그 출력
+                    console.warn('[more menu] Menu element not found:', { itemId, button, container: moreMenuContainer });
                 }
                 return;
             } else if (action === 'toggle') {
@@ -1197,6 +1217,33 @@ class DualTextWriter {
 
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
+
+        // 기존 바깥 클릭 핸들러 제거 (중복 방지)
+        if (this.outsideClickHandler) {
+            document.removeEventListener('click', this.outsideClickHandler, { capture: true });
+        }
+
+        // 바깥 클릭 시 모든 more 메뉴 닫기
+        // setTimeout을 사용하여 이벤트 처리 순서 보장: 메뉴를 여는 동작이 완료된 후 바깥 클릭을 감지
+        this.outsideClickHandler = (e) => {
+            const isInsideMenu = e.target.closest('.more-menu');
+            if (!isInsideMenu) {
+                // 이벤트 처리 순서 보장: 메뉴 열기 동작이 완료된 후 실행되도록 setTimeout 사용
+                setTimeout(() => {
+                    document.querySelectorAll('.more-menu-list.open').forEach(el => {
+                        el.classList.remove('open');
+                        // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
+                        const menuBtn = el.previousElementSibling;
+                        if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                            menuBtn.setAttribute('aria-expanded', 'false');
+                            menuBtn.focus();
+                        }
+                    });
+                    document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                }, 0);
+            }
+        };
+        document.addEventListener('click', this.outsideClickHandler, { capture: true });
 
         // 타임라인 제스처(롱프레스 삭제, 스와이프 좌/우)
         if (!this._timelineGestureBound) {
@@ -1261,21 +1308,6 @@ class DualTextWriter {
             }, { passive: true });
         }
 
-        // 바깥 클릭 시 모든 more 메뉴 닫기
-        document.addEventListener('click', (e) => {
-            const isInsideMenu = e.target.closest('.more-menu');
-            if (!isInsideMenu) {
-                document.querySelectorAll('.more-menu-list.open').forEach(el => {
-                    el.classList.remove('open');
-                    // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
-                    const menuBtn = el.previousElementSibling;
-                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
-                        menuBtn.focus();
-                    }
-                });
-                document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
-            }
-        }, { capture: true });
         
         // ESC 키로 메뉴 닫기
         document.addEventListener('keydown', (e) => {
