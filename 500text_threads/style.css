@@ -1477,9 +1477,26 @@ body {
         color: white;
     }
     
-    .reference-usage-badge--used:hover {
+    /* 사용된 레퍼런스 배지 (초록색, 클릭 가능) */
+    .reference-usage-badge--used.reference-usage-badge--clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .reference-usage-badge--used.reference-usage-badge--clickable:hover {
         background: #059669;
         transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .reference-usage-badge--used.reference-usage-badge--clickable:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .reference-usage-badge--used.reference-usage-badge--clickable:focus {
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
     }
     
     /* 사용 안된 레퍼런스 배지 (회색) */
