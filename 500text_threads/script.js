@@ -94,6 +94,15 @@ class DualTextWriter {
         this.trackingUpdatedTo = localStorage.getItem('dtw_tracking_to') || '';
         this.rangeFilters = JSON.parse(localStorage.getItem('dtw_tracking_ranges') || '{}');
         
+        // 성능 최적화: 디바운싱 타이머 및 업데이트 큐
+        this.debounceTimers = {};
+        this.updateQueue = {
+            savedTexts: false,
+            trackingPosts: false,
+            trackingSummary: false,
+            trackingChart: false
+        };
+        
         this.maxLength = 500;
         this.currentUser = null;
         this.savedTexts = [];
@@ -302,7 +311,7 @@ class DualTextWriter {
                 this.trackingSortSelect.addEventListener('change', (e) => {
                     this.trackingSort = e.target.value;
                     localStorage.setItem('dtw_tracking_sort', this.trackingSort);
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             }
             if (this.trackingStatusSelect) {
@@ -310,7 +319,7 @@ class DualTextWriter {
                 this.trackingStatusSelect.addEventListener('change', (e) => {
                     this.trackingStatusFilter = e.target.value;
                     localStorage.setItem('dtw_tracking_status', this.trackingStatusFilter);
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             }
             if (this.trackingSearchInput) {
@@ -323,10 +332,8 @@ class DualTextWriter {
                     this.trackingSearchDebounce = setTimeout(() => {
                         this.trackingSearch = val;
                         localStorage.setItem('dtw_tracking_search', this.trackingSearch);
-                        // requestAnimationFrame으로 렌더링하여 sticky 레이아웃 충돌 방지
-                        requestAnimationFrame(() => {
-                            this.renderTrackingPosts();
-                        });
+                        // refreshUI 사용으로 통합 업데이트
+                        this.refreshUI({ trackingPosts: true });
                     }, 300);
                 });
             }
@@ -335,7 +342,7 @@ class DualTextWriter {
                 this.trackingUpdatedFromInput.addEventListener('change', (e) => {
                     this.trackingUpdatedFrom = e.target.value;
                     localStorage.setItem('dtw_tracking_from', this.trackingUpdatedFrom);
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             }
             if (this.trackingUpdatedToInput) {
@@ -343,7 +350,7 @@ class DualTextWriter {
                 this.trackingUpdatedToInput.addEventListener('change', (e) => {
                     this.trackingUpdatedTo = e.target.value;
                     localStorage.setItem('dtw_tracking_to', this.trackingUpdatedTo);
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             }
             if (this.trackingDateClearBtn) {
@@ -354,7 +361,7 @@ class DualTextWriter {
                     if (this.trackingUpdatedToInput) this.trackingUpdatedToInput.value = '';
                     localStorage.removeItem('dtw_tracking_from');
                     localStorage.removeItem('dtw_tracking_to');
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             }
 
@@ -370,7 +377,7 @@ class DualTextWriter {
                         this.rangeFilters[key] = Number(val) || 0;
                     }
                     localStorage.setItem('dtw_tracking_ranges', JSON.stringify(this.rangeFilters));
-                    this.renderTrackingPosts();
+                    this.refreshUI({ trackingPosts: true });
                 });
             };
             bindRange(this.minViewsInput, 'minViews');
@@ -752,8 +759,9 @@ class DualTextWriter {
             type: panel === 'ref' ? 'reference' : 'edit'
         };
 
+        // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
         this.savedTexts.unshift(savedItem);
-        this.renderSavedTexts();
+        this.refreshUI({ savedTexts: true, force: true });
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
@@ -1127,6 +1135,86 @@ class DualTextWriter {
         return `${year}년 ${month}월 ${day}일`;
     }
 
+    // 통합 UI 업데이트 함수 (성능 최적화)
+    refreshUI(options = {}) {
+        const {
+            savedTexts = false,
+            trackingPosts = false,
+            trackingSummary = false,
+            trackingChart = false,
+            force = false
+        } = options;
+        
+        // 업데이트 큐에 추가
+        if (savedTexts) this.updateQueue.savedTexts = true;
+        if (trackingPosts) this.updateQueue.trackingPosts = true;
+        if (trackingSummary) this.updateQueue.trackingSummary = true;
+        if (trackingChart) this.updateQueue.trackingChart = true;
+        
+        // 강제 업데이트이거나 즉시 실행이 필요한 경우
+        if (force) {
+            this.executeUIUpdate();
+            return;
+        }
+        
+        // 디바운싱: 마지막 호출 후 100ms 후에 실행
+        if (this.debounceTimers.uiUpdate) {
+            clearTimeout(this.debounceTimers.uiUpdate);
+        }
+        
+        this.debounceTimers.uiUpdate = setTimeout(() => {
+            this.executeUIUpdate();
+        }, 100);
+    }
+    
+    // UI 업데이트 실행 (내부 함수)
+    executeUIUpdate() {
+        // 활성 탭 확인
+        const savedTab = document.getElementById('saved-tab');
+        const trackingTab = document.getElementById('tracking-tab');
+        const isSavedTabActive = savedTab && savedTab.classList.contains('active');
+        const isTrackingTabActive = trackingTab && trackingTab.classList.contains('active');
+        
+        // 저장된 글 탭 업데이트
+        if (this.updateQueue.savedTexts && isSavedTabActive) {
+            this.renderSavedTexts();
+            this.updateQueue.savedTexts = false;
+        }
+        
+        // 트래킹 탭 업데이트
+        if (this.updateQueue.trackingPosts && isTrackingTabActive) {
+            this.renderTrackingPosts();
+            this.updateQueue.trackingPosts = false;
+        }
+        
+        // 트래킹 요약 업데이트 (트래킹 탭이 활성화되어 있을 때만)
+        if (this.updateQueue.trackingSummary && isTrackingTabActive) {
+            this.updateTrackingSummary();
+            this.updateQueue.trackingSummary = false;
+        }
+        
+        // 트래킹 차트 업데이트 (트래킹 탭이 활성화되어 있고 차트가 보일 때만)
+        if (this.updateQueue.trackingChart && isTrackingTabActive) {
+            const chartContainer = document.querySelector('.tracking-chart-container');
+            if (chartContainer && chartContainer.offsetParent !== null) {
+                this.updateTrackingChart();
+            }
+            this.updateQueue.trackingChart = false;
+        }
+    }
+    
+    // 디바운싱 유틸리티 함수
+    debounce(func, wait) {
+        const key = func.name || 'anonymous';
+        if (this.debounceTimers[key]) {
+            clearTimeout(this.debounceTimers[key]);
+        }
+        this.debounceTimers[key] = setTimeout(() => {
+            func.apply(this, arguments);
+            delete this.debounceTimers[key];
+        }, wait);
+    }
+    
     // 범위 필터 초기화
     initRangeFilter() {
         try {
@@ -1773,14 +1861,14 @@ class DualTextWriter {
                 this.trackingPosts = this.trackingPosts.filter(post => post.sourceTextId !== id);
             }
             
-            // UI 즉시 업데이트
-            this.renderSavedTexts();
-            const trackingTab = document.getElementById('tracking-tab');
-            if (trackingTab && trackingTab.classList.contains('active')) {
-                this.renderTrackingPosts();
-                this.updateTrackingSummary();
-                this.updateTrackingChart();
-            }
+            // Optimistic UI: 즉시 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
             
             console.log('Firestore에서 삭제 시작:', { id, connectedPostsCount: postCount });
             
@@ -1824,9 +1912,12 @@ class DualTextWriter {
                 // UI 복원
                 this.renderSavedTexts();
                 if (trackingTab && trackingTab.classList.contains('active')) {
-                    this.renderTrackingPosts();
-                    this.updateTrackingSummary();
-                    this.updateTrackingChart();
+                    this.refreshUI({
+                        trackingPosts: true,
+                        trackingSummary: true,
+                        trackingChart: true,
+                        force: true
+                    });
                 }
                 
                 this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
@@ -4310,7 +4401,8 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
             this.populatePostSelector();
         }
         
-        this.renderTrackingPosts();
+        // loadTrackingPosts는 초기 로드 시에만 사용, 이후에는 refreshUI 사용
+        this.refreshUI({ trackingPosts: true, trackingSummary: true, trackingChart: true, force: true });
         
     } catch (error) {
         // Firebase 데이터 로드 실패 시 에러 처리
@@ -4344,7 +4436,7 @@ DualTextWriter.prototype.toggleFavorite = function(postId) {
         const idx = favs.indexOf(postId);
         if (idx >= 0) favs.splice(idx, 1); else favs.push(postId);
         localStorage.setItem('dtw_favorites', JSON.stringify(favs));
-        this.renderTrackingPosts();
+        this.refreshUI({ trackingPosts: true });
     } catch (e) {
         console.error('즐겨찾기 저장 실패', e);
     }
@@ -4890,7 +4982,7 @@ DualTextWriter.prototype.startTracking = async function(postId) {
         const post = this.trackingPosts.find(p => p.id === postId);
         if (post) {
             post.trackingEnabled = true;
-            this.renderTrackingPosts();
+            this.refreshUI({ trackingPosts: true, force: true });
             
             // 시각적 피드백: 성공 메시지
             this.showMessage('✅ 트래킹이 시작되었습니다!', 'success');
@@ -4918,7 +5010,7 @@ DualTextWriter.prototype.stopTracking = async function(postId) {
         const post = this.trackingPosts.find(p => p.id === postId);
         if (post) {
             post.trackingEnabled = false;
-            this.renderTrackingPosts();
+            this.refreshUI({ trackingPosts: true, force: true });
             
             // 시각적 피드백: 성공 메시지
             this.showMessage('⏸️ 트래킹이 중지되었습니다.', 'info');
@@ -5047,15 +5139,15 @@ DualTextWriter.prototype.saveTrackingData = async function() {
                 post.analytics = analytics;
             }
             
+            // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
             this.closeTrackingModal();
-            this.renderTrackingPosts();
-            this.updateTrackingSummary();
-            this.updateTrackingChart();
-            
-            // 저장된 글 목록도 새로고침 (타임라인 업데이트)
-            if (this.savedTexts) {
-                this.renderSavedTexts();
-            }
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
             
             // 시각적 피드백: 성공 메시지
             this.showMessage('✅ 성과 데이터가 저장되었습니다!', 'success');
@@ -5201,16 +5293,17 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
         
         this.closeTrackingModal();
         
-        // 트래킹 포스트 목록을 최신 데이터로 새로고침 (Firebase에서 다시 가져오기)
-        if (this.loadTrackingPosts) {
-            await this.loadTrackingPosts();
-        }
+        // Optimistic UI: 로컬 데이터 업데이트로 즉시 반영 (Firebase 전체 재조회 불필요)
+        // 트래킹 탭 목록은 로컬 데이터가 이미 업데이트되었으므로 재조회 불필요
         
         // UI 업데이트
-        this.renderSavedTexts(); // 저장된 글 목록 새로고침 (타임라인 업데이트)
-        this.renderTrackingPosts(); // 트래킹 탭 목록 새로고침
-        this.updateTrackingSummary(); // 트래킹 요약 업데이트
-        this.updateTrackingChart(); // 트래킹 차트 업데이트
+        this.refreshUI({
+            savedTexts: true,
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
         
         // 초기화
         this.currentTrackingTextId = null;
@@ -5537,16 +5630,25 @@ DualTextWriter.prototype.deleteMetricFromManage = async function(postId, textId,
         }
         
         // 메트릭 관리 모달 새로고침
-        const refreshPostId = postRef.id || postId;
-        setTimeout(() => {
-            this.manageMetrics(refreshPostId);
-        }, 300);
+        const manageModal = document.getElementById('metrics-manage-modal');
+        const isManageModalOpen = manageModal && (manageModal.classList.contains('bottom-sheet-open') || manageModal.style.display !== 'none');
         
-        // UI 업데이트
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.updateTrackingChart();
-        this.renderSavedTexts();
+        if (isManageModalOpen) {
+            // 메트릭 관리 모달이 열려있으면 새로고침
+            const refreshPostId = postRef.id || postId;
+            setTimeout(() => {
+                this.manageMetrics(refreshPostId);
+            }, 300);
+        } else {
+            // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+        }
         
         this.showMessage('✅ 트래킹 데이터가 삭제되었습니다!', 'success');
         
@@ -5766,10 +5868,13 @@ DualTextWriter.prototype.updateTrackingDataItem = async function() {
             }, 300);
         } else {
             // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
-            this.renderSavedTexts();
-            this.renderTrackingPosts();
-            this.updateTrackingSummary();
-            this.updateTrackingChart();
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
         }
         
         this.editingMetricData = null;
@@ -5857,10 +5962,13 @@ DualTextWriter.prototype.deleteTrackingDataItem = async function() {
         this.editingMetricData = null;
         
         // 화면 새로고침
-        this.renderSavedTexts();
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.updateTrackingChart();
+        this.refreshUI({
+            savedTexts: true,
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
         
         this.showMessage('✅ 트래킹 데이터가 삭제되었습니다!', 'success');
         console.log('트래킹 데이터 삭제 완료');
@@ -7077,9 +7185,12 @@ DualTextWriter.prototype.cleanupOrphanPosts = async function() {
         this.trackingPosts = this.trackingPosts.filter(post => !post.isOrphan);
         
         // UI 업데이트
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.updateTrackingChart();
+        this.refreshUI({
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
         
         // 성공 메시지
         this.showMessage(`✅ Orphan 포스트 ${orphanPosts.length}개가 정리되었습니다!`, 'success');
