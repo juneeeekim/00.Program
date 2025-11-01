@@ -425,6 +425,12 @@ class DualTextWriter {
                 this.runComprehensiveTest();
             }, 2000);
         }
+
+        // 패널 기반 LLM 검증 버튼 초기 바인딩
+        // DOM이 완전히 로드된 후 실행되도록 setTimeout 사용
+        setTimeout(() => {
+            this.bindPanelLLMButtons();
+        }, 100);
     }
 
     // 저장된 글 필터 UI 초기화 및 이벤트 바인딩
@@ -935,6 +941,47 @@ class DualTextWriter {
             <div class="saved-item-actions actions--primary" role="group" aria-label="카드 작업 버튼">
                 <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글 편집' : '작성 글 편집'}">편집</button>
                 <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${item.id}" aria-label="트래킹 데이터 입력">📊 데이터 입력</button>
+                <div class="llm-validation-dropdown" style="position: relative; display: inline-block;">
+                    <button class="action-button btn-llm-main" data-action="llm-validation" data-item-id="${item.id}" aria-label="LLM 검증 메뉴">🔍 LLM 검증</button>
+                    <div class="llm-dropdown-menu">
+                        <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🤖</span>
+                                    <span class="llm-name">ChatGPT</span>
+                                </div>
+                                <div class="llm-description">SNS 후킹 분석</div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🧠</span>
+                                    <span class="llm-name">Gemini</span>
+                                </div>
+                                <div class="llm-description">심리적 후킹 분석</div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🔎</span>
+                                    <span class="llm-name">Perplexity</span>
+                                </div>
+                                <div class="llm-description">트렌드 검증</div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🚀</span>
+                                    <span class="llm-name">Grok</span>
+                                </div>
+                                <div class="llm-description">임팩트 최적화</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
                 <div class="more-menu actions--more">
                     <button class="more-menu-btn" data-action="more" data-item-id="${item.id}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
                     <div class="more-menu-list" role="menu" aria-label="기타 작업">
@@ -1204,7 +1251,27 @@ class DualTextWriter {
                 this.openTrackingModal(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
-                // 드롭다운 메뉴 토글은 CSS로 처리됨
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // 드롭다운 메뉴 토글 (모바일 지원)
+                const dropdownContainer = button.closest('.llm-validation-dropdown');
+                if (dropdownContainer) {
+                    const dropdownMenu = dropdownContainer.querySelector('.llm-dropdown-menu');
+                    if (dropdownMenu) {
+                        const isOpen = dropdownMenu.classList.toggle('open');
+                        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                        
+                        // 포커스 트랩: 메뉴가 열리면 첫 번째 LLM 옵션에 포커스
+                        if (isOpen) {
+                            const firstOption = dropdownMenu.querySelector('.llm-option');
+                            if (firstOption) {
+                                setTimeout(() => firstOption.focus(), 50);
+                            }
+                        }
+                    }
+                }
+                return;
             } else {
                 // LLM 옵션 버튼 처리 (data-llm 속성 확인)
                 const llmService = button.getAttribute('data-llm');
@@ -1223,13 +1290,16 @@ class DualTextWriter {
             document.removeEventListener('click', this.outsideClickHandler, { capture: true });
         }
 
-        // 바깥 클릭 시 모든 more 메뉴 닫기
+        // 바깥 클릭 시 모든 more 메뉴 및 LLM 드롭다운 닫기
         // setTimeout을 사용하여 이벤트 처리 순서 보장: 메뉴를 여는 동작이 완료된 후 바깥 클릭을 감지
         this.outsideClickHandler = (e) => {
             const isInsideMenu = e.target.closest('.more-menu');
-            if (!isInsideMenu) {
+            const isInsideLLMDropdown = e.target.closest('.llm-validation-dropdown');
+            
+            if (!isInsideMenu && !isInsideLLMDropdown) {
                 // 이벤트 처리 순서 보장: 메뉴 열기 동작이 완료된 후 실행되도록 setTimeout 사용
                 setTimeout(() => {
+                    // More 메뉴 닫기
                     document.querySelectorAll('.more-menu-list.open').forEach(el => {
                         el.classList.remove('open');
                         // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
@@ -1240,6 +1310,18 @@ class DualTextWriter {
                         }
                     });
                     document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                    
+                    // LLM 드롭다운 닫기
+                    document.querySelectorAll('.llm-dropdown-menu.open').forEach(el => {
+                        el.classList.remove('open');
+                        // 포커스 트랩 해제: LLM 메인 버튼으로 포커스 복원
+                        const llmBtn = el.previousElementSibling;
+                        if (llmBtn && llmBtn.classList.contains('btn-llm-main')) {
+                            llmBtn.setAttribute('aria-expanded', 'false');
+                            llmBtn.focus();
+                        }
+                    });
+                    document.querySelectorAll('.btn-llm-main[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
                 }, 0);
             }
         };
@@ -1326,6 +1408,43 @@ class DualTextWriter {
         console.log('이벤트 리스너 등록 완료');
     }
 
+    // 패널 기반 LLM 검증 버튼 바인딩 (재사용 가능)
+    bindPanelLLMButtons() {
+        console.log('패널 LLM 버튼 바인딩 시작');
+        
+        const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
+        console.log(`패널 LLM 버튼 ${panelLlmButtons.length}개 발견`);
+        
+        panelLlmButtons.forEach((button, index) => {
+            const panel = button.getAttribute('data-panel');
+            const llmService = button.getAttribute('data-llm');
+
+            if (!panel || !llmService) {
+                console.warn(`패널 LLM 버튼 ${index}에 필수 속성이 없습니다:`, { panel, llmService });
+                return;
+            }
+
+            console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
+
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            if (button._panelLlmHandler) {
+                button.removeEventListener('click', button._panelLlmHandler);
+            }
+
+            // 새로운 이벤트 핸들러 생성 및 바인딩
+            button._panelLlmHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('패널 LLM 버튼 클릭:', { panel, llmService });
+                this.validatePanelWithLLM(panel, llmService);
+            };
+
+            button.addEventListener('click', button._panelLlmHandler);
+        });
+
+        console.log('패널 LLM 버튼 바인딩 완료');
+    }
+
     // 직접 이벤트 바인딩 (백업 방법)
     bindDirectEventListeners() {
         console.log('직접 이벤트 바인딩 시작');
@@ -1375,28 +1494,8 @@ class DualTextWriter {
             button.addEventListener('click', button._deleteHandler);
         });
 
-        // 패널 기반 LLM 검증 버튼들 바인딩
-        const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
-        panelLlmButtons.forEach((button, index) => {
-            const panel = button.getAttribute('data-panel');
-            const llmService = button.getAttribute('data-llm');
-
-            console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
-
-            // 기존 이벤트 리스너 제거
-            button.removeEventListener('click', button._panelLlmHandler);
-
-            // 새로운 이벤트 핸들러 생성 및 바인딩
-            button._panelLlmHandler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('패널 LLM 버튼 클릭:', { panel, llmService });
-
-                this.validatePanelWithLLM(panel, llmService);
-            };
-
-            button.addEventListener('click', button._panelLlmHandler);
-        });
+        // 패널 기반 LLM 검증 버튼들 바인딩 (재사용 함수 호출)
+        this.bindPanelLLMButtons();
 
         console.log('직접 이벤트 바인딩 완료');
     }

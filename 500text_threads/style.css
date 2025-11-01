@@ -1657,7 +1657,8 @@ body {
     transition: all 0.3s ease;
     }
     
-    .llm-validation-dropdown:hover .llm-dropdown-menu {
+    .llm-validation-dropdown:hover .llm-dropdown-menu,
+    .llm-dropdown-menu.open {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -2753,7 +2754,8 @@ body {
     transition: all 0.3s ease;
     }
     
-    .panel-controls .llm-validation-dropdown:hover .llm-dropdown-menu {
+    .panel-controls .llm-validation-dropdown:hover .llm-dropdown-menu,
+    .panel-controls .llm-dropdown-menu.open {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
