@@ -4838,16 +4838,28 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
         this.trackingPosts = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            
+            // 레퍼런스 타입 포스트는 트래킹 목록에서 제외
+            // 레퍼런스 글은 사용 여부 표시용이지 트래킹 대상이 아님
+            const postType = data.type || 'edit';
+            const sourceType = data.sourceType || data.type || 'edit';
+            
+            // 레퍼런스 타입 포스트 필터링 (type === 'reference' 또는 sourceType === 'reference')
+            if (postType === 'reference' || sourceType === 'reference') {
+                console.log('레퍼런스 포스트는 트래킹 목록에서 제외:', doc.id);
+                return; // 이 포스트는 트래킹 목록에 추가하지 않음
+            }
+            
             this.trackingPosts.push({
                 id: doc.id,
                 content: data.content,
-                type: data.type || 'edit',
+                type: postType,
                 postedAt: data.postedAt ? data.postedAt.toDate() : new Date(),
                 trackingEnabled: data.trackingEnabled || false,
                 metrics: data.metrics || [],
                 analytics: data.analytics || {},
                 sourceTextId: data.sourceTextId || null, // 원본 텍스트 참조
-                sourceType: data.sourceType || data.type || 'edit', // 원본 텍스트 타입
+                sourceType: sourceType, // 원본 텍스트 타입
                 sourceTextExists: null // 검증 결과 (나중에 설정)
             });
         });
