@@ -5125,6 +5125,20 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
     
     // 상태/검색/기간 필터 적용
     let list = [...this.trackingPosts];
+    
+    // 레퍼런스 포스트 필터링 (트래킹 대상 아님)
+    // 레퍼런스 글은 사용 여부 표시용이지 트래킹 대상이 아님
+    list = list.filter(post => {
+        const postType = post.type || 'edit';
+        const sourceType = post.sourceType || post.type || 'edit';
+        
+        // 레퍼런스 타입 포스트는 제외
+        if (postType === 'reference' || sourceType === 'reference') {
+            return false;
+        }
+        return true;
+    });
+    
     if (this.trackingStatusFilter === 'active') {
         list = list.filter(p => !!p.trackingEnabled);
     } else if (this.trackingStatusFilter === 'inactive') {
