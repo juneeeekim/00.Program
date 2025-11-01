@@ -1422,14 +1422,22 @@ body {
     margin-bottom: 0;
     }
     
-.saved-item-header {
+    .saved-item-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 8px;
     flex-wrap: wrap;
     gap: 8px;
-}
+    }
+    
+    /* 저장된 글 헤더 좌측 영역 (타입 배지 + 사용 여부 배지) */
+    .saved-item-header-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
     
     .saved-item-type {
     background: linear-gradient(135deg, #667eea, #764ba2);
@@ -1440,6 +1448,42 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    }
+    
+    /* 저장된 글 헤더 좌측 영역 (타입 배지 + 사용 여부 배지) */
+    .saved-item-header-left {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    
+    /* 레퍼런스 사용 여부 배지 스타일 */
+    .reference-usage-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        background: #10b981;
+        color: white;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+    
+    .reference-usage-badge:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+    
+    /* 반응형: 모바일에서 간략하게 */
+    @media (max-width: 768px) {
+        .reference-usage-badge {
+            padding: 2px 6px;
+            font-size: 0.7rem;
+        }
     }
     
 .saved-item-date { display: none; }

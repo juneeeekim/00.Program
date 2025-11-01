@@ -477,7 +477,13 @@ class DualTextWriter {
     }
 
     setSavedFilter(filter) {
-        if (!['all', 'edit', 'reference'].includes(filter)) return;
+        // 에러 처리: 필터 값이 예상 범위를 벗어난 경우 처리
+        const validFilters = ['all', 'edit', 'reference', 'reference-unused'];
+        if (!validFilters.includes(filter)) {
+            console.warn('setSavedFilter: 잘못된 필터 값:', filter);
+            return;
+        }
+        
         this.savedFilter = filter;
         localStorage.setItem('dualTextWriter_savedFilter', filter);
 
@@ -493,6 +499,15 @@ class DualTextWriter {
 
         // 목록 렌더링
         this.renderSavedTexts();
+        
+        // 접근성: 필터 변경 후 포커스 관리 (선택적, 필요 시 활성화)
+        // setTimeout을 사용하여 렌더링 완료 후 실행
+        // const firstItem = this.savedList.querySelector('.saved-item');
+        // if (firstItem) {
+        //     setTimeout(() => {
+        //         firstItem.focus();
+        //     }, 100);
+        // }
     }
 
     updateCharacterCount(panel) {
@@ -823,12 +838,23 @@ class DualTextWriter {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
             list = list.filter(item => item.type === 'reference');
+        } else if (this.savedFilter === 'reference-unused') {
+            // 사용 안된 레퍼런스만 필터링 (usageCount === 0 또는 undefined)
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
+            list = list.filter(item => (item.type || 'edit') === 'reference');
         }
 
         if (list.length === 0) {
-            const emptyMsg = this.savedFilter === 'all'
-                ? '저장된 글이 없습니다.'
-                : (this.savedFilter === 'edit' ? '작성 글이 없습니다.' : '레퍼런스 글이 없습니다.');
+            // 에러 처리: 필터 적용 시 데이터가 없는 경우 처리
+            let emptyMsg = '저장된 글이 없습니다.';
+            if (this.savedFilter === 'edit') {
+                emptyMsg = '작성 글이 없습니다.';
+            } else if (this.savedFilter === 'reference') {
+                emptyMsg = '레퍼런스 글이 없습니다.';
+            } else if (this.savedFilter === 'reference-unused') {
+                emptyMsg = '사용 안된 레퍼런스가 없습니다.';
+            }
             this.savedList.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📝</div>
@@ -852,7 +878,23 @@ class DualTextWriter {
             </div>
         `;
 
-        // 각 저장된 글에 대한 트래킹 데이터 조회 (비동기)
+        // 성능 최적화: 레퍼런스 글의 사용 여부를 배치 조회로 미리 확인
+        const referenceItems = list.filter(item => (item.type || 'edit') === 'reference');
+        let referenceUsageMap = {};
+        if (referenceItems.length > 0 && this.currentUser && this.isFirebaseReady) {
+            try {
+                const referenceIds = referenceItems.map(item => item.id);
+                referenceUsageMap = await this.checkMultipleReferenceUsage(referenceIds);
+            } catch (error) {
+                console.error('레퍼런스 사용 여부 배치 조회 실패:', error);
+                // 에러 발생 시 모든 레퍼런스에 대해 0으로 초기화
+                referenceItems.forEach(item => {
+                    referenceUsageMap[item.id] = 0;
+                });
+            }
+        }
+        
+        // 각 저장된 글에 대한 트래킹 데이터 조회 및 사용 여부 추가 (비동기)
         const itemsWithTracking = await Promise.all(list.map(async (item, index) => {
             let postData = null;
             if (this.trackingPosts && this.currentUser && this.isFirebaseReady) {
@@ -881,16 +923,67 @@ class DualTextWriter {
                 }
             }
             
-            return { item, postData, index };
+            // 레퍼런스 글인 경우 사용 여부 추가
+            let usageCount = 0;
+            if ((item.type || 'edit') === 'reference') {
+                usageCount = referenceUsageMap[item.id] || 0;
+            }
+            
+            // 사용 여부를 item 객체에 추가하여 캐싱
+            const itemWithUsage = { ...item, usageCount };
+            
+            // reference-unused 필터인 경우, usageCount가 0인 항목만 포함
+            if (this.savedFilter === 'reference-unused') {
+                const isReference = (item.type || 'edit') === 'reference';
+                if (!isReference || usageCount !== 0) {
+                    return null; // 필터링 대상에서 제외
+                }
+            }
+            
+            return { item: itemWithUsage, postData, index };
         }));
+        
+        // reference-unused 필터인 경우 null인 항목 제거
+        const filteredItemsWithTracking = this.savedFilter === 'reference-unused' 
+            ? itemsWithTracking.filter(result => result !== null)
+            : itemsWithTracking;
+        
+        // 필터링 후 빈 목록 체크
+        if (filteredItemsWithTracking.length === 0) {
+            let emptyMsg = '저장된 글이 없습니다.';
+            if (this.savedFilter === 'edit') {
+                emptyMsg = '작성 글이 없습니다.';
+            } else if (this.savedFilter === 'reference') {
+                emptyMsg = '레퍼런스 글이 없습니다.';
+            } else if (this.savedFilter === 'reference-unused') {
+                emptyMsg = '사용 안된 레퍼런스가 없습니다.';
+            }
+            this.savedList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">${emptyMsg}</div>
+                    <div class="empty-state-subtext">글을 작성하고 저장해보세요!</div>
+                </div>
+            `;
+            // 접근성: 스크린 리더에 빈 목록 상태 전달 (aria-live로 자동 전달됨)
+            this.savedList.setAttribute('aria-label', `저장된 글 목록: ${emptyMsg}`);
+            return;
+        }
 
         // 성능 최적화: 많은 카드 렌더링 시 배치 처리
         const batchSize = 10;
         const totalItems = itemsWithTracking.length;
         
+        // 접근성: 필터 결과를 스크린 리더에 전달 (aria-live="polite"로 자동 전달됨)
+        const filterDescription = this.savedFilter === 'edit' ? '작성 글' 
+            : this.savedFilter === 'reference' ? '레퍼런스 글'
+            : this.savedFilter === 'reference-unused' ? '사용 안된 레퍼런스'
+            : '저장된 글';
+        this.savedList.setAttribute('aria-label', `저장된 글 목록: ${filterDescription} ${totalItems}개`);
+        
         if (totalItems > batchSize) {
             // 대량 렌더링: 첫 번째 배치만 즉시 렌더링, 나머지는 requestAnimationFrame으로 처리
-            const firstBatch = itemsWithTracking.slice(0, batchSize);
+            const firstBatch = filteredItemsWithTracking.slice(0, batchSize);
             this.savedList.innerHTML = firstBatch.map(({ item, postData, index }) => {
                 return this.renderSavedItemCard(item, postData, index);
             }).join('');
@@ -900,7 +993,7 @@ class DualTextWriter {
             const renderNextBatch = () => {
                 if (currentIndex >= totalItems) return;
                 
-                const batch = itemsWithTracking.slice(currentIndex, currentIndex + batchSize);
+                const batch = filteredItemsWithTracking.slice(currentIndex, currentIndex + batchSize);
                 const batchHtml = batch.map(({ item, postData, index }) => {
                     return this.renderSavedItemCard(item, postData, index);
                 }).join('');
@@ -925,7 +1018,7 @@ class DualTextWriter {
             requestAnimationFrame(renderNextBatch);
         } else {
             // 소량 렌더링: 즉시 렌더링
-            this.savedList.innerHTML = itemsWithTracking.map(({ item, postData, index }) => {
+            this.savedList.innerHTML = filteredItemsWithTracking.map(({ item, postData, index }) => {
                 return this.renderSavedItemCard(item, postData, index);
             }).join('');
         }
@@ -946,10 +1039,18 @@ class DualTextWriter {
         // 타임라인 HTML 생성
         const timelineHtml = this.renderTrackingTimeline(postData?.metrics || [], item.id);
         
+        // 레퍼런스 글인 경우 사용 여부 배지 생성
+        const isReference = (item.type || 'edit') === 'reference';
+        const usageCount = item.usageCount || 0;
+        const usageBadgeHtml = isReference ? this.renderReferenceUsageBadge(usageCount) : '';
+        
         return `
         <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
             <div class="saved-item-header" id="item-header-${item.id}">
-                <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+                <div class="saved-item-header-left">
+                    <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+                    ${usageBadgeHtml}
+                </div>
             </div>
             <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
             <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
@@ -1177,6 +1278,55 @@ class DualTextWriter {
             totalShares: 0,
             totalFollows: 0
         });
+    }
+
+    /**
+     * 레퍼런스 글의 사용 여부를 배지 형태로 렌더링합니다.
+     * 
+     * 사용 여부에 따라 배지 HTML을 반환합니다.
+     * - 사용 안됨 (usageCount === 0): 빈 문자열 반환
+     * - 사용됨 (usageCount > 0): "✅ 사용됨" 또는 "사용됨 N회" 배지 HTML 반환
+     * 
+     * @param {number} usageCount - 레퍼런스 글의 사용 횟수 (0 이상의 정수)
+     * @returns {string} 배지 HTML 문자열 (사용 안됨이면 빈 문자열)
+     * 
+     * @example
+     * const badgeHtml = dualTextWriter.renderReferenceUsageBadge(3);
+     * // 결과: '<span class="reference-usage-badge" aria-label="사용됨 3회" role="status">✅ 사용됨 3회</span>'
+     * 
+     * const badgeHtml = dualTextWriter.renderReferenceUsageBadge(0);
+     * // 결과: '' (빈 문자열)
+     */
+    renderReferenceUsageBadge(usageCount) {
+        // 에러 처리: null 또는 undefined 입력 처리
+        if (usageCount == null) {
+            return '';
+        }
+        
+        // 에러 처리: 숫자가 아닌 경우 처리
+        if (typeof usageCount !== 'number') {
+            console.warn('renderReferenceUsageBadge: usageCount가 숫자가 아닙니다:', usageCount);
+            return '';
+        }
+        
+        // 에러 처리: 음수인 경우 0으로 처리
+        if (usageCount < 0) {
+            console.warn('renderReferenceUsageBadge: usageCount가 음수입니다:', usageCount);
+            usageCount = 0;
+        }
+        
+        // 사용 안됨: 빈 문자열 반환
+        if (usageCount === 0) {
+            return '';
+        }
+        
+        // 사용됨: 배지 HTML 반환
+        // 접근성: aria-label로 사용 여부를 스크린 리더에 전달
+        // role="status"로 상태 정보임을 명시
+        const usageText = usageCount === 1 ? '사용됨' : `사용됨 ${usageCount}회`;
+        const ariaLabel = `레퍼런스 ${usageText}`;
+        
+        return `<span class="reference-usage-badge" aria-label="${ariaLabel}" role="status">✅ ${usageText}</span>`;
     }
 
     /**
@@ -7331,6 +7481,163 @@ DualTextWriter.prototype.checkExistingPostForText = async function(textId) {
     } catch (error) {
         console.error('기존 포스트 확인 실패:', error);
         return [];
+    }
+};
+
+/**
+ * 레퍼런스 글의 사용 여부를 확인합니다.
+ * 
+ * Firebase `posts` 컬렉션에서 `sourceType === 'reference'`이고 
+ * `sourceTextId`가 일치하는 포스트 개수를 반환합니다.
+ * 
+ * @param {string} referenceTextId - 레퍼런스 텍스트의 ID (texts 컬렉션 문서 ID)
+ * @returns {Promise<number>} 사용 횟수 (0이면 사용 안됨, 1 이상이면 사용됨)
+ * 
+ * @example
+ * const usageCount = await dualTextWriter.checkReferenceUsage('abc123');
+ * if (usageCount > 0) {
+ *     console.log(`이 레퍼런스는 ${usageCount}회 사용되었습니다.`);
+ * }
+ */
+DualTextWriter.prototype.checkReferenceUsage = async function(referenceTextId) {
+    // 에러 처리: 파라미터 유효성 검사
+    if (!referenceTextId || typeof referenceTextId !== 'string') {
+        console.warn('checkReferenceUsage: 잘못된 referenceTextId:', referenceTextId);
+        return 0;
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('checkReferenceUsage: Firebase가 준비되지 않았습니다.');
+        return 0;
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('checkReferenceUsage: 사용자가 로그인하지 않았습니다.');
+        return 0;
+    }
+    
+    try {
+        // Firebase posts 컬렉션 참조
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        
+        // Firebase 쿼리: sourceType이 'reference'이고 sourceTextId가 일치하는 포스트 조회
+        // 참고: Firestore는 where 절을 여러 개 사용할 수 있음 (복합 인덱스 필요할 수 있음)
+        const q = window.firebaseQuery(
+            postsRef,
+            window.firebaseWhere('sourceType', '==', 'reference'),
+            window.firebaseWhere('sourceTextId', '==', referenceTextId)
+        );
+        
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        // 사용 횟수 계산 (쿼리 결과의 문서 개수)
+        const usageCount = querySnapshot.size;
+        
+        return usageCount;
+    } catch (error) {
+        // 에러 처리: Firebase 조회 실패 시 기본값(0) 반환
+        console.error('레퍼런스 사용 여부 확인 실패:', error);
+        return 0;
+    }
+};
+
+/**
+ * 여러 레퍼런스 글의 사용 여부를 한번에 확인합니다 (성능 최적화).
+ * 
+ * Firebase `posts` 컬렉션에서 `sourceType === 'reference'`인 포스트들을 조회한 후,
+ * JavaScript에서 `sourceTextId`별로 그룹핑하여 사용 횟수를 계산합니다.
+ * 
+ * **성능 최적화 전략:**
+ * - 모든 레퍼런스 포스트를 한 번의 쿼리로 조회
+ * - JavaScript에서 그룹핑하여 카운트 (Firebase `whereIn` 10개 제한 회피)
+ * 
+ * @param {Array<string>} referenceTextIds - 레퍼런스 텍스트 ID 배열 (texts 컬렉션 문서 ID들)
+ * @returns {Promise<Object>} 사용 횟수 객체: `{ textId1: count1, textId2: count2, ... }`
+ * 
+ * @example
+ * const usageMap = await dualTextWriter.checkMultipleReferenceUsage(['id1', 'id2', 'id3']);
+ * // 결과: { id1: 2, id2: 0, id3: 1 }
+ * 
+ * if (usageMap.id1 > 0) {
+ *     console.log(`레퍼런스 id1은 ${usageMap.id1}회 사용되었습니다.`);
+ * }
+ */
+DualTextWriter.prototype.checkMultipleReferenceUsage = async function(referenceTextIds) {
+    // 에러 처리: 빈 배열 입력 처리
+    if (!Array.isArray(referenceTextIds) || referenceTextIds.length === 0) {
+        return {};
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('checkMultipleReferenceUsage: Firebase가 준비되지 않았습니다.');
+        // 모든 ID에 대해 0 반환
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('checkMultipleReferenceUsage: 사용자가 로그인하지 않았습니다.');
+        // 모든 ID에 대해 0 반환
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
+    }
+    
+    try {
+        // Firebase posts 컬렉션 참조
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        
+        // 성능 최적화: sourceType이 'reference'인 모든 포스트를 한 번의 쿼리로 조회
+        // (whereIn 10개 제한을 회피하기 위해 JavaScript에서 필터링)
+        const q = window.firebaseQuery(
+            postsRef,
+            window.firebaseWhere('sourceType', '==', 'reference')
+        );
+        
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        // 사용 횟수 계산을 위한 Map 초기화 (모든 ID에 대해 0으로 초기화)
+        const usageMap = new Map();
+        referenceTextIds.forEach(id => {
+            // 유효한 ID만 처리
+            if (id && typeof id === 'string') {
+                usageMap.set(id, 0);
+            }
+        });
+        
+        // 쿼리 결과를 순회하며 sourceTextId별로 카운트
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const sourceTextId = data.sourceTextId;
+            
+            // 요청한 ID 목록에 포함된 경우에만 카운트
+            if (sourceTextId && usageMap.has(sourceTextId)) {
+                const currentCount = usageMap.get(sourceTextId);
+                usageMap.set(sourceTextId, currentCount + 1);
+            }
+        });
+        
+        // Map을 객체로 변환하여 반환
+        const result = {};
+        usageMap.forEach((count, id) => {
+            result[id] = count;
+        });
+        
+        return result;
+    } catch (error) {
+        // 에러 처리: Firebase 조회 실패 시 모든 ID에 대해 0 반환
+        console.error('여러 레퍼런스 사용 여부 확인 실패:', error);
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
     }
 };
 
