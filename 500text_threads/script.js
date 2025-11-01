@@ -1651,6 +1651,14 @@ class DualTextWriter {
         }
 
         try {
+            // 삭제할 아이템 찾기
+            const itemToDelete = this.savedTexts.find(saved => saved.id === id);
+            if (!itemToDelete) {
+                console.error('삭제할 아이템을 찾을 수 없습니다:', id);
+                this.showMessage('삭제할 글을 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
             // 연결된 트래킹 포스트 찾기
             const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
             const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', id));
