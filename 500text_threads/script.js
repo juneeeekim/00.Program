@@ -1268,12 +1268,18 @@ class DualTextWriter {
                         const isOpen = dropdownMenu.classList.toggle('open');
                         button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                         
-                        // 포커스 트랩: 메뉴가 열리면 첫 번째 LLM 옵션에 포커스
+                        // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
                         if (isOpen) {
+                            this.applySmartMenuPosition(dropdownMenu, button);
+                            
+                            // 포커스 트랩: 메뉴가 열리면 첫 번째 LLM 옵션에 포커스
                             const firstOption = dropdownMenu.querySelector('.llm-option');
                             if (firstOption) {
                                 setTimeout(() => firstOption.focus(), 50);
                             }
+                        } else {
+                            // 메뉴 닫힐 때 위치 클래스 제거
+                            dropdownMenu.classList.remove('open-top', 'open-bottom');
                         }
                     }
                 }

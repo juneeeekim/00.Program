@@ -1665,17 +1665,18 @@ body {
     
     .llm-dropdown-menu {
     position: absolute;
-    top: 100%;
+    bottom: calc(100% + 6px); /* 버튼 위로 표시 (기본) */
+    top: auto;
     left: 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 8px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* 위쪽 그림자 (기본) */
     z-index: 10000; /* 높은 z-index로 다른 요소 위에 표시 */
     min-width: 220px;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
+    transform: translateY(10px); /* 위로 올라오는 애니메이션 */
     transition: all 0.3s ease;
     display: block; /* 기본값: block으로 설정하여 open 시 표시 */
     }
@@ -1686,6 +1687,20 @@ body {
     visibility: visible !important;
     transform: translateY(0) !important;
     display: block !important;
+    }
+
+    /* 스마트 포지셔닝: 화면 상단 근처일 때 아래로 표시 */
+    .llm-dropdown-menu.open-bottom {
+        bottom: auto;
+        top: calc(100% + 6px); /* 버튼 아래로 표시 */
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* 아래쪽 그림자 */
+    }
+
+    /* 스마트 포지셔닝: 화면 하단 근처일 때 위로 표시 (기본) */
+    .llm-dropdown-menu.open-top {
+        bottom: calc(100% + 6px); /* 버튼 위로 표시 */
+        top: auto;
+        box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* 위쪽 그림자 */
     }
     
     .llm-option {
