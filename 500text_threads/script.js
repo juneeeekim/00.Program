@@ -384,6 +384,9 @@ class DualTextWriter {
             bindRange(this.minFollowsInput, 'minFollows');
             bindRange(this.maxFollowsInput, 'maxFollows');
 
+            // 범위 필터 접기/펼치기 초기화
+            this.initRangeFilter();
+            
             if (this.exportCsvBtn) {
                 this.exportCsvBtn.addEventListener('click', () => this.exportTrackingCsv());
             }
@@ -1122,6 +1125,60 @@ class DualTextWriter {
         const month = date.getMonth() + 1;
         const day = date.getDate();
         return `${year}년 ${month}월 ${day}일`;
+    }
+
+    // 범위 필터 초기화
+    initRangeFilter() {
+        try {
+            // localStorage에서 접기/펼치기 상태 복원
+            const isExpanded = localStorage.getItem('rangeFilter:expanded') === '1';
+            const content = document.getElementById('range-filter-content');
+            const toggle = document.getElementById('range-filter-toggle');
+            const toggleIcon = toggle?.querySelector('.toggle-icon');
+            
+            if (content && toggle && toggleIcon) {
+                if (isExpanded) {
+                    content.style.display = 'block';
+                    toggle.setAttribute('aria-expanded', 'true');
+                    toggleIcon.textContent = '▲';
+                } else {
+                    content.style.display = 'none';
+                    toggle.setAttribute('aria-expanded', 'false');
+                    toggleIcon.textContent = '▼';
+                }
+            }
+        } catch (error) {
+            console.error('범위 필터 초기화 실패:', error);
+        }
+    }
+    
+    // 범위 필터 접기/펼치기 토글
+    toggleRangeFilter() {
+        const content = document.getElementById('range-filter-content');
+        const toggle = document.getElementById('range-filter-toggle');
+        const toggleIcon = toggle?.querySelector('.toggle-icon');
+        
+        if (!content || !toggle || !toggleIcon) return;
+        
+        const isCurrentlyExpanded = content.style.display !== 'none';
+        const isExpanded = !isCurrentlyExpanded;
+        
+        if (isExpanded) {
+            content.style.display = 'block';
+            toggle.setAttribute('aria-expanded', 'true');
+            toggleIcon.textContent = '▲';
+        } else {
+            content.style.display = 'none';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggleIcon.textContent = '▼';
+        }
+        
+        // 상태 localStorage에 저장
+        try {
+            localStorage.setItem('rangeFilter:expanded', isExpanded ? '1' : '0');
+        } catch (error) {
+            console.error('범위 필터 상태 저장 실패:', error);
+        }
     }
 
     // 타임라인 더보기/접기 (최신 1개 기본)

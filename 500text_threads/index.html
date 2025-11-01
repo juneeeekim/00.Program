@@ -391,19 +391,28 @@
                             <input id="tracking-updated-to" type="date" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
                             <button id="tracking-date-clear" class="btn btn-secondary" style="padding:8px 10px; border-radius:8px;">초기화</button>
                         </div>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                            <span style="font-weight:600; color:#333; font-size:0.9rem;">범위:</span>
-                            <input id="min-views" type="number" min="0" placeholder="조회수 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="max-views" type="number" min="0" placeholder="조회수 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="min-likes" type="number" min="0" placeholder="좋아요 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="max-likes" type="number" min="0" placeholder="좋아요 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="min-comments" type="number" min="0" placeholder="댓글 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="max-comments" type="number" min="0" placeholder="댓글 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="min-shares" type="number" min="0" placeholder="공유 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="max-shares" type="number" min="0" placeholder="공유 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="min-follows" type="number" min="0" placeholder="팔로우 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <input id="max-follows" type="number" min="0" placeholder="팔로우 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
-                            <button id="export-csv" class="btn btn-primary" style="padding:8px 12px; border-radius:8px;">CSV 내보내기</button>
+                        <div class="range-filter-container">
+                            <div class="range-filter-header" style="display: flex; gap: 8px; align-items: center; cursor: pointer; user-select: none;" onclick="dualTextWriter.toggleRangeFilter()">
+                                <span style="font-weight:600; color:#333; font-size:0.9rem;">범위:</span>
+                                <button class="range-filter-toggle" id="range-filter-toggle" aria-label="범위 필터 접기/펼치기" aria-expanded="false" style="background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; color: #667eea; font-size: 0.9rem;">
+                                    <span class="toggle-icon">▼</span>
+                                </button>
+                            </div>
+                            <div class="range-filter-content" id="range-filter-content" style="display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e1e5e9;">
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <input id="min-views" type="number" min="0" placeholder="조회수 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="max-views" type="number" min="0" placeholder="조회수 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="min-likes" type="number" min="0" placeholder="좋아요 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="max-likes" type="number" min="0" placeholder="좋아요 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="min-comments" type="number" min="0" placeholder="댓글 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="max-comments" type="number" min="0" placeholder="댓글 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="min-shares" type="number" min="0" placeholder="공유 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="max-shares" type="number" min="0" placeholder="공유 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="min-follows" type="number" min="0" placeholder="팔로우 ≥" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <input id="max-follows" type="number" min="0" placeholder="팔로우 ≤" style="width:110px; padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;"/>
+                                    <button id="export-csv" class="btn btn-primary" style="padding:8px 12px; border-radius:8px;">CSV 내보내기</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="tracking-posts-list" id="tracking-posts-list">
