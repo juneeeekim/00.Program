@@ -1954,8 +1954,8 @@ class DualTextWriter {
             // LLM 사이트 열기
             this.openLLMSite(llmService, fullText);
 
-            // 성공 메시지
-            this.showMessage(`${panelType}에 대한 ${llmInfo.name} 검증을 위해 새 탭이 열렸습니다. 프롬프트가 클립보드에 복사되었습니다.`, 'success');
+            // 성공 메시지 (심플한 안내)
+            this.showMessage(`${llmInfo.icon} ${llmInfo.name} 페이지가 열렸습니다. Ctrl+V로 붙여넣기하세요!`, 'success');
 
         } catch (error) {
             console.error('패널 LLM 검증 실행 실패:', error);
@@ -1987,8 +1987,11 @@ class DualTextWriter {
             // LLM 사이트 URL 생성 및 새 탭에서 열기
             this.openLLMSite(llmService, fullText);
 
-            // 사용자에게 안내 메시지
-            this.showLLMValidationGuide(llmService);
+            // 성공 메시지 (심플한 안내)
+            const llmInfo = this.llmCharacteristics[llmService];
+            if (llmInfo) {
+                this.showMessage(`${llmInfo.icon} ${llmInfo.name} 페이지가 열렸습니다. Ctrl+V로 붙여넣기하세요!`, 'success');
+            }
 
         } catch (error) {
             console.error('LLM 검증 실행 실패:', error);
@@ -2022,10 +2025,27 @@ class DualTextWriter {
         }
     }
 
-    // LLM 사이트 새 탭에서 열기
+    // LLM 사이트 새 탭에서 열기 (심플한 방식: 자동 복사 + 새 탭 열기)
     openLLMSite(llmService, text) {
-        // 모든 LLM에 통합 모달 방식 사용 (URL 쿼리 파라미터는 지원하지 않음)
-        this.showLLMCopyModal(llmService, text);
+        // LLM 서비스 정보 가져오기
+        const llmInfo = this.llmCharacteristics[llmService];
+        if (!llmInfo) {
+            console.error('지원하지 않는 LLM 서비스:', llmService);
+            return;
+        }
+
+        // LLM 사이트 URL 가져오기
+        const llmUrl = this.llmUrls[llmService] || {
+            chatgpt: 'https://chatgpt.com',
+            gemini: 'https://gemini.google.com',
+            perplexity: 'https://www.perplexity.ai',
+            grok: 'https://grok.com'
+        }[llmService] || 'https://chatgpt.com';
+
+        console.log('LLM 사이트 열기:', { llmService, url: llmUrl });
+
+        // 새 탭에서 LLM 사이트 열기
+        window.open(llmUrl, '_blank', 'noopener,noreferrer');
     }
 
     // LLM 통합 복사 모달 표시 (모든 LLM 지원)
