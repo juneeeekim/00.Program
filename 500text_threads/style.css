@@ -1578,23 +1578,47 @@ body {
     -webkit-line-clamp: initial;
     line-clamp: initial;
     overflow: visible;
+    margin-bottom: 24px; /* 충분한 간격 */
+    padding-bottom: 16px; /* 추가 패딩 */
+    border-bottom: 1px solid #f0f0f0; /* 시각적 구분선 */
 }
 
 .saved-item-content.expanded::after { display: none; }
 
 .saved-item-toggle {
-    background: transparent;
-    border: none;
+    margin: 0 auto 20px auto; /* 상하 여백, 중앙 정렬 */
+    padding: 12px 24px;
+    display: block;
+    width: fit-content; /* 내용에 맞는 너비 */
+    min-width: 120px;
+    text-align: center;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    background: white;
     color: #667eea;
     font-weight: 600;
-    padding: 8px 12px;
-    border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
     min-height: 44px;
-    min-width: 44px;
+    transition: all 0.2s ease;
+    position: relative; /* 레이아웃 안정성 */
 }
-.saved-item-toggle:hover { background: rgba(102,126,234,0.08); }
+
+.saved-item-toggle:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.saved-item-toggle:active {
+    transform: translateY(0);
+}
+
+.saved-item-toggle:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
     
 /* Text clamp utilities */
 .line-clamp-2 {
@@ -2618,6 +2642,18 @@ body {
     .saved-item-content {
     max-height: 100px;
     font-size: 0.9rem;
+    }
+    
+    .saved-item-content.expanded {
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+    }
+    
+    .saved-item-toggle {
+        width: 100%; /* 모바일에서는 전체 너비 */
+        padding: 14px 20px;
+        margin-bottom: 16px;
+        min-height: 48px; /* 터치 타겟 크기 보장 */
     }
     
     .saved-item-actions {

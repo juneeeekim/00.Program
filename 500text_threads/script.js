@@ -1551,8 +1551,37 @@ class DualTextWriter {
         if (this.savedItemClickHandler) {
             this.savedList.removeEventListener('click', this.savedItemClickHandler);
         }
+        if (this.savedItemKeydownHandler) {
+            this.savedList.removeEventListener('keydown', this.savedItemKeydownHandler);
+        }
 
-        // 새로운 이벤트 리스너 생성
+        // 키보드 이벤트 핸들러 (접근성 향상)
+        this.savedItemKeydownHandler = (event) => {
+            // 더보기/접기 버튼 키보드 접근성
+            const button = event.target.closest('.saved-item-toggle');
+            if (button && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const action = button.getAttribute('data-action');
+                const itemId = button.getAttribute('data-item-id');
+                
+                if (action === 'toggle' && itemId) {
+                    const contentEl = button.closest('.saved-item').querySelector('.saved-item-content');
+                    if (contentEl) {
+                        const nowExpanded = contentEl.classList.toggle('expanded');
+                        button.textContent = nowExpanded ? '접기' : '더보기';
+                        button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+                        try {
+                            localStorage.setItem(`card:${itemId}:expanded`, nowExpanded ? '1' : '0');
+                        } catch (e) { /* ignore quota */ }
+                    }
+                }
+                return;
+            }
+        };
+        
+        // 클릭 이벤트 핸들러
         this.savedItemClickHandler = (event) => {
             console.log('저장된 글 영역 클릭:', event.target);
             
@@ -1730,6 +1759,7 @@ class DualTextWriter {
 
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
+        this.savedList.addEventListener('keydown', this.savedItemKeydownHandler);
 
         // 기존 바깥 클릭 핸들러 제거 (중복 방지)
         if (this.outsideClickHandler) {
