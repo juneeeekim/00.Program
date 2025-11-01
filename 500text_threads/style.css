@@ -3355,6 +3355,8 @@ body {
         border-radius: 12px 12px 0 0;
         transform: translateY(100%);
         animation: sheetUp 0.25s ease-out forwards;
+        max-height: 85vh;
+        overflow-y: auto;
     }
     @keyframes sheetUp {
         from { transform: translateY(100%); }
@@ -3365,7 +3367,7 @@ body {
         height: 5px;
         background: #ddd;
         border-radius: 999px;
-        margin: 0 auto 12px auto;
+        margin: 0 auto 8px auto;
     }
     
     .tracking-post-actions {
@@ -3413,27 +3415,28 @@ body {
     
     /* 트래킹 모달 스타일 */
     .tracking-form {
-        margin: 20px 0;
+        margin: 12px 0;
     }
     
     .tracking-form .form-group {
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
     
     .tracking-form label {
         display: block;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
         font-weight: 600;
         color: #333;
+        font-size: 0.9rem;
     }
     
     .tracking-form input,
     .tracking-form textarea {
         width: 100%;
-        padding: 10px;
+        padding: 8px 10px;
         border: 1px solid #e1e5e9;
         border-radius: 6px;
-        font-size: 1rem;
+        font-size: 0.95rem;
         transition: border-color 0.2s ease;
     }
     
@@ -3446,7 +3449,20 @@ body {
     
     .tracking-form textarea {
         resize: vertical;
-        min-height: 80px;
+        min-height: 60px;
+    }
+    
+    /* 모바일에서 터치 친화적인 크기 유지 */
+    @media (max-width: 768px) {
+        .tracking-form input,
+        .tracking-form textarea {
+            padding: 10px;
+            font-size: 1rem;
+        }
+        
+        .tracking-form label {
+            font-size: 0.95rem;
+        }
     }
 
     /* Number input stepper */
@@ -3466,11 +3482,11 @@ body {
         border: 1px solid #e1e5e9;
         color: #333;
         border-radius: 6px;
-        padding: 8px 14px;
-        font-size: 1.2rem;
+        padding: 6px 12px;
+        font-size: 1.1rem;
         font-weight: 600;
         cursor: pointer;
-        min-width: 44px;
+        min-width: 40px;
         min-height: 44px;
         transition: all 0.2s ease;
     }
@@ -3694,7 +3710,7 @@ body {
     .modal-content {
         background: white;
         border-radius: 12px;
-        padding: 24px;
+        padding: 20px;
         max-width: 500px;
         width: 90%;
         max-height: 90vh;
@@ -3702,11 +3718,27 @@ body {
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
     
+    .modal.bottom-sheet .modal-content {
+        padding: 16px 20px 20px 20px;
+    }
+    
     .modal-content h3 {
         margin-top: 0;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
         color: #333;
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+    }
+    
+    /* 모바일에서 패딩 유지 */
+    @media (max-width: 768px) {
+        .modal.bottom-sheet .modal-content {
+            padding: 20px;
+        }
+        
+        .modal-content h3 {
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+        }
     }
     
     .tracking-form .form-group small {
