@@ -2809,7 +2809,7 @@ body {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
+    z-index: 10000;          /* 다른 요소 위에 표시 보장 (1000 → 10000) */
     min-width: 200px;
     opacity: 0;
     visibility: hidden;
@@ -2829,7 +2829,9 @@ body {
     width: 100%;
     padding: 0;
     border: none;
-    background: none;
+    background: white;         /* 배경색 명시: 투명 → 흰색 */
+    color: #333;              /* 텍스트 색상 명시 (가시성 향상) */
+    text-align: left;         /* 텍스트 정렬 명시 */
     cursor: pointer;
     transition: background-color 0.2s ease;
     }
