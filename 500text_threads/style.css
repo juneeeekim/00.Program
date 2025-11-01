@@ -1464,8 +1464,6 @@ body {
         align-items: center;
         gap: 4px;
         padding: 3px 8px;
-        background: #10b981;
-        color: white;
         border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 600;
@@ -1473,8 +1471,26 @@ body {
         transition: all 0.2s ease;
     }
     
-    .reference-usage-badge:hover {
+    /* 사용된 레퍼런스 배지 (초록색) */
+    .reference-usage-badge--used {
+        background: #10b981;
+        color: white;
+    }
+    
+    .reference-usage-badge--used:hover {
         background: #059669;
+        transform: translateY(-1px);
+    }
+    
+    /* 사용 안된 레퍼런스 배지 (회색) */
+    .reference-usage-badge--unused {
+        background: #e5e7eb;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+    }
+    
+    .reference-usage-badge--unused:hover {
+        background: #d1d5db;
         transform: translateY(-1px);
     }
     

@@ -1315,18 +1315,19 @@ class DualTextWriter {
             usageCount = 0;
         }
         
-        // 사용 안됨: 빈 문자열 반환
+        // 사용 안됨: 회색 배지 HTML 반환
         if (usageCount === 0) {
-            return '';
+            const ariaLabel = '레퍼런스 사용 안됨';
+            return `<span class="reference-usage-badge reference-usage-badge--unused" aria-label="${ariaLabel}" role="status">🆕 사용 안됨</span>`;
         }
         
-        // 사용됨: 배지 HTML 반환
+        // 사용됨: 초록색 배지 HTML 반환
         // 접근성: aria-label로 사용 여부를 스크린 리더에 전달
         // role="status"로 상태 정보임을 명시
         const usageText = usageCount === 1 ? '사용됨' : `사용됨 ${usageCount}회`;
         const ariaLabel = `레퍼런스 ${usageText}`;
         
-        return `<span class="reference-usage-badge" aria-label="${ariaLabel}" role="status">✅ ${usageText}</span>`;
+        return `<span class="reference-usage-badge reference-usage-badge--used" aria-label="${ariaLabel}" role="status">✅ ${usageText}</span>`;
     }
 
     /**
@@ -4219,6 +4220,57 @@ class DualTextWriter {
             // 자동 트래킹 시작: posts 컬렉션에 포스트 생성
             console.log('🔄 6. 자동 트래킹 시작...');
             let sourceTextId = null;
+            let referenceTextId = null;
+            
+            // 왼쪽 패널(레퍼런스)에서 현재 입력된 레퍼런스 확인
+            const referenceContent = this.refTextInput.value.trim();
+            if (referenceContent) {
+                // 레퍼런스가 입력되어 있는 경우, 저장된 레퍼런스 중에서 찾거나 새로 저장
+                try {
+                    // 저장된 레퍼런스 중에서 동일한 내용의 레퍼런스 찾기
+                    const matchingReference = this.savedTexts?.find(item => 
+                        item.type === 'reference' && item.content === referenceContent
+                    );
+                    
+                    if (matchingReference) {
+                        // 기존 레퍼런스 사용
+                        referenceTextId = matchingReference.id;
+                        console.log('✅ 기존 레퍼런스 사용:', referenceTextId);
+                    } else {
+                        // 새 레퍼런스로 저장
+                        const referenceData = {
+                            content: referenceContent,
+                            type: 'reference',
+                            characterCount: this.getKoreanCharacterCount(referenceContent),
+                            createdAt: window.firebaseServerTimestamp(),
+                            updatedAt: window.firebaseServerTimestamp()
+                        };
+                        
+                        const referenceDocRef = await window.firebaseAddDoc(
+                            window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
+                            referenceData
+                        );
+                        
+                        referenceTextId = referenceDocRef.id;
+                        console.log('✅ 새 레퍼런스 저장 완료:', referenceTextId);
+                        
+                        // 로컬 배열에도 추가
+                        const savedReference = {
+                            id: referenceTextId,
+                            content: referenceContent,
+                            date: new Date().toLocaleString('ko-KR'),
+                            characterCount: this.getKoreanCharacterCount(referenceContent),
+                            type: 'reference'
+                        };
+                        if (!this.savedTexts) {
+                            this.savedTexts = [];
+                        }
+                        this.savedTexts.unshift(savedReference);
+                    }
+                } catch (referenceError) {
+                    console.warn('⚠️ 레퍼런스 저장 실패 (트래킹은 계속 진행):', referenceError);
+                }
+            }
             
             // 현재 텍스트를 texts 컬렉션에 먼저 저장 (원본 보존)
             if (this.currentUser && this.isFirebaseReady) {
@@ -4256,9 +4308,30 @@ class DualTextWriter {
                         analytics: {},
                         sourceTextId: sourceTextId || null, // 원본 텍스트 참조 (있는 경우)
                         sourceType: 'edit', // 원본 텍스트 타입
+                        // 레퍼런스 사용 정보 추가
+                        referenceTextId: referenceTextId || null, // 레퍼런스 텍스트 참조 (있는 경우)
                         createdAt: window.firebaseServerTimestamp(),
                         updatedAt: window.firebaseServerTimestamp()
                     };
+                    
+                    // 레퍼런스가 사용된 경우, 레퍼런스용 포스트도 생성
+                    if (referenceTextId) {
+                        const referencePostData = {
+                            content: referenceContent, // 레퍼런스 내용
+                            type: 'reference',
+                            postedAt: window.firebaseServerTimestamp(),
+                            trackingEnabled: false, // 레퍼런스 포스트는 트래킹 비활성화
+                            metrics: [],
+                            analytics: {},
+                            sourceTextId: referenceTextId, // 레퍼런스 텍스트 참조
+                            sourceType: 'reference', // 레퍼런스 타입으로 설정
+                            createdAt: window.firebaseServerTimestamp(),
+                            updatedAt: window.firebaseServerTimestamp()
+                        };
+                        
+                        await window.firebaseAddDoc(postsRef, referencePostData);
+                        console.log('✅ 레퍼런스 사용 포스트 생성 완료 (레퍼런스 ID:', referenceTextId, ')');
+                    }
                     
                     const postDocRef = await window.firebaseAddDoc(postsRef, postData);
                     console.log('✅ 트래킹 포스트 자동 생성 완료:', postDocRef.id);
