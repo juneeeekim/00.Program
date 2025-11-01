@@ -837,7 +837,10 @@ class DualTextWriter {
         if (this.savedFilter === 'edit') {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
-            list = list.filter(item => item.type === 'reference');
+            // 레퍼런스 탭에는 사용 안된 레퍼런스(usageCount === 0)만 표시
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
+            list = list.filter(item => (item.type || 'edit') === 'reference');
         } else if (this.savedFilter === 'reference-used') {
             // 사용된 레퍼런스만 필터링 (usageCount > 0)
             // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
@@ -932,6 +935,14 @@ class DualTextWriter {
             // 사용 여부를 item 객체에 추가하여 캐싱
             const itemWithUsage = { ...item, usageCount };
             
+            // reference 필터인 경우, usageCount가 0인 항목만 포함 (사용 안된 레퍼런스만)
+            if (this.savedFilter === 'reference') {
+                const isReference = (item.type || 'edit') === 'reference';
+                if (!isReference || usageCount !== 0) {
+                    return null; // 필터링 대상에서 제외 (사용된 레퍼런스는 제외)
+                }
+            }
+            
             // reference-used 필터인 경우, usageCount가 1 이상인 항목만 포함
             if (this.savedFilter === 'reference-used') {
                 const isReference = (item.type || 'edit') === 'reference';
@@ -943,8 +954,8 @@ class DualTextWriter {
             return { item: itemWithUsage, postData, index };
         }));
         
-        // reference-used 필터인 경우 null인 항목 제거
-        const filteredItemsWithTracking = this.savedFilter === 'reference-used' 
+        // reference 또는 reference-used 필터인 경우 null인 항목 제거
+        const filteredItemsWithTracking = (this.savedFilter === 'reference' || this.savedFilter === 'reference-used')
             ? itemsWithTracking.filter(result => result !== null)
             : itemsWithTracking;
         
