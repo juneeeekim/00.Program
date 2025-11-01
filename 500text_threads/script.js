@@ -949,8 +949,8 @@ class DualTextWriter {
                                 <div class="llm-option-header">
                                     <span class="llm-icon">🤖</span>
                                     <span class="llm-name">ChatGPT</span>
+                                    <span class="llm-description">SNS 후킹 분석</span>
                                 </div>
-                                <div class="llm-description">SNS 후킹 분석</div>
                             </div>
                         </button>
                         <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
@@ -958,8 +958,8 @@ class DualTextWriter {
                                 <div class="llm-option-header">
                                     <span class="llm-icon">🧠</span>
                                     <span class="llm-name">Gemini</span>
+                                    <span class="llm-description">심리적 후킹 분석</span>
                                 </div>
-                                <div class="llm-description">심리적 후킹 분석</div>
                             </div>
                         </button>
                         <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
@@ -967,8 +967,8 @@ class DualTextWriter {
                                 <div class="llm-option-header">
                                     <span class="llm-icon">🔎</span>
                                     <span class="llm-name">Perplexity</span>
+                                    <span class="llm-description">트렌드 검증</span>
                                 </div>
-                                <div class="llm-description">트렌드 검증</div>
                             </div>
                         </button>
                         <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
@@ -976,8 +976,8 @@ class DualTextWriter {
                                 <div class="llm-option-header">
                                     <span class="llm-icon">🚀</span>
                                     <span class="llm-name">Grok</span>
+                                    <span class="llm-description">임팩트 최적화</span>
                                 </div>
-                                <div class="llm-description">임팩트 최적화</div>
                             </div>
                         </button>
                     </div>
