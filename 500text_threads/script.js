@@ -1746,38 +1746,8 @@ class DualTextWriter {
                     successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
                 }
                 
-                // 되돌리기 액션 정의
-                const undoAction = async () => {
-                    try {
-                        // 백업 데이터 복원
-                        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', itemBackup.id);
-                        await window.firebaseSetDoc(textRef, {
-                            content: itemBackup.content,
-                            type: itemBackup.type || 'edit',
-                            characterCount: itemBackup.characterCount || 0,
-                            createdAt: window.firebaseTimestamp.fromDate(new Date(itemBackup.createdAt || new Date())),
-                            updatedAt: window.firebaseServerTimestamp()
-                        });
-                        
-                        // 연결된 포스트 복원
-                        for (const post of connectedPostsBackup) {
-                            const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
-                            await window.firebaseSetDoc(postRef, post);
-                        }
-                        
-                        // UI 새로고침
-                        await this.loadSavedTexts();
-                        await this.loadTrackingPosts();
-                        this.renderSavedTexts();
-                        this.renderTrackingPosts();
-                        this.showMessage('삭제가 되돌려졌습니다.', 'success');
-                    } catch (error) {
-                        console.error('되돌리기 실패:', error);
-                        this.showMessage('되돌리기에 실패했습니다.', 'error');
-                    }
-                };
-                
-                this.showSnackbar(successMessage, 'success', undoAction, 5000);
+                // 성공 메시지 표시 (showSnackbar 대신 showMessage 사용)
+                this.showMessage(successMessage, 'success');
                 
                 console.log('삭제 완료', { id, deletedPosts: postCount });
 
