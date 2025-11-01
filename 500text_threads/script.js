@@ -1078,6 +1078,9 @@ class DualTextWriter {
 
         const totalCount = sortedMetrics.length;
         
+        // 합계 계산
+        const totals = this.calculateMetricsTotal(metrics);
+        
         // localStorage에서 접기/펼치기 상태 복원 (per-post)
         // saved-item의 data-item-id를 사용하여 키 생성
         // 이 함수는 saved-item 내부에서 호출되므로, 클로저나 파라미터로 itemId 전달 필요
@@ -1091,6 +1094,7 @@ class DualTextWriter {
             <div class="tracking-timeline-container">
                 <div class="tracking-timeline-header">
                     <span class="timeline-title">📊 트래킹 기록</span>
+                    ${this.renderMetricsTotals(totals)}
                     <button class="timeline-toggle-btn small" onclick="dualTextWriter.toggleTimelineCollapse(this)" aria-label="기록 더보기/접기" aria-expanded="${isExpanded ? 'true' : 'false'}">${buttonText}</button>
                 </div>
                 <div class="tracking-timeline-content ${collapsedClass}">
@@ -1133,6 +1137,73 @@ class DualTextWriter {
         const month = date.getMonth() + 1;
         const day = date.getDate();
         return `${year}년 ${month}월 ${day}일`;
+    }
+
+    /**
+     * 트래킹 메트릭의 전체 합계를 계산합니다.
+     * 
+     * @param {Array} metrics - 메트릭 배열
+     * @returns {Object} 각 메트릭의 총합 객체
+     */
+    calculateMetricsTotal(metrics) {
+        if (!metrics || metrics.length === 0) {
+            return {
+                totalViews: 0,
+                totalLikes: 0,
+                totalComments: 0,
+                totalShares: 0,
+                totalFollows: 0
+            };
+        }
+        
+        return metrics.reduce((totals, metric) => {
+            return {
+                totalViews: totals.totalViews + (metric.views || 0),
+                totalLikes: totals.totalLikes + (metric.likes || 0),
+                totalComments: totals.totalComments + (metric.comments || 0),
+                totalShares: totals.totalShares + (metric.shares || 0),
+                totalFollows: totals.totalFollows + (metric.follows || 0)
+            };
+        }, {
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            totalShares: 0,
+            totalFollows: 0
+        });
+    }
+
+    /**
+     * 트래킹 메트릭 합계를 배지 형태로 렌더링합니다.
+     * 
+     * @param {Object} totals - 합계 객체
+     * @returns {string} 합계 배지 HTML
+     */
+    renderMetricsTotals(totals) {
+        return `
+            <div class="metrics-totals" role="group" aria-label="전체 합계">
+                <span class="total-badge views" aria-label="총 조회수: ${totals.totalViews.toLocaleString()}">
+                    <span class="total-icon">👀</span>
+                    <span class="total-value">${totals.totalViews.toLocaleString()}</span>
+                </span>
+                <span class="total-badge likes" aria-label="총 좋아요: ${totals.totalLikes.toLocaleString()}">
+                    <span class="total-icon">❤️</span>
+                    <span class="total-value">${totals.totalLikes.toLocaleString()}</span>
+                </span>
+                <span class="total-badge comments" aria-label="총 댓글: ${totals.totalComments.toLocaleString()}">
+                    <span class="total-icon">💬</span>
+                    <span class="total-value">${totals.totalComments.toLocaleString()}</span>
+                </span>
+                <span class="total-badge shares" aria-label="총 공유: ${totals.totalShares.toLocaleString()}">
+                    <span class="total-icon">🔄</span>
+                    <span class="total-value">${totals.totalShares.toLocaleString()}</span>
+                </span>
+                <span class="total-badge follows" aria-label="총 팔로우: ${totals.totalFollows.toLocaleString()}">
+                    <span class="total-icon">👥</span>
+                    <span class="total-value">${totals.totalFollows.toLocaleString()}</span>
+                </span>
+            </div>
+        `;
     }
 
     // 통합 UI 업데이트 함수 (성능 최적화)

@@ -3571,15 +3571,78 @@ body {
     
     .tracking-timeline-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        gap: 8px;
         margin-bottom: 10px;
+        flex-wrap: wrap;
     }
     
     .timeline-title {
         font-weight: 600;
         color: #333;
         font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    
+    /* 트래킹 기록 합계 배지 스타일 */
+    .metrics-totals {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-left: auto;
+        margin-right: 8px;
+    }
+
+    .total-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background: #f6f7fb;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+    .total-badge:hover {
+        background: #e9ecef;
+        transform: translateY(-1px);
+    }
+
+    .total-badge .total-icon {
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .total-badge .total-value {
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* 반응형: 모바일에서 간략하게 */
+    @media (max-width: 768px) {
+        .metrics-totals {
+            gap: 4px;
+            margin-left: auto;
+            margin-right: 4px;
+        }
+        
+        .total-badge {
+            padding: 3px 6px;
+            font-size: 0.75rem;
+        }
+        
+        .total-badge .total-icon {
+            font-size: 0.8rem;
+        }
+        
+        .total-badge .total-value {
+            font-size: 0.75rem;
+        }
     }
     
     .timeline-toggle-btn {
