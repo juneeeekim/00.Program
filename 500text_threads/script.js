@@ -4124,48 +4124,78 @@ DualTextWriter.prototype.openBottomSheet = function(modalElement) {
         };
     });
     
-    // Date tab handlers
-    content.querySelectorAll('.date-tab').forEach(tab => {
-        tab.onclick = (e) => {
-            e.preventDefault();
-            const tabs = tab.closest('.date-selector-tabs');
-            const dateInputId = tabs ? tabs.querySelector('input[type="date"]')?.id : null;
-            if (!dateInputId) return;
-            const dateInput = document.getElementById(dateInputId);
-            if (!dateInput) return;
-            
-            tabs.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            const dateType = tab.getAttribute('data-date');
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            if (dateType === 'today') {
-                const todayStr = today.toISOString().split('T')[0];
-                dateInput.value = todayStr;
-                dateInput.style.display = 'none';
-                // input 이벤트 트리거하여 폼 검증 업데이트
-                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
-            } else if (dateType === 'yesterday') {
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
-                dateInput.value = yesterdayStr;
-                dateInput.style.display = 'none';
-                // input 이벤트 트리거하여 폼 검증 업데이트
-                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
-            } else if (dateType === 'custom') {
-                dateInput.style.display = 'block';
+    // Date tab handlers - 이벤트 위임 방식으로 안정적인 바인딩
+    // 기존 핸들러 제거 (중복 바인딩 방지)
+    if (content._dateTabHandler) {
+        content.removeEventListener('click', content._dateTabHandler);
+    }
+    
+    // 새로운 핸들러 생성 및 저장
+    content._dateTabHandler = (e) => {
+        const tab = e.target.closest('.date-tab');
+        if (!tab) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tabs = tab.closest('.date-selector-tabs');
+        if (!tabs) return;
+        
+        // 같은 폼 그룹 내의 날짜 입력 필드 찾기
+        const formGroup = tabs.closest('.form-group');
+        if (!formGroup) return;
+        
+        const dateInput = formGroup.querySelector('input[type="date"]');
+        if (!dateInput) {
+            console.warn('날짜 입력 필드를 찾을 수 없습니다:', formGroup);
+            return;
+        }
+        
+        // 모든 탭 비활성화 후 클릭한 탭 활성화
+        tabs.querySelectorAll('.date-tab').forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        
+        const dateType = tab.getAttribute('data-date');
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (dateType === 'today') {
+            const todayStr = today.toISOString().split('T')[0];
+            dateInput.value = todayStr;
+            dateInput.style.display = 'none';
+            // input 이벤트 트리거하여 폼 검증 업데이트
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (dateType === 'yesterday') {
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            dateInput.value = yesterdayStr;
+            dateInput.style.display = 'none';
+            // input 이벤트 트리거하여 폼 검증 업데이트
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (dateType === 'custom') {
+            dateInput.style.display = 'block';
+            // 직접입력 필드가 보이도록 약간의 지연 후 포커스 (애니메이션 완료 후)
+            setTimeout(() => {
                 dateInput.focus();
-                // 사용자 입력을 위해 현재 값을 유지하거나 오늘 날짜로 설정
-                if (!dateInput.value) {
-                    dateInput.value = today.toISOString().split('T')[0];
-                }
-                // input 이벤트 트리거
-                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 50);
+            // 사용자 입력을 위해 현재 값을 유지하거나 오늘 날짜로 설정
+            if (!dateInput.value) {
+                dateInput.value = today.toISOString().split('T')[0];
             }
-        };
-    });
+            // input 이벤트 트리거
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    };
+    
+    // 이벤트 위임: 모달 컨텐츠에 한 번만 바인딩
+    content.addEventListener('click', content._dateTabHandler);
     
     // Focus scroll correction: 키패드가 가려지지 않도록 (안드로이드/아이폰 호환)
     content.querySelectorAll('input, textarea').forEach(field => {
@@ -4247,9 +4277,21 @@ DualTextWriter.prototype.closeBottomSheet = function(modalElement) {
         
         // 날짜 탭 초기화
         const dateTabs = content.querySelectorAll('.date-tab');
-        dateTabs.forEach(tab => tab.classList.remove('active'));
+        dateTabs.forEach(tab => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+        });
         const todayTab = content.querySelector('.date-tab[data-date="today"]');
-        if (todayTab) todayTab.classList.add('active');
+        if (todayTab) {
+            todayTab.classList.add('active');
+            todayTab.setAttribute('aria-selected', 'true');
+        }
+        
+        // 날짜 입력 필드 초기화
+        const dateInputs = content.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => {
+            input.style.display = 'none';
+        });
         
         // 스테퍼 버튼 상태 초기화
         const steppers = content.querySelectorAll('.number-stepper');
