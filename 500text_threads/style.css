@@ -43,7 +43,7 @@ body {
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     color: #333;
@@ -276,6 +276,11 @@ body {
     font-size: 14px; /* emoji/icon normalized */
     line-height: 1;
     vertical-align: middle;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Android Emoji', 'EmojiSymbols', 'EmojiOne Mozilla', 'Twemoji Mozilla', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-feature-settings: "liga" on, "calt" on;
+    /* 이모지 렌더링 강제 */
+    text-rendering: optimizeLegibility;
+    -webkit-font-feature-settings: "liga" on, "calt" on;
     }
 
 /* Tracking: emoji/icon normalization within metrics chips and timeline */
