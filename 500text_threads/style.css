@@ -1602,6 +1602,12 @@ body {
     transition: all 0.2s ease;
     }
     
+    /* LLM 검증 버튼은 flex 제한 없이 */
+    .action-button.btn-llm-main {
+    flex: 0 1 auto;
+    min-width: auto;
+    }
+    
     .btn-small {
     padding: 8px 12px;
     font-size: 0.85rem;
@@ -1665,19 +1671,21 @@ body {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
+    z-index: 10000; /* 높은 z-index로 다른 요소 위에 표시 */
     min-width: 220px;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.3s ease;
+    display: block; /* 기본값: block으로 설정하여 open 시 표시 */
     }
     
     .llm-validation-dropdown:hover .llm-dropdown-menu,
     .llm-dropdown-menu.open {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    display: block !important;
     }
     
     .llm-option {
