@@ -1315,10 +1315,10 @@ class DualTextWriter {
             usageCount = 0;
         }
         
-        // 사용 안됨: 회색 배지 HTML 반환
+        // 사용 안됨: 회색 배지 HTML 반환 (클릭 가능)
         if (usageCount === 0) {
-            const ariaLabel = '레퍼런스 사용 안됨';
-            return `<span class="reference-usage-badge reference-usage-badge--unused" aria-label="${ariaLabel}" role="status">🆕 사용 안됨</span>`;
+            const ariaLabel = '레퍼런스 사용 안됨 (클릭하면 사용됨으로 표시)';
+            return `<span class="reference-usage-badge reference-usage-badge--unused reference-usage-badge--clickable" data-action="mark-reference-used" role="button" tabindex="0" aria-label="${ariaLabel}" style="cursor: pointer;">🆕 사용 안됨</span>`;
         }
         
         // 사용됨: 초록색 배지 HTML 반환
@@ -1544,6 +1544,27 @@ class DualTextWriter {
         // 새로운 이벤트 리스너 생성
         this.savedItemClickHandler = (event) => {
             console.log('저장된 글 영역 클릭:', event.target);
+            
+            // 레퍼런스 사용 배지 클릭 처리 (버튼이 아닌 span 요소)
+            const badge = event.target.closest('.reference-usage-badge--clickable');
+            if (badge) {
+                const badgeAction = badge.getAttribute('data-action');
+                if (badgeAction === 'mark-reference-used') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // 레퍼런스 카드에서 itemId 찾기
+                    const savedItem = badge.closest('.saved-item');
+                    const referenceItemId = savedItem?.getAttribute('data-item-id');
+                    
+                    if (referenceItemId) {
+                        console.log('레퍼런스 사용 배지 클릭:', referenceItemId);
+                        this.markReferenceAsUsed(referenceItemId);
+                    }
+                    return;
+                }
+            }
+            
             const button = event.target.closest('button');
             if (!button) {
                 // 버튼이 아니면 타임라인 행 탭 처리
@@ -7711,6 +7732,116 @@ DualTextWriter.prototype.checkMultipleReferenceUsage = async function(referenceT
             result[id] = 0;
             return result;
         }, {});
+    }
+};
+
+/**
+ * 레퍼런스를 사용된 것으로 표시합니다 (간단한 클릭 동작).
+ * 
+ * 레퍼런스를 사용했다고 표시하기 위해 레퍼런스 사용 포스트를 생성합니다.
+ * 사용자가 "사용 안됨" 배지를 클릭했을 때 호출됩니다.
+ * 
+ * @param {string} referenceTextId - 레퍼런스 텍스트의 ID (texts 컬렉션 문서 ID)
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * await dualTextWriter.markReferenceAsUsed('abc123');
+ */
+DualTextWriter.prototype.markReferenceAsUsed = async function(referenceTextId) {
+    // 에러 처리: 파라미터 유효성 검사
+    if (!referenceTextId || typeof referenceTextId !== 'string') {
+        console.warn('markReferenceAsUsed: 잘못된 referenceTextId:', referenceTextId);
+        this.showMessage('❌ 레퍼런스 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('markReferenceAsUsed: Firebase가 준비되지 않았습니다.');
+        this.showMessage('❌ Firebase 연결이 준비되지 않았습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('markReferenceAsUsed: 사용자가 로그인하지 않았습니다.');
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    try {
+        // 레퍼런스 텍스트 조회
+        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', referenceTextId);
+        const textDoc = await window.firebaseGetDoc(textRef);
+        
+        if (!textDoc.exists()) {
+            console.error('레퍼런스 텍스트를 찾을 수 없습니다.');
+            this.showMessage('❌ 레퍼런스 텍스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const textData = textDoc.data();
+        
+        // 레퍼런스 타입 확인
+        if ((textData.type || 'edit') !== 'reference') {
+            console.warn('markReferenceAsUsed: 레퍼런스가 아닌 텍스트입니다.');
+            this.showMessage('❌ 레퍼런스 글만 사용 표시할 수 있습니다.', 'error');
+            return;
+        }
+        
+        // 이미 사용된 레퍼런스인지 확인
+        const existingUsageCount = await this.checkReferenceUsage(referenceTextId);
+        if (existingUsageCount > 0) {
+            console.log('이미 사용된 레퍼런스입니다. 사용 횟수:', existingUsageCount);
+            // 이미 사용된 경우에도 메시지 표시하지 않고 조용히 처리
+            // UI만 업데이트
+            await this.refreshSavedTextsUI();
+            return;
+        }
+        
+        // 레퍼런스 사용 포스트 생성
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const referencePostData = {
+            content: textData.content, // 레퍼런스 내용
+            type: 'reference',
+            postedAt: window.firebaseServerTimestamp(),
+            trackingEnabled: false, // 레퍼런스 포스트는 트래킹 비활성화
+            metrics: [],
+            analytics: {},
+            sourceTextId: referenceTextId, // 레퍼런스 텍스트 참조
+            sourceType: 'reference', // 레퍼런스 타입으로 설정
+            createdAt: window.firebaseServerTimestamp(),
+            updatedAt: window.firebaseServerTimestamp()
+        };
+        
+        await window.firebaseAddDoc(postsRef, referencePostData);
+        console.log('✅ 레퍼런스 사용 표시 완료 (레퍼런스 ID:', referenceTextId, ')');
+        
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 사용됨으로 표시되었습니다.', 'success');
+        
+        // UI 즉시 업데이트 (새로고침 없이)
+        await this.refreshSavedTextsUI();
+        
+    } catch (error) {
+        // 에러 처리: Firebase 조회/생성 실패 시 에러 메시지 표시
+        console.error('레퍼런스 사용 표시 실패:', error);
+        this.showMessage('❌ 레퍼런스 사용 표시에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+/**
+ * 저장된 글 목록 UI를 새로고침합니다.
+ * 레퍼런스 사용 여부를 다시 확인하여 배지 업데이트합니다.
+ * 
+ * @returns {Promise<void>}
+ */
+DualTextWriter.prototype.refreshSavedTextsUI = async function() {
+    try {
+        // 저장된 글 목록 다시 렌더링
+        await this.renderSavedTexts();
+    } catch (error) {
+        console.error('저장된 글 UI 새로고침 실패:', error);
     }
 };
 

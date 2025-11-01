@@ -1489,9 +1489,26 @@ body {
         border: 1px solid #d1d5db;
     }
     
-    .reference-usage-badge--unused:hover {
+    /* 클릭 가능한 사용 안됨 배지 */
+    .reference-usage-badge--unused.reference-usage-badge--clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .reference-usage-badge--unused.reference-usage-badge--clickable:hover {
         background: #d1d5db;
         transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .reference-usage-badge--unused.reference-usage-badge--clickable:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .reference-usage-badge--unused.reference-usage-badge--clickable:focus {
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
     }
     
     /* 반응형: 모바일에서 간략하게 */
