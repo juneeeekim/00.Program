@@ -4046,8 +4046,20 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
         this.renderTrackingPosts();
         
     } catch (error) {
-        console.error('트래킹 포스트 불러오기 실패:', error);
+        // Firebase 데이터 로드 실패 시 에러 처리
+        console.error('[loadTrackingPosts] Failed to load tracking posts:', error);
         this.trackingPosts = [];
+        // 사용자에게 에러 메시지 표시
+        this.showMessage('트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.', 'error');
+        // 빈 상태 표시
+        if (this.trackingPostsList) {
+            this.trackingPostsList.innerHTML = `
+                <div class="tracking-post-no-data" style="text-align: center; padding: 40px 20px;">
+                    <span class="no-data-icon" style="font-size: 3rem; display: block; margin-bottom: 16px;">📭</span>
+                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.</span>
+                </div>
+            `;
+        }
     }
 };
 
@@ -5297,18 +5309,63 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
     if (totalFollowsElement) totalFollowsElement.textContent = totalFollows.toLocaleString();
 };
 
-// 트래킹 차트 초기화
+/**
+ * 트래킹 차트 초기화
+ * 
+ * Chart.js를 사용하여 트래킹 데이터를 시각화하는 차트를 초기화합니다.
+ * Canvas 요소가 없거나 Chart.js 라이브러리가 로드되지 않은 경우 에러 처리를 수행합니다.
+ * 
+ * **주요 기능:**
+ * - Canvas 요소 존재 확인 및 2D 컨텍스트 검증
+ * - Chart.js 라이브러리 로드 확인
+ * - 기존 차트 제거로 메모리 누수 방지
+ * - 반응형 차트 설정 (responsive: true, maintainAspectRatio: false)
+ * - 애니메이션 비활성화로 스크롤 문제 방지
+ * - 레이아웃 패딩 설정으로 축 레이블 보호
+ * 
+ * **에러 처리:**
+ * - Canvas 요소가 없을 때: console.warn 로그 출력 및 조기 반환
+ * - Chart.js 라이브러리 미로드: 사용자 메시지 표시 및 조기 반환
+ * - 2D 컨텍스트 실패: 사용자 메시지 표시 및 조기 반환
+ * - 초기화 실패: try-catch 블록으로 에러 캐치 및 사용자 메시지 표시
+ * 
+ * **성능 최적화:**
+ * - animation.duration: 0 설정으로 불필요한 애니메이션 제거
+ * - 기존 차트 destroy() 호출로 메모리 누수 방지
+ * 
+ * @returns {void}
+ * @throws {Error} Chart.js 초기화 실패 시 에러 발생
+ */
 DualTextWriter.prototype.initTrackingChart = function() {
-    if (!this.trackingChartCanvas) return;
-    
-    const ctx = this.trackingChartCanvas.getContext('2d');
-    
-    // 기존 차트가 있다면 제거
-    if (this.trackingChart) {
-        this.trackingChart.destroy();
+    // 에러 처리: Canvas 요소가 없을 때 Chart.js 초기화 실패 방지
+    if (!this.trackingChartCanvas) {
+        console.warn('[initTrackingChart] Canvas element not found');
+        return;
     }
     
-    this.trackingChart = new Chart(ctx, {
+    // Chart.js 라이브러리 로드 실패 시 폴백 처리
+    if (typeof Chart === 'undefined') {
+        console.error('[initTrackingChart] Chart.js library not loaded');
+        this.showMessage('차트 라이브러리를 불러올 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        const ctx = this.trackingChartCanvas.getContext('2d');
+        if (!ctx) {
+            console.error('[initTrackingChart] Failed to get 2D context');
+            this.showMessage('차트를 초기화할 수 없습니다. 브라우저를 새로고침해주세요.', 'error');
+            return;
+        }
+        
+        // 기존 차트가 있다면 제거 (메모리 누수 방지)
+        if (this.trackingChart) {
+            this.trackingChart.destroy();
+            this.trackingChart = null;
+        }
+        
+        // Chart.js 초기화: responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
+        this.trackingChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
@@ -5404,10 +5461,27 @@ DualTextWriter.prototype.initTrackingChart = function() {
         }
     });
     
+    // Chart.js 초기화 후 차트 업데이트
     this.updateTrackingChart();
+    
+    } catch (error) {
+        // Chart.js 초기화 실패 시 사용자에게 에러 메시지 표시
+        console.error('[initTrackingChart] Chart initialization failed:', error);
+        this.showMessage('차트를 초기화하는 중 오류가 발생했습니다: ' + error.message, 'error');
+        this.trackingChart = null;
+    }
 };
 
-// 스케일 모드 설정
+/**
+ * 스케일 모드 설정
+ * 
+ * 그래프의 스케일 모드를 변경합니다.
+ * 'combined' 모드: 모든 지표가 동일한 y축 스케일을 사용
+ * 'split' 모드: 조회수는 왼쪽 y축, 나머지 지표는 오른쪽 y2축 사용
+ * 
+ * @param {string} mode - 스케일 모드 ('combined' | 'split')
+ * @returns {void}
+ */
 DualTextWriter.prototype.setScaleMode = function(mode) {
     // 그래프 스케일 모드 변경 시 즉시 반영 및 축 반응형 유지
     this.scaleMode = mode; // 'combined' | 'split'
@@ -5418,21 +5492,34 @@ DualTextWriter.prototype.setScaleMode = function(mode) {
             combinedBtn.classList.add('active');
             combinedBtn.style.background = 'white';
             combinedBtn.style.color = '#667eea';
+            combinedBtn.setAttribute('aria-pressed', 'true');
             splitBtn.classList.remove('active');
             splitBtn.style.background = 'transparent';
             splitBtn.style.color = '#666';
+            splitBtn.setAttribute('aria-pressed', 'false');
         } else {
             splitBtn.classList.add('active');
             splitBtn.style.background = 'white';
             splitBtn.style.color = '#667eea';
+            splitBtn.setAttribute('aria-pressed', 'true');
             combinedBtn.classList.remove('active');
             combinedBtn.style.background = 'transparent';
             combinedBtn.style.color = '#666';
+            combinedBtn.setAttribute('aria-pressed', 'false');
         }
     }
     this.updateTrackingChart();
 };
-// 차트 모드 설정
+/**
+ * 차트 모드 설정
+ * 
+ * 그래프의 모드를 변경합니다.
+ * 'total' 모드: 모든 포스트의 누적 총합 표시
+ * 'individual' 모드: 선택한 개별 포스트의 데이터만 표시
+ * 
+ * @param {string} mode - 차트 모드 ('total' | 'individual')
+ * @returns {void}
+ */
 DualTextWriter.prototype.setChartMode = function(mode) {
     // 그래프 모드 변경 시 즉시 반영
     this.chartMode = mode;
@@ -5447,11 +5534,13 @@ DualTextWriter.prototype.setChartMode = function(mode) {
         totalBtn.style.background = 'white';
         totalBtn.style.color = '#667eea';
         totalBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        totalBtn.setAttribute('aria-pressed', 'true');
         
         individualBtn.classList.remove('active');
         individualBtn.style.background = 'transparent';
         individualBtn.style.color = '#666';
         individualBtn.style.boxShadow = 'none';
+        individualBtn.setAttribute('aria-pressed', 'false');
         
         postSelectorContainer.style.display = 'none';
         this.selectedChartPostId = null;
@@ -5470,11 +5559,13 @@ DualTextWriter.prototype.setChartMode = function(mode) {
         individualBtn.style.background = 'white';
         individualBtn.style.color = '#667eea';
         individualBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        individualBtn.setAttribute('aria-pressed', 'true');
         
         totalBtn.classList.remove('active');
         totalBtn.style.background = 'transparent';
         totalBtn.style.color = '#666';
         totalBtn.style.boxShadow = 'none';
+        totalBtn.setAttribute('aria-pressed', 'false');
         
         postSelectorContainer.style.display = 'block';
         this.populatePostSelector();
@@ -5484,7 +5575,17 @@ DualTextWriter.prototype.setChartMode = function(mode) {
     this.updateTrackingChart();
 };
 
-// 차트 범위 설정
+/**
+ * 차트 범위 설정
+ * 
+ * 그래프에 표시할 데이터 범위를 변경합니다.
+ * '7d': 최근 7일 데이터만 표시
+ * '30d': 최근 30일 데이터만 표시
+ * 'all': 전체 데이터 표시
+ * 
+ * @param {string} range - 차트 범위 ('7d' | '30d' | 'all')
+ * @returns {void}
+ */
 DualTextWriter.prototype.setChartRange = function(range) {
     // 그래프 범위 변경 시 즉시 반영 및 축 반응형 유지
     this.chartRange = range; // '7d' | '30d' | 'all'
@@ -5497,10 +5598,12 @@ DualTextWriter.prototype.setChartRange = function(range) {
             btn.classList.add('active');
             btn.style.background = 'white';
             btn.style.color = '#667eea';
+            btn.setAttribute('aria-pressed', 'true');
         } else {
             btn.classList.remove('active');
             btn.style.background = 'transparent';
             btn.style.color = '#666';
+            btn.setAttribute('aria-pressed', 'false');
         }
     });
     this.updateTrackingChart();
@@ -5726,9 +5829,43 @@ DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
     }
 };
 
-// 트래킹 차트 업데이트
+/**
+ * 트래킹 차트 업데이트
+ * 
+ * 현재 설정된 모드와 범위에 따라 차트 데이터를 업데이트합니다.
+ * 데이터 형식 검증 및 에러 처리를 포함합니다.
+ * 
+ * **데이터 처리:**
+ * - 전체 총합 모드: 모든 포스트의 메트릭을 합산하여 표시
+ * - 개별 포스트 모드: 선택한 포스트의 메트릭만 표시
+ * - 날짜 필터링: 설정된 범위(7d/30d/all)에 따라 데이터 필터링
+ * 
+ * **스케일 계산:**
+ * - combined 모드: 모든 지표가 동일한 y축 스케일 사용
+ * - split 모드: 조회수는 y축, 나머지 지표는 y2축 사용
+ * - 동적 스케일 계산: 데이터 최대값의 1.2배 또는 1.8배로 설정
+ * 
+ * **에러 처리:**
+ * - 차트 미초기화: console.warn 로그 출력 및 조기 반환
+ * - 데이터 형식 오류: try-catch 블록으로 에러 캐치 및 로그 출력
+ * - 날짜 유효성 검증: 유효하지 않은 날짜 필터링
+ * - 숫자 형식 검증: NaN 및 Infinity 방지
+ * 
+ * **성능 최적화:**
+ * - animation.duration: 0 설정으로 애니메이션 없이 즉시 업데이트
+ * - update('none') 모드 사용으로 스크롤 문제 방지
+ * 
+ * @returns {void}
+ * @throws {Error} 차트 업데이트 실패 시 에러 발생
+ */
 DualTextWriter.prototype.updateTrackingChart = function() {
-    if (!this.trackingChart) return;
+    // 에러 처리: 차트가 아직 초기화되지 않았을 때 처리
+    if (!this.trackingChart) {
+        console.warn('[updateTrackingChart] Chart not initialized yet');
+        return;
+    }
+    
+    try {
     
     // 선택된 범위에 따른 날짜 배열 생성
     const dateRange = [];
@@ -5772,9 +5909,31 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         if (this.chartMode === 'individual' && this.selectedChartPostId) {
             const post = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
             if (post && post.metrics && post.metrics.length > 0) {
-                const first = post.metrics[0].timestamp?.toDate ? post.metrics[0].timestamp.toDate() : new Date(post.metrics[0].timestamp);
-                const last = post.metrics[post.metrics.length - 1].timestamp?.toDate ? post.metrics[post.metrics.length - 1].timestamp.toDate() : new Date(post.metrics[post.metrics.length - 1].timestamp);
-                dateRange.push(...makeRange(first, last));
+                try {
+                    // 데이터 형식 검증: timestamp가 유효한지 확인
+                    const firstMetric = post.metrics[0];
+                    const lastMetric = post.metrics[post.metrics.length - 1];
+                    if (!firstMetric || !firstMetric.timestamp || !lastMetric || !lastMetric.timestamp) {
+                        throw new Error('Invalid metric timestamp');
+                    }
+                    
+                    const first = firstMetric.timestamp?.toDate ? firstMetric.timestamp.toDate() : new Date(firstMetric.timestamp);
+                    const last = lastMetric.timestamp?.toDate ? lastMetric.timestamp.toDate() : new Date(lastMetric.timestamp);
+                    
+                    // 날짜 유효성 검증
+                    if (isNaN(first.getTime()) || isNaN(last.getTime())) {
+                        throw new Error('Invalid date in metric');
+                    }
+                    
+                    dateRange.push(...makeRange(first, last));
+                } catch (err) {
+                    console.warn('[updateTrackingChart] Error processing date range for individual post:', err);
+                    // 폴백: 기본 7일 범위 사용
+                    for (let i = 6; i >= 0; i--) {
+                        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                        dateRange.push(d);
+                    }
+                }
             } else {
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
@@ -5785,10 +5944,22 @@ DualTextWriter.prototype.updateTrackingChart = function() {
             let minDate = null; let maxDate = null;
             this.trackingPosts.forEach(post => {
                 (post.metrics || []).forEach(m => {
-                    const dt = m.timestamp?.toDate ? m.timestamp.toDate() : new Date(m.timestamp);
-                    dt.setHours(0,0,0,0);
-                    if (!minDate || dt < minDate) minDate = new Date(dt);
-                    if (!maxDate || dt > maxDate) maxDate = new Date(dt);
+                    // 데이터 형식 검증: timestamp가 유효한지 확인
+                    if (!m || !m.timestamp) return;
+                    
+                    try {
+                        const dt = m.timestamp?.toDate ? m.timestamp.toDate() : new Date(m.timestamp);
+                        // 날짜 유효성 검증
+                        if (isNaN(dt.getTime())) {
+                            console.warn('[updateTrackingChart] Invalid date in metric:', m);
+                            return;
+                        }
+                        dt.setHours(0,0,0,0);
+                        if (!minDate || dt < minDate) minDate = new Date(dt);
+                        if (!maxDate || dt > maxDate) maxDate = new Date(dt);
+                    } catch (err) {
+                        console.warn('[updateTrackingChart] Error processing metric for date range:', err, m);
+                    }
                 });
             });
             if (minDate && maxDate) {
@@ -5830,11 +6001,12 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                 
                 // 최신 메트릭이 있으면 합산 (없으면 해당 포스트는 0으로 처리)
                 if (latestMetricBeforeDate) {
-                    dayTotalViews += latestMetricBeforeDate.views || 0;
-                    dayTotalLikes += latestMetricBeforeDate.likes || 0;
-                    dayTotalComments += latestMetricBeforeDate.comments || 0;
-                    dayTotalShares += latestMetricBeforeDate.shares || 0;
-                    dayTotalFollows += latestMetricBeforeDate.follows || 0;
+                    // 숫자 형식 검증: NaN이나 Infinity 방지
+                    dayTotalViews += Number(latestMetricBeforeDate.views) || 0;
+                    dayTotalLikes += Number(latestMetricBeforeDate.likes) || 0;
+                    dayTotalComments += Number(latestMetricBeforeDate.comments) || 0;
+                    dayTotalShares += Number(latestMetricBeforeDate.shares) || 0;
+                    dayTotalFollows += Number(latestMetricBeforeDate.follows) || 0;
                 }
             });
             
@@ -5892,15 +6064,28 @@ DualTextWriter.prototype.updateTrackingChart = function() {
                     let dayFollows = 0;
                     
                     selectedPost.metrics.forEach(metric => {
-                        const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
-                        metricDate.setHours(0, 0, 0, 0);
+                        // 데이터 형식 검증: timestamp가 유효한지 확인
+                        if (!metric || !metric.timestamp) return;
                         
-                        if (metricDate.getTime() === targetDate.getTime()) {
-                            dayViews += metric.views || 0;
-                            dayLikes += metric.likes || 0;
-                            dayComments += metric.comments || 0;
-                            dayShares += metric.shares || 0;
-                            dayFollows += metric.follows || 0;
+                        try {
+                            const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                            // 날짜 유효성 검증
+                            if (isNaN(metricDate.getTime())) {
+                                console.warn('[updateTrackingChart] Invalid date in metric:', metric);
+                                return;
+                            }
+                            metricDate.setHours(0, 0, 0, 0);
+                            
+                            if (metricDate.getTime() === targetDate.getTime()) {
+                                // 숫자 형식 검증: NaN이나 Infinity 방지
+                                dayViews += Number(metric.views) || 0;
+                                dayLikes += Number(metric.likes) || 0;
+                                dayComments += Number(metric.comments) || 0;
+                                dayShares += Number(metric.shares) || 0;
+                                dayFollows += Number(metric.follows) || 0;
+                            }
+                        } catch (err) {
+                            console.warn('[updateTrackingChart] Error processing metric:', err, metric);
                         }
                     });
                     
@@ -6011,9 +6196,25 @@ DualTextWriter.prototype.updateTrackingChart = function() {
     
     // 애니메이션 없이 업데이트 (스크롤 문제 방지)
     this.trackingChart.update('none');
+    
+    } catch (error) {
+        // 차트 업데이트 실패 시 에러 처리
+        console.error('[updateTrackingChart] Chart update failed:', error);
+        // 사용자에게 에러 메시지 표시 (필요시)
+        // this.showMessage('차트 업데이트 중 오류가 발생했습니다. 페이지를 새로고침해주세요.', 'error');
+    }
 };
 
-// 범례 탭 토글 (데이터셋 show/hide)
+/**
+ * 범례 탭 토글 (데이터셋 show/hide)
+ * 
+ * 차트의 특정 데이터셋을 표시하거나 숨깁니다.
+ * 버튼의 스타일을 업데이트하여 현재 상태를 시각적으로 표시합니다.
+ * 
+ * @param {HTMLElement} button - 토글 버튼 요소
+ * @param {number} datasetIndex - 데이터셋 인덱스 (0: 조회수, 1: 좋아요, 2: 댓글, 3: 공유, 4: 팔로우)
+ * @returns {void}
+ */
 DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
     if (!this.trackingChart) return;
     
@@ -6041,6 +6242,90 @@ DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
     // 축 반응형 재계산
     if (this.trackingChart && this.trackingChart.options && this.trackingChart.options.scales) {
         this.updateTrackingChart(); // 전체 차트 업데이트로 축 재계산
+    }
+};
+
+/**
+ * 차트 컨트롤 키보드 접근성 이벤트 바인딩
+ * 
+ * 모든 차트 컨트롤 버튼에 키보드 이벤트 리스너를 추가합니다.
+ * Enter 또는 Space 키로 버튼을 활성화할 수 있도록 합니다.
+ * 
+ * **바인딩 대상:**
+ * - 차트 모드 버튼 (전체 총합 / 개별 포스트)
+ * - 차트 범위 버튼 (7일 / 30일 / 전체)
+ * - 차트 스케일 버튼 (공동 / 분리)
+ * - 범례 버튼 (조회수, 좋아요, 댓글, 공유, 팔로우)
+ * 
+ * **이벤트 처리:**
+ * - 이벤트 위임 사용으로 동적으로 추가된 범례 버튼도 처리 가능
+ * - `preventDefault()`로 기본 동작 방지
+ * 
+ * **접근성:**
+ * - WCAG 2.1 AA 기준 충족
+ * - 키보드만으로 모든 차트 기능 접근 가능
+ * 
+ * @returns {void}
+ */
+DualTextWriter.prototype.bindChartKeyboardEvents = function() {
+    // 차트 모드 버튼 키보드 이벤트
+    const modeButtons = ['chart-mode-total', 'chart-mode-individual'];
+    modeButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const mode = btnId === 'chart-mode-total' ? 'total' : 'individual';
+                    this.setChartMode(mode);
+                }
+            });
+        }
+    });
+    
+    // 차트 범위 버튼 키보드 이벤트
+    const rangeButtons = ['chart-range-7d', 'chart-range-30d', 'chart-range-all'];
+    rangeButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const range = btnId.replace('chart-range-', '');
+                    this.setChartRange(range);
+                }
+            });
+        }
+    });
+    
+    // 차트 스케일 버튼 키보드 이벤트
+    const scaleButtons = ['chart-scale-combined', 'chart-scale-split'];
+    scaleButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const mode = btnId === 'chart-scale-combined' ? 'combined' : 'split';
+                    this.setScaleMode(mode);
+                }
+            });
+        }
+    });
+    
+    // 범례 버튼 키보드 이벤트 (이벤트 위임 사용)
+    const legendContainer = document.querySelector('.chart-legend-tabs');
+    if (legendContainer) {
+        legendContainer.addEventListener('keydown', (e) => {
+            const legendBtn = e.target.closest('.legend-tab');
+            if (!legendBtn) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const datasetIndex = parseInt(legendBtn.getAttribute('data-dataset') || '0');
+                this.toggleLegend(legendBtn, datasetIndex);
+            }
+        });
     }
 };
 

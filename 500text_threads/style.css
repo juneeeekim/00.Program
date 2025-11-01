@@ -2908,6 +2908,37 @@ body {
         .summary-label { font-size: 0.85rem; }
         .summary-value { font-size: 1.4rem; }
     }
+    
+    /* 반응형 차트 컨테이너: 모바일 최적화 */
+    @media (max-width: 768px) {
+        .tracking-chart-container {
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        
+        /* 모바일에서 차트 높이 조정 */
+        .tracking-chart-container canvas {
+            min-height: 250px; /* 모바일에서 최소 높이 감소 */
+        }
+    }
+    
+    /* 태블릿 최적화 */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .tracking-chart-container {
+            padding: 16px;
+        }
+    }
+    
+    /* 가로 모드(landscape) 최적화 */
+    @media (max-width: 896px) and (orientation: landscape) {
+        .tracking-chart-container {
+            max-height: 60vh; /* 가로 모드에서 높이 조정 */
+        }
+        
+        .tracking-chart-container canvas {
+            min-height: 200px; /* 가로 모드에서 최소 높이 감소 */
+        }
+    }
 
     /* Prevent wrapping inside chart controls and tracking filters buttons */
     .tracking-chart-container .chart-controls button,
@@ -2916,6 +2947,24 @@ body {
     .chart-range-toggle button,
     .chart-scale-toggle button {
         white-space: nowrap;
+    }
+    
+    /* 차트 컨트롤 버튼 키보드 접근성: Focus 시각적 표시 */
+    .mode-toggle-btn:focus,
+    .range-toggle-btn:focus,
+    .scale-toggle-btn:focus,
+    .legend-tab:focus {
+        outline: 2px solid #4CAF50 !important;
+        outline-offset: 2px !important;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2) !important;
+    }
+    
+    /* 키보드 접근성: Enter/Space 키 지원 */
+    .mode-toggle-btn:active,
+    .range-toggle-btn:active,
+    .scale-toggle-btn:active,
+    .legend-tab:active {
+        transform: scale(0.98);
     }
     
     .tracking-chart-container {
@@ -2936,11 +2985,29 @@ body {
         touch-action: pan-y;
     }
     
+    /* Chart.js Canvas: Chart.js가 자동으로 크기 조절
+       - responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
+       - HTML width/height 속성은 제거되어 Chart.js가 자동 설정
+       - !important 사용 이유: Chart.js가 동적으로 인라인 스타일을 추가할 수 있어 우선순위 보장 필요
+    */
     .tracking-chart-container canvas {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 300px;
+        /* Layout */
+        display: block;
         flex: 1;
+        position: relative;
+        
+        /* Sizing */
+        width: 100% !important; /* Chart.js 동적 스타일 오버라이드 방지 */
+        height: auto !important; /* Chart.js 동적 스타일 오버라이드 방지 */
+        min-height: 300px;
+        max-width: 100%;
+        
+        /* Box model */
+        box-sizing: border-box;
+        
+        /* Performance: Canvas 렌더링 최적화 */
+        will-change: contents;
+        contain: layout style paint;
     }
     
     /* 그래프 컨텐츠 영역 (헤더/컨트롤 제외) */
@@ -2949,12 +3016,6 @@ body {
         min-height: 300px;
         display: flex;
         flex-direction: column;
-    }
-    
-    /* Chart.js 컨테이너 */
-    .tracking-chart-container canvas {
-        flex: 1;
-        min-height: 300px;
     }
     
     .tracking-posts-list {
