@@ -1247,6 +1247,22 @@ class DualTextWriter {
                 this.editText(itemId, type);
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
+                // 이벤트 전파 제어: outsideClickHandler가 메뉴를 닫기 전에 삭제 실행
+                event.preventDefault();
+                event.stopPropagation();
+                // 메뉴 닫기
+                const moreMenuContainer = button.closest('.more-menu');
+                if (moreMenuContainer) {
+                    const menu = moreMenuContainer.querySelector('.more-menu-list');
+                    if (menu) {
+                        menu.classList.remove('open');
+                        const menuBtn = moreMenuContainer.querySelector('.more-menu-btn');
+                        if (menuBtn) {
+                            menuBtn.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                }
+                // 삭제 실행
                 this.deleteText(itemId);
             } else if (action === 'track') {
                 console.log('트래킹 액션 실행:', { itemId });
