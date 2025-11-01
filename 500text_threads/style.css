@@ -1543,7 +1543,10 @@ body {
     z-index: 99999; /* 최상단 레이어: 모든 다른 요소들(모달 포함)보다 위에 표시 */
 }
 
-.more-menu-list.open { display: block; }
+.more-menu-list.open { 
+    display: block; 
+    z-index: 99999; /* 최상단 레이어 유지: open 상태에서도 최상단에 표시 */
+}
 
 .more-menu-item {
     display: block;
