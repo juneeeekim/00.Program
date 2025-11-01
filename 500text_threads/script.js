@@ -1212,12 +1212,18 @@ class DualTextWriter {
                     const isOpen = menu.classList.toggle('open');
                     button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                     
-                    // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+                    // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
                     if (isOpen) {
+                        this.applySmartMenuPosition(menu, button);
+                        
+                        // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
                         const firstMenuItem = menu.querySelector('.more-menu-item');
                         if (firstMenuItem) {
                             setTimeout(() => firstMenuItem.focus(), 50);
                         }
+                    } else {
+                        // 메뉴 닫힐 때 위치 클래스 제거
+                        menu.classList.remove('open-top', 'open-bottom');
                     }
                 } else {
                     // 메뉴를 찾지 못한 경우 디버깅 로그 출력
@@ -1406,6 +1412,51 @@ class DualTextWriter {
             }
         });
         console.log('이벤트 리스너 등록 완료');
+    }
+
+    // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
+    applySmartMenuPosition(menu, button) {
+        // 기존 위치 클래스 제거
+        menu.classList.remove('open-top', 'open-bottom');
+        
+        // 메뉴 크기 추정 (실제 렌더링 전이라 임시로 표시하여 크기 측정)
+        const wasVisible = menu.style.display !== 'none';
+        if (!wasVisible) {
+            menu.style.visibility = 'hidden';
+            menu.style.display = 'block';
+        }
+        
+        const menuRect = menu.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const menuHeight = menuRect.height || 150; // 기본값: 대략적인 메뉴 높이
+        const viewportHeight = window.innerHeight;
+        const threshold = 200; // 상단/하단 임계값 (픽셀)
+        
+        // 위로 표시했을 때 화면 밖으로 나가는지 확인
+        const spaceAbove = buttonRect.top;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        
+        // 위치 결정 로직
+        // 1. 상단 근처(threshold 이내)이고 위로 표시할 공간이 부족하면 → 아래로
+        // 2. 하단 근처이고 아래로 표시할 공간이 부족하면 → 위로
+        // 3. 그 외에는 기본값(위로) 사용
+        
+        if (spaceAbove < threshold && spaceAbove < menuHeight + 20) {
+            // 화면 상단 근처이고 위로 표시할 공간이 부족 → 아래로 표시
+            menu.classList.add('open-bottom');
+        } else if (spaceBelow < threshold && spaceBelow < menuHeight + 20) {
+            // 화면 하단 근처이고 아래로 표시할 공간이 부족 → 위로 표시
+            menu.classList.add('open-top');
+        } else {
+            // 기본값: 위로 표시 (더 자연스러운 UX)
+            menu.classList.add('open-top');
+        }
+        
+        // 임시 표시 제거
+        if (!wasVisible) {
+            menu.style.visibility = '';
+            menu.style.display = '';
+        }
     }
 
     // 패널 기반 LLM 검증 버튼 바인딩 (재사용 가능)
@@ -4725,12 +4776,18 @@ DualTextWriter.prototype.toggleTrackingMoreMenu = function(button, postId, track
         const isOpen = menu.classList.toggle('open');
         button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         
-        // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+        // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
         if (isOpen) {
+            dualTextWriter.applySmartMenuPosition(menu, button);
+            
+            // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
             const firstMenuItem = menu.querySelector('.more-menu-item');
             if (firstMenuItem) {
                 setTimeout(() => firstMenuItem.focus(), 50);
             }
+        } else {
+            // 메뉴 닫힐 때 위치 클래스 제거
+            menu.classList.remove('open-top', 'open-bottom');
         }
     }
     // 바깥 클릭 시 모든 메뉴 닫기 (이벤트 위임으로 처리)
