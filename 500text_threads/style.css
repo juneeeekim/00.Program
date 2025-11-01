@@ -2924,13 +2924,37 @@ body {
         padding: 20px;
         margin-bottom: 30px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        height: 450px;
-        overflow: hidden;
+        min-height: 450px;
+        max-height: 70vh;
+        overflow-y: auto;
+        overflow-x: hidden;
         position: relative;
+        display: flex;
+        flex-direction: column;
+        /* 드래그 스크롤 허용 */
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
     }
     
     .tracking-chart-container canvas {
-        max-height: 350px;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 300px;
+        flex: 1;
+    }
+    
+    /* 그래프 컨텐츠 영역 (헤더/컨트롤 제외) */
+    .tracking-chart-container > div:last-child {
+        flex: 1;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Chart.js 컨테이너 */
+    .tracking-chart-container canvas {
+        flex: 1;
+        min-height: 300px;
     }
     
     .tracking-posts-list {

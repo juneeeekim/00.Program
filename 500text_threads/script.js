@@ -5383,10 +5383,22 @@ DualTextWriter.prototype.initTrackingChart = function() {
             },
             layout: {
                 padding: {
-                    top: 10,
-                    bottom: 10,
-                    left: 10,
-                    right: 10
+                    top: 20,
+                    bottom: 40,  // 하단 여백 증가 (축 레이블 보호)
+                    left: 15,
+                    right: 15
+                }
+            },
+            // 인터랙션 설정: 드래그/줌 허용
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            // 요소 클릭 가능하도록 설정
+            elements: {
+                point: {
+                    radius: 4,
+                    hoverRadius: 6
                 }
             }
         }
