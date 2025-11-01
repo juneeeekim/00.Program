@@ -1897,12 +1897,12 @@ class DualTextWriter {
             }
         };
 
-        // LLM 사이트별 URL 패턴
+        // LLM 사이트별 홈페이지 URL (쿼리 파라미터 지원 안 함, 모달 방식 사용)
         this.llmUrls = {
-            chatgpt: "https://chatgpt.com/?q=",
-            gemini: "https://gemini.google.com/?q=",
-            perplexity: "https://www.perplexity.ai/?q=",
-            grok: "https://grok.com/?q="
+            chatgpt: "https://chatgpt.com",
+            gemini: "https://gemini.google.com",
+            perplexity: "https://www.perplexity.ai",
+            grok: "https://grok.com"
         };
 
         console.log('LLM 검증 시스템 초기화 완료');
@@ -2024,56 +2024,59 @@ class DualTextWriter {
 
     // LLM 사이트 새 탭에서 열기
     openLLMSite(llmService, text) {
-        if (llmService === 'gemini') {
-            // Gemini는 특별한 모달 방식 사용
-            this.showGeminiCopyModal(text);
+        // 모든 LLM에 통합 모달 방식 사용 (URL 쿼리 파라미터는 지원하지 않음)
+        this.showLLMCopyModal(llmService, text);
+    }
+
+    // LLM 통합 복사 모달 표시 (모든 LLM 지원)
+    showLLMCopyModal(llmService, text) {
+        // LLM 서비스 정보 가져오기
+        const llmInfo = this.llmCharacteristics[llmService];
+        if (!llmInfo) {
+            console.error('지원하지 않는 LLM 서비스:', llmService);
             return;
         }
 
-        // 다른 LLM들은 기존 방식 사용
-        const baseUrl = this.llmUrls[llmService];
-        const encodedText = encodeURIComponent(text);
-        const fullUrl = baseUrl + encodedText;
+        // 기본 URL 가져오기 (쿼리 파라미터 제거)
+        const baseUrl = this.llmUrls[llmService]?.split('?')[0] || this.llmUrls[llmService];
+        const cleanUrl = baseUrl || {
+            chatgpt: 'https://chatgpt.com',
+            gemini: 'https://gemini.google.com',
+            perplexity: 'https://www.perplexity.ai',
+            grok: 'https://grok.com'
+        }[llmService] || 'https://chatgpt.com';
 
-        console.log('LLM 사이트 열기 (URL 파라미터 지원):', { llmService, url: fullUrl });
-
-        // 새 탭에서 열기
-        window.open(fullUrl, '_blank', 'noopener,noreferrer');
-    }
-
-    // Gemini 전용 복사 모달 표시
-    showGeminiCopyModal(text) {
         // 기존 모달이 있다면 제거
-        const existingModal = document.getElementById('gemini-copy-modal');
+        const existingModal = document.getElementById('llm-copy-modal');
         if (existingModal) {
             existingModal.remove();
         }
 
-        // 모달 HTML 생성
+        // 모달 HTML 생성 (모든 LLM에 공통 사용)
         const modalHTML = `
-            <div id="gemini-copy-modal" class="gemini-modal-overlay">
+            <div id="llm-copy-modal" class="gemini-modal-overlay">
                 <div class="gemini-modal-content">
                     <div class="gemini-modal-header">
-                        <h3>🧠 Gemini 검증 텍스트 복사</h3>
+                        <h3>${llmInfo.icon} ${llmInfo.name} 검증 텍스트 복사</h3>
                         <button class="gemini-modal-close" onclick="this.closest('.gemini-modal-overlay').remove()">×</button>
                     </div>
                     <div class="gemini-modal-body">
-                        <p class="gemini-instruction">아래 텍스트를 복사하여 Gemini에 붙여넣기하세요:</p>
+                        <p class="gemini-instruction">아래 텍스트를 복사하여 ${llmInfo.name}에 붙여넣기하세요:</p>
                         <div class="gemini-text-container">
-                            <textarea id="gemini-text-area" readonly>${text}</textarea>
-                            <button class="gemini-copy-btn" onclick="dualTextWriter.copyGeminiText()">📋 전체 복사</button>
+                            <textarea id="llm-text-area" readonly>${text}</textarea>
+                            <button class="gemini-copy-btn" onclick="dualTextWriter.copyLLMText('${llmService}')">📋 전체 복사</button>
                         </div>
                         <div class="gemini-steps">
                             <h4>📝 사용 방법:</h4>
                             <ol>
-                                <li>위의 "전체 복사" 버튼을 클릭하세요</li>
-                                <li>Gemini 페이지로 이동하세요</li>
-                                <li>Gemini 입력창에 Ctrl+V로 붙여넣기하세요</li>
+                                <li>위의 "전체 복사" 버튼을 클릭하세요 (또는 이미 클립보드에 복사되어 있습니다)</li>
+                                <li>${llmInfo.name} 페이지로 이동하세요</li>
+                                <li>${llmInfo.name} 입력창에 Ctrl+V로 붙여넣기하세요</li>
                                 <li>Enter를 눌러 검증을 시작하세요</li>
                             </ol>
                         </div>
                         <div class="gemini-actions">
-                            <button class="gemini-open-btn" onclick="window.open('https://gemini.google.com', '_blank')">🚀 Gemini 열기</button>
+                            <button class="gemini-open-btn" onclick="window.open('${cleanUrl}', '_blank')">🚀 ${llmInfo.name} 열기</button>
                             <button class="gemini-close-btn" onclick="this.closest('.gemini-modal-overlay').remove()">닫기</button>
                         </div>
                     </div>
@@ -2086,7 +2089,7 @@ class DualTextWriter {
 
         // 텍스트 영역 자동 선택
         setTimeout(() => {
-            const textArea = document.getElementById('gemini-text-area');
+            const textArea = document.getElementById('llm-text-area');
             if (textArea) {
                 textArea.focus();
                 textArea.select();
@@ -2094,13 +2097,21 @@ class DualTextWriter {
         }, 100);
     }
 
-    // Gemini 텍스트 복사 함수
-    copyGeminiText() {
-        const textArea = document.getElementById('gemini-text-area');
+    // Gemini 전용 복사 모달 표시 (하위 호환성을 위해 유지)
+    showGeminiCopyModal(text) {
+        this.showLLMCopyModal('gemini', text);
+    }
+
+    // LLM 통합 텍스트 복사 함수 (모든 LLM 지원)
+    copyLLMText(llmService) {
+        const textArea = document.getElementById('llm-text-area');
         if (!textArea) {
-            console.error('Gemini 텍스트 영역을 찾을 수 없습니다.');
+            console.error('LLM 텍스트 영역을 찾을 수 없습니다.');
             return;
         }
+
+        const llmInfo = this.llmCharacteristics[llmService];
+        const llmName = llmInfo?.name || 'LLM';
 
         try {
             // 텍스트 영역 선택
@@ -2110,7 +2121,7 @@ class DualTextWriter {
             // 복사 실행
             const successful = document.execCommand('copy');
             if (successful) {
-                this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
+                this.showMessage(`✅ 텍스트가 클립보드에 복사되었습니다!`, 'success');
 
                 // 복사 버튼 텍스트 변경
                 const copyBtn = document.querySelector('.gemini-copy-btn');
@@ -2128,28 +2139,25 @@ class DualTextWriter {
                 throw new Error('복사 명령 실행 실패');
             }
         } catch (error) {
-            console.error('Gemini 텍스트 복사 실패:', error);
+            console.error(`${llmName} 텍스트 복사 실패:`, error);
             this.showMessage('❌ 복사에 실패했습니다. 텍스트를 수동으로 선택하여 복사해주세요.', 'error');
         }
+    }
+
+    // Gemini 텍스트 복사 함수 (하위 호환성을 위해 유지)
+    copyGeminiText() {
+        this.copyLLMText('gemini');
     }
 
     // LLM 검증 가이드 메시지 표시
     showLLMValidationGuide(llmService) {
         const characteristics = this.llmCharacteristics[llmService];
 
-        let message;
-
-        if (llmService === 'gemini') {
-            message = `✅ ${characteristics.name} 복사 모달이 열렸습니다!\n\n` +
-                `📋 모달에서 "전체 복사" 버튼을 클릭하세요.\n` +
-                `💡 ${characteristics.name} 페이지로 이동하여 Ctrl+V로 붙여넣기하세요.\n\n` +
-                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
-        } else {
-            message = `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
-                `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
-                `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
-                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
-        }
+        // 모든 LLM에 통합 모달 방식 사용
+        const message = `✅ ${characteristics.name} 검증 모달이 열렸습니다!\n\n` +
+            `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
+            `💡 모달에서 "전체 복사" 버튼을 클릭하거나, ${characteristics.name} 페이지로 이동하여 Ctrl+V로 붙여넣기하세요.\n\n` +
+            `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
 
         this.showMessage(message, 'success');
 
