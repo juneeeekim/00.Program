@@ -1,105 +1,3 @@
-// Domain: Reference Tags (Phase 1)
-const SCHEMA_VERSION = 2;
-const ReferenceTag = Object.freeze({
-  STRUCTURE: 'structure',
-  IDEA: 'idea',
-});
-const ReferenceTagLabels = Object.freeze({
-  structure: '📐 문장 구조',
-  idea: '💡 아이디어',
-});
-
-function normalizeReferenceTags(tags) {
-  if (!Array.isArray(tags)) return [];
-  const allowed = new Set(Object.values(ReferenceTag));
-  const unique = [];
-  for (const tag of tags) {
-    if (typeof tag !== 'string') continue;
-    const k = tag.trim().toLowerCase();
-    if (allowed.has(k) && !unique.includes(k)) unique.push(k);
-    if (unique.length >= 2) break; // Phase 1: 최대 2개
-  }
-  return unique;
-}
-
-function validateReferenceTags(tags) {
-  return normalizeReferenceTags(tags);
-}
-
-function getReferenceTagMask(tags) {
-  const t = normalizeReferenceTags(tags);
-  let mask = 0;
-  if (t.includes(ReferenceTag.STRUCTURE)) mask |= 1;
-  if (t.includes(ReferenceTag.IDEA)) mask |= 2;
-  return mask;
-}
-
-if (typeof window !== 'undefined') {
-  window.SCHEMA_VERSION = SCHEMA_VERSION;
-  window.ReferenceTag = ReferenceTag;
-  window.ReferenceTagLabels = ReferenceTagLabels;
-  window.validateReferenceTags = validateReferenceTags;
-  window.getReferenceTagMask = getReferenceTagMask;
-}
-
-// Pure helper: apply reference sub-filter on a list
-function applyReferenceSubFilter(list, filterKey) {
-  let result = Array.isArray(list) ? list.filter(i => (i.type || 'edit') === 'reference') : [];
-  if (!filterKey) return result;
-  switch (filterKey) {
-    case 'structure': return result.filter(i => (i.referenceTags||[]).includes('structure'));
-    case 'idea': return result.filter(i => (i.referenceTags||[]).includes('idea'));
-    case 'uncategorized': return result.filter(i => !(i.referenceTags && i.referenceTags.length));
-    case 'structure-only': return result.filter(i => (i.referenceTagMask === 1));
-    case 'idea-only': return result.filter(i => (i.referenceTagMask === 2));
-    case 'both': return result.filter(i => (i.referenceTagMask === 3));
-    default: return result;
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.applyReferenceSubFilter = applyReferenceSubFilter;
-}
-
-// Developer self-test for reference tag utilities (runs in console)
-function runReferenceTagsSelfTest() {
-  const tests = [];
-  const assertEq = (name, a, b) => tests.push({ name, pass: JSON.stringify(a) === JSON.stringify(b), a, b });
-
-  // validateReferenceTags
-  assertEq('validates allowed & dedup & max2', validateReferenceTags(['Structure','idea','idea','x']), ['structure','idea']);
-  assertEq('invalid input -> []', validateReferenceTags(null), []);
-
-  // mask
-  assertEq('mask none', getReferenceTagMask([]), 0);
-  assertEq('mask structure', getReferenceTagMask(['structure']), 1);
-  assertEq('mask idea', getReferenceTagMask(['idea']), 2);
-  assertEq('mask both', getReferenceTagMask(['structure','idea']), 3);
-
-  // filter helper
-  const sample = [
-    { id:'a', type:'reference', referenceTags:[], referenceTagMask:0 },
-    { id:'b', type:'reference', referenceTags:['structure'], referenceTagMask:1 },
-    { id:'c', type:'reference', referenceTags:['idea'], referenceTagMask:2 },
-    { id:'d', type:'reference', referenceTags:['structure','idea'], referenceTagMask:3 },
-    { id:'e', type:'edit' },
-  ];
-  assertEq('filter structure', applyReferenceSubFilter(sample,'structure').map(i=>i.id), ['b','d']);
-  assertEq('filter idea', applyReferenceSubFilter(sample,'idea').map(i=>i.id), ['c','d']);
-  assertEq('filter uncategorized', applyReferenceSubFilter(sample,'uncategorized').map(i=>i.id), ['a']);
-  assertEq('filter structure-only', applyReferenceSubFilter(sample,'structure-only').map(i=>i.id), ['b']);
-  assertEq('filter idea-only', applyReferenceSubFilter(sample,'idea-only').map(i=>i.id), ['c']);
-  assertEq('filter both', applyReferenceSubFilter(sample,'both').map(i=>i.id), ['d']);
-
-  const passed = tests.filter(t=>t.pass).length;
-  console.log(`[ReferenceTagsSelfTest] ${passed}/${tests.length} passed`, tests);
-  return { passed, total: tests.length, tests };
-}
-
-if (typeof window !== 'undefined') {
-  window.runReferenceTagsSelfTest = runReferenceTagsSelfTest;
-}
-
 class DualTextWriter {
     constructor() {
         // Firebase 설정
@@ -206,14 +104,6 @@ class DualTextWriter {
             trackingChart: false
         };
         
-        // Reference pagination & tag stats cache
-        this.referencePageSize = 20;
-        this.referenceLastDoc = null;
-        this.referenceHasMore = true;
-        this.referencePaginationEnabled = true;
-        this.tagStatsCache = null;
-        this.tagStatsCacheTime = null;
-
         this.maxLength = 500;
         this.currentUser = null;
         this.savedTexts = [];
@@ -367,10 +257,6 @@ class DualTextWriter {
         this.editClearBtn.addEventListener('click', () => this.clearText('edit'));
         this.editSaveBtn.addEventListener('click', () => this.saveText('edit'));
         this.editDownloadBtn.addEventListener('click', () => this.downloadAsTxt('edit'));
-
-        // 접근성: 메뉴/모달 키보드 매핑
-        this.setupA11yMenuKeyHandlers();
-        this.setupEscapeToCloseModals();
 
         // 반자동화 포스팅 이벤트
         const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
@@ -623,6 +509,7 @@ class DualTextWriter {
         //     }, 100);
         // }
     }
+
     updateCharacterCount(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
         const currentCount = panel === 'ref' ? this.refCurrentCount : this.editCurrentCount;
@@ -685,7 +572,9 @@ class DualTextWriter {
         }
     }
     }
+
     // Firebase Auth 상태 리스너가 자동으로 처리함
+
     // Firebase 사용자명 로그인 (Anonymous Auth 사용)
     async login() {
         const username = this.usernameInput.value.trim();
@@ -790,6 +679,7 @@ class DualTextWriter {
             this.showMessage('데이터 마이그레이션 중 오류가 발생했습니다.', 'error');
         }
     }
+
     // 로컬 데이터를 Firestore로 마이그레이션
     async migrateLocalDataToFirestore(userId, localTexts) {
         for (const text of localTexts) {
@@ -849,6 +739,7 @@ class DualTextWriter {
             textInput.focus();
         }
     }
+
     // Firestore에 텍스트 저장
     async saveText(panel) {
         const textInput = panel === 'ref' ? this.refTextInput : this.editTextInput;
@@ -866,27 +757,12 @@ class DualTextWriter {
         }
 
         try {
-            // Phase 1: 레퍼런스 저장 시 태그 선택 (빠른 저장 시 생략)
-            let referenceTags = [];
-            if (panel === 'ref') {
-                if (!this.getFastSaveReference()) {
-                    referenceTags = await this.showReferenceTagModal();
-                } // fastSave면 빈 배열(미분류)
-                referenceTags = validateReferenceTags(referenceTags);
-            }
-
-            const isReference = panel === 'ref';
             const textData = {
                 content: text,
-                type: isReference ? 'reference' : 'edit',
+                type: panel === 'ref' ? 'reference' : 'edit',
                 characterCount: this.getKoreanCharacterCount(text),
                 createdAt: window.firebaseServerTimestamp(),
-                updatedAt: window.firebaseServerTimestamp(),
-                ...(isReference ? {
-                    referenceTags,
-                    referenceTagMask: getReferenceTagMask(referenceTags),
-                    schemaVersion: SCHEMA_VERSION,
-                } : {})
+                updatedAt: window.firebaseServerTimestamp()
             };
 
             // Firestore에 저장
@@ -896,26 +772,23 @@ class DualTextWriter {
             );
 
             // 로컬 배열에도 추가 (UI 업데이트용)
-            const savedItem = {
+        const savedItem = {
                 id: docRef.id,
-                content: text,
-                date: new Date().toLocaleString('ko-KR'),
-                characterCount: this.getKoreanCharacterCount(text),
-                type: isReference ? 'reference' : 'edit',
-                ...(isReference ? { referenceTags, referenceTagMask: getReferenceTagMask(referenceTags), schemaVersion: SCHEMA_VERSION } : {})
-            };
+            content: text,
+            date: new Date().toLocaleString('ko-KR'),
+            characterCount: this.getKoreanCharacterCount(text),
+            type: panel === 'ref' ? 'reference' : 'edit'
+        };
 
-            // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
-            this.savedTexts.unshift(savedItem);
-            // 통계 캐시 무효화
-            this.tagStatsCache = null; this.tagStatsCacheTime = null;
-            this.refreshUI({ savedTexts: true, force: true });
+        // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
+        this.savedTexts.unshift(savedItem);
+        this.refreshUI({ savedTexts: true, force: true });
 
-            this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
+        this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
-            // Clear input
-            textInput.value = '';
-            this.updateCharacterCount(panel);
+        // Clear input
+        textInput.value = '';
+        this.updateCharacterCount(panel);
 
         } catch (error) {
             console.error('텍스트 저장 실패:', error);
@@ -964,18 +837,14 @@ class DualTextWriter {
         if (this.savedFilter === 'edit') {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
+            // 레퍼런스 탭에는 사용 안된 레퍼런스(usageCount === 0)만 표시
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
             list = list.filter(item => (item.type || 'edit') === 'reference');
-            // 레퍼런스 서브필터(클라이언트) 적용
-            if (this.referenceSubFilter) {
-                const f = this.referenceSubFilter;
-                if (f === 'structure') list = list.filter(i => (i.referenceTags||[]).includes('structure'));
-                else if (f === 'idea') list = list.filter(i => (i.referenceTags||[]).includes('idea'));
-                else if (f === 'uncategorized') list = list.filter(i => !(i.referenceTags && i.referenceTags.length));
-                else if (f === 'structure-only') list = list.filter(i => (i.referenceTagMask === 1));
-                else if (f === 'idea-only') list = list.filter(i => (i.referenceTagMask === 2));
-                else if (f === 'both') list = list.filter(i => (i.referenceTagMask === 3));
-            }
         } else if (this.savedFilter === 'reference-used') {
+            // 사용된 레퍼런스만 필터링 (usageCount > 0)
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
             list = list.filter(item => (item.type || 'edit') === 'reference');
         }
 
@@ -1185,7 +1054,6 @@ class DualTextWriter {
         const isReference = (item.type || 'edit') === 'reference';
         const usageCount = item.usageCount || 0;
         const usageBadgeHtml = isReference ? this.renderReferenceUsageBadge(usageCount) : '';
-        const referenceTagsHtml = isReference ? this.renderReferenceTags(item.referenceTags) : '';
         
         return `
         <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
@@ -1193,7 +1061,6 @@ class DualTextWriter {
                 <div class="saved-item-header-left">
                     <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
                     ${usageBadgeHtml}
-                    ${referenceTagsHtml}
                 </div>
             </div>
             <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
@@ -1247,7 +1114,6 @@ class DualTextWriter {
                 <div class="more-menu actions--more">
                     <button class="more-menu-btn" data-action="more" data-item-id="${item.id}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
                     <div class="more-menu-list" role="menu" aria-label="기타 작업">
-                        <button class="more-menu-item" role="menuitem" data-action="edit-tags" data-item-id="${item.id}" aria-label="태그 수정">태그 수정</button>
                         <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${item.id}" aria-label="글 삭제">삭제</button>
                     </div>
                 </div>
@@ -1255,24 +1121,7 @@ class DualTextWriter {
         </div>
         `;
     }
-
-    // 레퍼런스 태그 렌더링
-    renderReferenceTags(tags) {
-        const t = validateReferenceTags(tags);
-        if (!t.length) return '<span class="reference-tag tag-uncategorized" role="button" tabindex="0" onclick="dualTextWriter.filterByTag(\'uncategorized\')">🏷️ 미분류</span>';
-        const toHtml = (tag) => {
-            const label = (ReferenceTagLabels[tag] || tag);
-            return `<span class="reference-tag tag-${tag}" role="button" tabindex="0" onclick="dualTextWriter.filterByTag('${tag}')">${label}</span>`;
-        };
-        return t.map(toHtml).join('');
-    }
-
-    filterByTag(tag) {
-        this.savedFilter = 'reference';
-        this.referenceSubFilter = tag;
-        this.renderSavedTexts();
-    }
-
+    
     // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
     async updateBatchMigrationButton() {
         if (!this.batchMigrationBtn || !this.currentUser || !this.isFirebaseReady) return;
@@ -1329,6 +1178,7 @@ class DualTextWriter {
             }
         }
     }
+
     // 트래킹 타임라인 렌더링
     renderTrackingTimeline(metrics) {
         if (!metrics || metrics.length === 0) {
@@ -1591,6 +1441,7 @@ class DualTextWriter {
             this.updateQueue.trackingChart = false;
         }
     }
+    
     // 디바운싱 유틸리티 함수
     debounce(func, wait) {
         const key = func.name || 'anonymous';
@@ -1656,6 +1507,7 @@ class DualTextWriter {
             console.error('범위 필터 상태 저장 실패:', error);
         }
     }
+
     // 타임라인 더보기/접기 (최신 1개 기본)
     toggleTimelineCollapse(button) {
         const container = button.closest('.tracking-timeline-container');
@@ -1685,6 +1537,7 @@ class DualTextWriter {
             button.textContent = '접기';
         }
     }
+
     /**
      * 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
      * - 메뉴 열기/닫기, 삭제, 트래킹 등 저장된 글 관련 모든 이벤트 처리
@@ -1894,9 +1747,6 @@ class DualTextWriter {
                     }
                 }
                 return;
-            } else if (action === 'edit-tags') {
-                console.log('태그 수정 액션 실행:', { itemId });
-                this.editReferenceTags(itemId);
             } else {
                 // LLM 옵션 버튼 처리 (data-llm 속성 확인)
                 const llmService = button.getAttribute('data-llm');
@@ -2254,103 +2104,7 @@ class DualTextWriter {
             this.showMessage('편집할 글을 찾을 수 없습니다.', 'error');
         }
     }
-    // Firestore에서 저장된 텍스트들 불러오기
-    async loadSavedTextsFromFirestore() {
-        if (!this.currentUser || !this.isFirebaseReady) return;
 
-        // 마이그레이션 메트릭 초기화
-        this.migrationStats = { attempted: 0, succeeded: 0, failed: 0 };
-
-        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-        const migrateWithRetry = async (docRef, payload, max = 3) => {
-            let attempt = 0;
-            while (attempt < max) {
-                try {
-                    await window.firebaseUpdateDoc(docRef, payload);
-                    this.migrationStats.succeeded++;
-                    return true;
-                } catch (e) {
-                    attempt++;
-                    if (attempt >= max) {
-                        console.warn('마이그레이션 실패(최대 재시도 초과):', { error: e, payload });
-                        this.migrationStats.failed++;
-                        return false;
-                    }
-                    const backoff = 200 * Math.pow(2, attempt - 1);
-                    await sleep(backoff);
-                }
-            }
-            return false;
-        };
-
-        try {
-            const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
-            const q = window.firebaseQuery(textsRef, window.firebaseOrderBy('createdAt', 'desc'));
-            const querySnapshot = await window.firebaseGetDocs(q);
-
-            this.savedTexts = [];
-            const migratePromises = [];
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() || {};
-
-                // 타입 정규화
-                let normalizedType = (data.type || '').toString().toLowerCase();
-                if (normalizedType === 'writing') normalizedType = 'edit';
-                if (normalizedType === 'ref') normalizedType = 'reference';
-                if (normalizedType !== 'edit' && normalizedType !== 'reference') normalizedType = 'edit';
-
-                // 레퍼런스 태그 정규화/마이그레이션 필요 판단
-                let referenceTags = [];
-                let tagMask = 0;
-                const currentVersion = typeof data.schemaVersion === 'number' ? data.schemaVersion : 1;
-                if (normalizedType === 'reference') {
-                    referenceTags = validateReferenceTags(data.referenceTags);
-                    tagMask = getReferenceTagMask(referenceTags);
-
-                    const tagsMissing = !Array.isArray(data.referenceTags);
-                    const versionOld = currentVersion < SCHEMA_VERSION;
-                    const needMigration = tagsMissing || versionOld;
-
-                    if (needMigration) {
-                        this.migrationStats.attempted++;
-                        const docRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', doc.id);
-                        migratePromises.push(
-                            migrateWithRetry(docRef, {
-                                referenceTags,
-                                referenceTagMask: tagMask,
-                                schemaVersion: SCHEMA_VERSION,
-                                migratedAt: window.firebaseServerTimestamp(),
-                            })
-                        );
-                    }
-                }
-
-                this.savedTexts.push({
-                    id: doc.id,
-                    content: data.content,
-                    date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
-                    characterCount: data.characterCount,
-                    type: normalizedType,
-                    referenceTags,
-                    referenceTagMask: tagMask,
-                    schemaVersion: currentVersion,
-                });
-            });
-
-            // 마이그레이션 처리 완료 대기(백그라운드 동작, 실패는 로깅됨)
-            if (migratePromises.length) {
-                try { await Promise.allSettled(migratePromises); } catch (_) {}
-                console.log('지연 마이그레이션 결과:', this.migrationStats);
-            }
-
-            console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
-
-        } catch (error) {
-            console.error('Firestore에서 텍스트 불러오기 실패:', error);
-            this.savedTexts = [];
-        }
-    }
     // Firestore에서 텍스트 삭제 (연결된 트래킹 포스트도 함께 삭제)
     async deleteText(id) {
         console.log('삭제 버튼 클릭:', { id });
@@ -2485,6 +2239,7 @@ class DualTextWriter {
         div.textContent = text;
         return div.innerHTML.replace(/\n/g, '<br>'); // 줄바꿈을 <br> 태그로 변환
     }
+
     // 텍스트만 이스케이프 (줄바꿈 없이)
     escapeHtmlOnly(text) {
         if (!text) return '';
@@ -2560,6 +2315,7 @@ class DualTextWriter {
             return null;
         }
     }
+
     // 보안 강화: 사용자 데이터 복호화
     async decryptUserData(encryptedData) {
         try {
@@ -2584,16 +2340,19 @@ class DualTextWriter {
             return null;
         }
     }
+
     // Firebase 설정 안내
     showFirebaseSetupNotice() {
         console.info(`
 🔥 Firebase 설정이 필요합니다!
+
 1. Firebase Console (https://console.firebase.google.com) 접속
 2. 새 프로젝트 생성 또는 기존 프로젝트 선택
 3. "Authentication" > "Sign-in method" 에서 Google 로그인 활성화
 4. "Firestore Database" 생성
 5. "Project Settings" > "General" 에서 웹 앱 추가
 6. 설정 정보를 index.html의 firebaseConfig에 입력
+
 현재는 로컬 스토리지 모드로 동작합니다.
         `);
     }
@@ -2992,6 +2751,7 @@ class DualTextWriter {
             this.tempSaveStatus.classList.add('hide');
         }, 3000);
     }
+
     restoreTempSave() {
         if (!this.currentUser) return;
 
@@ -3125,6 +2885,45 @@ class DualTextWriter {
         }
     }
 
+    // Firestore에서 저장된 텍스트들 불러오기
+    async loadSavedTextsFromFirestore() {
+        if (!this.currentUser || !this.isFirebaseReady) return;
+
+        try {
+            const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
+            const q = window.firebaseQuery(textsRef, window.firebaseOrderBy('createdAt', 'desc'));
+            const querySnapshot = await window.firebaseGetDocs(q);
+
+            this.savedTexts = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
+                let normalizedType = (data.type || '').toString().toLowerCase();
+                if (normalizedType === 'writing') normalizedType = 'edit';
+                if (normalizedType === 'ref') normalizedType = 'reference';
+                if (normalizedType !== 'edit' && normalizedType !== 'reference') {
+                    // 알 수 없는 타입은 편의상 'edit'로 처리
+                    normalizedType = 'edit';
+                }
+                this.savedTexts.push({
+                    id: doc.id,
+                    content: data.content,
+                    date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
+                    characterCount: data.characterCount,
+                    type: normalizedType
+                });
+            });
+
+            console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
+
+        } catch (error) {
+            console.error('Firestore에서 텍스트 불러오기 실패:', error);
+            this.savedTexts = [];
+        }
+    }
+
+    // 기존 로컬 스토리지 메서드들은 Firestore로 대체됨
+
     cleanupTempSave() {
         if (this.tempSaveInterval) {
             clearInterval(this.tempSaveInterval);
@@ -3142,6 +2941,7 @@ class DualTextWriter {
         const hashtags = content.match(hashtagRegex) || [];
         return hashtags.map(tag => tag.toLowerCase());
     }
+
     // 사용자 정의 해시태그 가져오기
     getUserHashtags() {
         try {
@@ -3225,6 +3025,7 @@ class DualTextWriter {
         div.textContent = text;
         return div.innerHTML;
     }
+
     // 사용자 입력 검증 함수 (보안 강화)
     validateUserInput(input, type = 'text') {
         if (!input || typeof input !== 'string') {
@@ -3272,6 +3073,7 @@ class DualTextWriter {
             .replace(/\s+/g, ' ') // 연속 공백 정리
             .trim();
     }
+
     // 내용 최적화 엔진 (보안 강화 버전)
     optimizeContentForThreads(content) {
         try {
@@ -3516,6 +3318,7 @@ class DualTextWriter {
         textarea.focus();
         textarea.select();
     }
+
     // 최적화 모달 표시 함수 (접근성 강화)
     showOptimizationModal(optimized, originalContent) {
         // 원본 텍스트 저장 (줄바꿈 보존)
@@ -3874,6 +3677,7 @@ class DualTextWriter {
             this.showMessage('Threads 열기 중 오류가 발생했습니다: ' + error.message, 'error');
         }
     }
+
     // 간단한 Threads 가이드 표시
     showSimpleThreadsGuide() {
         const currentLang = this.detectLanguage();
@@ -3937,6 +3741,7 @@ class DualTextWriter {
             return false;
         }
     }
+
     // 사용자 프로필 URL 설정 함수
     setThreadsProfileUrl(url) {
         if (this.isValidThreadsUrl(url)) {
@@ -4058,6 +3863,7 @@ class DualTextWriter {
             }
         }
     }
+
     // 해시태그 설정 모달 표시
     showHashtagSettings() {
         const currentLang = this.detectLanguage();
@@ -4161,6 +3967,7 @@ class DualTextWriter {
             }
         }
     }
+
     // 해시태그 표시 업데이트
     updateHashtagsDisplay() {
         const display = document.getElementById('current-hashtags-display');
@@ -4448,6 +4255,7 @@ class DualTextWriter {
             return testResults;
         }
     }
+
     // 반자동화 포스팅 메인 함수 (성능 최적화 + 오프라인 지원 + 모니터링)
     async handleSemiAutoPost() {
         console.log('🔍 반자동화 포스팅 시작');
@@ -5027,7 +4835,9 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
 // ==================== 트래킹 기능 메서드들 ====================
+
 // 트래킹 포스트 로드
 DualTextWriter.prototype.loadTrackingPosts = async function() {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -5285,6 +5095,7 @@ DualTextWriter.prototype.validateSourceTexts = async function() {
         });
     }
 };
+
 // 트래킹 포스트 렌더링
 DualTextWriter.prototype.renderTrackingPosts = function() {
     if (!this.trackingPostsList) return;
@@ -5672,6 +5483,7 @@ DualTextWriter.prototype.toggleTrackingMoreMenu = function(button, postId, track
         }, { once: true });
     }, 0);
 };
+
 // 트래킹 시작
 DualTextWriter.prototype.startTracking = async function(postId) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -5865,6 +5677,7 @@ DualTextWriter.prototype.saveTrackingData = async function() {
         this.showMessage('❌ 트래킹 데이터 저장에 실패했습니다: ' + error.message, 'error');
     }
 };
+
 // 저장된 글에서 직접 트래킹 데이터 저장
 DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
     if (!this.currentTrackingTextId || !this.currentUser || !this.isFirebaseReady) return;
@@ -6030,6 +5843,7 @@ DualTextWriter.prototype.closeTrackingModal = function() {
     this.currentTrackingPost = null;
     this.currentTrackingTextId = null;
 };
+
 // 메트릭 관리 모달 열기 (트래킹 탭에서 사용)
 DualTextWriter.prototype.manageMetrics = async function(postId) {
     if (!this.currentUser || !this.isFirebaseReady) {
@@ -6272,6 +6086,7 @@ DualTextWriter.prototype.editMetricFromManage = async function(postId, textId, m
         this.showMessage('메트릭을 불러오는데 실패했습니다.', 'error');
     }
 };
+
 // 메트릭 관리 모달에서 메트릭 삭제
 DualTextWriter.prototype.deleteMetricFromManage = async function(postId, textId, metricIndex) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -6461,6 +6276,7 @@ DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndex
         }
     }
 };
+
 // 트래킹 데이터 수정
 DualTextWriter.prototype.updateTrackingDataItem = async function() {
     if (!this.editingMetricData || !this.currentUser || !this.isFirebaseReady) return;
@@ -6733,6 +6549,7 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
     const totalFollowsElement = document.getElementById('total-follows');
     if (totalFollowsElement) totalFollowsElement.textContent = totalFollows.toLocaleString();
 };
+
 /**
  * 트래킹 차트 초기화
  * 
@@ -6895,6 +6712,7 @@ DualTextWriter.prototype.initTrackingChart = function() {
         this.trackingChart = null;
     }
 };
+
 /**
  * 스케일 모드 설정
  * 
@@ -7059,6 +6877,7 @@ DualTextWriter.prototype.populatePostSelector = function() {
         }
     }
 };
+
 // 포스트 선택 드롭다운 렌더링
 DualTextWriter.prototype.renderPostSelectorDropdown = function(searchTerm = '') {
     const dropdown = document.getElementById('post-selector-dropdown');
@@ -7250,6 +7069,7 @@ DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
         }
     }
 };
+
 /**
  * 트래킹 차트 업데이트
  * 
@@ -7665,6 +7485,7 @@ DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
         this.updateTrackingChart(); // 전체 차트 업데이트로 축 재계산
     }
 };
+
 /**
  * 차트 컨트롤 키보드 접근성 이벤트 바인딩
  * 
@@ -7895,6 +7716,7 @@ DualTextWriter.prototype.checkReferenceUsage = async function(referenceTextId) {
         return 0;
     }
 };
+
 /**
  * 여러 레퍼런스 글의 사용 여부를 한번에 확인합니다 (성능 최적화).
  * 
@@ -7992,6 +7814,7 @@ DualTextWriter.prototype.checkMultipleReferenceUsage = async function(referenceT
         }, {});
     }
 };
+
 /**
  * 레퍼런스를 사용된 것으로 표시합니다 (간단한 클릭 동작).
  * 
@@ -8269,6 +8092,7 @@ DualTextWriter.prototype.cleanupOrphanPosts = async function() {
         this.showMessage('❌ Orphan 포스트 정리에 실패했습니다: ' + error.message, 'error');
     }
 };
+
 // 일괄 마이그레이션 확인 대화상자 표시
 DualTextWriter.prototype.showBatchMigrationConfirm = async function() {
     if (!this.currentUser || !this.isFirebaseReady) {
