@@ -445,7 +445,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, signInAnonymously, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, getDocs, getDoc, updateDoc, deleteDoc, doc, query, where, orderBy, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, getDoc, updateDoc, deleteDoc, doc, query, where, orderBy, serverTimestamp, Timestamp, limit, startAfter } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // Firebase 설정 (실제 사용 시 Firebase Console에서 발급받은 설정으로 교체)
         const firebaseConfig = {
@@ -480,6 +480,8 @@
         window.firebaseQuery = query;
         window.firebaseWhere = where;
         window.firebaseOrderBy = orderBy;
+        window.firebaseLimit = limit;
+        window.firebaseStartAfter = startAfter;
         window.firebaseServerTimestamp = serverTimestamp;
         window.firebaseTimestamp = (date) => Timestamp.fromDate(date);
     </script>

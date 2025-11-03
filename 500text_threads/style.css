@@ -4316,3 +4316,36 @@ body {
         }
     }
     
+    /* Reference tags */
+    .reference-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: 6px;
+    }
+    .reference-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .tag-structure { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+    .tag-idea { background: linear-gradient(135deg, #f093fb, #f5576c); color: #fff; }
+    .tag-uncategorized { background: #e9ecef; color: #666; }
+
+    /* Reference tag modal (reuses modal styles) */
+    .reference-tag-modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index: 10000; }
+    .reference-tag-modal .modal-content { background:#fff; border-radius:12px; padding:20px; width:90%; max-width:500px; box-shadow:0 10px 30px rgba(0,0,0,0.3); outline: none; }
+    .tag-options { display:flex; flex-direction:column; gap:12px; margin:12px 0; }
+    .tag-option { display:flex; align-items:center; gap:12px; padding:12px; border:2px solid #e1e5e9; border-radius:12px; cursor:pointer; transition: all 0.2s ease; }
+    .tag-option:hover { border-color:#667eea; background:#f8f9fa; }
+    .tag-option input[type="checkbox"] { width:20px; height:20px; cursor:pointer; }
+    .tag-icon { font-size:1.2rem; }
+
+    @media (max-width: 768px) {
+        .reference-tag-modal .modal-content { position: fixed; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; }
+        .tag-option { padding:16px; }
+        .tag-option input[type="checkbox"] { width:22px; height:22px; }
+    }
+    
