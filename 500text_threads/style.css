@@ -575,6 +575,31 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
     
+/* 레퍼런스 유형 선택 */
+.reference-type-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+.reference-type-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+.reference-type-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+.reference-type-option input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
     /* Right panel textarea focus */
     .right-panel textarea:focus {
     border-color: #28a745;

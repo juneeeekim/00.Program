@@ -43,6 +43,9 @@ class DualTextWriter {
         this.refClearBtn = document.getElementById('ref-clear-btn');
         this.refSaveBtn = document.getElementById('ref-save-btn');
         this.refDownloadBtn = document.getElementById('ref-download-btn');
+        // 레퍼런스 유형 라디오
+        this.refTypeStructure = document.getElementById('ref-type-structure');
+        this.refTypeIdea = document.getElementById('ref-type-idea');
 
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
@@ -456,6 +459,19 @@ class DualTextWriter {
         const buttons = container.querySelectorAll('.segment-btn');
         if (!buttons || buttons.length === 0) return;
 
+        // 레퍼런스 유형 필터 초기화
+        this.referenceTypeFilter = localStorage.getItem('dualTextWriter_referenceTypeFilter') || 'all';
+        this.referenceTypeFilterSelect = document.getElementById('reference-type-filter');
+        this.referenceTypeFilterContainer = document.getElementById('reference-type-filter-container');
+        if (this.referenceTypeFilterSelect) {
+            this.referenceTypeFilterSelect.value = this.referenceTypeFilter;
+            this.referenceTypeFilterSelect.onchange = () => {
+                this.referenceTypeFilter = this.referenceTypeFilterSelect.value;
+                localStorage.setItem('dualTextWriter_referenceTypeFilter', this.referenceTypeFilter);
+                this.renderSavedTexts();
+            };
+        }
+
         // 활성 상태 복원
         buttons.forEach(btn => {
             const filter = btn.getAttribute('data-filter');
@@ -474,6 +490,9 @@ class DualTextWriter {
             };
             btn.addEventListener('click', btn._filterHandler);
         });
+
+        // 초기 표시 상태
+        this.updateReferenceTypeFilterVisibility();
     }
 
     setSavedFilter(filter) {
@@ -497,6 +516,9 @@ class DualTextWriter {
             });
         }
 
+        // 유형 필터 표시/숨김
+        this.updateReferenceTypeFilterVisibility();
+
         // 목록 렌더링
         this.renderSavedTexts();
         
@@ -508,6 +530,12 @@ class DualTextWriter {
         //         firstItem.focus();
         //     }, 100);
         // }
+    }
+
+    updateReferenceTypeFilterVisibility() {
+        if (!this.referenceTypeFilterContainer) return;
+        const show = this.savedFilter === 'reference' || this.savedFilter === 'reference-used';
+        this.referenceTypeFilterContainer.style.display = show ? 'flex' : 'none';
     }
 
     updateCharacterCount(panel) {
@@ -724,6 +752,9 @@ class DualTextWriter {
         this.refTextInput.value = '';
         this.editTextInput.value = '';
         this.savedTexts = [];
+        // 캐시 무효화 (데이터 변경 시)
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
         this.updateCharacterCount('ref');
         this.updateCharacterCount('edit');
         this.renderSavedTexts();
@@ -765,6 +796,18 @@ class DualTextWriter {
                 updatedAt: window.firebaseServerTimestamp()
             };
 
+            // 레퍼런스 저장 시 referenceType 필수
+            if (panel === 'ref') {
+                let refType = 'unspecified';
+                if (this.refTypeStructure && this.refTypeStructure.checked) refType = 'structure';
+                if (this.refTypeIdea && this.refTypeIdea.checked) refType = 'idea';
+                if (refType === 'unspecified') {
+                    this.showMessage('레퍼런스 유형(구조/아이디어)을 선택해주세요.', 'error');
+                    return;
+                }
+                textData.referenceType = refType;
+            }
+
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
                 window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
@@ -777,11 +820,15 @@ class DualTextWriter {
             content: text,
             date: new Date().toLocaleString('ko-KR'),
             characterCount: this.getKoreanCharacterCount(text),
-            type: panel === 'ref' ? 'reference' : 'edit'
+            type: panel === 'ref' ? 'reference' : 'edit',
+            referenceType: panel === 'ref' ? textData.referenceType : undefined
         };
 
         // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
         this.savedTexts.unshift(savedItem);
+        // 캐시 무효화 (데이터 변경 시)
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
         this.refreshUI({ savedTexts: true, force: true });
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
@@ -829,7 +876,37 @@ class DualTextWriter {
         this.showMessage(`${panelName} 글 TXT 파일이 다운로드되었습니다!`, 'success');
     }
 
+    // 디바운스 타이머 (성능 최적화: 과도한 호출 방지)
+    renderSavedTextsDebounceTimer = null;
+    
+    // 메모이제이션 캐시 (성능 최적화: 같은 필터 조건에서 재계산 방지)
+    renderSavedTextsCache = null;
+    renderSavedTextsCacheKey = null;
+    
     async renderSavedTexts() {
+        // 디바운스 적용 (300ms)
+        if (this.renderSavedTextsDebounceTimer) {
+            clearTimeout(this.renderSavedTextsDebounceTimer);
+        }
+        
+        return new Promise((resolve) => {
+            this.renderSavedTextsDebounceTimer = setTimeout(async () => {
+                await this._renderSavedTextsImpl();
+                resolve();
+            }, 300);
+        });
+    }
+    
+    async _renderSavedTextsImpl() {
+        // 메모이제이션: 캐시 키 생성 (필터 조건 기반)
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}`;
+        
+        // 캐시 확인 (같은 필터 조건에서 재호출 방지)
+        if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
+            console.log('renderSavedTexts: 캐시된 결과 사용 (성능 최적화)');
+            return;
+        }
+        
         console.log('renderSavedTexts 호출됨:', this.savedTexts);
 
         // 필터 적용
@@ -846,6 +923,14 @@ class DualTextWriter {
             // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
             // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
             list = list.filter(item => (item.type || 'edit') === 'reference');
+        }
+
+        // 레퍼런스 유형 필터 적용 (structure/idea)
+        if ((this.savedFilter === 'reference' || this.savedFilter === 'reference-used') && this.referenceTypeFilter && this.referenceTypeFilter !== 'all') {
+            list = list.filter(item => {
+                const rtype = (item.referenceType || 'unspecified');
+                return rtype === this.referenceTypeFilter;
+            });
         }
 
         if (list.length === 0) {
@@ -896,6 +981,9 @@ class DualTextWriter {
                 });
             }
         }
+        
+        // 캐시 업데이트
+        this.renderSavedTextsCacheKey = cacheKey;
         
         // 각 저장된 글에 대한 트래킹 데이터 조회 및 사용 여부 추가 (비동기)
         const itemsWithTracking = await Promise.all(list.map(async (item, index) => {
@@ -2160,6 +2248,9 @@ class DualTextWriter {
             
             // 낙관적 업데이트: UI 먼저 업데이트
             this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
+            // 캐시 무효화 (데이터 변경 시)
+            this.renderSavedTextsCache = null;
+            this.renderSavedTextsCacheKey = null;
             if (this.trackingPosts) {
                 this.trackingPosts = this.trackingPosts.filter(post => post.sourceTextId !== id);
             }
@@ -2204,6 +2295,9 @@ class DualTextWriter {
                 
                 // 실패 복구: 백업 데이터로 복원
                 this.savedTexts.push(itemBackup);
+                // 캐시 무효화 (데이터 변경 시)
+                this.renderSavedTextsCache = null;
+                this.renderSavedTextsCacheKey = null;
                 if (this.trackingPosts) {
                     connectedPostsBackup.forEach(post => {
                         if (!this.trackingPosts.find(p => p.id === post.id)) {
@@ -2886,15 +2980,35 @@ class DualTextWriter {
     }
 
     // Firestore에서 저장된 텍스트들 불러오기
-    async loadSavedTextsFromFirestore() {
+    // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
+    async loadSavedTextsFromFirestore(filterOptions = {}) {
         if (!this.currentUser || !this.isFirebaseReady) return;
 
         try {
             const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
-            const q = window.firebaseQuery(textsRef, window.firebaseOrderBy('createdAt', 'desc'));
+            
+            // 서버 사이드 필터링 구성 (성능 최적화)
+            // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
+            // 인덱스 예시: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)
+            const queryConstraints = [window.firebaseOrderBy('createdAt', 'desc')];
+            
+            // type 필터 (서버 사이드)
+            if (filterOptions.type && filterOptions.type !== 'all') {
+                queryConstraints.push(window.firebaseWhere('type', '==', filterOptions.type));
+            }
+            
+            // referenceType 필터 (서버 사이드, type이 'reference'일 때만 유효)
+            if (filterOptions.type === 'reference' && filterOptions.referenceType && filterOptions.referenceType !== 'all') {
+                queryConstraints.push(window.firebaseWhere('referenceType', '==', filterOptions.referenceType));
+            }
+            
+            const q = window.firebaseQuery(textsRef, ...queryConstraints);
             const querySnapshot = await window.firebaseGetDocs(q);
 
             this.savedTexts = [];
+            // 캐시 무효화 (데이터 로드 시)
+            this.renderSavedTextsCache = null;
+            this.renderSavedTextsCacheKey = null;
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
@@ -2910,7 +3024,8 @@ class DualTextWriter {
                     content: data.content,
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
                     characterCount: data.characterCount,
-                    type: normalizedType
+                    type: normalizedType,
+                    referenceType: data.referenceType || 'unspecified'
                 });
             });
 
@@ -2918,6 +3033,11 @@ class DualTextWriter {
 
         } catch (error) {
             console.error('Firestore에서 텍스트 불러오기 실패:', error);
+            // 복합 인덱스 오류인 경우 안내 메시지
+            if (error.code === 'failed-precondition') {
+                console.warn('복합 인덱스가 필요합니다. Firebase Console에서 인덱스를 생성해주세요.');
+                console.warn('인덱스 구성: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)');
+            }
             this.savedTexts = [];
         }
     }

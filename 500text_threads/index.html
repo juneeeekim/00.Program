@@ -101,6 +101,19 @@
                             <div id="ref-progress-fill" class="progress-fill"></div>
                         </div>
 
+                        <!-- 레퍼런스 유형 선택 -->
+                        <div class="reference-type-group" aria-label="레퍼런스 유형 선택">
+                            <span class="reference-type-label">유형:</span>
+                            <label class="reference-type-option">
+                                <input type="radio" name="reference-type" id="ref-type-structure" value="structure" aria-label="구조" />
+                                <span>구조</span>
+                            </label>
+                            <label class="reference-type-option">
+                                <input type="radio" name="reference-type" id="ref-type-idea" value="idea" aria-label="아이디어" />
+                                <span>아이디어</span>
+                            </label>
+                        </div>
+
                         <div class="panel-controls">
                             <div class="control-group basic-actions">
                                 <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
@@ -243,6 +256,15 @@
                             <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
                             <button class="segment-btn" data-filter="reference-used" role="tab" aria-selected="false" aria-label="사용된 레퍼런스만 표시">✅ 사용됨</button>
                         </div>
+                            <!-- 레퍼런스 유형 필터 -->
+                            <div class="reference-type-filter" id="reference-type-filter-container" style="display: none; align-items:center; gap:8px;">
+                                <span style="font-weight:600; color:#333; font-size:0.9rem;">유형:</span>
+                                <select id="reference-type-filter" aria-label="레퍼런스 유형 필터" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
+                                    <option value="all">전체</option>
+                                    <option value="structure">구조</option>
+                                    <option value="idea">아이디어</option>
+                                </select>
+                            </div>
                         <div class="migration-tools" style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
                             <button id="batch-migration-btn" class="btn btn-secondary btn-small" title="모든 저장된 글을 트래킹 포스트로 변환" style="font-size: 0.85rem; padding: 8px 16px;">
                                 📊 모든 글 트래킹 시작
