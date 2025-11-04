@@ -636,7 +636,6 @@ class DualTextWriter {
     }
 
     // Firebase 기반 인증으로 대체됨
-
     // Firebase Google 로그인 처리
     async googleLogin() {
         if (!this.isFirebaseReady) {
@@ -796,7 +795,6 @@ class DualTextWriter {
 
         console.log(`${localTexts.length}개의 텍스트를 Firestore로 마이그레이션했습니다.`);
     }
-
     showUserInterface() {
         this.loginForm.style.display = 'none';
         this.userInfo.style.display = 'block';
@@ -1275,7 +1273,6 @@ class DualTextWriter {
         </div>
         `;
     }
-    
     // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
     async updateBatchMigrationButton() {
         if (!this.batchMigrationBtn || !this.currentUser || !this.isFirebaseReady) return;
@@ -1595,7 +1592,6 @@ class DualTextWriter {
             this.updateQueue.trackingChart = false;
         }
     }
-    
     // 디바운싱 유틸리티 함수
     debounce(func, wait) {
         const key = func.name || 'anonymous';
@@ -1691,7 +1687,6 @@ class DualTextWriter {
             button.textContent = '접기';
         }
     }
-
     /**
      * 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
      * - 메뉴 열기/닫기, 삭제, 트래킹 등 저장된 글 관련 모든 이벤트 처리
@@ -2258,7 +2253,6 @@ class DualTextWriter {
             this.showMessage('편집할 글을 찾을 수 없습니다.', 'error');
         }
     }
-
     // Firestore에서 텍스트 삭제 (연결된 트래킹 포스트도 함께 삭제)
     async deleteText(id) {
         console.log('삭제 버튼 클릭:', { id });
@@ -2390,7 +2384,6 @@ class DualTextWriter {
             this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
-
     // HTML 이스케이프 함수 (줄바꿈 보존)
     escapeHtml(text) {
         if (!text) return '';
@@ -2521,10 +2514,10 @@ class DualTextWriter {
     initializeLLMValidation() {
         // LLM 사이트별 프롬프트 템플릿
         this.llmPrompts = {
-            chatgpt: "다음 글을 SNS 후킹 관점에서 분석해주세요. 특히 다음 요소들을 평가해주세요:\n\n🎯 후킹 효과성:\n- 첫 문장이 독자의 관심을 끌 수 있는가?\n- 감정적 몰입을 유도하는가?\n- 호기심을 자극하는 요소가 있는가?\n\n📱 SNS 최적화:\n- 읽기 쉬운 구조인가?\n- 공유하고 싶은 욕구를 자극하는가?\n- 댓글을 유도할 수 있는 요소가 있는가?\n\n💡 개선 제안:\n- 더 강력한 후킹 포인트 제안\n- 감정적 반응을 높이는 방법\n- 행동 유도(좋아요, 공유, 댓글) 강화 방안\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: “경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)” 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n분석할 글:\n",
-            gemini: "다음 글을 SNS 마케팅 전문가 관점에서 분석해주세요:\n\n🧠 심리적 후킹 분석:\n- 독자의 무의식을 자극하는 요소 분석\n- 감정적 트리거 포인트 식별\n- 인지 편향 활용도 평가\n\n📊 타겟 독자 분석:\n- 어떤 독자층에게 어필하는가?\n- 공감대 형성 요소는 무엇인가?\n- 행동 변화를 유도할 수 있는가?\n\n🎨 표현력 개선:\n- 더 강력한 표현으로 바꿀 부분\n- 시각적 임팩트를 높이는 방법\n- 기억에 남는 문구 만들기\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: “경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)” 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n분석할 글:\n",
-            perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: “경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)” 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n분석할 글:\n",
-            grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: “경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)” 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n분석할 글:\n"
+            chatgpt: "다음 글을 SNS 후킹 관점에서 분석해주세요. 특히 다음 요소들을 평가해주세요:\n\n🎯 후킹 효과성:\n- 첫 문장이 독자의 관심을 끌 수 있는가?\n- 감정적 몰입을 유도하는가?\n- 호기심을 자극하는 요소가 있는가?\n\n📱 SNS 최적화:\n- 읽기 쉬운 구조인가?\n- 공유하고 싶은 욕구를 자극하는가?\n- 댓글을 유도할 수 있는 요소가 있는가?\n\n💡 개선 제안:\n- 더 강력한 후킹 포인트 제안\n- 감정적 반응을 높이는 방법\n- 행동 유도(좋아요, 공유, 댓글) 강화 방안\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            gemini: "다음 글을 SNS 마케팅 전문가 관점에서 분석해주세요:\n\n🧠 심리적 후킹 분석:\n- 독자의 무의식을 자극하는 요소 분석\n- 감정적 트리거 포인트 식별\n- 인지 편향 활용도 평가\n\n📊 타겟 독자 분석:\n- 어떤 독자층에게 어필하는가?\n- 공감대 형성 요소는 무엇인가?\n- 행동 변화를 유도할 수 있는가?\n\n🎨 표현력 개선:\n- 더 강력한 표현으로 바꿀 부분\n- 시각적 임팩트를 높이는 방법\n- 기억에 남는 문구 만들기\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n"
         };
 
         // LLM 사이트별 특성 정보 (사용자 가이드용)
@@ -2911,7 +2904,6 @@ class DualTextWriter {
             this.tempSaveStatus.classList.add('hide');
         }, 3000);
     }
-
     restoreTempSave() {
         if (!this.currentUser) return;
 
@@ -3178,7 +3170,6 @@ class DualTextWriter {
             return false;
         }
     }
-
     // Threads 포맷팅 함수 (XSS 방지 포함, 줄바꿈 보존)
     formatForThreads(content) {
         // XSS 방지를 위한 HTML 이스케이프 (줄바꿈은 보존)
@@ -3504,7 +3495,6 @@ class DualTextWriter {
         textarea.focus();
         textarea.select();
     }
-
     // 최적화 모달 표시 함수 (접근성 강화)
     showOptimizationModal(optimized, originalContent) {
         // 원본 텍스트 저장 (줄바꿈 보존)
@@ -3975,7 +3965,6 @@ class DualTextWriter {
             }
         }, 10000);
     }
-
     // Threads 프로필 설정 모달 표시
     showThreadsProfileSettings() {
         const currentLang = this.detectLanguage();
@@ -4153,7 +4142,6 @@ class DualTextWriter {
             }
         }
     }
-
     // 해시태그 표시 업데이트
     updateHashtagsDisplay() {
         const display = document.getElementById('current-hashtags-display');
@@ -5281,7 +5269,6 @@ DualTextWriter.prototype.validateSourceTexts = async function() {
         });
     }
 };
-
 // 트래킹 포스트 렌더링
 DualTextWriter.prototype.renderTrackingPosts = function() {
     if (!this.trackingPostsList) return;
@@ -5863,7 +5850,6 @@ DualTextWriter.prototype.saveTrackingData = async function() {
         this.showMessage('❌ 트래킹 데이터 저장에 실패했습니다: ' + error.message, 'error');
     }
 };
-
 // 저장된 글에서 직접 트래킹 데이터 저장
 DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
     if (!this.currentTrackingTextId || !this.currentUser || !this.isFirebaseReady) return;
@@ -6029,7 +6015,6 @@ DualTextWriter.prototype.closeTrackingModal = function() {
     this.currentTrackingPost = null;
     this.currentTrackingTextId = null;
 };
-
 // 메트릭 관리 모달 열기 (트래킹 탭에서 사용)
 DualTextWriter.prototype.manageMetrics = async function(postId) {
     if (!this.currentUser || !this.isFirebaseReady) {
@@ -6462,7 +6447,6 @@ DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndex
         }
     }
 };
-
 // 트래킹 데이터 수정
 DualTextWriter.prototype.updateTrackingDataItem = async function() {
     if (!this.editingMetricData || !this.currentUser || !this.isFirebaseReady) return;
@@ -6735,7 +6719,6 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
     const totalFollowsElement = document.getElementById('total-follows');
     if (totalFollowsElement) totalFollowsElement.textContent = totalFollows.toLocaleString();
 };
-
 /**
  * 트래킹 차트 초기화
  * 
@@ -7063,7 +7046,6 @@ DualTextWriter.prototype.populatePostSelector = function() {
         }
     }
 };
-
 // 포스트 선택 드롭다운 렌더링
 DualTextWriter.prototype.renderPostSelectorDropdown = function(searchTerm = '') {
     const dropdown = document.getElementById('post-selector-dropdown');
@@ -7255,7 +7237,6 @@ DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
         }
     }
 };
-
 /**
  * 트래킹 차트 업데이트
  * 
@@ -7671,7 +7652,6 @@ DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
         this.updateTrackingChart(); // 전체 차트 업데이트로 축 재계산
     }
 };
-
 /**
  * 차트 컨트롤 키보드 접근성 이벤트 바인딩
  * 
@@ -8000,7 +7980,6 @@ DualTextWriter.prototype.checkMultipleReferenceUsage = async function(referenceT
         }, {});
     }
 };
-
 /**
  * 레퍼런스를 사용된 것으로 표시합니다 (간단한 클릭 동작).
  * 
@@ -8278,7 +8257,6 @@ DualTextWriter.prototype.cleanupOrphanPosts = async function() {
         this.showMessage('❌ Orphan 포스트 정리에 실패했습니다: ' + error.message, 'error');
     }
 };
-
 // 일괄 마이그레이션 확인 대화상자 표시
 DualTextWriter.prototype.showBatchMigrationConfirm = async function() {
     if (!this.currentUser || !this.isFirebaseReady) {
