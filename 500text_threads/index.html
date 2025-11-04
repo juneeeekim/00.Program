@@ -79,6 +79,14 @@
             <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
             <div class="tab-content active" id="writing-tab">
                 <div class="writing-container">
+                    <!-- 글자 제한 토글 -->
+                    <div class="char-limit-toolbar" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-bottom: 4px;">
+                        <span style="font-weight:600; color:#333; font-size:0.9rem;">글자 제한:</span>
+                        <div class="segmented-control" role="tablist" aria-label="글자 제한 선택" id="char-limit-toggle">
+                            <button class="segment-btn" data-limit="500" role="tab" aria-selected="false">500자</button>
+                            <button class="segment-btn" data-limit="1000" role="tab" aria-selected="false">1,000자</button>
+                        </div>
+                    </div>
                     <!-- 레퍼런스 글 패널 -->
                     <div class="writing-panel left-panel">
                         <div class="panel-header">

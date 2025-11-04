@@ -107,7 +107,8 @@ class DualTextWriter {
             trackingChart: false
         };
         
-        this.maxLength = 500;
+        // 글자 제한 (500/1000) - 기본 500, 사용자 선택을 로컬에 저장
+        this.maxLength = parseInt(localStorage.getItem('dualTextWriter_charLimit') || '500', 10);
         this.currentUser = null;
         this.savedTexts = [];
         this.savedFilter = localStorage.getItem('dualTextWriter_savedFilter') || 'all';
@@ -140,6 +141,9 @@ class DualTextWriter {
         this.bindEvents();
         await this.waitForFirebase();
         this.setupAuthStateListener();
+        this.initCharLimitToggle();
+        // 초기 글자 제한 반영
+        this.applyCharLimit(this.maxLength);
     }
 
     // Firebase 초기화 대기
@@ -464,6 +468,51 @@ class DualTextWriter {
         setTimeout(() => {
             this.bindPanelLLMButtons();
         }, 100);
+    }
+
+    // 글자 제한 토글 초기화
+    initCharLimitToggle() {
+        const toggle = document.getElementById('char-limit-toggle');
+        if (!toggle) return;
+        const buttons = toggle.querySelectorAll('.segment-btn');
+        buttons.forEach(btn => {
+            const limit = parseInt(btn.getAttribute('data-limit'), 10);
+            const isActive = limit === this.maxLength;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.setCharLimit(limit);
+                buttons.forEach(b => {
+                    const l = parseInt(b.getAttribute('data-limit'), 10);
+                    const on = l === this.maxLength;
+                    b.classList.toggle('active', on);
+                    b.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+            });
+        });
+    }
+
+    setCharLimit(limit) {
+        const value = limit === 1000 ? 1000 : 500;
+        if (this.maxLength === value) return;
+        this.maxLength = value;
+        localStorage.setItem('dualTextWriter_charLimit', String(value));
+        this.applyCharLimit(value);
+    }
+
+    applyCharLimit(value) {
+        // textarea maxlength 업데이트
+        if (this.refTextInput) this.refTextInput.setAttribute('maxlength', String(value));
+        if (this.editTextInput) this.editTextInput.setAttribute('maxlength', String(value));
+        // 상단 카운터 최대값 표시 업데이트
+        const refMax = document.getElementById('ref-max-count');
+        const editMax = document.getElementById('edit-max-count');
+        if (refMax) refMax.textContent = String(value);
+        if (editMax) editMax.textContent = String(value);
+        // 진행바/버튼 상태 재계산
+        this.updateCharacterCount('ref');
+        this.updateCharacterCount('edit');
     }
 
     // 저장된 글 필터 UI 초기화 및 이벤트 바인딩
