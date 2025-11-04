@@ -2549,6 +2549,13 @@ class DualTextWriter {
                 description: "임팩트 최적화", 
                 details: "강력한 후킹 문구·명확한 메시지·즉시 개선점",
                 strength: "간결한 임팩트 분석"
+            },
+            claude: {
+                name: "Claude",
+                icon: "🟣",
+                description: "형식 엄수·긴 문맥",
+                details: "형식 준수·안전성·장문 요약/구조화",
+                strength: "정책/포맷 준수와 긴 문맥 처리"
             }
         };
 
@@ -2557,7 +2564,8 @@ class DualTextWriter {
             chatgpt: "https://chatgpt.com",
             gemini: "https://gemini.google.com",
             perplexity: "https://www.perplexity.ai",
-            grok: "https://grok.com"
+            grok: "https://grok.com",
+            claude: "https://claude.ai"
         };
 
         console.log('LLM 검증 시스템 초기화 완료');
