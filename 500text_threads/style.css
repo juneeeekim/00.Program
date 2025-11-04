@@ -1486,6 +1486,34 @@ body {
     }
     
     /* 레퍼런스 사용 여부 배지 스타일 */
+/* 레퍼런스 유형 배지 */
+.reference-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.reference-type-badge--structure {
+    background: #e0e7ff; /* indigo-100 */
+    color: #3730a3;      /* indigo-800 */
+    border: 1px solid #c7d2fe; /* indigo-200 */
+}
+.reference-type-badge--idea {
+    background: #fff7ed; /* orange-50 */
+    color: #9a3412;      /* orange-800 */
+    border: 1px solid #fed7aa; /* orange-200 */
+}
+.reference-type-badge--unspecified {
+    background: #f3f4f6; /* gray-100 */
+    color: #4b5563;      /* gray-600 */
+    border: 1px solid #e5e7eb; /* gray-200 */
+}
+
     .reference-usage-badge {
         display: inline-flex;
         align-items: center;

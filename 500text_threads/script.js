@@ -122,6 +122,20 @@ class DualTextWriter {
         this.init();
     }
 
+    // 레퍼런스 유형 배지 렌더링
+    renderReferenceTypeBadge(referenceType) {
+        const type = (referenceType || 'unspecified');
+        let label = '미지정';
+        let cls = 'reference-type-badge--unspecified';
+        if (type === 'structure') { label = '구조'; cls = 'reference-type-badge--structure'; }
+        else if (type === 'idea') { label = '아이디어'; cls = 'reference-type-badge--idea'; }
+        return `
+            <span class="reference-type-badge ${cls}" role="status" aria-label="레퍼런스 유형: ${label}">
+                ${label}
+            </span>
+        `;
+    }
+
     async init() {
         this.bindEvents();
         await this.waitForFirebase();
@@ -1138,16 +1152,19 @@ class DualTextWriter {
         // 타임라인 HTML 생성
         const timelineHtml = this.renderTrackingTimeline(postData?.metrics || [], item.id);
         
-        // 레퍼런스 글인 경우 사용 여부 배지 생성
+        // 레퍼런스 글인 경우 사용 여부 배지 및 유형 배지 생성
         const isReference = (item.type || 'edit') === 'reference';
         const usageCount = item.usageCount || 0;
         const usageBadgeHtml = isReference ? this.renderReferenceUsageBadge(usageCount) : '';
+        const refType = (item.referenceType || 'unspecified');
+        const refTypeBadgeHtml = isReference ? this.renderReferenceTypeBadge(refType) : '';
         
         return `
         <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
             <div class="saved-item-header" id="item-header-${item.id}">
                 <div class="saved-item-header-left">
                     <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+                    ${refTypeBadgeHtml}
                     ${usageBadgeHtml}
                 </div>
             </div>
