@@ -267,14 +267,53 @@ class DualTextWriter {
 
     async renderRefImagePreview(url) {
         if (!this.refImagePreview || !this.refImagePreviewImg) return;
+        
+        // 이미지 로딩 전 상태 초기화
+        this.refImagePreviewImg.src = '';
+        this.refImagePreviewImg.style.display = 'block';
+        
+        // 이미지 로드 이벤트 처리
+        this.refImagePreviewImg.onload = () => {
+            console.log('✅ 이미지 로드 완료:', url);
+        };
+        
+        this.refImagePreviewImg.onerror = () => {
+            console.error('❌ 이미지 로드 실패:', url);
+            this.refImagePreviewImg.alt = '이미지를 불러올 수 없습니다.';
+        };
+        
+        // 이미지 URL 설정
         this.refImagePreviewImg.src = url;
-        this.refImagePreview.style.display = 'flex';
-        if (this.refImageDeleteBtn) this.refImageDeleteBtn.disabled = false;
+        
+        // 미리보기 컨테이너 표시
+        if (this.refImagePreview) {
+            this.refImagePreview.style.display = 'flex';
+        }
+        
+        // 이미지 섹션 표시
+        const imageSection = this.refImagePreview.closest('.reference-image-section');
+        if (imageSection) {
+            imageSection.style.display = 'block';
+        }
+        
+        if (this.refImageDeleteBtn) {
+            this.refImageDeleteBtn.disabled = false;
+        }
     }
 
     async clearRefImagePreview() {
-        if (this.refImagePreviewImg) this.refImagePreviewImg.src = '';
-        if (this.refImagePreview) this.refImagePreview.style.display = 'none';
+        if (this.refImagePreviewImg) {
+            this.refImagePreviewImg.src = '';
+            this.refImagePreviewImg.style.display = 'none';
+        }
+        if (this.refImagePreview) {
+            this.refImagePreview.style.display = 'none';
+        }
+        // 이미지 섹션 전체 숨기기
+        const imageSection = document.querySelector('.reference-image-section');
+        if (imageSection) {
+            imageSection.style.display = 'none';
+        }
         this.updateRefImageState(null, null);
     }
 
@@ -290,7 +329,8 @@ class DualTextWriter {
         }
         if (!confirm('이미지를 삭제하시겠습니까?')) return;
         try {
-            await this.deleteStorageObject(this.currentRefImagePath);
+            // Cloudinary 이미지 삭제
+            await this.deleteCloudinaryImage(this.currentRefImagePath);
             await this.clearRefImagePreview();
             this.showMessage('이미지를 삭제했습니다.', 'success');
         } catch (error) {
@@ -342,15 +382,49 @@ class DualTextWriter {
 
     // Cloudinary 이미지 삭제 함수
     async deleteCloudinaryImage(publicId) {
-        // Cloudinary 삭제는 서버 사이드에서 해야 하므로, 
-        // 여기서는 public_id만 저장하고 실제 삭제는 나중에 처리하거나
-        // 서버리스 함수를 사용해야 합니다.
-        // 현재는 클라이언트에서 직접 삭제할 수 없으므로, 
-        // 이미지가 자동으로 관리되도록 하거나 서버 사이드 삭제 API를 구현해야 합니다.
-        console.log('⚠️ Cloudinary 이미지 삭제는 서버 사이드에서 처리해야 합니다. public_id:', publicId);
-        // 실제 삭제를 위해서는 서버 사이드 API가 필요합니다.
-        // 임시로 성공으로 처리 (이미지는 Cloudinary에서 수동으로 관리)
-        return Promise.resolve();
+        if (!this.currentUser) {
+            throw new Error('로그인이 필요합니다.');
+        }
+
+        // 서버 사이드 API를 통한 삭제 (API Secret 보호)
+        // 옵션 1: Vercel Functions URL (설정 후 사용)
+        // 옵션 2: Express 서버 URL (설정 후 사용)
+        // 옵션 3: Firebase Functions URL (Blaze 플랜 필요)
+        
+        const idToken = await this.currentUser.getIdToken();
+        
+        // 서버 URL 설정 (아래 중 하나를 선택하여 설정)
+        // Vercel Functions 사용 시:
+        // const serverUrl = 'https://your-project.vercel.app/api/delete-cloudinary-image';
+        
+        // Express 서버 사용 시:
+        // const serverUrl = 'https://your-server.railway.app/api/delete-image';
+        
+        // Firebase Functions 사용 시:
+        const serverUrl = `https://us-central1-${window.firebaseDb.app.options.projectId}.cloudfunctions.net/deleteCloudinaryImage`;
+        
+        try {
+            const response = await fetch(serverUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ publicId })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Cloudinary 이미지 삭제 완료:', result);
+                return result;
+            } else {
+                const error = await response.json().catch(() => ({ error: '삭제 실패' }));
+                throw new Error(error.error || `서버 오류: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('❌ 이미지 삭제 실패:', error);
+            throw new Error(`이미지 삭제에 실패했습니다: ${error.message}`);
+        }
     }
 
     // 레퍼런스 유형 배지 렌더링

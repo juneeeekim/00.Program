@@ -608,6 +608,7 @@ body {
     border-top: 1px solid #e1e5e9;
     background: #fafbfc;
     border-radius: 0 0 10px 10px;
+    display: none; /* 기본적으로 숨김, 이미지 업로드 시 표시 */
 }
 
 .image-upload-controls {
@@ -619,38 +620,96 @@ body {
 
 .image-preview {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    justify-content: center;
     padding: 16px;
     width: 100%;
     box-sizing: border-box;
     background: transparent;
     border: none;
+    position: relative;
+}
+
+.image-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    width: 100%;
 }
 
 .image-preview img {
     max-width: 100%;
-    max-height: 500px;
+    max-height: 400px;
     width: auto;
     height: auto;
     border-radius: 8px;
     object-fit: contain;
     border: 1px solid #e1e5e9;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    flex-shrink: 0;
+    display: block;
+    margin: 0 auto;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: #ffffff;
 }
 
 .image-preview img:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.image-preview .btn-danger {
-    flex-shrink: 0;
-    margin-left: auto;
-    align-self: flex-start;
+.image-preview img:active {
+    transform: scale(0.99);
+}
+
+/* 이미지 삭제 버튼 - 우측 상단 절대 위치 */
+.btn-image-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: 2px solid white;
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    padding: 0;
+    margin: 0;
+}
+
+.btn-image-delete:hover {
+    background: rgba(220, 53, 69, 1);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-image-delete:active {
+    transform: scale(0.95);
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .image-preview img {
+        max-height: 300px;
+    }
+    
+    .btn-image-delete {
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
+        top: 6px;
+        right: 6px;
+    }
 }
     
 /* 레퍼런스 유형 선택 */
