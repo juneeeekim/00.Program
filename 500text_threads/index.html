@@ -555,6 +555,20 @@
         window.firebaseDeleteObject = deleteObject;
     </script>
 
+    <!-- Cloudinary 설정 -->
+    <script>
+        // Cloudinary 설정
+        // 1. https://cloudinary.com 에서 무료 계정 생성
+        // 2. Dashboard에서 Cloud Name 확인
+        // 3. Settings > Upload > Upload presets에서 "Add upload preset" 클릭
+        // 4. "Signing mode"를 "Unsigned"로 설정하고 저장
+        // 5. Preset 이름을 아래에 입력
+        window.cloudinaryConfig = {
+            cloudName: 'didlxfuyt', // Cloudinary Dashboard에서 확인
+            uploadPreset: 'reference-images-upload' // Settings > Upload presets에서 생성한 preset 이름
+        };
+    </script>
+
     <!-- 모달들 -->
     <div id="copy-modal" class="modal">
         <div class="modal-content">
@@ -715,6 +729,9 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Cloudinary JavaScript SDK -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
     
     <script src="script.js?v=20251103"></script>
 
