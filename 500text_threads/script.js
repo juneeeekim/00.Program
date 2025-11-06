@@ -47,6 +47,19 @@ class DualTextWriter {
         this.refTypeStructure = document.getElementById('ref-type-structure');
         this.refTypeIdea = document.getElementById('ref-type-idea');
 
+        // 레퍼런스 이미지 업로드 관련 요소들
+        this.refImagePreview = document.getElementById('ref-image-preview');
+        this.refImagePreviewImg = document.getElementById('ref-image-preview-img');
+        this.refImageDeleteBtn = document.getElementById('ref-image-delete-btn');
+        this.refImageFileInput = document.getElementById('ref-image-file');
+        this.refImageUploadBtn = document.getElementById('ref-image-upload-btn');
+        this.refImageUploadStatus = document.getElementById('ref-image-upload-status');
+
+        // 이미지 상태
+        this.currentRefImageUrl = null;
+        this.currentRefImagePath = null;
+        this.isUploadingRefImage = false;
+
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
@@ -121,6 +134,128 @@ class DualTextWriter {
         this.initializeLLMValidation();
 
         this.init();
+    }
+
+    // 이미지 업로드: 파일 선택 처리 (레퍼런스 전용)
+    async handleRefImageSelected(file) {
+        try {
+            if (!this.currentUser) {
+                this.showMessage('로그인이 필요합니다.', 'error');
+                return;
+            }
+            const validationError = this.validateImageFile(file);
+            if (validationError) {
+                this.showMessage(validationError, 'error');
+                return;
+            }
+
+            this.isUploadingRefImage = true;
+            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 준비 중...';
+
+            // 리사이즈 (GIF는 원본 유지)
+            const isGif = file.type === 'image/gif';
+            let uploadBlob = file;
+            let ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+            if (!isGif) {
+                if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '이미지 최적화 중...';
+                uploadBlob = await this.resizeImageToWebp(file, 1280, 0.8);
+                ext = 'webp';
+            }
+
+            // 기존 이미지가 있으면 먼저 삭제
+            if (this.currentRefImagePath) {
+                try { await this.deleteStorageObject(this.currentRefImagePath); } catch (_) {}
+            }
+
+            // 업로드 경로
+            const uid = this.currentUser.uid;
+            const uuid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const path = `users/${uid}/references/images/${uuid}.${ext}`;
+
+            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 중...';
+            const storage = window.firebaseStorage;
+            const ref = window.firebaseStorageRef(storage, path);
+            await window.firebaseUploadBytes(ref, uploadBlob, { contentType: uploadBlob.type || `image/${ext}` });
+            const url = await window.firebaseGetDownloadURL(ref);
+
+            this.updateRefImageState(url, path);
+            await this.renderRefImagePreview(url);
+            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 완료';
+        } catch (error) {
+            console.error('이미지 업로드 실패:', error);
+            this.showMessage('이미지 업로드에 실패했습니다. 다시 시도해주세요.', 'error');
+            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 실패';
+        } finally {
+            this.isUploadingRefImage = false;
+            setTimeout(() => { if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = ''; }, 1500);
+        }
+    }
+
+    validateImageFile(file) {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowed.includes(file.type)) return '이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다.';
+        const maxBytes = 5 * 1024 * 1024;
+        if (file.size > maxBytes) return '파일 크기는 최대 5MB까지 가능합니다.';
+        return '';
+    }
+
+    async resizeImageToWebp(file, maxSize, quality) {
+        const imageBitmap = await createImageBitmap(file);
+        const { width, height } = imageBitmap;
+        const scale = Math.min(1, maxSize / Math.max(width, height));
+        const targetW = Math.round(width * scale);
+        const targetH = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imageBitmap, 0, 0, targetW, targetH);
+        return await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (!blob) return reject(new Error('이미지 변환 실패'));
+                resolve(blob);
+            }, 'image/webp', quality);
+        });
+    }
+
+    async renderRefImagePreview(url) {
+        if (!this.refImagePreview || !this.refImagePreviewImg) return;
+        this.refImagePreviewImg.src = url;
+        this.refImagePreview.style.display = 'flex';
+        if (this.refImageDeleteBtn) this.refImageDeleteBtn.disabled = false;
+    }
+
+    async clearRefImagePreview() {
+        if (this.refImagePreviewImg) this.refImagePreviewImg.src = '';
+        if (this.refImagePreview) this.refImagePreview.style.display = 'none';
+        this.updateRefImageState(null, null);
+    }
+
+    updateRefImageState(url, path) {
+        this.currentRefImageUrl = url;
+        this.currentRefImagePath = path;
+    }
+
+    async deleteRefImage() {
+        if (!this.currentRefImagePath) {
+            await this.clearRefImagePreview();
+            return;
+        }
+        if (!confirm('이미지를 삭제하시겠습니까?')) return;
+        try {
+            await this.deleteStorageObject(this.currentRefImagePath);
+            await this.clearRefImagePreview();
+            this.showMessage('이미지를 삭제했습니다.', 'success');
+        } catch (error) {
+            console.error('이미지 삭제 실패:', error);
+            this.showMessage('이미지 삭제에 실패했습니다. 다시 시도해주세요.', 'error');
+        }
+    }
+
+    async deleteStorageObject(path) {
+        const storage = window.firebaseStorage;
+        const ref = window.firebaseStorageRef(storage, path);
+        return await window.firebaseDeleteObject(ref);
     }
 
     // 레퍼런스 유형 배지 렌더링
@@ -269,6 +404,26 @@ class DualTextWriter {
         this.refClearBtn.addEventListener('click', () => this.clearText('ref'));
         this.refSaveBtn.addEventListener('click', () => this.saveText('ref'));
         this.refDownloadBtn.addEventListener('click', () => this.downloadAsTxt('ref'));
+
+        // 레퍼런스 이미지 업로드/삭제 이벤트
+        if (this.refImageUploadBtn && this.refImageFileInput) {
+            this.refImageUploadBtn.addEventListener('click', () => {
+                if (this.isUploadingRefImage) return;
+                this.refImageFileInput.click();
+            });
+            this.refImageFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                await this.handleRefImageSelected(file);
+                // 파일 선택 초기화로 동일 파일 재선택 허용
+                e.target.value = '';
+            });
+        }
+        if (this.refImageDeleteBtn) {
+            this.refImageDeleteBtn.addEventListener('click', async () => {
+                await this.deleteRefImage();
+            });
+        }
 
         // 수정/작성 글 이벤트
         this.editTextInput.addEventListener('input', () => {
@@ -867,6 +1022,12 @@ class DualTextWriter {
                     return;
                 }
                 textData.referenceType = refType;
+
+                // 이미지 메타 포함 (있을 경우)
+                if (this.currentRefImageUrl && this.currentRefImagePath) {
+                    textData.imageUrl = this.currentRefImageUrl;
+                    textData.imagePath = this.currentRefImagePath;
+                }
             }
 
             // Firestore에 저장
@@ -894,9 +1055,12 @@ class DualTextWriter {
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
-        // Clear input
+        // Clear input & image state (레퍼런스일 경우)
         textInput.value = '';
         this.updateCharacterCount(panel);
+        if (panel === 'ref') {
+            await this.clearRefImagePreview();
+        }
 
         } catch (error) {
             console.error('텍스트 저장 실패:', error);
@@ -4969,6 +5133,18 @@ window.addEventListener('beforeunload', () => {
         dualTextWriter.cleanupTempSave();
     }
 });
+
+// 개발자 테스트(간단) - 이미지 검증 함수 테스트용
+window.dtwDevTests = {
+    testValidateImageFile() {
+        const app = window.dualTextWriter;
+        if (!app || typeof app.validateImageFile !== 'function') return { error: 'app not ready' };
+        const ok = app.validateImageFile({ type: 'image/png', size: 1024 });
+        const badType = app.validateImageFile({ type: 'application/pdf', size: 1024 });
+        const tooBig = app.validateImageFile({ type: 'image/jpeg', size: 6 * 1024 * 1024 });
+        return { ok, badType, tooBig };
+    }
+};
 
 // Add CSS for message animations
 const style = document.createElement('style');
