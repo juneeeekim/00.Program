@@ -47,19 +47,6 @@ class DualTextWriter {
         this.refTypeStructure = document.getElementById('ref-type-structure');
         this.refTypeIdea = document.getElementById('ref-type-idea');
 
-        // 레퍼런스 이미지 업로드 관련 요소들
-        this.refImagePreview = document.getElementById('ref-image-preview');
-        this.refImagePreviewImg = document.getElementById('ref-image-preview-img');
-        this.refImageDeleteBtn = document.getElementById('ref-image-delete-btn');
-        this.refImageFileInput = document.getElementById('ref-image-file');
-        this.refImageUploadBtn = document.getElementById('ref-image-upload-btn');
-        this.refImageUploadStatus = document.getElementById('ref-image-upload-status');
-
-        // 이미지 상태
-        this.currentRefImageUrl = null;
-        this.currentRefImagePath = null;
-        this.isUploadingRefImage = false;
-
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
@@ -134,297 +121,6 @@ class DualTextWriter {
         this.initializeLLMValidation();
 
         this.init();
-    }
-
-    // 이미지 업로드: 파일 선택 처리 (레퍼런스 전용)
-    async handleRefImageSelected(file) {
-        try {
-            console.log('🖼️ 이미지 업로드 시작:', file.name, file.type, file.size);
-            
-            if (!this.currentUser) {
-                this.showMessage('로그인이 필요합니다.', 'error');
-                return;
-            }
-            
-            const validationError = this.validateImageFile(file);
-            if (validationError) {
-                this.showMessage(validationError, 'error');
-                return;
-            }
-
-            this.isUploadingRefImage = true;
-            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 준비 중...';
-
-            // 리사이즈 (GIF는 원본 유지)
-            const isGif = file.type === 'image/gif';
-            let uploadBlob = file;
-            let ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-            let contentType = file.type;
-            
-            if (!isGif) {
-                if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '이미지 최적화 중...';
-                console.log('📐 이미지 리사이징 시작...');
-                uploadBlob = await this.resizeImageToWebp(file, 1280, 0.8);
-                ext = 'webp';
-                contentType = 'image/webp';
-                console.log('✅ 리사이징 완료:', uploadBlob.size, 'bytes');
-            }
-
-            // Cloudinary 설정 확인
-            if (!window.cloudinaryConfig || !window.cloudinaryConfig.cloudName || !window.cloudinaryConfig.uploadPreset) {
-                throw new Error('Cloudinary 설정이 완료되지 않았습니다. index.html에서 cloudName과 uploadPreset을 설정해주세요.');
-            }
-
-            // 기존 이미지가 있으면 먼저 삭제 (Cloudinary public_id 사용)
-            if (this.currentRefImagePath) {
-                console.log('🗑️ 기존 이미지 삭제 시도:', this.currentRefImagePath);
-                try { 
-                    await this.deleteCloudinaryImage(this.currentRefImagePath); 
-                    console.log('✅ 기존 이미지 삭제 완료');
-                } catch (err) {
-                    console.warn('⚠️ 기존 이미지 삭제 실패 (무시):', err);
-                }
-            }
-
-            // 업로드 경로 (Cloudinary public_id)
-            const uid = this.currentUser.uid;
-            const uuid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            const publicId = `users/${uid}/references/images/${uuid}`;
-            console.log('📤 Cloudinary 업로드 경로:', publicId);
-
-            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = 'Cloudinary에 업로드 중...';
-            
-            console.log('📤 Cloudinary에 업로드 시작...');
-            // Cloudinary에 업로드
-            const url = await this.uploadToCloudinary(uploadBlob, publicId);
-            console.log('✅ Cloudinary 업로드 완료, URL:', url);
-
-            this.updateRefImageState(url, publicId);
-            await this.renderRefImagePreview(url);
-            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 완료';
-            this.showMessage('이미지가 업로드되었습니다!', 'success');
-        } catch (error) {
-            console.error('❌ 이미지 업로드 실패:', error);
-            console.error('에러 상세:', error.code, error.message, error.stack);
-            
-            // 구체적인 에러 메시지 표시
-            let errorMessage = '이미지 업로드에 실패했습니다.';
-            if (error.code === 'storage/unauthorized') {
-                errorMessage = '업로드 권한이 없습니다. Firebase Storage 보안 규칙을 확인해주세요.';
-            } else if (error.code === 'storage/canceled') {
-                errorMessage = '업로드가 취소되었습니다.';
-            } else if (error.code === 'storage/unknown') {
-                errorMessage = '알 수 없는 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
-            } else if (error.message) {
-                errorMessage = `업로드 실패: ${error.message}`;
-            }
-            
-            this.showMessage(errorMessage, 'error');
-            if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 실패';
-        } finally {
-            this.isUploadingRefImage = false;
-            setTimeout(() => { 
-                if (this.refImageUploadStatus && this.refImageUploadStatus.textContent === '업로드 완료') {
-                    this.refImageUploadStatus.textContent = '';
-                }
-            }, 3000);
-        }
-    }
-
-    validateImageFile(file) {
-        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!allowed.includes(file.type)) return '이미지 파일(jpg, png, webp, gif)만 업로드 가능합니다.';
-        const maxBytes = 5 * 1024 * 1024;
-        if (file.size > maxBytes) return '파일 크기는 최대 5MB까지 가능합니다.';
-        return '';
-    }
-
-    async resizeImageToWebp(file, maxSize, quality) {
-        const imageBitmap = await createImageBitmap(file);
-        const { width, height } = imageBitmap;
-        const scale = Math.min(1, maxSize / Math.max(width, height));
-        const targetW = Math.round(width * scale);
-        const targetH = Math.round(height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imageBitmap, 0, 0, targetW, targetH);
-        return await new Promise((resolve, reject) => {
-            canvas.toBlob((blob) => {
-                if (!blob) return reject(new Error('이미지 변환 실패'));
-                // Blob의 type이 명시적으로 설정되도록 보장
-                if (!blob.type || blob.type === '') {
-                    // Blob을 새로 생성하여 type 명시
-                    const typedBlob = new Blob([blob], { type: 'image/webp' });
-                    resolve(typedBlob);
-                } else {
-                    resolve(blob);
-                }
-            }, 'image/webp', quality);
-        });
-    }
-
-    async renderRefImagePreview(url) {
-        if (!this.refImagePreview || !this.refImagePreviewImg) return;
-        
-        // 이미지 로딩 전 상태 초기화
-        this.refImagePreviewImg.src = '';
-        this.refImagePreviewImg.style.display = 'block';
-        
-        // 이미지 로드 이벤트 처리
-        this.refImagePreviewImg.onload = () => {
-            console.log('✅ 이미지 로드 완료:', url);
-        };
-        
-        this.refImagePreviewImg.onerror = () => {
-            console.error('❌ 이미지 로드 실패:', url);
-            this.refImagePreviewImg.alt = '이미지를 불러올 수 없습니다.';
-        };
-        
-        // 이미지 URL 설정
-        this.refImagePreviewImg.src = url;
-        
-        // 미리보기 컨테이너 표시
-        if (this.refImagePreview) {
-            this.refImagePreview.style.display = 'flex';
-        }
-        
-        // 이미지 섹션 표시
-        const imageSection = this.refImagePreview.closest('.reference-image-section');
-        if (imageSection) {
-            imageSection.style.display = 'block';
-        }
-        
-        if (this.refImageDeleteBtn) {
-            this.refImageDeleteBtn.disabled = false;
-        }
-    }
-
-    async clearRefImagePreview() {
-        if (this.refImagePreviewImg) {
-            this.refImagePreviewImg.src = '';
-            this.refImagePreviewImg.style.display = 'none';
-        }
-        if (this.refImagePreview) {
-            this.refImagePreview.style.display = 'none';
-        }
-        // 이미지 섹션 전체 숨기기
-        const imageSection = document.querySelector('.reference-image-section');
-        if (imageSection) {
-            imageSection.style.display = 'none';
-        }
-        this.updateRefImageState(null, null);
-    }
-
-    updateRefImageState(url, path) {
-        this.currentRefImageUrl = url;
-        this.currentRefImagePath = path;
-    }
-
-    async deleteRefImage() {
-        if (!this.currentRefImagePath) {
-            await this.clearRefImagePreview();
-            return;
-        }
-        if (!confirm('이미지를 삭제하시겠습니까?')) return;
-        try {
-            // Cloudinary 이미지 삭제
-            await this.deleteCloudinaryImage(this.currentRefImagePath);
-            await this.clearRefImagePreview();
-            this.showMessage('이미지를 삭제했습니다.', 'success');
-        } catch (error) {
-            console.error('이미지 삭제 실패:', error);
-            this.showMessage('이미지 삭제에 실패했습니다. 다시 시도해주세요.', 'error');
-        }
-    }
-
-    async deleteStorageObject(path) {
-        const storage = window.firebaseStorage;
-        const ref = window.firebaseStorageRef(storage, path);
-        return await window.firebaseDeleteObject(ref);
-    }
-
-    // Cloudinary 업로드 함수
-    async uploadToCloudinary(fileBlob, publicId) {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('file', fileBlob);
-            formData.append('upload_preset', window.cloudinaryConfig.uploadPreset);
-            formData.append('public_id', publicId);
-            formData.append('folder', 'reference-images'); // 선택사항: 폴더 구조화
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', `https://api.cloudinary.com/v1_1/${window.cloudinaryConfig.cloudName}/image/upload`);
-            
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    const response = JSON.parse(xhr.responseText);
-                    // secure_url 사용 (HTTPS)
-                    resolve(response.secure_url);
-                } else {
-                    try {
-                        const error = JSON.parse(xhr.responseText);
-                        reject(new Error(error.error?.message || '업로드 실패'));
-                    } catch (e) {
-                        reject(new Error(`업로드 실패: HTTP ${xhr.status}`));
-                    }
-                }
-            };
-            
-            xhr.onerror = () => {
-                reject(new Error('네트워크 오류가 발생했습니다.'));
-            };
-            
-            xhr.send(formData);
-        });
-    }
-
-    // Cloudinary 이미지 삭제 함수
-    async deleteCloudinaryImage(publicId) {
-        if (!this.currentUser) {
-            throw new Error('로그인이 필요합니다.');
-        }
-
-        // 서버 사이드 API를 통한 삭제 (API Secret 보호)
-        // 옵션 1: Vercel Functions URL (설정 후 사용)
-        // 옵션 2: Express 서버 URL (설정 후 사용)
-        // 옵션 3: Firebase Functions URL (Blaze 플랜 필요)
-        
-        const idToken = await this.currentUser.getIdToken();
-        
-        // 서버 URL 설정 (아래 중 하나를 선택하여 설정)
-        // Vercel Functions 사용 시:
-        // const serverUrl = 'https://your-project.vercel.app/api/delete-cloudinary-image';
-        
-        // Express 서버 사용 시:
-        // const serverUrl = 'https://your-server.railway.app/api/delete-image';
-        
-        // Firebase Functions 사용 시:
-        const serverUrl = `https://us-central1-${window.firebaseDb.app.options.projectId}.cloudfunctions.net/deleteCloudinaryImage`;
-        
-        try {
-            const response = await fetch(serverUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
-                },
-                body: JSON.stringify({ publicId })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log('✅ Cloudinary 이미지 삭제 완료:', result);
-                return result;
-            } else {
-                const error = await response.json().catch(() => ({ error: '삭제 실패' }));
-                throw new Error(error.error || `서버 오류: ${response.status}`);
-            }
-        } catch (error) {
-            console.error('❌ 이미지 삭제 실패:', error);
-            throw new Error(`이미지 삭제에 실패했습니다: ${error.message}`);
-        }
     }
 
     // 레퍼런스 유형 배지 렌더링
@@ -573,26 +269,6 @@ class DualTextWriter {
         this.refClearBtn.addEventListener('click', () => this.clearText('ref'));
         this.refSaveBtn.addEventListener('click', () => this.saveText('ref'));
         this.refDownloadBtn.addEventListener('click', () => this.downloadAsTxt('ref'));
-
-        // 레퍼런스 이미지 업로드/삭제 이벤트
-        if (this.refImageUploadBtn && this.refImageFileInput) {
-            this.refImageUploadBtn.addEventListener('click', () => {
-                if (this.isUploadingRefImage) return;
-                this.refImageFileInput.click();
-            });
-            this.refImageFileInput.addEventListener('change', async (e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                await this.handleRefImageSelected(file);
-                // 파일 선택 초기화로 동일 파일 재선택 허용
-                e.target.value = '';
-            });
-        }
-        if (this.refImageDeleteBtn) {
-            this.refImageDeleteBtn.addEventListener('click', async () => {
-                await this.deleteRefImage();
-            });
-        }
 
         // 수정/작성 글 이벤트
         this.editTextInput.addEventListener('input', () => {
@@ -1191,12 +867,6 @@ class DualTextWriter {
                     return;
                 }
                 textData.referenceType = refType;
-
-                // 이미지 메타 포함 (있을 경우)
-                if (this.currentRefImageUrl && this.currentRefImagePath) {
-                    textData.imageUrl = this.currentRefImageUrl;
-                    textData.imagePath = this.currentRefImagePath;
-                }
             }
 
             // Firestore에 저장
@@ -1224,12 +894,9 @@ class DualTextWriter {
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
-        // Clear input & image state (레퍼런스일 경우)
+        // Clear input
         textInput.value = '';
         this.updateCharacterCount(panel);
-        if (panel === 'ref') {
-            await this.clearRefImagePreview();
-        }
 
         } catch (error) {
             console.error('텍스트 저장 실패:', error);
@@ -5302,18 +4969,6 @@ window.addEventListener('beforeunload', () => {
         dualTextWriter.cleanupTempSave();
     }
 });
-
-// 개발자 테스트(간단) - 이미지 검증 함수 테스트용
-window.dtwDevTests = {
-    testValidateImageFile() {
-        const app = window.dualTextWriter;
-        if (!app || typeof app.validateImageFile !== 'function') return { error: 'app not ready' };
-        const ok = app.validateImageFile({ type: 'image/png', size: 1024 });
-        const badType = app.validateImageFile({ type: 'application/pdf', size: 1024 });
-        const tooBig = app.validateImageFile({ type: 'image/jpeg', size: 6 * 1024 * 1024 });
-        return { ok, badType, tooBig };
-    }
-};
 
 // Add CSS for message animations
 const style = document.createElement('style');
