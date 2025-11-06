@@ -139,10 +139,13 @@ class DualTextWriter {
     // 이미지 업로드: 파일 선택 처리 (레퍼런스 전용)
     async handleRefImageSelected(file) {
         try {
+            console.log('🖼️ 이미지 업로드 시작:', file.name, file.type, file.size);
+            
             if (!this.currentUser) {
                 this.showMessage('로그인이 필요합니다.', 'error');
                 return;
             }
+            
             const validationError = this.validateImageFile(file);
             if (validationError) {
                 this.showMessage(validationError, 'error');
@@ -156,38 +159,80 @@ class DualTextWriter {
             const isGif = file.type === 'image/gif';
             let uploadBlob = file;
             let ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+            let contentType = file.type;
+            
             if (!isGif) {
                 if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '이미지 최적화 중...';
+                console.log('📐 이미지 리사이징 시작...');
                 uploadBlob = await this.resizeImageToWebp(file, 1280, 0.8);
                 ext = 'webp';
+                contentType = 'image/webp';
+                console.log('✅ 리사이징 완료:', uploadBlob.size, 'bytes');
             }
 
             // 기존 이미지가 있으면 먼저 삭제
             if (this.currentRefImagePath) {
-                try { await this.deleteStorageObject(this.currentRefImagePath); } catch (_) {}
+                console.log('🗑️ 기존 이미지 삭제 시도:', this.currentRefImagePath);
+                try { 
+                    await this.deleteStorageObject(this.currentRefImagePath); 
+                    console.log('✅ 기존 이미지 삭제 완료');
+                } catch (err) {
+                    console.warn('⚠️ 기존 이미지 삭제 실패 (무시):', err);
+                }
             }
 
             // 업로드 경로
             const uid = this.currentUser.uid;
             const uuid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             const path = `users/${uid}/references/images/${uuid}.${ext}`;
+            console.log('📤 업로드 경로:', path);
+
+            // Firebase Storage 초기화 확인
+            if (!window.firebaseStorage) {
+                throw new Error('Firebase Storage가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
+            }
 
             if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 중...';
             const storage = window.firebaseStorage;
             const ref = window.firebaseStorageRef(storage, path);
-            await window.firebaseUploadBytes(ref, uploadBlob, { contentType: uploadBlob.type || `image/${ext}` });
+            
+            console.log('📤 Firebase Storage에 업로드 시작...');
+            // Firebase Storage v9+ API: uploadBytes는 ref와 data만 받습니다
+            await window.firebaseUploadBytes(ref, uploadBlob);
+            console.log('✅ 업로드 완료, 다운로드 URL 가져오는 중...');
+            
             const url = await window.firebaseGetDownloadURL(ref);
+            console.log('✅ 다운로드 URL 획득:', url);
 
             this.updateRefImageState(url, path);
             await this.renderRefImagePreview(url);
             if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 완료';
+            this.showMessage('이미지가 업로드되었습니다!', 'success');
         } catch (error) {
-            console.error('이미지 업로드 실패:', error);
-            this.showMessage('이미지 업로드에 실패했습니다. 다시 시도해주세요.', 'error');
+            console.error('❌ 이미지 업로드 실패:', error);
+            console.error('에러 상세:', error.code, error.message, error.stack);
+            
+            // 구체적인 에러 메시지 표시
+            let errorMessage = '이미지 업로드에 실패했습니다.';
+            if (error.code === 'storage/unauthorized') {
+                errorMessage = '업로드 권한이 없습니다. Firebase Storage 보안 규칙을 확인해주세요.';
+            } else if (error.code === 'storage/canceled') {
+                errorMessage = '업로드가 취소되었습니다.';
+            } else if (error.code === 'storage/unknown') {
+                errorMessage = '알 수 없는 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
+            } else if (error.message) {
+                errorMessage = `업로드 실패: ${error.message}`;
+            }
+            
+            this.showMessage(errorMessage, 'error');
             if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = '업로드 실패';
         } finally {
             this.isUploadingRefImage = false;
-            setTimeout(() => { if (this.refImageUploadStatus) this.refImageUploadStatus.textContent = ''; }, 1500);
+            setTimeout(() => { 
+                if (this.refImageUploadStatus && this.refImageUploadStatus.textContent === '업로드 완료') {
+                    this.refImageUploadStatus.textContent = '';
+                }
+            }, 3000);
         }
     }
 
@@ -213,7 +258,14 @@ class DualTextWriter {
         return await new Promise((resolve, reject) => {
             canvas.toBlob((blob) => {
                 if (!blob) return reject(new Error('이미지 변환 실패'));
-                resolve(blob);
+                // Blob의 type이 명시적으로 설정되도록 보장
+                if (!blob.type || blob.type === '') {
+                    // Blob을 새로 생성하여 type 명시
+                    const typedBlob = new Blob([blob], { type: 'image/webp' });
+                    resolve(typedBlob);
+                } else {
+                    resolve(blob);
+                }
             }, 'image/webp', quality);
         });
     }
