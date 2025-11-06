@@ -593,6 +593,10 @@ body {
     margin: 0;
     padding: 20px;
     box-shadow: none;
+    overflow: hidden; /* 스크롤바 숨김 - 수정/작성 글과 동일 */
+    resize: none; /* 크기 조절 비활성화 */
+    min-height: 450px;
+    height: auto; /* 내용에 따라 자동 높이 조절 */
 }
 
 .reference-content-container textarea:focus {
