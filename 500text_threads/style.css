@@ -614,6 +614,12 @@ body {
     color: #333;
     font-size: 0.95rem;
 }
+.image-upload-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px; /* 유형 옵션과 버튼 사이 간격 */
+}
 .reference-type-option {
     display: inline-flex;
     align-items: center;
