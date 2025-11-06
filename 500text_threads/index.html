@@ -99,17 +99,20 @@
                             </div>
                         </div>
 
-                        <textarea 
-                            id="ref-text-input" 
-                            placeholder="참고할 레퍼런스 글을 입력하세요..."
-                            maxlength="500"
-                        ></textarea>
+                        <!-- 레퍼런스 글 작성 영역 (textarea + 이미지 통합) -->
+                        <div class="reference-content-container">
+                            <textarea 
+                                id="ref-text-input" 
+                                placeholder="참고할 레퍼런스 글을 입력하세요..."
+                                maxlength="500"
+                            ></textarea>
 
-                        <!-- 이미지 미리보기 (레퍼런스 전용) - textarea 바로 아래 배치 -->
-                        <div class="reference-image-section" aria-label="레퍼런스 이미지 업로드">
-                            <div id="ref-image-preview" class="image-preview" style="display:none;">
-                                <img id="ref-image-preview-img" alt="레퍼런스 이미지 미리보기" />
-                                <button id="ref-image-delete-btn" class="btn btn-danger btn-small" title="이미지 삭제" aria-label="이미지 삭제">삭제</button>
+                            <!-- 이미지 미리보기 (레퍼런스 전용) - textarea와 통합된 영역 -->
+                            <div class="reference-image-section" aria-label="레퍼런스 이미지 업로드">
+                                <div id="ref-image-preview" class="image-preview" style="display:none;">
+                                    <img id="ref-image-preview-img" alt="레퍼런스 이미지 미리보기" />
+                                    <button id="ref-image-delete-btn" class="btn btn-danger btn-small" title="이미지 삭제" aria-label="이미지 삭제">삭제</button>
+                                </div>
                             </div>
                         </div>
 

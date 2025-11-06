@@ -575,42 +575,82 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
-/* 이미지 업로드/미리보기 (레퍼런스) - textarea 바로 아래 배치 */
-.reference-image-section {
-    margin-top: 12px;
-    margin-bottom: 12px;
+/* 레퍼런스 글 작성 영역 통합 컨테이너 */
+.reference-content-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 0;
+    box-sizing: border-box;
 }
+
+.reference-content-container textarea {
+    border: none;
+    border-radius: 10px 10px 0 0;
+    margin: 0;
+    padding: 20px;
+    box-shadow: none;
+}
+
+.reference-content-container textarea:focus {
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* 이미지 미리보기 (레퍼런스 전용) - textarea와 통합된 영역 */
+.reference-image-section {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #e1e5e9;
+    background: #fafbfc;
+    border-radius: 0 0 10px 10px;
+}
+
 .image-upload-controls {
     display: flex;
     align-items: center;
     gap: 10px;
     margin: 8px 0 4px;
 }
+
 .image-preview {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px;
-    border: 2px solid #e1e5e9;
-    border-radius: 10px;
-    background: #fafbfc;
+    padding: 16px;
     width: 100%;
     box-sizing: border-box;
+    background: transparent;
+    border: none;
 }
+
 .image-preview img {
     max-width: 100%;
-    max-height: 300px;
+    max-height: 500px;
     width: auto;
     height: auto;
     border-radius: 8px;
     object-fit: contain;
     border: 1px solid #e1e5e9;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
 }
+
+.image-preview img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
 .image-preview .btn-danger {
     flex-shrink: 0;
     margin-left: auto;
+    align-self: flex-start;
 }
     
 /* 레퍼런스 유형 선택 */
