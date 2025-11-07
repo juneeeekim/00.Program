@@ -49,6 +49,7 @@ class DualTextWriter {
 
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
+        this.editTopicInput = document.getElementById('edit-topic-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
         this.editMaxCount = document.getElementById('edit-max-count');
         this.editProgressFill = document.getElementById('edit-progress-fill');
@@ -61,6 +62,11 @@ class DualTextWriter {
         this.batchMigrationBtn = document.getElementById('batch-migration-btn');
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
+
+        // 주제 필터 관련 요소들
+        this.topicFilter = document.getElementById('topic-filter');
+        this.currentTopicFilter = 'all'; // 현재 선택된 주제 필터
+        this.availableTopics = []; // 사용 가능한 주제 목록
 
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
@@ -535,6 +541,18 @@ class DualTextWriter {
             };
         }
 
+        // 주제 필터 이벤트 리스너 설정
+        if (this.topicFilter) {
+            this.currentTopicFilter = localStorage.getItem('dualTextWriter_topicFilter') || 'all';
+            this.topicFilter.value = this.currentTopicFilter;
+            this.topicFilter.onchange = () => {
+                this.currentTopicFilter = this.topicFilter.value;
+                localStorage.setItem('dualTextWriter_topicFilter', this.currentTopicFilter);
+                this.renderSavedTextsCache = null; // 캐시 무효화
+                this.renderSavedTexts();
+            };
+        }
+
         // 활성 상태 복원
         buttons.forEach(btn => {
             const filter = btn.getAttribute('data-filter');
@@ -593,6 +611,40 @@ class DualTextWriter {
         //         firstItem.focus();
         //     }, 100);
         // }
+    }
+
+    updateTopicFilterOptions() {
+        if (!this.topicFilter) return;
+        
+        // 저장된 글에서 고유한 주제 목록 추출
+        const topics = new Set();
+        this.savedTexts.forEach(item => {
+            if (item.topic && item.topic.trim()) {
+                topics.add(item.topic.trim());
+            }
+        });
+        
+        // 주제 목록을 배열로 변환하고 정렬
+        this.availableTopics = Array.from(topics).sort();
+        
+        // 드롭다운 옵션 업데이트
+        const currentValue = this.topicFilter.value;
+        this.topicFilter.innerHTML = '<option value="all">전체 주제</option>';
+        
+        this.availableTopics.forEach(topic => {
+            const option = document.createElement('option');
+            option.value = topic;
+            option.textContent = topic;
+            this.topicFilter.appendChild(option);
+        });
+        
+        // 이전 선택값 복원
+        if (currentValue && this.availableTopics.includes(currentValue)) {
+            this.topicFilter.value = currentValue;
+        } else {
+            this.topicFilter.value = 'all';
+            this.currentTopicFilter = 'all';
+        }
     }
 
     updateReferenceTypeFilterVisibility() {
@@ -827,6 +879,9 @@ class DualTextWriter {
 
         if (confirm(`${panelName}을 지우시겠습니까?`)) {
             textInput.value = '';
+            if (panel === 'edit' && this.editTopicInput) {
+                this.editTopicInput.value = '';
+            }
             this.updateCharacterCount(panel);
             textInput.focus();
         }
@@ -869,6 +924,14 @@ class DualTextWriter {
                 textData.referenceType = refType;
             }
 
+            // 수정/작성 글 저장 시 주제 추가 (선택사항)
+            if (panel === 'edit' && this.editTopicInput) {
+                const topic = this.editTopicInput.value.trim();
+                if (topic) {
+                    textData.topic = topic;
+                }
+            }
+
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
                 window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
@@ -882,7 +945,8 @@ class DualTextWriter {
             date: new Date().toLocaleString('ko-KR'),
             characterCount: this.getKoreanCharacterCount(text),
             type: panel === 'ref' ? 'reference' : 'edit',
-            referenceType: panel === 'ref' ? textData.referenceType : undefined
+            referenceType: panel === 'ref' ? textData.referenceType : undefined,
+            topic: panel === 'edit' ? textData.topic : undefined
         };
 
         // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
@@ -890,12 +954,17 @@ class DualTextWriter {
         // 캐시 무효화 (데이터 변경 시)
         this.renderSavedTextsCache = null;
         this.renderSavedTextsCacheKey = null;
+        // 주제 필터 옵션 업데이트 (새 주제가 추가될 수 있으므로)
+        this.updateTopicFilterOptions();
         this.refreshUI({ savedTexts: true, force: true });
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
         // Clear input
         textInput.value = '';
+        if (panel === 'edit' && this.editTopicInput) {
+            this.editTopicInput.value = '';
+        }
         this.updateCharacterCount(panel);
 
         } catch (error) {
@@ -960,7 +1029,7 @@ class DualTextWriter {
     
     async _renderSavedTextsImpl() {
         // 메모이제이션: 캐시 키 생성 (필터 조건 기반)
-        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}`;
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${this.currentTopicFilter || 'all'}`;
         
         // 캐시 확인 (같은 필터 조건에서 재호출 방지)
         if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
@@ -993,6 +1062,17 @@ class DualTextWriter {
                 return rtype === this.referenceTypeFilter;
             });
         }
+
+        // 주제 필터 적용
+        if (this.currentTopicFilter && this.currentTopicFilter !== 'all') {
+            list = list.filter(item => {
+                const itemTopic = item.topic || '';
+                return itemTopic === this.currentTopicFilter;
+            });
+        }
+
+        // 주제 필터 옵션 업데이트
+        this.updateTopicFilterOptions();
 
         if (list.length === 0) {
             // 에러 처리: 필터 적용 시 데이터가 없는 경우 처리
@@ -1216,6 +1296,7 @@ class DualTextWriter {
                 </div>
             </div>
             <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
+            ${item.topic ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(item.topic)}">🏷️ ${this.escapeHtml(item.topic)}</div>` : ''}
             <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>
             ${timelineHtml ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>` : ''}
@@ -2243,6 +2324,10 @@ class DualTextWriter {
                 this.showMessage('레퍼런스 글을 편집 영역으로 불러왔습니다.', 'success');
             } else {
                 this.editTextInput.value = item.content;
+                // 주제 로드 (수정/작성 글인 경우)
+                if (this.editTopicInput) {
+                    this.editTopicInput.value = item.topic || '';
+                }
                 this.updateCharacterCount('edit');
                 this.editTextInput.focus();
                 this.showMessage('수정 글을 편집 영역으로 불러왔습니다.', 'success');
@@ -3092,11 +3177,15 @@ class DualTextWriter {
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
                     characterCount: data.characterCount,
                     type: normalizedType,
-                    referenceType: data.referenceType || 'unspecified'
+                    referenceType: data.referenceType || 'unspecified',
+                    topic: data.topic || undefined
                 });
             });
 
             console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
+            
+            // 주제 필터 옵션 업데이트 (데이터 로드 후)
+            this.updateTopicFilterOptions();
 
         } catch (error) {
             console.error('Firestore에서 텍스트 불러오기 실패:', error);

@@ -196,6 +196,20 @@
                             </div>
                         </div>
 
+                        <!-- 주제 입력 필드 추가 -->
+                        <div class="topic-input-group">
+                            <label for="edit-topic-input" class="topic-label">주제 (선택사항)</label>
+                            <input 
+                                type="text"
+                                id="edit-topic-input"
+                                class="topic-input"
+                                placeholder="예: 마케팅, 개발일지, 일상 등"
+                                maxlength="50"
+                                aria-label="주제 입력 (선택사항)"
+                                aria-required="false"
+                            />
+                        </div>
+
                         <textarea 
                             id="edit-text-input" 
                             placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
@@ -282,6 +296,14 @@
                             <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
                             <button class="segment-btn" data-filter="reference-used" role="tab" aria-selected="false" aria-label="사용된 레퍼런스만 표시">✅ 사용됨</button>
                         </div>
+                            <!-- 주제 필터 -->
+                            <div class="topic-filter-group" id="topic-filter-group" style="display: flex; align-items:center; gap:8px; margin-top: 12px;">
+                                <label for="topic-filter" class="topic-filter-label" style="font-weight:600; color:#333; font-size:0.9rem;">주제 필터:</label>
+                                <select id="topic-filter" class="topic-filter-select" aria-label="주제 필터" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
+                                    <option value="all">전체 주제</option>
+                                    <!-- 동적으로 주제 목록이 채워짐 -->
+                                </select>
+                            </div>
                             <!-- 레퍼런스 유형 필터 -->
                             <div class="reference-type-filter" id="reference-type-filter-container" style="display: none; align-items:center; gap:8px;">
                                 <span style="font-weight:600; color:#333; font-size:0.9rem;">유형:</span>
