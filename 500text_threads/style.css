@@ -595,7 +595,8 @@ body {
     min-height: 700px;
     height: 80vh;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     }
     
     .panel-header {
@@ -606,6 +607,7 @@ body {
     padding-bottom: 8px;
     border-bottom: 2px solid #f8f9fa;
     flex-shrink: 0;
+    min-height: fit-content;
     }
     
     .panel-header h3 {
@@ -621,6 +623,8 @@ body {
     gap: 12px;
     margin-top: auto;
     padding-top: 15px;
+    flex-shrink: 0;
+    min-height: fit-content;
     }
     
     .panel-controls .btn {
@@ -695,7 +699,8 @@ body {
     /* Panel textarea styles */
     .writing-panel textarea {
     width: 100%;
-    min-height: 450px;
+    min-height: 400px;
+    max-height: calc(80vh - 350px);
     padding: 20px;
     border: 2px solid #e1e5e9;
     border-radius: 10px;
@@ -704,9 +709,10 @@ body {
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
-    flex: 1;
+    flex: 1 1 auto;
     box-sizing: border-box;
     margin: 10px 0;
+    overflow-y: auto;
     /* 한글 줄바꿈 최적화 */
     word-break: keep-all;
     overflow-wrap: break-word;
@@ -732,7 +738,7 @@ body {
     display: block;
     box-sizing: border-box;
     flex-shrink: 0;
-    order: -1;
+    order: 0;
 }
 
 .topic-label {
@@ -834,6 +840,7 @@ body {
     margin-top: 8px;
     overflow: hidden;
     flex-shrink: 0;
+    min-height: 8px;
     }
     
     .progress-fill {
@@ -2912,12 +2919,21 @@ body {
     height: auto;
     border-radius: 12px;
     margin-bottom: 15px;
+    overflow-y: visible;
+    overflow-x: hidden;
     }
     
     .writing-panel textarea {
     min-height: 300px;
+    max-height: none;
     padding: 16px;
     font-size: 16px; /* 모바일에서 확대 방지 */
+    flex: 1 1 auto;
+    }
+    
+    .panel-controls {
+    flex-shrink: 0;
+    margin-top: auto;
     }
     
     .panel-header {
