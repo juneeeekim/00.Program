@@ -451,9 +451,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
+    gap: 11px; /* 12px → 11px (10% 축소) */
+    margin-bottom: 9px; /* 10px → 9px (10% 축소) */
+    padding-bottom: 7px; /* 8px → 7px (10% 축소) */
     border-bottom: 2px solid #f8f9fa;
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -462,7 +462,7 @@ body {
     .panel-header h3 {
     margin: 0;
     color: #333;
-    font-size: 1.2rem;
+    font-size: 1.08rem; /* 1.2rem → 1.08rem (10% 축소) */
     font-weight: 600;
     }
     
@@ -505,7 +505,7 @@ body {
     align-items: center;
     justify-content: flex-end;
     margin-bottom: 15px;
-    font-size: 1.1rem;
+    font-size: 0.99rem; /* 1.1rem → 0.99rem (10% 축소) */
     font-weight: 600;
     }
     
@@ -585,8 +585,8 @@ body {
 /* 헤더 내부 주제 입력 필드 스타일 */
 .topic-input-group--header {
     flex: 1;
-    min-width: 200px;
-    max-width: 300px;
+    min-width: 180px; /* 200px → 180px (10% 축소) */
+    max-width: 270px; /* 300px → 270px (10% 축소) */
     margin-bottom: 0;
     margin-left: auto;
     margin-right: auto;
@@ -597,9 +597,9 @@ body {
 }
 
 .topic-input--header {
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    min-height: 32px;
+    padding: 5px 9px; /* 6px 10px → 5px 9px (10% 축소) */
+    font-size: 0.77rem; /* 0.85rem → 0.77rem (10% 축소) */
+    min-height: 29px; /* 32px → 29px (10% 축소) */
 }
 
 .topic-label {
@@ -2811,13 +2811,13 @@ body {
     
     .topic-input--header {
     width: 100%;
-    padding: 8px 10px;
-    font-size: 0.85rem;
-    min-height: 36px;
+    padding: 7px 9px; /* 8px 10px → 7px 9px (10% 축소) */
+    font-size: 0.77rem; /* 0.85rem → 0.77rem (10% 축소) */
+    min-height: 32px; /* 36px → 32px (10% 축소) */
     }
     
     .character-counter {
-    font-size: 1rem;
+    font-size: 0.9rem; /* 1rem → 0.9rem (10% 축소) */
     margin-bottom: 0;
     }
     
