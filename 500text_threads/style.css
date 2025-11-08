@@ -435,155 +435,6 @@ body {
     }
     }
     
-    /* 패널 너비가 좁을 때 버튼 레이아웃 조정 - 하이브리드 방식 */
-    @media (max-width: 480px) {
-    .control-group.basic-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    }
-    
-    .control-group.basic-actions .btn-mobile {
-    width: 100%;
-    }
-    
-    /* 더보기 버튼 스타일 */
-    .btn-more-toggle {
-    background: linear-gradient(135deg, #6c757d, #5a6268) !important;
-    color: white !important;
-    border: none !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    position: relative;
-    }
-    
-    .btn-more-toggle:hover {
-    background: linear-gradient(135deg, #5a6268, #495057) !important;
-    }
-    
-    .btn-more-toggle[aria-expanded="true"] {
-    background: linear-gradient(135deg, #667eea, #764ba2) !important;
-    }
-    
-    .more-toggle-icon {
-    font-size: 1.2rem;
-    line-height: 1;
-    }
-    
-    .more-toggle-text {
-    font-size: 0.9rem;
-    font-weight: 600;
-    }
-    
-    /* 접을 수 있는 메뉴 (기본: 숨김) */
-    .collapsible-menu {
-    display: none;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #e1e5e9;
-    animation: slideDown 0.3s ease;
-    }
-    
-    .collapsible-menu.expanded {
-    display: flex;
-    }
-    
-    .collapsible-menu .btn-mobile {
-    width: 100%;
-    }
-    
-    /* 접기/펼치기 애니메이션 */
-    @keyframes slideDown {
-    from {
-        opacity: 0;
-        max-height: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        max-height: 500px;
-        transform: translateY(0);
-    }
-    }
-    
-    @keyframes slideUp {
-    from {
-        opacity: 1;
-        max-height: 500px;
-        transform: translateY(0);
-    }
-    to {
-        opacity: 0;
-        max-height: 0;
-        transform: translateY(-10px);
-    }
-    }
-    }
-    
-    /* 데스크톱 및 태블릿: 더보기 버튼 숨기고 모든 버튼 표시 */
-    @media (min-width: 481px) {
-    .btn-more-toggle {
-    display: none !important;
-    }
-    
-    .collapsible-menu {
-    display: flex !important;
-    flex-direction: row;
-    flex-wrap: wrap;
-    border-top: none;
-    margin-top: 0;
-    padding-top: 0;
-    animation: none;
-    }
-    
-    /* 데스크톱에서 basic-actions에 TXT 다운로드 다시 추가 (시각적으로) */
-    .control-group.basic-actions {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    }
-    
-    /* 데스크톱에서 advanced-actions는 기본 레이아웃 유지 */
-    .control-group.advanced-actions {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    }
-    }
-    
-    /* 태블릿 및 중간 크기 화면 최적화 */
-    @media (min-width: 481px) and (max-width: 768px) {
-    .control-group.basic-actions {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    }
-    
-    .control-group.basic-actions .btn-mobile {
-    font-size: 13px;
-    padding: 10px 6px;
-    }
-    }
-    
-    /* 데스크톱에서 패널 너비가 좁을 때 */
-    @media (min-width: 769px) and (max-width: 1024px) {
-    .writing-panel {
-    padding: 20px;
-    }
-    
-    .control-group.basic-actions {
-    gap: 6px;
-    }
-    
-    .control-group.basic-actions .btn-mobile {
-    font-size: 0.85rem;
-    padding: 10px 12px;
-    }
-    }
-    
     /* Writing Panel */
     .writing-panel {
     background: white;
@@ -594,9 +445,6 @@ body {
     flex-direction: column;
     min-height: 700px;
     height: 80vh;
-    box-sizing: border-box;
-    overflow-y: auto;
-    overflow-x: hidden;
     }
     
     .panel-header {
@@ -607,7 +455,6 @@ body {
     padding-bottom: 8px;
     border-bottom: 2px solid #f8f9fa;
     flex-shrink: 0;
-    min-height: fit-content;
     }
     
     .panel-header h3 {
@@ -619,19 +466,18 @@ body {
     
     .panel-controls {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
     margin-top: auto;
     padding-top: 15px;
-    flex-shrink: 0;
-    min-height: fit-content;
     }
     
     .panel-controls .btn {
+    flex: 1;
     min-width: 80px;
     padding: 10px 15px;
     font-size: 0.9rem;
-    box-sizing: border-box;
     }
     
     /* Left Panel (Reference) */
@@ -699,8 +545,7 @@ body {
     /* Panel textarea styles */
     .writing-panel textarea {
     width: 100%;
-    min-height: 400px;
-    max-height: calc(80vh - 350px);
+    min-height: 450px;
     padding: 20px;
     border: 2px solid #e1e5e9;
     border-radius: 10px;
@@ -709,10 +554,9 @@ body {
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
-    flex: 1 1 auto;
+    flex: 1;
     box-sizing: border-box;
     margin: 10px 0;
-    overflow-y: auto;
     /* 한글 줄바꿈 최적화 */
     word-break: keep-all;
     overflow-wrap: break-word;
@@ -734,11 +578,6 @@ body {
 /* 주제 입력 필드 스타일 */
 .topic-input-group {
     margin-bottom: 12px;
-    width: 100%;
-    display: block;
-    box-sizing: border-box;
-    flex-shrink: 0;
-    order: 0;
 }
 
 .topic-label {
@@ -840,7 +679,6 @@ body {
     margin-top: 8px;
     overflow: hidden;
     flex-shrink: 0;
-    min-height: 8px;
     }
     
     .progress-fill {
@@ -2919,21 +2757,12 @@ body {
     height: auto;
     border-radius: 12px;
     margin-bottom: 15px;
-    overflow-y: visible;
-    overflow-x: hidden;
     }
     
     .writing-panel textarea {
     min-height: 300px;
-    max-height: none;
     padding: 16px;
     font-size: 16px; /* 모바일에서 확대 방지 */
-    flex: 1 1 auto;
-    }
-    
-    .panel-controls {
-    flex-shrink: 0;
-    margin-top: auto;
     }
     
     .panel-header {
@@ -2953,41 +2782,31 @@ body {
     flex-direction: column;
     gap: 8px;
     margin-top: 12px;
-    width: 100%;
-    box-sizing: border-box;
     }
     
     .control-group {
-    flex-direction: row;
+    flex-direction: column;
     gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
     }
     
     .control-group.basic-actions {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
-    width: 100%;
     }
     
     .control-group.basic-actions .btn-mobile {
     font-size: 14px;
     padding: 12px 8px;
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
     }
     
     .control-group.advanced-actions {
     margin-top: 8px;
-    flex-wrap: wrap;
     }
     
     .control-group.advanced-actions .btn-mobile {
     width: 100%;
     font-size: 14px;
-    box-sizing: border-box;
     }
     
     /* 저장된 글 모바일 최적화 */
@@ -3225,21 +3044,15 @@ body {
     gap: 8px;
     align-items: center;
     flex-wrap: wrap;
-    width: 100%;
-    box-sizing: border-box;
     }
     
     .control-group.basic-actions {
     justify-content: flex-start;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
     }
     
     .control-group.advanced-actions {
     justify-content: flex-start;
     margin-top: 4px;
-    flex-wrap: wrap;
     }
     
     /* 버튼 크기 개선 */
@@ -3269,7 +3082,6 @@ body {
     border-radius: 8px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    box-sizing: border-box;
     }
     
     /* 기본 버튼 스타일 개선 */
@@ -3286,7 +3098,6 @@ body {
     user-select: none;
     position: relative;
     overflow: hidden;
-    box-sizing: border-box;
     }
     
     .btn:hover {

@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>500자 미만 글 작성기</title>
-    <link rel="stylesheet" href="style.css?v=20251108">
+    <link rel="stylesheet" href="style.css?v=20251103">
 </head>
 <body>
     <div class="container">
@@ -126,14 +126,10 @@
                             <div class="control-group basic-actions">
                                 <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
                                 <button id="ref-save-btn" class="btn btn-primary btn-mobile">저장</button>
-                                <button class="btn btn-more-toggle btn-mobile" data-panel="reference" aria-label="더보기 메뉴" aria-expanded="false">
-                                    <span class="more-toggle-icon">☰</span>
-                                    <span class="more-toggle-text">더보기</span>
-                                </button>
+                                <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                             </div>
 
-                            <div class="control-group advanced-actions collapsible-menu" id="ref-advanced-actions" data-panel="reference">
-                                <button id="ref-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
+                            <div class="control-group advanced-actions">
                                 <div class="llm-validation-dropdown">
                                     <button class="btn btn-llm-main btn-mobile" data-panel="reference">🔍 LLM 검증</button>
                                     <div class="llm-dropdown-menu">
@@ -228,14 +224,10 @@
                             <div class="control-group basic-actions">
                                 <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
                                 <button id="edit-save-btn" class="btn btn-primary btn-mobile">저장</button>
-                                <button class="btn btn-more-toggle btn-mobile" data-panel="writing" aria-label="더보기 메뉴" aria-expanded="false">
-                                    <span class="more-toggle-icon">☰</span>
-                                    <span class="more-toggle-text">더보기</span>
-                                </button>
+                                <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
                             </div>
 
-                            <div class="control-group advanced-actions collapsible-menu" id="edit-advanced-actions" data-panel="writing">
-                                <button id="edit-download-btn" class="btn btn-success btn-mobile">TXT 다운로드</button>
+                            <div class="control-group advanced-actions">
                                 <div class="llm-validation-dropdown">
                                     <button class="btn btn-llm-main btn-mobile" data-panel="writing">🔍 LLM 검증</button>
                                     <div class="llm-dropdown-menu">

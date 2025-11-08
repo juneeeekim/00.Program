@@ -13,6 +13,11 @@ class DualTextWriter {
         this.trackingPosts = []; // 트래킹 중인 포스트 목록
         this.trackingChart = null; // Chart.js 인스턴스
         this.currentTrackingPost = null; // 현재 트래킹 중인 포스트
+        this.chartMode = 'total'; // 차트 모드: 'total' (전체 총합) 또는 'individual' (개별 포스트)
+        this.selectedChartPostId = null; // 개별 포스트 모드에서 선택된 포스트 ID
+        this.allTrackingPostsForSelector = []; // 포스트 선택기용 전체 포스트 목록
+        this.chartRange = '7d'; // '7d' | '30d' | 'all'
+        this.scaleMode = 'combined'; // 'combined' | 'split'
         
         // Firebase 초기화 대기
         this.waitForFirebase();
@@ -24,6 +29,7 @@ class DualTextWriter {
         this.usernameInput = document.getElementById('username-input');
         this.loginBtn = document.getElementById('login-btn');
         this.logoutBtn = document.getElementById('logout-btn');
+        this.refreshBtn = document.getElementById('refresh-btn');
         this.loginForm = document.getElementById('login-form');
         this.userInfo = document.getElementById('user-info');
         this.usernameDisplay = document.getElementById('username-display');
@@ -37,9 +43,13 @@ class DualTextWriter {
         this.refClearBtn = document.getElementById('ref-clear-btn');
         this.refSaveBtn = document.getElementById('ref-save-btn');
         this.refDownloadBtn = document.getElementById('ref-download-btn');
+        // 레퍼런스 유형 라디오
+        this.refTypeStructure = document.getElementById('ref-type-structure');
+        this.refTypeIdea = document.getElementById('ref-type-idea');
 
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
+        this.editTopicInput = document.getElementById('edit-topic-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
         this.editMaxCount = document.getElementById('edit-max-count');
         this.editProgressFill = document.getElementById('edit-progress-fill');
@@ -53,6 +63,11 @@ class DualTextWriter {
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
 
+        // 주제 필터 관련 요소들
+        this.topicFilter = document.getElementById('topic-filter');
+        this.currentTopicFilter = 'all'; // 현재 선택된 주제 필터
+        this.availableTopics = []; // 사용 가능한 주제 목록
+
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
@@ -63,14 +78,50 @@ class DualTextWriter {
         this.totalPostsElement = document.getElementById('total-posts');
         this.totalViewsElement = document.getElementById('total-views');
         this.totalLikesElement = document.getElementById('total-likes');
+        this.totalCommentsElement = document.getElementById('total-comments');
+        this.totalSharesElement = document.getElementById('total-shares');
+        this.trackingSortSelect = document.getElementById('tracking-sort');
+        this.trackingStatusSelect = document.getElementById('tracking-status-filter');
+        this.trackingSearchInput = document.getElementById('tracking-search');
+        this.trackingUpdatedFromInput = document.getElementById('tracking-updated-from');
+        this.trackingUpdatedToInput = document.getElementById('tracking-updated-to');
+        this.trackingDateClearBtn = document.getElementById('tracking-date-clear');
+        this.minViewsInput = document.getElementById('min-views');
+        this.maxViewsInput = document.getElementById('max-views');
+        this.minLikesInput = document.getElementById('min-likes');
+        this.maxLikesInput = document.getElementById('max-likes');
+        this.minCommentsInput = document.getElementById('min-comments');
+        this.maxCommentsInput = document.getElementById('max-comments');
+        this.minSharesInput = document.getElementById('min-shares');
+        this.maxSharesInput = document.getElementById('max-shares');
+        this.minFollowsInput = document.getElementById('min-follows');
+        this.maxFollowsInput = document.getElementById('max-follows');
+        this.exportCsvBtn = document.getElementById('export-csv');
+        this.trackingSort = localStorage.getItem('dtw_tracking_sort') || 'updatedDesc';
+        this.trackingStatusFilter = localStorage.getItem('dtw_tracking_status') || 'all';
+        this.trackingSearch = localStorage.getItem('dtw_tracking_search') || '';
+        this.trackingUpdatedFrom = localStorage.getItem('dtw_tracking_from') || '';
+        this.trackingUpdatedTo = localStorage.getItem('dtw_tracking_to') || '';
+        this.rangeFilters = JSON.parse(localStorage.getItem('dtw_tracking_ranges') || '{}');
         
-        this.maxLength = 500;
+        // 성능 최적화: 디바운싱 타이머 및 업데이트 큐
+        this.debounceTimers = {};
+        this.updateQueue = {
+            savedTexts: false,
+            trackingPosts: false,
+            trackingSummary: false,
+            trackingChart: false
+        };
+        
+        // 글자 제한 (500/1000) - 기본 500, 사용자 선택을 로컬에 저장
+        this.maxLength = parseInt(localStorage.getItem('dualTextWriter_charLimit') || '500', 10);
         this.currentUser = null;
         this.savedTexts = [];
         this.savedFilter = localStorage.getItem('dualTextWriter_savedFilter') || 'all';
         this.tempSaveInterval = null;
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
+        this.outsideClickHandler = null; // 바깥 클릭 핸들러 참조
 
         // LLM 검증 시스템 초기화
         this.initializeLLMValidation();
@@ -78,10 +129,27 @@ class DualTextWriter {
         this.init();
     }
 
+    // 레퍼런스 유형 배지 렌더링
+    renderReferenceTypeBadge(referenceType) {
+        const type = (referenceType || 'unspecified');
+        let label = '미지정';
+        let cls = 'reference-type-badge--unspecified';
+        if (type === 'structure') { label = '구조'; cls = 'reference-type-badge--structure'; }
+        else if (type === 'idea') { label = '아이디어'; cls = 'reference-type-badge--idea'; }
+        return `
+            <span class="reference-type-badge ${cls}" role="status" aria-label="레퍼런스 유형: ${label}">
+                ${label}
+            </span>
+        `;
+    }
+
     async init() {
         this.bindEvents();
         await this.waitForFirebase();
         this.setupAuthStateListener();
+        this.initCharLimitToggle();
+        // 초기 글자 제한 반영
+        this.applyCharLimit(this.maxLength);
     }
 
     // Firebase 초기화 대기
@@ -153,6 +221,10 @@ class DualTextWriter {
         if (tabName === 'saved') {
             this.loadSavedTexts();
             this.initSavedFilters();
+            // 미트래킹 글 버튼 상태 업데이트
+            if (this.updateBatchMigrationButton) {
+                this.updateBatchMigrationButton();
+            }
         }
 
         // 트래킹 탭으로 전환 시 데이터 로드
@@ -160,7 +232,6 @@ class DualTextWriter {
             this.loadTrackingPosts();
             this.updateTrackingSummary();
             this.initTrackingChart();
-            this.generateInsights(); // 인사이트 생성
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -173,6 +244,11 @@ class DualTextWriter {
         // 사용자 인증 이벤트
         this.loginBtn.addEventListener('click', () => this.login());
         this.logoutBtn.addEventListener('click', () => this.logout());
+        
+        // 새로고침 버튼 이벤트 리스너 (PC 전용)
+        if (this.refreshBtn) {
+            this.refreshBtn.addEventListener('click', () => this.refreshAllData());
+        }
         this.usernameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 this.login();
@@ -261,6 +337,101 @@ class DualTextWriter {
             console.error('❌ 반자동화 포스팅 버튼을 찾을 수 없습니다!');
         }
 
+        // 트래킹 필터 이벤트
+        setTimeout(() => {
+            if (this.trackingSortSelect) {
+                this.trackingSortSelect.value = this.trackingSort;
+                this.trackingSortSelect.addEventListener('change', (e) => {
+                    this.trackingSort = e.target.value;
+                    localStorage.setItem('dtw_tracking_sort', this.trackingSort);
+                    this.refreshUI({ trackingPosts: true });
+                });
+            }
+            if (this.trackingStatusSelect) {
+                this.trackingStatusSelect.value = this.trackingStatusFilter;
+                this.trackingStatusSelect.addEventListener('change', (e) => {
+                    this.trackingStatusFilter = e.target.value;
+                    localStorage.setItem('dtw_tracking_status', this.trackingStatusFilter);
+                    this.refreshUI({ trackingPosts: true });
+                });
+            }
+            if (this.trackingSearchInput) {
+                this.trackingSearchInput.value = this.trackingSearch;
+                this.trackingSearchDebounce = null;
+                this.trackingSearchInput.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    clearTimeout(this.trackingSearchDebounce);
+                    // debounce로 성능 최적화 및 sticky 필터바 충돌 방지
+                    this.trackingSearchDebounce = setTimeout(() => {
+                        this.trackingSearch = val;
+                        localStorage.setItem('dtw_tracking_search', this.trackingSearch);
+                        // refreshUI 사용으로 통합 업데이트
+                        this.refreshUI({ trackingPosts: true });
+                    }, 300);
+                });
+            }
+            if (this.trackingUpdatedFromInput) {
+                this.trackingUpdatedFromInput.value = this.trackingUpdatedFrom;
+                this.trackingUpdatedFromInput.addEventListener('change', (e) => {
+                    this.trackingUpdatedFrom = e.target.value;
+                    localStorage.setItem('dtw_tracking_from', this.trackingUpdatedFrom);
+                    this.refreshUI({ trackingPosts: true });
+                });
+            }
+            if (this.trackingUpdatedToInput) {
+                this.trackingUpdatedToInput.value = this.trackingUpdatedTo;
+                this.trackingUpdatedToInput.addEventListener('change', (e) => {
+                    this.trackingUpdatedTo = e.target.value;
+                    localStorage.setItem('dtw_tracking_to', this.trackingUpdatedTo);
+                    this.refreshUI({ trackingPosts: true });
+                });
+            }
+            if (this.trackingDateClearBtn) {
+                this.trackingDateClearBtn.addEventListener('click', () => {
+                    this.trackingUpdatedFrom = '';
+                    this.trackingUpdatedTo = '';
+                    if (this.trackingUpdatedFromInput) this.trackingUpdatedFromInput.value = '';
+                    if (this.trackingUpdatedToInput) this.trackingUpdatedToInput.value = '';
+                    localStorage.removeItem('dtw_tracking_from');
+                    localStorage.removeItem('dtw_tracking_to');
+                    this.refreshUI({ trackingPosts: true });
+                });
+            }
+
+            // 수치 범위 필터 입력 바인딩
+            const bindRange = (input, key) => {
+                if (!input) return;
+                if (this.rangeFilters[key] !== undefined) input.value = this.rangeFilters[key];
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                        delete this.rangeFilters[key];
+                    } else {
+                        this.rangeFilters[key] = Number(val) || 0;
+                    }
+                    localStorage.setItem('dtw_tracking_ranges', JSON.stringify(this.rangeFilters));
+                    this.refreshUI({ trackingPosts: true });
+                });
+            };
+            bindRange(this.minViewsInput, 'minViews');
+            bindRange(this.maxViewsInput, 'maxViews');
+            bindRange(this.minLikesInput, 'minLikes');
+            bindRange(this.maxLikesInput, 'maxLikes');
+            bindRange(this.minCommentsInput, 'minComments');
+            bindRange(this.maxCommentsInput, 'maxComments');
+            bindRange(this.minSharesInput, 'minShares');
+            bindRange(this.maxSharesInput, 'maxShares');
+            bindRange(this.minFollowsInput, 'minFollows');
+            bindRange(this.maxFollowsInput, 'maxFollows');
+
+            // 범위 필터 접기/펼치기 초기화
+            this.initRangeFilter();
+            
+            if (this.exportCsvBtn) {
+                this.exportCsvBtn.addEventListener('click', () => this.exportTrackingCsv());
+            }
+        }, 0);
+
         // 해시태그 설정 버튼 이벤트 바인딩
         const hashtagSettingsBtn = document.getElementById('hashtag-settings-btn');
         if (hashtagSettingsBtn) {
@@ -297,6 +468,57 @@ class DualTextWriter {
                 this.runComprehensiveTest();
             }, 2000);
         }
+
+        // 패널 기반 LLM 검증 버튼 초기 바인딩
+        // DOM이 완전히 로드된 후 실행되도록 setTimeout 사용
+        setTimeout(() => {
+            this.bindPanelLLMButtons();
+        }, 100);
+    }
+
+    // 글자 제한 토글 초기화
+    initCharLimitToggle() {
+        const toggle = document.getElementById('char-limit-toggle');
+        if (!toggle) return;
+        const buttons = toggle.querySelectorAll('.segment-btn');
+        buttons.forEach(btn => {
+            const limit = parseInt(btn.getAttribute('data-limit'), 10);
+            const isActive = limit === this.maxLength;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.setCharLimit(limit);
+                buttons.forEach(b => {
+                    const l = parseInt(b.getAttribute('data-limit'), 10);
+                    const on = l === this.maxLength;
+                    b.classList.toggle('active', on);
+                    b.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+            });
+        });
+    }
+
+    setCharLimit(limit) {
+        const value = limit === 1000 ? 1000 : 500;
+        if (this.maxLength === value) return;
+        this.maxLength = value;
+        localStorage.setItem('dualTextWriter_charLimit', String(value));
+        this.applyCharLimit(value);
+    }
+
+    applyCharLimit(value) {
+        // textarea maxlength 업데이트
+        if (this.refTextInput) this.refTextInput.setAttribute('maxlength', String(value));
+        if (this.editTextInput) this.editTextInput.setAttribute('maxlength', String(value));
+        // 상단 카운터 최대값 표시 업데이트
+        const refMax = document.getElementById('ref-max-count');
+        const editMax = document.getElementById('edit-max-count');
+        if (refMax) refMax.textContent = String(value);
+        if (editMax) editMax.textContent = String(value);
+        // 진행바/버튼 상태 재계산
+        this.updateCharacterCount('ref');
+        this.updateCharacterCount('edit');
     }
 
     // 저장된 글 필터 UI 초기화 및 이벤트 바인딩
@@ -305,6 +527,31 @@ class DualTextWriter {
         if (!container) return;
         const buttons = container.querySelectorAll('.segment-btn');
         if (!buttons || buttons.length === 0) return;
+
+        // 레퍼런스 유형 필터 초기화
+        this.referenceTypeFilter = localStorage.getItem('dualTextWriter_referenceTypeFilter') || 'all';
+        this.referenceTypeFilterSelect = document.getElementById('reference-type-filter');
+        this.referenceTypeFilterContainer = document.getElementById('reference-type-filter-container');
+        if (this.referenceTypeFilterSelect) {
+            this.referenceTypeFilterSelect.value = this.referenceTypeFilter;
+            this.referenceTypeFilterSelect.onchange = () => {
+                this.referenceTypeFilter = this.referenceTypeFilterSelect.value;
+                localStorage.setItem('dualTextWriter_referenceTypeFilter', this.referenceTypeFilter);
+                this.renderSavedTexts();
+            };
+        }
+
+        // 주제 필터 이벤트 리스너 설정
+        if (this.topicFilter) {
+            this.currentTopicFilter = localStorage.getItem('dualTextWriter_topicFilter') || 'all';
+            this.topicFilter.value = this.currentTopicFilter;
+            this.topicFilter.onchange = () => {
+                this.currentTopicFilter = this.topicFilter.value;
+                localStorage.setItem('dualTextWriter_topicFilter', this.currentTopicFilter);
+                this.renderSavedTextsCache = null; // 캐시 무효화
+                this.renderSavedTexts();
+            };
+        }
 
         // 활성 상태 복원
         buttons.forEach(btn => {
@@ -324,10 +571,19 @@ class DualTextWriter {
             };
             btn.addEventListener('click', btn._filterHandler);
         });
+
+        // 초기 표시 상태
+        this.updateReferenceTypeFilterVisibility();
     }
 
     setSavedFilter(filter) {
-        if (!['all', 'edit', 'reference'].includes(filter)) return;
+        // 에러 처리: 필터 값이 예상 범위를 벗어난 경우 처리
+        const validFilters = ['all', 'edit', 'reference', 'reference-used'];
+        if (!validFilters.includes(filter)) {
+            console.warn('setSavedFilter: 잘못된 필터 값:', filter);
+            return;
+        }
+        
         this.savedFilter = filter;
         localStorage.setItem('dualTextWriter_savedFilter', filter);
 
@@ -341,8 +597,60 @@ class DualTextWriter {
             });
         }
 
+        // 유형 필터 표시/숨김
+        this.updateReferenceTypeFilterVisibility();
+
         // 목록 렌더링
         this.renderSavedTexts();
+        
+        // 접근성: 필터 변경 후 포커스 관리 (선택적, 필요 시 활성화)
+        // setTimeout을 사용하여 렌더링 완료 후 실행
+        // const firstItem = this.savedList.querySelector('.saved-item');
+        // if (firstItem) {
+        //     setTimeout(() => {
+        //         firstItem.focus();
+        //     }, 100);
+        // }
+    }
+
+    updateTopicFilterOptions() {
+        if (!this.topicFilter) return;
+        
+        // 저장된 글에서 고유한 주제 목록 추출
+        const topics = new Set();
+        this.savedTexts.forEach(item => {
+            if (item.topic && item.topic.trim()) {
+                topics.add(item.topic.trim());
+            }
+        });
+        
+        // 주제 목록을 배열로 변환하고 정렬
+        this.availableTopics = Array.from(topics).sort();
+        
+        // 드롭다운 옵션 업데이트
+        const currentValue = this.topicFilter.value;
+        this.topicFilter.innerHTML = '<option value="all">전체 주제</option>';
+        
+        this.availableTopics.forEach(topic => {
+            const option = document.createElement('option');
+            option.value = topic;
+            option.textContent = topic;
+            this.topicFilter.appendChild(option);
+        });
+        
+        // 이전 선택값 복원
+        if (currentValue && this.availableTopics.includes(currentValue)) {
+            this.topicFilter.value = currentValue;
+        } else {
+            this.topicFilter.value = 'all';
+            this.currentTopicFilter = 'all';
+        }
+    }
+
+    updateReferenceTypeFilterVisibility() {
+        if (!this.referenceTypeFilterContainer) return;
+        const show = this.savedFilter === 'reference' || this.savedFilter === 'reference-used';
+        this.referenceTypeFilterContainer.style.display = show ? 'flex' : 'none';
     }
 
     updateCharacterCount(panel) {
@@ -380,7 +688,6 @@ class DualTextWriter {
     }
 
     // Firebase 기반 인증으로 대체됨
-
     // Firebase Google 로그인 처리
     async googleLogin() {
         if (!this.isFirebaseReady) {
@@ -403,9 +710,9 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
-            }
+            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
         }
+    }
     }
 
     // Firebase Auth 상태 리스너가 자동으로 처리함
@@ -443,7 +750,7 @@ class DualTextWriter {
 
             this.showMessage(`${username}님, 환영합니다!`, 'success');
 
-        } catch (error) {
+                } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
@@ -540,7 +847,6 @@ class DualTextWriter {
 
         console.log(`${localTexts.length}개의 텍스트를 Firestore로 마이그레이션했습니다.`);
     }
-
     showUserInterface() {
         this.loginForm.style.display = 'none';
         this.userInfo.style.display = 'block';
@@ -559,6 +865,9 @@ class DualTextWriter {
         this.refTextInput.value = '';
         this.editTextInput.value = '';
         this.savedTexts = [];
+        // 캐시 무효화 (데이터 변경 시)
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
         this.updateCharacterCount('ref');
         this.updateCharacterCount('edit');
         this.renderSavedTexts();
@@ -570,6 +879,9 @@ class DualTextWriter {
 
         if (confirm(`${panelName}을 지우시겠습니까?`)) {
             textInput.value = '';
+            if (panel === 'edit' && this.editTopicInput) {
+                this.editTopicInput.value = '';
+            }
             this.updateCharacterCount(panel);
             textInput.focus();
         }
@@ -600,6 +912,26 @@ class DualTextWriter {
                 updatedAt: window.firebaseServerTimestamp()
             };
 
+            // 레퍼런스 저장 시 referenceType 필수
+            if (panel === 'ref') {
+                let refType = 'unspecified';
+                if (this.refTypeStructure && this.refTypeStructure.checked) refType = 'structure';
+                if (this.refTypeIdea && this.refTypeIdea.checked) refType = 'idea';
+                if (refType === 'unspecified') {
+                    this.showMessage('레퍼런스 유형(구조/아이디어)을 선택해주세요.', 'error');
+                    return;
+                }
+                textData.referenceType = refType;
+            }
+
+            // 수정/작성 글 저장 시 주제 추가 (선택사항)
+            if (panel === 'edit' && this.editTopicInput) {
+                const topic = this.editTopicInput.value.trim();
+                if (topic) {
+                    textData.topic = topic;
+                }
+            }
+
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
                 window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
@@ -612,16 +944,27 @@ class DualTextWriter {
             content: text,
             date: new Date().toLocaleString('ko-KR'),
             characterCount: this.getKoreanCharacterCount(text),
-            type: panel === 'ref' ? 'reference' : 'edit'
+            type: panel === 'ref' ? 'reference' : 'edit',
+            referenceType: panel === 'ref' ? textData.referenceType : undefined,
+            topic: panel === 'edit' ? textData.topic : undefined
         };
 
+        // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
         this.savedTexts.unshift(savedItem);
-        this.renderSavedTexts();
+        // 캐시 무효화 (데이터 변경 시)
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
+        // 주제 필터 옵션 업데이트 (새 주제가 추가될 수 있으므로)
+        this.updateTopicFilterOptions();
+        this.refreshUI({ savedTexts: true, force: true });
 
         this.showMessage(`${panelName}이 저장되었습니다!`, 'success');
 
         // Clear input
         textInput.value = '';
+        if (panel === 'edit' && this.editTopicInput) {
+            this.editTopicInput.value = '';
+        }
         this.updateCharacterCount(panel);
 
         } catch (error) {
@@ -663,7 +1006,37 @@ class DualTextWriter {
         this.showMessage(`${panelName} 글 TXT 파일이 다운로드되었습니다!`, 'success');
     }
 
-    renderSavedTexts() {
+    // 디바운스 타이머 (성능 최적화: 과도한 호출 방지)
+    renderSavedTextsDebounceTimer = null;
+    
+    // 메모이제이션 캐시 (성능 최적화: 같은 필터 조건에서 재계산 방지)
+    renderSavedTextsCache = null;
+    renderSavedTextsCacheKey = null;
+    
+    async renderSavedTexts() {
+        // 디바운스 적용 (300ms)
+        if (this.renderSavedTextsDebounceTimer) {
+            clearTimeout(this.renderSavedTextsDebounceTimer);
+        }
+        
+        return new Promise((resolve) => {
+            this.renderSavedTextsDebounceTimer = setTimeout(async () => {
+                await this._renderSavedTextsImpl();
+                resolve();
+            }, 300);
+        });
+    }
+    
+    async _renderSavedTextsImpl() {
+        // 메모이제이션: 캐시 키 생성 (필터 조건 기반)
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${this.currentTopicFilter || 'all'}`;
+        
+        // 캐시 확인 (같은 필터 조건에서 재호출 방지)
+        if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
+            console.log('renderSavedTexts: 캐시된 결과 사용 (성능 최적화)');
+            return;
+        }
+        
         console.log('renderSavedTexts 호출됨:', this.savedTexts);
 
         // 필터 적용
@@ -671,41 +1044,736 @@ class DualTextWriter {
         if (this.savedFilter === 'edit') {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
-            list = list.filter(item => item.type === 'reference');
+            // 레퍼런스 탭에는 사용 안된 레퍼런스(usageCount === 0)만 표시
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
+            list = list.filter(item => (item.type || 'edit') === 'reference');
+        } else if (this.savedFilter === 'reference-used') {
+            // 사용된 레퍼런스만 필터링 (usageCount > 0)
+            // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
+            // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
+            list = list.filter(item => (item.type || 'edit') === 'reference');
         }
 
+        // 레퍼런스 유형 필터 적용 (structure/idea)
+        if ((this.savedFilter === 'reference' || this.savedFilter === 'reference-used') && this.referenceTypeFilter && this.referenceTypeFilter !== 'all') {
+            list = list.filter(item => {
+                const rtype = (item.referenceType || 'unspecified');
+                return rtype === this.referenceTypeFilter;
+            });
+        }
+
+        // 주제 필터 적용
+        if (this.currentTopicFilter && this.currentTopicFilter !== 'all') {
+            list = list.filter(item => {
+                const itemTopic = item.topic || '';
+                return itemTopic === this.currentTopicFilter;
+            });
+        }
+
+        // 주제 필터 옵션 업데이트
+        this.updateTopicFilterOptions();
+
         if (list.length === 0) {
-            const emptyMsg = this.savedFilter === 'all'
-                ? '저장된 글이 없습니다.'
-                : (this.savedFilter === 'edit' ? '작성 글이 없습니다.' : '레퍼런스 글이 없습니다.');
-            this.savedList.innerHTML = `<p style="color: #666; text-align: center; padding: 20px;">${emptyMsg}</p>`;
+            // 에러 처리: 필터 적용 시 데이터가 없는 경우 처리
+            let emptyMsg = '저장된 글이 없습니다.';
+            if (this.savedFilter === 'edit') {
+                emptyMsg = '작성 글이 없습니다.';
+            } else if (this.savedFilter === 'reference') {
+                emptyMsg = '레퍼런스 글이 없습니다.';
+            } else if (this.savedFilter === 'reference-used') {
+                emptyMsg = '사용된 레퍼런스가 없습니다.';
+            }
+            this.savedList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">${emptyMsg}</div>
+                    <div class="empty-state-subtext">글을 작성하고 저장해보세요!</div>
+                </div>
+            `;
+            return;
+        }
+        
+        // 로딩 스켈레톤 표시 (데이터 조회 중)
+        this.savedList.innerHTML = `
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-card-content"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+            </div>
+        `;
+
+        // 성능 최적화: 레퍼런스 글의 사용 여부를 배치 조회로 미리 확인
+        const referenceItems = list.filter(item => (item.type || 'edit') === 'reference');
+        let referenceUsageMap = {};
+        if (referenceItems.length > 0 && this.currentUser && this.isFirebaseReady) {
+            try {
+                const referenceIds = referenceItems.map(item => item.id);
+                referenceUsageMap = await this.checkMultipleReferenceUsage(referenceIds);
+            } catch (error) {
+                console.error('레퍼런스 사용 여부 배치 조회 실패:', error);
+                // 에러 발생 시 모든 레퍼런스에 대해 0으로 초기화
+                referenceItems.forEach(item => {
+                    referenceUsageMap[item.id] = 0;
+                });
+            }
+        }
+        
+        // 캐시 업데이트
+        this.renderSavedTextsCacheKey = cacheKey;
+        
+        // 각 저장된 글에 대한 트래킹 데이터 조회 및 사용 여부 추가 (비동기)
+        const itemsWithTracking = await Promise.all(list.map(async (item, index) => {
+            let postData = null;
+            if (this.trackingPosts && this.currentUser && this.isFirebaseReady) {
+                // 로컬 데이터에서 먼저 찾기
+                postData = this.trackingPosts.find(p => p.sourceTextId === item.id);
+                
+                // 로컬에 없으면 Firebase에서 조회
+                if (!postData) {
+                    try {
+                        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                        const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', item.id));
+                        const querySnapshot = await window.firebaseGetDocs(q);
+                        
+                        if (!querySnapshot.empty) {
+                            const postDoc = querySnapshot.docs[0];
+                            const data = postDoc.data();
+                            postData = {
+                                id: postDoc.id,
+                                metrics: data.metrics || [],
+                                trackingEnabled: data.trackingEnabled || false
+                            };
+                        }
+                    } catch (error) {
+                        console.error('트래킹 데이터 조회 실패:', error);
+                    }
+                }
+            }
+            
+            // 레퍼런스 글인 경우 사용 여부 추가
+            let usageCount = 0;
+            if ((item.type || 'edit') === 'reference') {
+                usageCount = referenceUsageMap[item.id] || 0;
+            }
+            
+            // 사용 여부를 item 객체에 추가하여 캐싱
+            const itemWithUsage = { ...item, usageCount };
+            
+            // reference 필터인 경우, usageCount가 0인 항목만 포함 (사용 안된 레퍼런스만)
+            if (this.savedFilter === 'reference') {
+                const isReference = (item.type || 'edit') === 'reference';
+                if (!isReference || usageCount !== 0) {
+                    return null; // 필터링 대상에서 제외 (사용된 레퍼런스는 제외)
+                }
+            }
+            
+            // reference-used 필터인 경우, usageCount가 1 이상인 항목만 포함
+            if (this.savedFilter === 'reference-used') {
+                const isReference = (item.type || 'edit') === 'reference';
+                if (!isReference || usageCount === 0) {
+                    return null; // 필터링 대상에서 제외
+                }
+            }
+            
+            return { item: itemWithUsage, postData, index };
+        }));
+        
+        // reference 또는 reference-used 필터인 경우 null인 항목 제거
+        const filteredItemsWithTracking = (this.savedFilter === 'reference' || this.savedFilter === 'reference-used')
+            ? itemsWithTracking.filter(result => result !== null)
+            : itemsWithTracking;
+        
+        // 필터링 후 빈 목록 체크
+        if (filteredItemsWithTracking.length === 0) {
+            let emptyMsg = '저장된 글이 없습니다.';
+            if (this.savedFilter === 'edit') {
+                emptyMsg = '작성 글이 없습니다.';
+            } else if (this.savedFilter === 'reference') {
+                emptyMsg = '레퍼런스 글이 없습니다.';
+            } else if (this.savedFilter === 'reference-used') {
+                emptyMsg = '사용된 레퍼런스가 없습니다.';
+            }
+            this.savedList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">${emptyMsg}</div>
+                    <div class="empty-state-subtext">글을 작성하고 저장해보세요!</div>
+                </div>
+            `;
+            // 접근성: 스크린 리더에 빈 목록 상태 전달 (aria-live로 자동 전달됨)
+            this.savedList.setAttribute('aria-label', `저장된 글 목록: ${emptyMsg}`);
             return;
         }
 
-        this.savedList.innerHTML = list.map((item, index) => `
-            <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}">
-                <div class="saved-item-header">
-                    <span class="saved-item-type">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
-                    <span class="saved-item-date">${item.date}</span>
-                    <span class="saved-item-count">${item.characterCount}자</span>
-                </div>
-                <div class="saved-item-content">${this.escapeHtml(item.content)}</div>
-                <div class="saved-item-actions">
-                    <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}">편집</button>
-                    <button class="action-button btn-secondary" data-action="delete" data-item-id="${item.id}">삭제</button>
-                    <button class="action-button btn-tracking" data-action="track" data-item-id="${item.id}">📊 트래킹</button>
+        // 성능 최적화: 많은 카드 렌더링 시 배치 처리
+        const batchSize = 10;
+        const totalItems = itemsWithTracking.length;
+        
+        // 접근성: 필터 결과를 스크린 리더에 전달 (aria-live="polite"로 자동 전달됨)
+        const filterDescription = this.savedFilter === 'edit' ? '작성 글' 
+            : this.savedFilter === 'reference' ? '레퍼런스 글'
+            : this.savedFilter === 'reference-used' ? '사용된 레퍼런스'
+            : '저장된 글';
+        this.savedList.setAttribute('aria-label', `저장된 글 목록: ${filterDescription} ${totalItems}개`);
+        
+        if (totalItems > batchSize) {
+            // 대량 렌더링: 첫 번째 배치만 즉시 렌더링, 나머지는 requestAnimationFrame으로 처리
+            const firstBatch = filteredItemsWithTracking.slice(0, batchSize);
+            this.savedList.innerHTML = firstBatch.map(({ item, postData, index }) => {
+                return this.renderSavedItemCard(item, postData, index);
+            }).join('');
+            
+            // 나머지 배치를 점진적으로 렌더링
+            let currentIndex = batchSize;
+            const renderNextBatch = () => {
+                if (currentIndex >= totalItems) return;
+                
+                const batch = filteredItemsWithTracking.slice(currentIndex, currentIndex + batchSize);
+                const batchHtml = batch.map(({ item, postData, index }) => {
+                    return this.renderSavedItemCard(item, postData, index);
+                }).join('');
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = batchHtml;
+                while (tempDiv.firstChild) {
+                    this.savedList.appendChild(tempDiv.firstChild);
+                }
+                
+                currentIndex += batchSize;
+                if (currentIndex < totalItems) {
+                    requestAnimationFrame(renderNextBatch);
+                } else {
+                    // DOM 렌더링 완료 후 이벤트 리스너 설정
+                    setTimeout(() => {
+                        this.setupSavedItemEventListeners();
+                    }, 100);
+                }
+            };
+            
+            requestAnimationFrame(renderNextBatch);
+        } else {
+            // 소량 렌더링: 즉시 렌더링
+            this.savedList.innerHTML = filteredItemsWithTracking.map(({ item, postData, index }) => {
+                return this.renderSavedItemCard(item, postData, index);
+            }).join('');
+        }
+        
+        // DOM 렌더링 완료 후 이벤트 리스너 설정 (즉시 렌더링된 경우)
+        if (totalItems <= batchSize) {
+            setTimeout(() => {
+                this.setupSavedItemEventListeners();
+            }, 100);
+        }
+    }
+    
+    // 저장된 항목 카드 렌더링 함수 (재사용 가능하게 분리)
+    renderSavedItemCard(item, postData, index) {
+        const metaText = `${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'} · ${item.date} · ${item.characterCount}자`;
+        // 통일된 스키마: card:{itemId}:expanded
+        const expanded = (localStorage.getItem(`card:${item.id}:expanded`) === '1');
+        // 타임라인 HTML 생성
+        const timelineHtml = this.renderTrackingTimeline(postData?.metrics || [], item.id);
+        
+        // 레퍼런스 글인 경우 사용 여부 배지 및 유형 배지 생성
+        const isReference = (item.type || 'edit') === 'reference';
+        const usageCount = item.usageCount || 0;
+        const usageBadgeHtml = isReference ? this.renderReferenceUsageBadge(usageCount) : '';
+        const refType = (item.referenceType || 'unspecified');
+        const refTypeBadgeHtml = isReference ? this.renderReferenceTypeBadge(refType) : '';
+        
+        return `
+        <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
+            <div class="saved-item-header" id="item-header-${item.id}">
+                <div class="saved-item-header-left">
+                    <span class="saved-item-type" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글' : '작성 글'}">${(item.type || 'edit') === 'reference' ? '📖 레퍼런스' : '✏️ 작성'}</span>
+                    ${refTypeBadgeHtml}
+                    ${usageBadgeHtml}
                 </div>
             </div>
-        `).join('');
-
-        // DOM 렌더링 완료 후 이벤트 리스너 설정
-        setTimeout(() => {
-            this.setupSavedItemEventListeners();
-            this.bindDirectEventListeners(); // 직접 이벤트 바인딩도 추가
-        }, 100);
+            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
+            ${item.topic ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(item.topic)}">🏷️ ${this.escapeHtml(item.topic)}</div>` : ''}
+            <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
+            <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>
+            ${timelineHtml ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>` : ''}
+            <div class="saved-item-actions actions--primary" role="group" aria-label="카드 작업 버튼">
+                <button class="action-button btn-primary" data-action="edit" data-type="${(item.type || 'edit')}" data-item-id="${item.id}" aria-label="${(item.type || 'edit') === 'reference' ? '레퍼런스 글 편집' : '작성 글 편집'}">편집</button>
+                <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${item.id}" aria-label="트래킹 데이터 입력">📊 데이터 입력</button>
+                <div class="llm-validation-dropdown" style="position: relative; display: inline-block;">
+                    <button class="action-button btn-llm-main" data-action="llm-validation" data-item-id="${item.id}" aria-label="LLM 검증 메뉴">🔍 LLM 검증</button>
+                    <div class="llm-dropdown-menu">
+                        <button class="llm-option" data-llm="chatgpt" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🤖</span>
+                                    <span class="llm-name">ChatGPT</span>
+                                    <span class="llm-description">SNS 후킹 분석</span>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="gemini" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🧠</span>
+                                    <span class="llm-name">Gemini</span>
+                                    <span class="llm-description">심리적 후킹 분석</span>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="perplexity" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🔎</span>
+                                    <span class="llm-name">Perplexity</span>
+                                    <span class="llm-description">트렌드 검증</span>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="llm-option" data-llm="grok" data-item-id="${item.id}">
+                            <div class="llm-option-content">
+                                <div class="llm-option-header">
+                                    <span class="llm-icon">🚀</span>
+                                    <span class="llm-name">Grok</span>
+                                    <span class="llm-description">임팩트 최적화</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <div class="more-menu actions--more">
+                    <button class="more-menu-btn" data-action="more" data-item-id="${item.id}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
+                    <div class="more-menu-list" role="menu" aria-label="기타 작업">
+                        <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${item.id}" aria-label="글 삭제">삭제</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+    // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
+    async updateBatchMigrationButton() {
+        if (!this.batchMigrationBtn || !this.currentUser || !this.isFirebaseReady) return;
+        
+        try {
+            // 전체 저장된 글 중 미트래킹 글 찾기
+            const untrackedTexts = [];
+            
+            for (const textItem of this.savedTexts) {
+                // 로컬에서 먼저 확인
+                let hasTracking = false;
+                if (this.trackingPosts) {
+                    hasTracking = this.trackingPosts.some(p => p.sourceTextId === textItem.id);
+                }
+                
+                // 로컬에 없으면 Firebase에서 확인
+                if (!hasTracking) {
+                    try {
+                        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                        const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textItem.id));
+                        const querySnapshot = await window.firebaseGetDocs(q);
+                        hasTracking = !querySnapshot.empty;
+                    } catch (error) {
+                        console.error('트래킹 확인 실패:', error);
+                    }
+                }
+                
+                if (!hasTracking) {
+                    untrackedTexts.push(textItem);
+                }
+            }
+            
+            // 버튼 조건부 표시
+            const migrationTools = document.querySelector('.migration-tools');
+            if (migrationTools) {
+                if (untrackedTexts.length > 0) {
+                    // 미트래킹 글이 있으면 버튼 표시 및 개수 표시
+                    migrationTools.style.display = 'flex';
+                    this.batchMigrationBtn.style.display = 'block';
+                    this.batchMigrationBtn.textContent = `📊 미트래킹 글 ${untrackedTexts.length}개 일괄 트래킹 시작`;
+                    this.batchMigrationBtn.title = `${untrackedTexts.length}개의 저장된 글이 아직 트래킹되지 않았습니다. 모두 트래킹을 시작하시겠습니까?`;
+                } else {
+                    // 미트래킹 글이 없으면 버튼 숨김
+                    migrationTools.style.display = 'none';
+                    this.batchMigrationBtn.style.display = 'none';
+                }
+            }
+            
+        } catch (error) {
+            console.error('미트래킹 글 확인 실패:', error);
+            // 에러 발생 시 버튼은 숨김
+            if (this.batchMigrationBtn) {
+                this.batchMigrationBtn.style.display = 'none';
+            }
+        }
     }
 
-    // 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
+    // 트래킹 타임라인 렌더링
+    renderTrackingTimeline(metrics) {
+        if (!metrics || metrics.length === 0) {
+            return '';
+        }
+
+        // 날짜 순으로 정렬 (오래된 것부터)
+        const sortedMetrics = [...metrics].sort((a, b) => {
+            const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
+                         (a.timestamp instanceof Date ? a.timestamp.getTime() : 0);
+            const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
+                         (b.timestamp instanceof Date ? b.timestamp.getTime() : 0);
+            return dateA - dateB;
+        });
+
+        const totalCount = sortedMetrics.length;
+        
+        // 합계 계산
+        const totals = this.calculateMetricsTotal(metrics);
+        
+        // localStorage에서 접기/펼치기 상태 복원 (per-post)
+        // saved-item의 data-item-id를 사용하여 키 생성
+        // 이 함수는 saved-item 내부에서 호출되므로, 클로저나 파라미터로 itemId 전달 필요
+        const savedItemId = arguments[1] || null; // 두 번째 파라미터로 itemId 전달
+        // 통일된 스키마: card:{itemId}:details (타임라인 접기/펼치기)
+        const isExpanded = savedItemId ? (localStorage.getItem(`card:${savedItemId}:details`) === '1') : false;
+        const collapsedClass = isExpanded ? '' : 'collapsed';
+        const buttonText = isExpanded ? '접기' : `기록 ${totalCount}개 더보기`;
+        
+        return `
+            <div class="tracking-timeline-container">
+                <div class="tracking-timeline-header">
+                    <span class="timeline-title">📊 트래킹 기록</span>
+                    ${this.renderMetricsTotals(totals)}
+                    <button class="timeline-toggle-btn small" onclick="dualTextWriter.toggleTimelineCollapse(this)" aria-label="기록 더보기/접기" aria-expanded="${isExpanded ? 'true' : 'false'}">${buttonText}</button>
+                </div>
+                <div class="tracking-timeline-content ${collapsedClass}">
+                    ${sortedMetrics.map((metric, sortedIdx) => {
+                        const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                                    (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+                        const dateStr = this.formatDateForDisplay(date);
+                        const originalIndex = metrics.findIndex(m => {
+                            const mDate = m.timestamp?.toDate ? m.timestamp.toDate().getTime() : 
+                                         (m.timestamp instanceof Date ? m.timestamp.getTime() : 0);
+                            const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate().getTime() : 
+                                              (metric.timestamp instanceof Date ? metric.timestamp.getTime() : 0);
+                            return mDate === metricDate && m.views === metric.views && m.likes === metric.likes;
+                        });
+                        const metricIndex = originalIndex >= 0 ? originalIndex : sortedIdx;
+                        return `
+                            <div class="timeline-item" data-metric-index="${metricIndex}" role="button" aria-label="기록 편집">
+                                <span class="timeline-date">📅 ${dateStr}</span>
+                                <div class="timeline-item-data">
+                                    <span class="metric-badge views">👀 ${metric.views || 0}</span>
+                                    <span class="metric-badge likes">❤️ ${metric.likes || 0}</span>
+                                    <span class="metric-badge comments">💬 ${metric.comments || 0}</span>
+                                    <span class="metric-badge shares">🔄 ${metric.shares || 0}</span>
+                                    <span class="metric-badge follows">👥 ${metric.follows || 0}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // 날짜 포맷팅 (25년 10월 29일 형식)
+    formatDateForDisplay(date) {
+        if (!date || !(date instanceof Date)) {
+            return '';
+        }
+        const year = date.getFullYear().toString().slice(-2); // 마지막 2자리
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}년 ${month}월 ${day}일`;
+    }
+
+    /**
+     * 트래킹 메트릭의 전체 합계를 계산합니다.
+     * 
+     * @param {Array} metrics - 메트릭 배열
+     * @returns {Object} 각 메트릭의 총합 객체
+     */
+    calculateMetricsTotal(metrics) {
+        if (!metrics || metrics.length === 0) {
+            return {
+                totalViews: 0,
+                totalLikes: 0,
+                totalComments: 0,
+                totalShares: 0,
+                totalFollows: 0
+            };
+        }
+        
+        return metrics.reduce((totals, metric) => {
+            return {
+                totalViews: totals.totalViews + (metric.views || 0),
+                totalLikes: totals.totalLikes + (metric.likes || 0),
+                totalComments: totals.totalComments + (metric.comments || 0),
+                totalShares: totals.totalShares + (metric.shares || 0),
+                totalFollows: totals.totalFollows + (metric.follows || 0)
+            };
+        }, {
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            totalShares: 0,
+            totalFollows: 0
+        });
+    }
+
+    /**
+     * 레퍼런스 글의 사용 여부를 배지 형태로 렌더링합니다.
+     * 
+     * 사용 여부에 따라 배지 HTML을 반환합니다.
+     * - 사용 안됨 (usageCount === 0): 빈 문자열 반환
+     * - 사용됨 (usageCount > 0): "✅ 사용됨" 또는 "사용됨 N회" 배지 HTML 반환
+     * 
+     * @param {number} usageCount - 레퍼런스 글의 사용 횟수 (0 이상의 정수)
+     * @returns {string} 배지 HTML 문자열 (사용 안됨이면 빈 문자열)
+     * 
+     * @example
+     * const badgeHtml = dualTextWriter.renderReferenceUsageBadge(3);
+     * // 결과: '<span class="reference-usage-badge" aria-label="사용됨 3회" role="status">✅ 사용됨 3회</span>'
+     * 
+     * const badgeHtml = dualTextWriter.renderReferenceUsageBadge(0);
+     * // 결과: '' (빈 문자열)
+     */
+    renderReferenceUsageBadge(usageCount) {
+        // 에러 처리: null 또는 undefined 입력 처리
+        if (usageCount == null) {
+            return '';
+        }
+        
+        // 에러 처리: 숫자가 아닌 경우 처리
+        if (typeof usageCount !== 'number') {
+            console.warn('renderReferenceUsageBadge: usageCount가 숫자가 아닙니다:', usageCount);
+            return '';
+        }
+        
+        // 에러 처리: 음수인 경우 0으로 처리
+        if (usageCount < 0) {
+            console.warn('renderReferenceUsageBadge: usageCount가 음수입니다:', usageCount);
+            usageCount = 0;
+        }
+        
+        // 사용 안됨: 회색 배지 HTML 반환 (클릭 가능)
+        if (usageCount === 0) {
+            const ariaLabel = '레퍼런스 사용 안됨 (클릭하면 사용됨으로 표시)';
+            return `<span class="reference-usage-badge reference-usage-badge--unused reference-usage-badge--clickable" data-action="mark-reference-used" role="button" tabindex="0" aria-label="${ariaLabel}" style="cursor: pointer;">🆕 사용 안됨</span>`;
+        }
+        
+        // 사용됨: 초록색 배지 HTML 반환 (클릭 가능, 토글 기능)
+        // 접근성: aria-label로 사용 여부를 스크린 리더에 전달
+        // role="button"으로 클릭 가능함을 명시
+        const usageText = usageCount === 1 ? '사용됨' : `사용됨 ${usageCount}회`;
+        const ariaLabel = `레퍼런스 ${usageText} (클릭하면 사용 안됨으로 표시)`;
+        
+        return `<span class="reference-usage-badge reference-usage-badge--used reference-usage-badge--clickable" data-action="mark-reference-unused" role="button" tabindex="0" aria-label="${ariaLabel}" style="cursor: pointer;">✅ ${usageText}</span>`;
+    }
+
+    /**
+     * 트래킹 메트릭 합계를 배지 형태로 렌더링합니다.
+     * 
+     * @param {Object} totals - 합계 객체
+     * @returns {string} 합계 배지 HTML
+     */
+    renderMetricsTotals(totals) {
+        return `
+            <div class="metrics-totals" role="group" aria-label="전체 합계">
+                <span class="total-badge views" aria-label="총 조회수: ${totals.totalViews.toLocaleString()}">
+                    <span class="total-icon">👀</span>
+                    <span class="total-value">${totals.totalViews.toLocaleString()}</span>
+                </span>
+                <span class="total-badge likes" aria-label="총 좋아요: ${totals.totalLikes.toLocaleString()}">
+                    <span class="total-icon">❤️</span>
+                    <span class="total-value">${totals.totalLikes.toLocaleString()}</span>
+                </span>
+                <span class="total-badge comments" aria-label="총 댓글: ${totals.totalComments.toLocaleString()}">
+                    <span class="total-icon">💬</span>
+                    <span class="total-value">${totals.totalComments.toLocaleString()}</span>
+                </span>
+                <span class="total-badge shares" aria-label="총 공유: ${totals.totalShares.toLocaleString()}">
+                    <span class="total-icon">🔄</span>
+                    <span class="total-value">${totals.totalShares.toLocaleString()}</span>
+                </span>
+                <span class="total-badge follows" aria-label="총 팔로우: ${totals.totalFollows.toLocaleString()}">
+                    <span class="total-icon">👥</span>
+                    <span class="total-value">${totals.totalFollows.toLocaleString()}</span>
+                </span>
+            </div>
+        `;
+    }
+
+    // 통합 UI 업데이트 함수 (성능 최적화)
+    refreshUI(options = {}) {
+        const {
+            savedTexts = false,
+            trackingPosts = false,
+            trackingSummary = false,
+            trackingChart = false,
+            force = false
+        } = options;
+        
+        // 업데이트 큐에 추가
+        if (savedTexts) this.updateQueue.savedTexts = true;
+        if (trackingPosts) this.updateQueue.trackingPosts = true;
+        if (trackingSummary) this.updateQueue.trackingSummary = true;
+        if (trackingChart) this.updateQueue.trackingChart = true;
+        
+        // 강제 업데이트이거나 즉시 실행이 필요한 경우
+        if (force) {
+            this.executeUIUpdate();
+            return;
+        }
+        
+        // 디바운싱: 마지막 호출 후 100ms 후에 실행
+        if (this.debounceTimers.uiUpdate) {
+            clearTimeout(this.debounceTimers.uiUpdate);
+        }
+        
+        this.debounceTimers.uiUpdate = setTimeout(() => {
+            this.executeUIUpdate();
+        }, 100);
+    }
+    
+    // UI 업데이트 실행 (내부 함수)
+    executeUIUpdate() {
+        // 활성 탭 확인
+        const savedTab = document.getElementById('saved-tab');
+        const trackingTab = document.getElementById('tracking-tab');
+        const isSavedTabActive = savedTab && savedTab.classList.contains('active');
+        const isTrackingTabActive = trackingTab && trackingTab.classList.contains('active');
+        
+        // 저장된 글 탭 업데이트
+        if (this.updateQueue.savedTexts && isSavedTabActive) {
+            this.renderSavedTexts();
+            this.updateQueue.savedTexts = false;
+        }
+        
+        // 트래킹 탭 업데이트
+        if (this.updateQueue.trackingPosts && isTrackingTabActive) {
+            this.renderTrackingPosts();
+            this.updateQueue.trackingPosts = false;
+        }
+        
+        // 트래킹 요약 업데이트 (트래킹 탭이 활성화되어 있을 때만)
+        if (this.updateQueue.trackingSummary && isTrackingTabActive) {
+            this.updateTrackingSummary();
+            this.updateQueue.trackingSummary = false;
+        }
+        
+        // 트래킹 차트 업데이트 (트래킹 탭이 활성화되어 있고 차트가 보일 때만)
+        if (this.updateQueue.trackingChart && isTrackingTabActive) {
+            const chartContainer = document.querySelector('.tracking-chart-container');
+            if (chartContainer && chartContainer.offsetParent !== null) {
+                this.updateTrackingChart();
+            }
+            this.updateQueue.trackingChart = false;
+        }
+    }
+    // 디바운싱 유틸리티 함수
+    debounce(func, wait) {
+        const key = func.name || 'anonymous';
+        if (this.debounceTimers[key]) {
+            clearTimeout(this.debounceTimers[key]);
+        }
+        this.debounceTimers[key] = setTimeout(() => {
+            func.apply(this, arguments);
+            delete this.debounceTimers[key];
+        }, wait);
+    }
+    
+    // 범위 필터 초기화
+    initRangeFilter() {
+        try {
+            // localStorage에서 접기/펼치기 상태 복원
+            const isExpanded = localStorage.getItem('rangeFilter:expanded') === '1';
+            const content = document.getElementById('range-filter-content');
+            const toggle = document.getElementById('range-filter-toggle');
+            const toggleIcon = toggle?.querySelector('.toggle-icon');
+            
+            if (content && toggle && toggleIcon) {
+                if (isExpanded) {
+                    content.style.display = 'block';
+                    toggle.setAttribute('aria-expanded', 'true');
+                    toggleIcon.textContent = '▲';
+                } else {
+                    content.style.display = 'none';
+                    toggle.setAttribute('aria-expanded', 'false');
+                    toggleIcon.textContent = '▼';
+                }
+            }
+        } catch (error) {
+            console.error('범위 필터 초기화 실패:', error);
+        }
+    }
+    
+    // 범위 필터 접기/펼치기 토글
+    toggleRangeFilter() {
+        const content = document.getElementById('range-filter-content');
+        const toggle = document.getElementById('range-filter-toggle');
+        const toggleIcon = toggle?.querySelector('.toggle-icon');
+        
+        if (!content || !toggle || !toggleIcon) return;
+        
+        const isCurrentlyExpanded = content.style.display !== 'none';
+        const isExpanded = !isCurrentlyExpanded;
+        
+        if (isExpanded) {
+            content.style.display = 'block';
+            toggle.setAttribute('aria-expanded', 'true');
+            toggleIcon.textContent = '▲';
+        } else {
+            content.style.display = 'none';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggleIcon.textContent = '▼';
+        }
+        
+        // 상태 localStorage에 저장
+        try {
+            localStorage.setItem('rangeFilter:expanded', isExpanded ? '1' : '0');
+        } catch (error) {
+            console.error('범위 필터 상태 저장 실패:', error);
+        }
+    }
+
+    // 타임라인 더보기/접기 (최신 1개 기본)
+    toggleTimelineCollapse(button) {
+        const container = button.closest('.tracking-timeline-container');
+        const content = container.querySelector('.tracking-timeline-content');
+        if (!content) return;
+        
+        // 저장된 글 아이템 ID 확인 (per-post 키 생성용)
+        const savedItem = button.closest('.saved-item');
+        const itemId = savedItem ? savedItem.getAttribute('data-item-id') : null;
+        
+        const collapsed = content.classList.toggle('collapsed');
+        const total = content.querySelectorAll('.timeline-item').length;
+        
+        // 상태 localStorage에 저장 (per-post)
+        if (itemId) {
+            try {
+                // 통일된 스키마: card:{itemId}:details
+                const key = `card:${itemId}:details`;
+                localStorage.setItem(key, collapsed ? '0' : '1');
+            } catch (e) { /* ignore quota */ }
+        }
+        
+        button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        if (collapsed) {
+            button.textContent = `기록 ${total}개 더보기`;
+        } else {
+            button.textContent = '접기';
+        }
+    }
+    /**
+     * 저장된 글 항목의 이벤트 리스너 설정 (이벤트 위임)
+     * - 메뉴 열기/닫기, 삭제, 트래킹 등 저장된 글 관련 모든 이벤트 처리
+     * - 이벤트 리스너 중복 등록 방지를 위해 기존 핸들러 제거 후 새 핸들러 등록
+     * @returns {void}
+     */
     setupSavedItemEventListeners() {
         console.log('setupSavedItemEventListeners 호출됨');
 
@@ -713,13 +1781,84 @@ class DualTextWriter {
         if (this.savedItemClickHandler) {
             this.savedList.removeEventListener('click', this.savedItemClickHandler);
         }
+        if (this.savedItemKeydownHandler) {
+            this.savedList.removeEventListener('keydown', this.savedItemKeydownHandler);
+        }
 
-        // 새로운 이벤트 리스너 생성
+        // 키보드 이벤트 핸들러 (접근성 향상)
+        this.savedItemKeydownHandler = (event) => {
+            // 더보기/접기 버튼 키보드 접근성
+            const button = event.target.closest('.saved-item-toggle');
+            if (button && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const action = button.getAttribute('data-action');
+                const itemId = button.getAttribute('data-item-id');
+                
+                if (action === 'toggle' && itemId) {
+                    const contentEl = button.closest('.saved-item').querySelector('.saved-item-content');
+                    if (contentEl) {
+                        const nowExpanded = contentEl.classList.toggle('expanded');
+                        button.textContent = nowExpanded ? '접기' : '더보기';
+                        button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+                        try {
+                            localStorage.setItem(`card:${itemId}:expanded`, nowExpanded ? '1' : '0');
+                        } catch (e) { /* ignore quota */ }
+                    }
+                }
+                return;
+            }
+        };
+        
+        // 클릭 이벤트 핸들러
         this.savedItemClickHandler = (event) => {
             console.log('저장된 글 영역 클릭:', event.target);
+            
+            // 레퍼런스 사용 배지 클릭 처리 (버튼이 아닌 span 요소)
+            const badge = event.target.closest('.reference-usage-badge--clickable');
+            if (badge) {
+                const badgeAction = badge.getAttribute('data-action');
+                if (badgeAction === 'mark-reference-used') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // 레퍼런스 카드에서 itemId 찾기
+                    const savedItem = badge.closest('.saved-item');
+                    const referenceItemId = savedItem?.getAttribute('data-item-id');
+                    
+                    if (referenceItemId) {
+                        console.log('레퍼런스 사용 배지 클릭 (사용됨으로 표시):', referenceItemId);
+                        this.markReferenceAsUsed(referenceItemId);
+                    }
+                    return;
+                } else if (badgeAction === 'mark-reference-unused') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // 레퍼런스 카드에서 itemId 찾기
+                    const savedItem = badge.closest('.saved-item');
+                    const referenceItemId = savedItem?.getAttribute('data-item-id');
+                    
+                    if (referenceItemId) {
+                        console.log('레퍼런스 사용 배지 클릭 (사용 안됨으로 표시):', referenceItemId);
+                        this.unmarkReferenceAsUsed(referenceItemId);
+                    }
+                    return;
+                }
+            }
+            
             const button = event.target.closest('button');
             if (!button) {
-                console.log('버튼이 아님');
+                // 버튼이 아니면 타임라인 행 탭 처리
+                const row = event.target.closest('.timeline-item');
+                if (row) {
+                    const metricIndex = row.getAttribute('data-metric-index');
+                    if (metricIndex != null) {
+                        this.editTrackingMetric(row.querySelector('.timeline-edit-btn') || row, metricIndex);
+                        return;
+                    }
+                }
                 return;
             }
 
@@ -733,19 +1872,111 @@ class DualTextWriter {
                 return;
             }
 
-            if (action === 'edit') {
+            if (action === 'more') {
+                // 이벤트 전파 제어: 이벤트 버블링 방지로 바깥 클릭 핸들러가 즉시 실행되지 않도록 함
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // DOM 탐색 방식 개선: closest + querySelector 사용으로 더 안정적인 탐색
+                const moreMenuContainer = button.closest('.more-menu');
+                if (!moreMenuContainer) {
+                    console.warn('[more menu] Container not found:', { itemId, button });
+                    return;
+                }
+                
+                const menu = moreMenuContainer.querySelector('.more-menu-list');
+                if (menu) {
+                    const isOpen = menu.classList.toggle('open');
+                    button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    
+                    // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
+                    if (isOpen) {
+                        this.applySmartMenuPosition(menu, button);
+                        
+                        // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+                        const firstMenuItem = menu.querySelector('.more-menu-item');
+                        if (firstMenuItem) {
+                            setTimeout(() => firstMenuItem.focus(), 50);
+                        }
+                    } else {
+                        // 메뉴 닫힐 때 위치 클래스 제거
+                        menu.classList.remove('open-top', 'open-bottom');
+                    }
+                } else {
+                    // 메뉴를 찾지 못한 경우 디버깅 로그 출력
+                    console.warn('[more menu] Menu element not found:', { itemId, button, container: moreMenuContainer });
+                }
+                return;
+            } else if (action === 'toggle') {
+                const contentEl = button.closest('.saved-item').querySelector('.saved-item-content');
+                if (contentEl) {
+                    const nowExpanded = contentEl.classList.toggle('expanded');
+                    button.textContent = nowExpanded ? '접기' : '더보기';
+                    button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+                    try {
+                        // 통일된 스키마: card:{itemId}:expanded
+                        localStorage.setItem(`card:${itemId}:expanded`, nowExpanded ? '1' : '0');
+                    } catch (e) { /* ignore quota */ }
+                }
+            } else if (action === 'edit') {
                 const type = button.getAttribute('data-type');
                 console.log('편집 액션 실행:', { itemId, type });
                 this.editText(itemId, type);
             } else if (action === 'delete') {
                 console.log('삭제 액션 실행:', { itemId });
+                // 이벤트 전파 제어: outsideClickHandler가 메뉴를 닫기 전에 삭제 실행
+                event.preventDefault();
+                event.stopPropagation();
+                // 메뉴 닫기
+                const moreMenuContainer = button.closest('.more-menu');
+                if (moreMenuContainer) {
+                    const menu = moreMenuContainer.querySelector('.more-menu-list');
+                    if (menu) {
+                        menu.classList.remove('open');
+                        const menuBtn = moreMenuContainer.querySelector('.more-menu-btn');
+                        if (menuBtn) {
+                            menuBtn.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                }
+                // 삭제 실행
                 this.deleteText(itemId);
             } else if (action === 'track') {
                 console.log('트래킹 액션 실행:', { itemId });
                 this.startTrackingFromSaved(itemId);
+            } else if (action === 'add-tracking') {
+                console.log('트래킹 데이터 입력 액션 실행:', { itemId });
+                this.currentTrackingPost = null; // 포스트 ID 초기화
+                this.openTrackingModal(itemId);
             } else if (action === 'llm-validation') {
                 console.log('LLM 검증 드롭다운 클릭:', { itemId });
-                // 드롭다운 메뉴 토글은 CSS로 처리됨
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // 드롭다운 메뉴 토글 (모바일 지원)
+                const dropdownContainer = button.closest('.llm-validation-dropdown');
+                if (dropdownContainer) {
+                    const dropdownMenu = dropdownContainer.querySelector('.llm-dropdown-menu');
+                    if (dropdownMenu) {
+                        const isOpen = dropdownMenu.classList.toggle('open');
+                        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                        
+                        // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
+                        if (isOpen) {
+                            this.applySmartMenuPosition(dropdownMenu, button);
+                            
+                            // 포커스 트랩: 메뉴가 열리면 첫 번째 LLM 옵션에 포커스
+                            const firstOption = dropdownMenu.querySelector('.llm-option');
+                            if (firstOption) {
+                                setTimeout(() => firstOption.focus(), 50);
+                            }
+                        } else {
+                            // 메뉴 닫힐 때 위치 클래스 제거
+                            dropdownMenu.classList.remove('open-top', 'open-bottom');
+                        }
+                    }
+                }
+                return;
             } else {
                 // LLM 옵션 버튼 처리 (data-llm 속성 확인)
                 const llmService = button.getAttribute('data-llm');
@@ -758,7 +1989,211 @@ class DualTextWriter {
 
         // 이벤트 리스너 등록
         this.savedList.addEventListener('click', this.savedItemClickHandler);
+        this.savedList.addEventListener('keydown', this.savedItemKeydownHandler);
+
+        // 기존 바깥 클릭 핸들러 제거 (중복 방지)
+        if (this.outsideClickHandler) {
+            document.removeEventListener('click', this.outsideClickHandler, { capture: true });
+        }
+
+        // 바깥 클릭 시 모든 more 메뉴 및 LLM 드롭다운 닫기
+        // setTimeout을 사용하여 이벤트 처리 순서 보장: 메뉴를 여는 동작이 완료된 후 바깥 클릭을 감지
+        this.outsideClickHandler = (e) => {
+            const isInsideMenu = e.target.closest('.more-menu');
+            const isInsideLLMDropdown = e.target.closest('.llm-validation-dropdown');
+            
+            if (!isInsideMenu && !isInsideLLMDropdown) {
+                // 이벤트 처리 순서 보장: 메뉴 열기 동작이 완료된 후 실행되도록 setTimeout 사용
+                setTimeout(() => {
+                    // More 메뉴 닫기
+                    document.querySelectorAll('.more-menu-list.open').forEach(el => {
+                        el.classList.remove('open');
+                        // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
+                        const menuBtn = el.previousElementSibling;
+                        if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                            menuBtn.setAttribute('aria-expanded', 'false');
+                            menuBtn.focus();
+                        }
+                    });
+                    document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                    
+                    // LLM 드롭다운 닫기
+                    document.querySelectorAll('.llm-dropdown-menu.open').forEach(el => {
+                        el.classList.remove('open');
+                        // 포커스 트랩 해제: LLM 메인 버튼으로 포커스 복원
+                        const llmBtn = el.previousElementSibling;
+                        if (llmBtn && llmBtn.classList.contains('btn-llm-main')) {
+                            llmBtn.setAttribute('aria-expanded', 'false');
+                            llmBtn.focus();
+                        }
+                    });
+                    document.querySelectorAll('.btn-llm-main[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                }, 0);
+            }
+        };
+        document.addEventListener('click', this.outsideClickHandler, { capture: true });
+
+        // 타임라인 제스처(롱프레스 삭제, 스와이프 좌/우)
+        if (!this._timelineGestureBound) {
+            this._timelineGestureBound = true;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartTime = 0;
+            let longPressTimer = null;
+            const LONG_PRESS_MS = 550;
+            const SWIPE_THRESHOLD = 60;
+
+            this.savedList.addEventListener('touchstart', (e) => {
+                const row = e.target.closest('.timeline-item');
+                if (!row) return;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                const metricIndex = row.getAttribute('data-metric-index');
+                if (metricIndex == null) return;
+                longPressTimer = setTimeout(() => {
+                    // 롱프레스 → 삭제 확인
+                    this.editingMetricData = this.editingMetricData || { metricIndex: Number(metricIndex) };
+                    // editTrackingMetric은 모달 기반이므로 직접 삭제 호출 준비를 위해 context 보장 필요
+                    // 간단히 삭제 확인 후 진행
+                    if (confirm('이 기록을 삭제할까요?')) {
+                        // edit modal 컨텍스트 없이도 삭제 수행을 위해 임시 컨텍스트 구성
+                        const parentSaved = row.closest('.saved-item');
+                        const itemId = parentSaved ? parentSaved.getAttribute('data-item-id') : null;
+                        // textId 기반으로 editingMetricData 셋업
+                        this.editingMetricData = { postId: null, textId: itemId, metricIndex: Number(metricIndex) };
+                        this.deleteTrackingDataItem();
+                    }
+                }, LONG_PRESS_MS);
+            }, { passive: true });
+
+            this.savedList.addEventListener('touchmove', (e) => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            }, { passive: true });
+
+            this.savedList.addEventListener('touchend', (e) => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                const row = e.target.closest('.timeline-item');
+                if (!row) return;
+                const dx = (e.changedTouches && e.changedTouches[0].clientX || 0) - touchStartX;
+                const dy = (e.changedTouches && e.changedTouches[0].clientY || 0) - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > SWIPE_THRESHOLD) {
+                    const metricIndex = row.getAttribute('data-metric-index');
+                    if (metricIndex == null) return;
+                    if (dx < 0) {
+                        // 좌스와이프 → 편집
+                        this.editTrackingMetric(row, metricIndex);
+                    } else {
+                        // 우스와이프 → 삭제 확인
+                        const parentSaved = row.closest('.saved-item');
+                        const itemId = parentSaved ? parentSaved.getAttribute('data-item-id') : null;
+                        this.editingMetricData = { postId: null, textId: itemId, metricIndex: Number(metricIndex) };
+                        if (confirm('이 기록을 삭제할까요?')) {
+                            this.deleteTrackingDataItem();
+                        }
+                    }
+                }
+            }, { passive: true });
+        }
+
+        
+        // ESC 키로 메뉴 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openMenu = document.querySelector('.more-menu-list.open');
+                if (openMenu) {
+                    openMenu.classList.remove('open');
+                    const menuBtn = openMenu.previousElementSibling;
+                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                        menuBtn.setAttribute('aria-expanded', 'false');
+                        menuBtn.focus();
+                    }
+                }
+            }
+        });
         console.log('이벤트 리스너 등록 완료');
+    }
+
+    // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
+    applySmartMenuPosition(menu, button) {
+        // 기존 위치 클래스 제거
+        menu.classList.remove('open-top', 'open-bottom');
+        
+        // 메뉴 크기 추정 (실제 렌더링 전이라 임시로 표시하여 크기 측정)
+        const wasVisible = menu.style.display !== 'none';
+        if (!wasVisible) {
+            menu.style.visibility = 'hidden';
+            menu.style.display = 'block';
+        }
+        
+        const menuRect = menu.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        const menuHeight = menuRect.height || 150; // 기본값: 대략적인 메뉴 높이
+        const viewportHeight = window.innerHeight;
+        const threshold = 200; // 상단/하단 임계값 (픽셀)
+        
+        // 위로 표시했을 때 화면 밖으로 나가는지 확인
+        const spaceAbove = buttonRect.top;
+        const spaceBelow = viewportHeight - buttonRect.bottom;
+        
+        // 위치 결정 로직
+        // 1. 상단 근처(threshold 이내)이고 위로 표시할 공간이 부족하면 → 아래로
+        // 2. 하단 근처이고 아래로 표시할 공간이 부족하면 → 위로
+        // 3. 그 외에는 기본값(위로) 사용
+        
+        if (spaceAbove < threshold && spaceAbove < menuHeight + 20) {
+            // 화면 상단 근처이고 위로 표시할 공간이 부족 → 아래로 표시
+            menu.classList.add('open-bottom');
+        } else if (spaceBelow < threshold && spaceBelow < menuHeight + 20) {
+            // 화면 하단 근처이고 아래로 표시할 공간이 부족 → 위로 표시
+            menu.classList.add('open-top');
+        } else {
+            // 기본값: 위로 표시 (더 자연스러운 UX)
+            menu.classList.add('open-top');
+        }
+        
+        // 임시 표시 제거
+        if (!wasVisible) {
+            menu.style.visibility = '';
+            menu.style.display = '';
+        }
+    }
+
+    // 패널 기반 LLM 검증 버튼 바인딩 (재사용 가능)
+    bindPanelLLMButtons() {
+        console.log('패널 LLM 버튼 바인딩 시작');
+        
+        const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
+        console.log(`패널 LLM 버튼 ${panelLlmButtons.length}개 발견`);
+        
+        panelLlmButtons.forEach((button, index) => {
+            const panel = button.getAttribute('data-panel');
+            const llmService = button.getAttribute('data-llm');
+
+            if (!panel || !llmService) {
+                console.warn(`패널 LLM 버튼 ${index}에 필수 속성이 없습니다:`, { panel, llmService });
+                return;
+            }
+
+            console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
+
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            if (button._panelLlmHandler) {
+                button.removeEventListener('click', button._panelLlmHandler);
+            }
+
+            // 새로운 이벤트 핸들러 생성 및 바인딩
+            button._panelLlmHandler = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('패널 LLM 버튼 클릭:', { panel, llmService });
+                this.validatePanelWithLLM(panel, llmService);
+            };
+
+            button.addEventListener('click', button._panelLlmHandler);
+        });
+
+        console.log('패널 LLM 버튼 바인딩 완료');
     }
 
     // 직접 이벤트 바인딩 (백업 방법)
@@ -810,28 +2245,8 @@ class DualTextWriter {
             button.addEventListener('click', button._deleteHandler);
         });
 
-        // 패널 기반 LLM 검증 버튼들 바인딩
-        const panelLlmButtons = document.querySelectorAll('.llm-option[data-panel]');
-        panelLlmButtons.forEach((button, index) => {
-            const panel = button.getAttribute('data-panel');
-            const llmService = button.getAttribute('data-llm');
-
-            console.log(`패널 LLM 버튼 ${index} 바인딩:`, { panel, llmService });
-
-            // 기존 이벤트 리스너 제거
-            button.removeEventListener('click', button._panelLlmHandler);
-
-            // 새로운 이벤트 핸들러 생성 및 바인딩
-            button._panelLlmHandler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('패널 LLM 버튼 클릭:', { panel, llmService });
-
-                this.validatePanelWithLLM(panel, llmService);
-            };
-
-            button.addEventListener('click', button._panelLlmHandler);
-        });
+        // 패널 기반 LLM 검증 버튼들 바인딩 (재사용 함수 호출)
+        this.bindPanelLLMButtons();
 
         console.log('직접 이벤트 바인딩 완료');
     }
@@ -909,6 +2324,10 @@ class DualTextWriter {
                 this.showMessage('레퍼런스 글을 편집 영역으로 불러왔습니다.', 'success');
             } else {
                 this.editTextInput.value = item.content;
+                // 주제 로드 (수정/작성 글인 경우)
+                if (this.editTopicInput) {
+                    this.editTopicInput.value = item.topic || '';
+                }
                 this.updateCharacterCount('edit');
                 this.editTextInput.focus();
                 this.showMessage('수정 글을 편집 영역으로 불러왔습니다.', 'success');
@@ -919,34 +2338,137 @@ class DualTextWriter {
             this.showMessage('편집할 글을 찾을 수 없습니다.', 'error');
         }
     }
-
-    // Firestore에서 텍스트 삭제
+    // Firestore에서 텍스트 삭제 (연결된 트래킹 포스트도 함께 삭제)
     async deleteText(id) {
         console.log('삭제 버튼 클릭:', { id });
-        if (confirm('이 글을 삭제하시겠습니까?')) {
-            if (!this.currentUser || !this.isFirebaseReady) {
-                this.showMessage('로그인이 필요합니다.', 'error');
+        
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('로그인이 필요합니다.', 'error');
+            return;
+        }
+
+        try {
+            // 삭제할 아이템 찾기
+            const itemToDelete = this.savedTexts.find(saved => saved.id === id);
+            if (!itemToDelete) {
+                console.error('삭제할 아이템을 찾을 수 없습니다:', id);
+                this.showMessage('삭제할 글을 찾을 수 없습니다.', 'error');
                 return;
             }
-
-            try {
-                console.log('Firestore에서 삭제 시작:', id);
-                // Firestore에서 삭제
-                await window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id));
-
-                // 로컬 배열에서도 제거
+            
+            // 연결된 트래킹 포스트 찾기
+            const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+            const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', id));
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            const connectedPosts = [];
+            querySnapshot.forEach((doc) => {
+                connectedPosts.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            const postCount = connectedPosts.length;
+            const metricsCount = connectedPosts.reduce((sum, post) => sum + (post.metrics?.length || 0), 0);
+            
+            // 경고 메시지 구성
+            let confirmMessage = '이 글을 삭제하시겠습니까?';
+            if (postCount > 0) {
+                confirmMessage = `이 글을 삭제하시겠습니까?\n\n` +
+                    `⚠️ 연결된 트래킹 데이터:\n` +
+                    `   - 트래킹 포스트: ${postCount}개\n` +
+                    `   - 트래킹 기록: ${metricsCount}개\n\n` +
+                    `이 모든 데이터가 함께 삭제됩니다.`;
+            }
+            
+            if (!confirm(confirmMessage)) {
+                console.log('사용자가 삭제 취소');
+                return;
+            }
+            
+            // 낙관적 업데이트를 위한 백업 데이터
+            const itemBackup = { ...itemToDelete };
+            const connectedPostsBackup = connectedPosts.map(post => ({ ...post }));
+            
+            // 낙관적 업데이트: UI 먼저 업데이트
             this.savedTexts = this.savedTexts.filter(saved => saved.id !== id);
-            this.renderSavedTexts();
-            this.showMessage('글이 삭제되었습니다.', 'info');
-                console.log('삭제 완료');
+            // 캐시 무효화 (데이터 변경 시)
+            this.renderSavedTextsCache = null;
+            this.renderSavedTextsCacheKey = null;
+            if (this.trackingPosts) {
+                this.trackingPosts = this.trackingPosts.filter(post => post.sourceTextId !== id);
+            }
+            
+            // Optimistic UI: 즉시 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+            
+            console.log('Firestore에서 삭제 시작:', { id, connectedPostsCount: postCount });
+            
+            try {
+                // 실제 Firestore 삭제
+                const deletePromises = connectedPosts.map(post => {
+                    const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+                    return window.firebaseDeleteDoc(postRef);
+                });
+                
+                // 포스트 삭제와 텍스트 삭제를 병렬로 처리
+                await Promise.all([
+                    ...deletePromises,
+                    window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', id))
+                ]);
+                
+                // 성공 메시지 (스낵바 형태 - 되돌리기 포함)
+                let successMessage = '글이 삭제되었습니다.';
+                if (postCount > 0) {
+                    successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
+                }
+                
+                // 성공 메시지 표시 (showSnackbar 대신 showMessage 사용)
+                this.showMessage(successMessage, 'success');
+                
+                console.log('삭제 완료', { id, deletedPosts: postCount });
 
             } catch (error) {
                 console.error('텍스트 삭제 실패:', error);
+                
+                // 실패 복구: 백업 데이터로 복원
+                this.savedTexts.push(itemBackup);
+                // 캐시 무효화 (데이터 변경 시)
+                this.renderSavedTextsCache = null;
+                this.renderSavedTextsCacheKey = null;
+                if (this.trackingPosts) {
+                    connectedPostsBackup.forEach(post => {
+                        if (!this.trackingPosts.find(p => p.id === post.id)) {
+                            this.trackingPosts.push(post);
+                        }
+                    });
+                }
+                
+                // UI 복원
+                this.renderSavedTexts();
+                if (trackingTab && trackingTab.classList.contains('active')) {
+                    this.refreshUI({
+                        trackingPosts: true,
+                        trackingSummary: true,
+                        trackingChart: true,
+                        force: true
+                    });
+                }
+                
                 this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
             }
+        } catch (error) {
+            console.error('텍스트 삭제 실패:', error);
+            this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
-
     // HTML 이스케이프 함수 (줄바꿈 보존)
     escapeHtml(text) {
         if (!text) return '';
@@ -1077,10 +2599,11 @@ class DualTextWriter {
     initializeLLMValidation() {
         // LLM 사이트별 프롬프트 템플릿
         this.llmPrompts = {
-            chatgpt: "다음 글을 SNS 후킹 관점에서 분석해주세요. 특히 다음 요소들을 평가해주세요:\n\n🎯 후킹 효과성:\n- 첫 문장이 독자의 관심을 끌 수 있는가?\n- 감정적 몰입을 유도하는가?\n- 호기심을 자극하는 요소가 있는가?\n\n📱 SNS 최적화:\n- 읽기 쉬운 구조인가?\n- 공유하고 싶은 욕구를 자극하는가?\n- 댓글을 유도할 수 있는 요소가 있는가?\n\n💡 개선 제안:\n- 더 강력한 후킹 포인트 제안\n- 감정적 반응을 높이는 방법\n- 행동 유도(좋아요, 공유, 댓글) 강화 방안\n\n분석할 글:\n",
-            gemini: "다음 글을 SNS 마케팅 전문가 관점에서 분석해주세요:\n\n🧠 심리적 후킹 분석:\n- 독자의 무의식을 자극하는 요소 분석\n- 감정적 트리거 포인트 식별\n- 인지 편향 활용도 평가\n\n📊 타겟 독자 분석:\n- 어떤 독자층에게 어필하는가?\n- 공감대 형성 요소는 무엇인가?\n- 행동 변화를 유도할 수 있는가?\n\n🎨 표현력 개선:\n- 더 강력한 표현으로 바꿀 부분\n- 시각적 임팩트를 높이는 방법\n- 기억에 남는 문구 만들기\n\n분석할 글:\n",
-            perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n분석할 글:\n",
-            grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n분석할 글:\n"
+            chatgpt: "다음 글을 SNS 후킹 관점에서 분석해주세요. 특히 다음 요소들을 평가해주세요:\n\n🎯 후킹 효과성:\n- 첫 문장이 독자의 관심을 끌 수 있는가?\n- 감정적 몰입을 유도하는가?\n- 호기심을 자극하는 요소가 있는가?\n\n📱 SNS 최적화:\n- 읽기 쉬운 구조인가?\n- 공유하고 싶은 욕구를 자극하는가?\n- 댓글을 유도할 수 있는 요소가 있는가?\n\n💡 개선 제안:\n- 더 강력한 후킹 포인트 제안\n- 감정적 반응을 높이는 방법\n- 행동 유도(좋아요, 공유, 댓글) 강화 방안\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            gemini: "다음 글을 SNS 마케팅 전문가 관점에서 분석해주세요:\n\n🧠 심리적 후킹 분석:\n- 독자의 무의식을 자극하는 요소 분석\n- 감정적 트리거 포인트 식별\n- 인지 편향 활용도 평가\n\n📊 타겟 독자 분석:\n- 어떤 독자층에게 어필하는가?\n- 공감대 형성 요소는 무엇인가?\n- 행동 변화를 유도할 수 있는가?\n\n🎨 표현력 개선:\n- 더 강력한 표현으로 바꿀 부분\n- 시각적 임팩트를 높이는 방법\n- 기억에 남는 문구 만들기\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            perplexity: "다음 글을 SNS 트렌드 및 신뢰성 관점에서 분석해주세요:\n\n🔍 트렌드 적합성:\n- 현재 SNS 트렌드와 부합하는가?\n- 바이럴 가능성이 있는 주제인가?\n- 시의적절한 타이밍인가?\n\n📈 신뢰성 강화:\n- 사실 확인이 필요한 부분\n- 더 설득력 있는 근거 제시 방법\n- 전문성 어필 요소 추가 방안\n\n🌐 확산 가능성:\n- 공유 가치가 있는 콘텐츠인가?\n- 논란을 일으킬 수 있는 요소는?\n- 긍정적 바이럴을 위한 개선점\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            grok: "다음 글을 SNS 후킹 전문가 관점에서 간결하고 임팩트 있게 분석해주세요:\n\n⚡ 임팩트 포인트:\n- 가장 강력한 후킹 문장은?\n- 독자에게 남을 핵심 메시지는?\n- 행동을 유도하는 CTA는?\n\n🎯 명확성 검증:\n- 메시지가 명확하게 전달되는가?\n- 불필요한 요소는 없는가?\n- 핵심만 간결하게 전달하는가?\n\n🚀 개선 액션:\n- 즉시 적용 가능한 개선점\n- 더 강력한 후킹 문구 제안\n- 독자 반응을 높이는 방법\n\n📂 카테고리 추천:\n- 이 글이 어떤 카테고리에 가장 적합한지 3가지 추천\n- 각 카테고리의 적합도와 이유 설명\n- 카테고리별 게시 전략 제안\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n",
+            claude: "다음 글을 포맷 엄수와 긴 문맥 이해에 강한 전문가로서 분석해주세요:\n\n📌 구조적 분석:\n- 주제·메시지·타겟 요약(1~2줄)\n- 논리 흐름과 결론의 일치 여부\n\n🧭 형식 준수 점검:\n- 요구된 출력 형식/톤 준수 여부\n- 모호/과장/과도한 확언 존재 여부\n\n💡 개선 제안:\n- 형식/명확성/근거 보강 포인트\n- 안전한 대안 표현(과장 최소화)\n\n[정책 준수 검사]\n정책: '경제적 이익에 관한 현실성 없는 주장이나 약속(고수익 보장, 원금 보장, 무위험, 단기간 고수익, 확정 수익/퍼센트 보장 등)' 금지.\n검토 대상 텍스트: 위 '분석할 글'\n출력 형식(엄수):\n위반 여부: [명백한 위반|위반 소지 높음|애매함(경고)|안전|명백한 비위반]\n위반 위험 점수: [1|2|3|4|5]\n위반 근거 문구: [...]\n분석 사유: (핵심 근거를 3줄 이내로)\n\n[2~3줄 카피 생성]\n역할: 당신은 카피라이터입니다. 아래 '분석할 글'의 주제·정서·메시지를 유지하며 2~3줄 카피를 생성하세요.\n요구사항:\n- 정확히 2줄 또는 3줄만 출력(상황에 맞춰 선택). 줄바꿈으로 구분, 그 외 텍스트 금지.\n- 2줄일 때: 1줄차=보편적·넓은 공감(원문과 일맥상통), 2줄차=구체·직접적·감정 이입 유발.\n- 3줄일 때: 1줄차=보편적 메시지, 2줄차=맥락 전개(1줄과 연결), 3줄차=구체·직접적·감정 이입 유발.\n- 간결·명확, 중복/과장/해시태그/이모지/따옴표/머리말·꼬리말 금지.\n\n분석할 글:\n"
         };
 
         // LLM 사이트별 특성 정보 (사용자 가이드용)
@@ -1112,15 +2635,23 @@ class DualTextWriter {
                 description: "임팩트 최적화", 
                 details: "강력한 후킹 문구·명확한 메시지·즉시 개선점",
                 strength: "간결한 임팩트 분석"
+            },
+            claude: {
+                name: "Claude",
+                icon: "🟣",
+                description: "형식 엄수·긴 문맥",
+                details: "형식 준수·안전성·장문 요약/구조화",
+                strength: "정책/포맷 준수와 긴 문맥 처리"
             }
         };
 
-        // LLM 사이트별 URL 패턴
+        // LLM 사이트별 홈페이지 URL (쿼리 파라미터 지원 안 함, 모달 방식 사용)
         this.llmUrls = {
-            chatgpt: "https://chatgpt.com/?q=",
-            gemini: "https://gemini.google.com/?q=",
-            perplexity: "https://www.perplexity.ai/?q=",
-            grok: "https://grok.com/?q="
+            chatgpt: "https://chatgpt.com",
+            gemini: "https://gemini.google.com",
+            perplexity: "https://www.perplexity.ai",
+            grok: "https://grok.com",
+            claude: "https://claude.ai/new"
         };
 
         console.log('LLM 검증 시스템 초기화 완료');
@@ -1172,8 +2703,8 @@ class DualTextWriter {
             // LLM 사이트 열기
             this.openLLMSite(llmService, fullText);
 
-            // 성공 메시지
-            this.showMessage(`${panelType}에 대한 ${llmInfo.name} 검증을 위해 새 탭이 열렸습니다. 프롬프트가 클립보드에 복사되었습니다.`, 'success');
+            // 성공 메시지 (심플한 안내)
+            this.showMessage(`${llmInfo.icon} ${llmInfo.name} 페이지가 열렸습니다. Ctrl+V로 붙여넣기하세요!`, 'success');
 
         } catch (error) {
             console.error('패널 LLM 검증 실행 실패:', error);
@@ -1205,8 +2736,11 @@ class DualTextWriter {
             // LLM 사이트 URL 생성 및 새 탭에서 열기
             this.openLLMSite(llmService, fullText);
 
-            // 사용자에게 안내 메시지
-            this.showLLMValidationGuide(llmService);
+            // 성공 메시지 (심플한 안내)
+            const llmInfo = this.llmCharacteristics[llmService];
+            if (llmInfo) {
+                this.showMessage(`${llmInfo.icon} ${llmInfo.name} 페이지가 열렸습니다. Ctrl+V로 붙여넣기하세요!`, 'success');
+            }
 
         } catch (error) {
             console.error('LLM 검증 실행 실패:', error);
@@ -1240,58 +2774,78 @@ class DualTextWriter {
         }
     }
 
-    // LLM 사이트 새 탭에서 열기
+    // LLM 사이트 새 탭에서 열기 (심플한 방식: 자동 복사 + 새 탭 열기)
     openLLMSite(llmService, text) {
-        if (llmService === 'gemini') {
-            // Gemini는 특별한 모달 방식 사용
-            this.showGeminiCopyModal(text);
+        // LLM 서비스 정보 가져오기
+        const llmInfo = this.llmCharacteristics[llmService];
+        if (!llmInfo) {
+            console.error('지원하지 않는 LLM 서비스:', llmService);
             return;
         }
 
-        // 다른 LLM들은 기존 방식 사용
-        const baseUrl = this.llmUrls[llmService];
-        const encodedText = encodeURIComponent(text);
-        const fullUrl = baseUrl + encodedText;
+        // LLM 사이트 URL 가져오기
+        const llmUrl = this.llmUrls[llmService] || {
+            chatgpt: 'https://chatgpt.com',
+            gemini: 'https://gemini.google.com',
+            perplexity: 'https://www.perplexity.ai',
+            grok: 'https://grok.com'
+        }[llmService] || 'https://chatgpt.com';
 
-        console.log('LLM 사이트 열기 (URL 파라미터 지원):', { llmService, url: fullUrl });
+        console.log('LLM 사이트 열기:', { llmService, url: llmUrl });
 
-        // 새 탭에서 열기
-        window.open(fullUrl, '_blank', 'noopener,noreferrer');
+        // 새 탭에서 LLM 사이트 열기
+        window.open(llmUrl, '_blank', 'noopener,noreferrer');
     }
 
-    // Gemini 전용 복사 모달 표시
-    showGeminiCopyModal(text) {
+    // LLM 통합 복사 모달 표시 (모든 LLM 지원)
+    showLLMCopyModal(llmService, text) {
+        // LLM 서비스 정보 가져오기
+        const llmInfo = this.llmCharacteristics[llmService];
+        if (!llmInfo) {
+            console.error('지원하지 않는 LLM 서비스:', llmService);
+            return;
+        }
+
+        // 기본 URL 가져오기 (쿼리 파라미터 제거)
+        const baseUrl = this.llmUrls[llmService]?.split('?')[0] || this.llmUrls[llmService];
+        const cleanUrl = baseUrl || {
+            chatgpt: 'https://chatgpt.com',
+            gemini: 'https://gemini.google.com',
+            perplexity: 'https://www.perplexity.ai',
+            grok: 'https://grok.com'
+        }[llmService] || 'https://chatgpt.com';
+
         // 기존 모달이 있다면 제거
-        const existingModal = document.getElementById('gemini-copy-modal');
+        const existingModal = document.getElementById('llm-copy-modal');
         if (existingModal) {
             existingModal.remove();
         }
 
-        // 모달 HTML 생성
+        // 모달 HTML 생성 (모든 LLM에 공통 사용)
         const modalHTML = `
-            <div id="gemini-copy-modal" class="gemini-modal-overlay">
+            <div id="llm-copy-modal" class="gemini-modal-overlay">
                 <div class="gemini-modal-content">
                     <div class="gemini-modal-header">
-                        <h3>🧠 Gemini 검증 텍스트 복사</h3>
+                        <h3>${llmInfo.icon} ${llmInfo.name} 검증 텍스트 복사</h3>
                         <button class="gemini-modal-close" onclick="this.closest('.gemini-modal-overlay').remove()">×</button>
                     </div>
                     <div class="gemini-modal-body">
-                        <p class="gemini-instruction">아래 텍스트를 복사하여 Gemini에 붙여넣기하세요:</p>
+                        <p class="gemini-instruction">아래 텍스트를 복사하여 ${llmInfo.name}에 붙여넣기하세요:</p>
                         <div class="gemini-text-container">
-                            <textarea id="gemini-text-area" readonly>${text}</textarea>
-                            <button class="gemini-copy-btn" onclick="dualTextWriter.copyGeminiText()">📋 전체 복사</button>
+                            <textarea id="llm-text-area" readonly>${text}</textarea>
+                            <button class="gemini-copy-btn" onclick="dualTextWriter.copyLLMText('${llmService}')">📋 전체 복사</button>
                         </div>
                         <div class="gemini-steps">
                             <h4>📝 사용 방법:</h4>
                             <ol>
-                                <li>위의 "전체 복사" 버튼을 클릭하세요</li>
-                                <li>Gemini 페이지로 이동하세요</li>
-                                <li>Gemini 입력창에 Ctrl+V로 붙여넣기하세요</li>
+                                <li>위의 "전체 복사" 버튼을 클릭하세요 (또는 이미 클립보드에 복사되어 있습니다)</li>
+                                <li>${llmInfo.name} 페이지로 이동하세요</li>
+                                <li>${llmInfo.name} 입력창에 Ctrl+V로 붙여넣기하세요</li>
                                 <li>Enter를 눌러 검증을 시작하세요</li>
                             </ol>
                         </div>
                         <div class="gemini-actions">
-                            <button class="gemini-open-btn" onclick="window.open('https://gemini.google.com', '_blank')">🚀 Gemini 열기</button>
+                            <button class="gemini-open-btn" onclick="window.open('${cleanUrl}', '_blank')">🚀 ${llmInfo.name} 열기</button>
                             <button class="gemini-close-btn" onclick="this.closest('.gemini-modal-overlay').remove()">닫기</button>
                         </div>
                     </div>
@@ -1304,7 +2858,7 @@ class DualTextWriter {
 
         // 텍스트 영역 자동 선택
         setTimeout(() => {
-            const textArea = document.getElementById('gemini-text-area');
+            const textArea = document.getElementById('llm-text-area');
             if (textArea) {
                 textArea.focus();
                 textArea.select();
@@ -1312,13 +2866,21 @@ class DualTextWriter {
         }, 100);
     }
 
-    // Gemini 텍스트 복사 함수
-    copyGeminiText() {
-        const textArea = document.getElementById('gemini-text-area');
+    // Gemini 전용 복사 모달 표시 (하위 호환성을 위해 유지)
+    showGeminiCopyModal(text) {
+        this.showLLMCopyModal('gemini', text);
+    }
+
+    // LLM 통합 텍스트 복사 함수 (모든 LLM 지원)
+    copyLLMText(llmService) {
+        const textArea = document.getElementById('llm-text-area');
         if (!textArea) {
-            console.error('Gemini 텍스트 영역을 찾을 수 없습니다.');
+            console.error('LLM 텍스트 영역을 찾을 수 없습니다.');
             return;
         }
+
+        const llmInfo = this.llmCharacteristics[llmService];
+        const llmName = llmInfo?.name || 'LLM';
 
         try {
             // 텍스트 영역 선택
@@ -1328,7 +2890,7 @@ class DualTextWriter {
             // 복사 실행
             const successful = document.execCommand('copy');
             if (successful) {
-                this.showMessage('✅ 텍스트가 클립보드에 복사되었습니다!', 'success');
+                this.showMessage(`✅ 텍스트가 클립보드에 복사되었습니다!`, 'success');
 
                 // 복사 버튼 텍스트 변경
                 const copyBtn = document.querySelector('.gemini-copy-btn');
@@ -1346,28 +2908,25 @@ class DualTextWriter {
                 throw new Error('복사 명령 실행 실패');
             }
         } catch (error) {
-            console.error('Gemini 텍스트 복사 실패:', error);
+            console.error(`${llmName} 텍스트 복사 실패:`, error);
             this.showMessage('❌ 복사에 실패했습니다. 텍스트를 수동으로 선택하여 복사해주세요.', 'error');
         }
+    }
+
+    // Gemini 텍스트 복사 함수 (하위 호환성을 위해 유지)
+    copyGeminiText() {
+        this.copyLLMText('gemini');
     }
 
     // LLM 검증 가이드 메시지 표시
     showLLMValidationGuide(llmService) {
         const characteristics = this.llmCharacteristics[llmService];
 
-        let message;
-
-        if (llmService === 'gemini') {
-            message = `✅ ${characteristics.name} 복사 모달이 열렸습니다!\n\n` +
-                `📋 모달에서 "전체 복사" 버튼을 클릭하세요.\n` +
-                `💡 ${characteristics.name} 페이지로 이동하여 Ctrl+V로 붙여넣기하세요.\n\n` +
-                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
-        } else {
-            message = `✅ ${characteristics.name} 검증 페이지가 열렸습니다!\n\n` +
-                `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
-                `💡 ${characteristics.name} 프롬프트 창에 Ctrl+V로 붙여넣기하세요.\n\n` +
-                `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
-        }
+        // 모든 LLM에 통합 모달 방식 사용
+        const message = `✅ ${characteristics.name} 검증 모달이 열렸습니다!\n\n` +
+            `📋 검증할 텍스트가 클립보드에 복사되었습니다.\n` +
+            `💡 모달에서 "전체 복사" 버튼을 클릭하거나, ${characteristics.name} 페이지로 이동하여 Ctrl+V로 붙여넣기하세요.\n\n` +
+            `🎯 기대 결과: ${characteristics.description} - ${characteristics.details}`;
 
         this.showMessage(message, 'success');
 
@@ -1439,7 +2998,6 @@ class DualTextWriter {
             this.tempSaveStatus.classList.add('hide');
         }, 3000);
     }
-
     restoreTempSave() {
         if (!this.currentUser) return;
 
@@ -1479,27 +3037,130 @@ class DualTextWriter {
 
         try {
             await this.loadSavedTextsFromFirestore();
+            // 트래킹 포스트도 함께 로드 (저장된 글의 타임라인 표시를 위해)
+            if (this.loadTrackingPosts) {
+                await this.loadTrackingPosts();
+            }
         this.updateCharacterCount('ref');
         this.updateCharacterCount('edit');
-        this.renderSavedTexts();
+        await this.renderSavedTexts();
         this.startTempSave();
         this.restoreTempSave();
+        
+        // 미트래킹 글 버튼 상태 업데이트
+        if (this.updateBatchMigrationButton) {
+            await this.updateBatchMigrationButton();
+        }
         } catch (error) {
             console.error('사용자 데이터 로드 실패:', error);
             this.showMessage('데이터를 불러오는데 실패했습니다.', 'error');
         }
     }
 
+    /**
+     * 모든 데이터를 새로고침합니다.
+     * 
+     * Firebase에서 최신 데이터를 다시 불러와 UI를 업데이트합니다.
+     * 저장된 글, 트래킹 포스트, 통계 등을 모두 새로고침합니다.
+     */
+    async refreshAllData() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('⚠️ 로그인이 필요합니다.', 'warning');
+            return;
+        }
+
+        // 로딩 상태 표시
+        const refreshBtn = this.refreshBtn;
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+            if (refreshIcon) {
+                refreshIcon.style.animation = 'spin 0.6s linear infinite';
+            }
+        }
+
+        try {
+            // 저장된 글 및 트래킹 포스트 모두 새로고침
+            await this.loadSavedTextsFromFirestore();
+            if (this.loadTrackingPosts) {
+                await this.loadTrackingPosts();
+            }
+            
+            // UI 업데이트
+            this.updateCharacterCount('ref');
+            this.updateCharacterCount('edit');
+            await this.renderSavedTexts();
+            
+            // 미트래킹 글 버튼 상태 업데이트
+            if (this.updateBatchMigrationButton) {
+                await this.updateBatchMigrationButton();
+            }
+            
+            // 모든 탭의 데이터 강제 새로고침
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+
+            // 성공 메시지
+            this.showMessage('✅ 데이터가 새로고침되었습니다!', 'success');
+            console.log('✅ 모든 데이터 새로고침 완료');
+
+        } catch (error) {
+            console.error('데이터 새로고침 실패:', error);
+            this.showMessage('❌ 데이터 새로고침에 실패했습니다: ' + error.message, 'error');
+        } finally {
+            // 로딩 상태 해제
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                const refreshIcon = refreshBtn.querySelector('.refresh-icon');
+                if (refreshIcon) {
+                    refreshIcon.style.animation = '';
+                    // 회전 애니메이션 효과
+                    refreshIcon.style.transform = 'rotate(180deg)';
+                    setTimeout(() => {
+                        if (refreshIcon) {
+                            refreshIcon.style.transform = '';
+                        }
+                    }, 300);
+                }
+            }
+        }
+    }
+
     // Firestore에서 저장된 텍스트들 불러오기
-    async loadSavedTextsFromFirestore() {
+    // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
+    async loadSavedTextsFromFirestore(filterOptions = {}) {
         if (!this.currentUser || !this.isFirebaseReady) return;
 
         try {
             const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
-            const q = window.firebaseQuery(textsRef, window.firebaseOrderBy('createdAt', 'desc'));
+            
+            // 서버 사이드 필터링 구성 (성능 최적화)
+            // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
+            // 인덱스 예시: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)
+            const queryConstraints = [window.firebaseOrderBy('createdAt', 'desc')];
+            
+            // type 필터 (서버 사이드)
+            if (filterOptions.type && filterOptions.type !== 'all') {
+                queryConstraints.push(window.firebaseWhere('type', '==', filterOptions.type));
+            }
+            
+            // referenceType 필터 (서버 사이드, type이 'reference'일 때만 유효)
+            if (filterOptions.type === 'reference' && filterOptions.referenceType && filterOptions.referenceType !== 'all') {
+                queryConstraints.push(window.firebaseWhere('referenceType', '==', filterOptions.referenceType));
+            }
+            
+            const q = window.firebaseQuery(textsRef, ...queryConstraints);
             const querySnapshot = await window.firebaseGetDocs(q);
 
             this.savedTexts = [];
+            // 캐시 무효화 (데이터 로드 시)
+            this.renderSavedTextsCache = null;
+            this.renderSavedTextsCacheKey = null;
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
@@ -1515,14 +3176,24 @@ class DualTextWriter {
                     content: data.content,
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
                     characterCount: data.characterCount,
-                    type: normalizedType
+                    type: normalizedType,
+                    referenceType: data.referenceType || 'unspecified',
+                    topic: data.topic || undefined
                 });
             });
 
             console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
+            
+            // 주제 필터 옵션 업데이트 (데이터 로드 후)
+            this.updateTopicFilterOptions();
 
         } catch (error) {
             console.error('Firestore에서 텍스트 불러오기 실패:', error);
+            // 복합 인덱스 오류인 경우 안내 메시지
+            if (error.code === 'failed-precondition') {
+                console.warn('복합 인덱스가 필요합니다. Firebase Console에서 인덱스를 생성해주세요.');
+                console.warn('인덱스 구성: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)');
+            }
             this.savedTexts = [];
         }
     }
@@ -1597,7 +3268,6 @@ class DualTextWriter {
             return false;
         }
     }
-
     // Threads 포맷팅 함수 (XSS 방지 포함, 줄바꿈 보존)
     formatForThreads(content) {
         // XSS 방지를 위한 HTML 이스케이프 (줄바꿈은 보존)
@@ -1923,7 +3593,6 @@ class DualTextWriter {
         textarea.focus();
         textarea.select();
     }
-
     // 최적화 모달 표시 함수 (접근성 강화)
     showOptimizationModal(optimized, originalContent) {
         // 원본 텍스트 저장 (줄바꿈 보존)
@@ -2394,7 +4063,6 @@ class DualTextWriter {
             }
         }, 10000);
     }
-
     // Threads 프로필 설정 모달 표시
     showThreadsProfileSettings() {
         const currentLang = this.detectLanguage();
@@ -2572,7 +4240,6 @@ class DualTextWriter {
             }
         }
     }
-
     // 해시태그 표시 업데이트
     updateHashtagsDisplay() {
         const display = document.getElementById('current-hashtags-display');
@@ -2900,6 +4567,57 @@ class DualTextWriter {
             // 자동 트래킹 시작: posts 컬렉션에 포스트 생성
             console.log('🔄 6. 자동 트래킹 시작...');
             let sourceTextId = null;
+            let referenceTextId = null;
+            
+            // 왼쪽 패널(레퍼런스)에서 현재 입력된 레퍼런스 확인
+            const referenceContent = this.refTextInput.value.trim();
+            if (referenceContent) {
+                // 레퍼런스가 입력되어 있는 경우, 저장된 레퍼런스 중에서 찾거나 새로 저장
+                try {
+                    // 저장된 레퍼런스 중에서 동일한 내용의 레퍼런스 찾기
+                    const matchingReference = this.savedTexts?.find(item => 
+                        item.type === 'reference' && item.content === referenceContent
+                    );
+                    
+                    if (matchingReference) {
+                        // 기존 레퍼런스 사용
+                        referenceTextId = matchingReference.id;
+                        console.log('✅ 기존 레퍼런스 사용:', referenceTextId);
+                    } else {
+                        // 새 레퍼런스로 저장
+                        const referenceData = {
+                            content: referenceContent,
+                            type: 'reference',
+                            characterCount: this.getKoreanCharacterCount(referenceContent),
+                            createdAt: window.firebaseServerTimestamp(),
+                            updatedAt: window.firebaseServerTimestamp()
+                        };
+                        
+                        const referenceDocRef = await window.firebaseAddDoc(
+                            window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
+                            referenceData
+                        );
+                        
+                        referenceTextId = referenceDocRef.id;
+                        console.log('✅ 새 레퍼런스 저장 완료:', referenceTextId);
+                        
+                        // 로컬 배열에도 추가
+                        const savedReference = {
+                            id: referenceTextId,
+                            content: referenceContent,
+                            date: new Date().toLocaleString('ko-KR'),
+                            characterCount: this.getKoreanCharacterCount(referenceContent),
+                            type: 'reference'
+                        };
+                        if (!this.savedTexts) {
+                            this.savedTexts = [];
+                        }
+                        this.savedTexts.unshift(savedReference);
+                    }
+                } catch (referenceError) {
+                    console.warn('⚠️ 레퍼런스 저장 실패 (트래킹은 계속 진행):', referenceError);
+                }
+            }
             
             // 현재 텍스트를 texts 컬렉션에 먼저 저장 (원본 보존)
             if (this.currentUser && this.isFirebaseReady) {
@@ -2937,9 +4655,30 @@ class DualTextWriter {
                         analytics: {},
                         sourceTextId: sourceTextId || null, // 원본 텍스트 참조 (있는 경우)
                         sourceType: 'edit', // 원본 텍스트 타입
+                        // 레퍼런스 사용 정보 추가
+                        referenceTextId: referenceTextId || null, // 레퍼런스 텍스트 참조 (있는 경우)
                         createdAt: window.firebaseServerTimestamp(),
                         updatedAt: window.firebaseServerTimestamp()
                     };
+                    
+                    // 레퍼런스가 사용된 경우, 레퍼런스용 포스트도 생성
+                    if (referenceTextId) {
+                        const referencePostData = {
+                            content: referenceContent, // 레퍼런스 내용
+                            type: 'reference',
+                            postedAt: window.firebaseServerTimestamp(),
+                            trackingEnabled: false, // 레퍼런스 포스트는 트래킹 비활성화
+                            metrics: [],
+                            analytics: {},
+                            sourceTextId: referenceTextId, // 레퍼런스 텍스트 참조
+                            sourceType: 'reference', // 레퍼런스 타입으로 설정
+                            createdAt: window.firebaseServerTimestamp(),
+                            updatedAt: window.firebaseServerTimestamp()
+                        };
+                        
+                        await window.firebaseAddDoc(postsRef, referencePostData);
+                        console.log('✅ 레퍼런스 사용 포스트 생성 완료 (레퍼런스 ID:', referenceTextId, ')');
+                    }
                     
                     const postDocRef = await window.firebaseAddDoc(postsRef, postData);
                     console.log('✅ 트래킹 포스트 자동 생성 완료:', postDocRef.id);
@@ -3035,6 +4774,283 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 });
+// Bottom sheet helpers
+DualTextWriter.prototype.openBottomSheet = function(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const content = modalElement.querySelector('.modal-content');
+    // backdrop click
+    modalElement._backdropHandler = (e) => {
+        if (e.target === modalElement) this.closeBottomSheet(modalElement);
+    };
+    modalElement.addEventListener('click', modalElement._backdropHandler);
+    // ESC close
+    modalElement._escHandler = (e) => { if (e.key === 'Escape') this.closeBottomSheet(modalElement); };
+    document.addEventListener('keydown', modalElement._escHandler);
+    // drag to close from handle or top area
+    let startY = null; let currentY = 0; let dragging = false;
+    const threshold = 100;
+    const handle = content.querySelector('.sheet-handle') || content;
+    const onStart = (y) => { dragging = true; startY = y; content.style.transition = 'none'; };
+    const onMove = (y) => {
+        if (!dragging) return; currentY = Math.max(0, y - startY); content.style.transform = `translateY(${currentY}px)`;
+    };
+    const onEnd = () => {
+        if (!dragging) return; content.style.transition = '';
+        if (currentY > threshold) { this.closeBottomSheet(modalElement); }
+        else { content.style.transform = 'translateY(0)'; }
+        dragging = false; startY = null; currentY = 0;
+    };
+    modalElement._touchStart = (e) => onStart(e.touches ? e.touches[0].clientY : e.clientY);
+    modalElement._touchMove = (e) => onMove(e.touches ? e.touches[0].clientY : e.clientY);
+    modalElement._touchEnd = () => onEnd();
+    
+    // Number stepper handlers
+    content.querySelectorAll('.number-stepper').forEach(stepper => {
+        stepper.onclick = (e) => {
+            e.preventDefault();
+            const targetId = stepper.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const action = stepper.getAttribute('data-action');
+            const current = parseInt(input.value) || 0;
+            const min = parseInt(input.getAttribute('min')) || 0;
+            const max = parseInt(input.getAttribute('max')) || Infinity;
+            
+            let newValue = current;
+            if (action === 'increase') {
+                newValue = Math.min(current + 1, max);
+            } else if (action === 'decrease') {
+                newValue = Math.max(current - 1, min);
+            }
+            
+            // 유효성 검증: min/max 범위 내인지 확인
+            if (newValue >= min && newValue <= max) {
+                input.value = newValue;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // 실시간 유효성 피드백: 범위를 벗어나면 스테퍼 비활성화
+                const increaseBtn = input.parentElement.querySelector('.number-stepper[data-action="increase"]');
+                const decreaseBtn = input.parentElement.querySelector('.number-stepper[data-action="decrease"]');
+                if (increaseBtn) {
+                    increaseBtn.disabled = newValue >= max;
+                    increaseBtn.style.opacity = newValue >= max ? '0.5' : '1';
+                }
+                if (decreaseBtn) {
+                    decreaseBtn.disabled = newValue <= min;
+                    decreaseBtn.style.opacity = newValue <= min ? '0.5' : '1';
+                }
+            }
+        };
+    });
+    
+    // Date tab handlers - 이벤트 위임 방식으로 안정적인 바인딩
+    // 기존 핸들러 제거 (중복 바인딩 방지)
+    if (content._dateTabHandler) {
+        content.removeEventListener('click', content._dateTabHandler);
+    }
+    
+    // 새로운 핸들러 생성 및 저장
+    content._dateTabHandler = (e) => {
+        const tab = e.target.closest('.date-tab');
+        if (!tab) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tabs = tab.closest('.date-selector-tabs');
+        if (!tabs) return;
+        
+        // 같은 폼 그룹 내의 날짜 입력 필드 찾기
+        const formGroup = tabs.closest('.form-group');
+        if (!formGroup) return;
+        
+        const dateInput = formGroup.querySelector('input[type="date"]');
+        if (!dateInput) {
+            console.warn('날짜 입력 필드를 찾을 수 없습니다:', formGroup);
+            return;
+        }
+        
+        // 모든 탭 비활성화 후 클릭한 탭 활성화
+        tabs.querySelectorAll('.date-tab').forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        
+        const dateType = tab.getAttribute('data-date');
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (dateType === 'today') {
+            const todayStr = today.toISOString().split('T')[0];
+            dateInput.value = todayStr;
+            dateInput.style.display = 'none';
+            // input 이벤트 트리거하여 폼 검증 업데이트
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (dateType === 'yesterday') {
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            dateInput.value = yesterdayStr;
+            dateInput.style.display = 'none';
+            // input 이벤트 트리거하여 폼 검증 업데이트
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (dateType === 'custom') {
+            dateInput.style.display = 'block';
+            // 직접입력 필드가 보이도록 약간의 지연 후 포커스 (애니메이션 완료 후)
+            setTimeout(() => {
+                dateInput.focus();
+            }, 50);
+            // 사용자 입력을 위해 현재 값을 유지하거나 오늘 날짜로 설정
+            if (!dateInput.value) {
+                dateInput.value = today.toISOString().split('T')[0];
+            }
+            // input 이벤트 트리거
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    };
+    
+    // 이벤트 위임: 모달 컨텐츠에 한 번만 바인딩
+    content.addEventListener('click', content._dateTabHandler);
+    
+    // Focus scroll correction: 키패드가 가려지지 않도록 (안드로이드/아이폰 호환)
+    content.querySelectorAll('input, textarea').forEach(field => {
+        const handleFocus = (e) => {
+            // 여러 번 호출 방지
+            if (field._scrollHandled) return;
+            field._scrollHandled = true;
+            
+            setTimeout(() => {
+                const rect = field.getBoundingClientRect();
+                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+                
+                // 플랫폼별 키패드 높이 추정
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                const keyboardHeight = isIOS ? Math.max(300, viewportHeight * 0.35) :
+                                       isAndroid ? Math.max(250, viewportHeight * 0.4) :
+                                       Math.max(250, viewportHeight * 0.4);
+                
+                const fieldBottom = rect.bottom;
+                const visibleArea = viewportHeight - keyboardHeight;
+                
+                if (fieldBottom > visibleArea) {
+                    const scrollOffset = fieldBottom - visibleArea + 30; // 여유 공간 증가
+                    
+                    // 모달 컨텐츠 스크롤
+                    if (content.scrollHeight > content.clientHeight) {
+                        content.scrollTop += scrollOffset;
+                    }
+                    
+                    // 전체 페이지 스크롤 (필요시)
+                    const modalRect = modalElement.getBoundingClientRect();
+                    if (modalRect.bottom > visibleArea) {
+                        // 부드러운 스크롤
+                        field.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center', 
+                            inline: 'nearest' 
+                        });
+                    }
+                }
+                
+                field._scrollHandled = false;
+            }, isIOS ? 500 : 300); // iOS는 키패드 애니메이션이 더 길 수 있음
+        };
+        
+        field.addEventListener('focus', handleFocus, { passive: true });
+        
+        // blur 시 플래그 리셋
+        field.addEventListener('blur', () => {
+            field._scrollHandled = false;
+        }, { passive: true });
+    });
+    handle.addEventListener('touchstart', modalElement._touchStart);
+    handle.addEventListener('touchmove', modalElement._touchMove);
+    handle.addEventListener('touchend', modalElement._touchEnd);
+    handle.addEventListener('mousedown', modalElement._touchStart);
+    window.addEventListener('mousemove', modalElement._touchMove);
+    window.addEventListener('mouseup', modalElement._touchEnd);
+};
+
+DualTextWriter.prototype.closeBottomSheet = function(modalElement) {
+    if (!modalElement) return;
+    
+    // 폼 값 초기화 전략: 바텀시트 닫을 때 모든 입력 필드 초기화
+    const content = modalElement.querySelector('.modal-content');
+    if (content) {
+        // 모든 input, textarea, select 초기화
+        const inputs = content.querySelectorAll('input:not([type="hidden"]), textarea, select');
+        inputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                input.checked = false;
+            } else if (input.type === 'date') {
+                input.value = '';
+            } else {
+                input.value = '';
+            }
+        });
+        
+        // 날짜 탭 초기화
+        const dateTabs = content.querySelectorAll('.date-tab');
+        dateTabs.forEach(tab => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+        });
+        const todayTab = content.querySelector('.date-tab[data-date="today"]');
+        if (todayTab) {
+            todayTab.classList.add('active');
+            todayTab.setAttribute('aria-selected', 'true');
+        }
+        
+        // 날짜 입력 필드 초기화
+        const dateInputs = content.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => {
+            input.style.display = 'none';
+        });
+        
+        // 스테퍼 버튼 상태 초기화
+        const steppers = content.querySelectorAll('.number-stepper');
+        steppers.forEach(stepper => {
+            stepper.disabled = false;
+            stepper.style.opacity = '1';
+        });
+        
+        // 폼 검증 메시지 제거
+        const errorMessages = content.querySelectorAll('.error-message, .validation-error');
+        errorMessages.forEach(msg => msg.remove());
+        
+        // 입력 필드의 에러 상태 제거
+        inputs.forEach(input => {
+            input.classList.remove('error', 'invalid');
+        });
+    }
+    
+    modalElement.style.display = 'none';
+    document.body.style.overflow = '';
+    
+    // cleanup listeners
+    if (modalElement._backdropHandler) modalElement.removeEventListener('click', modalElement._backdropHandler);
+    if (modalElement._escHandler) document.removeEventListener('keydown', modalElement._escHandler);
+    const handle = content ? (content.querySelector('.sheet-handle') || content) : null;
+    if (handle) {
+        if (modalElement._touchStart) handle.removeEventListener('touchstart', modalElement._touchStart);
+        if (modalElement._touchMove) handle.removeEventListener('touchmove', modalElement._touchMove);
+        if (modalElement._touchEnd) handle.removeEventListener('touchend', modalElement._touchEnd);
+        if (modalElement._touchStart) handle.removeEventListener('mousedown', modalElement._touchStart);
+        window.removeEventListener('mousemove', modalElement._touchMove || (()=>{}));
+        window.removeEventListener('mouseup', modalElement._touchEnd || (()=>{}));
+    }
+    
+    // 모달 상태 초기화
+    this.currentTrackingTextId = null;
+    this.editingMetricData = null;
+};
 
 // 페이지 언로드 시 정리 작업
 window.addEventListener('beforeunload', () => {
@@ -3067,8 +5083,29 @@ style.textContent = `
             transform: translateX(100%);
         }
     }
+    
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+    
+    @keyframes slideOutDown {
+        from {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateX(-50%) translateY(100%);
+        }
+    }
 `;
-document.head.appendChild(style);
 document.head.appendChild(style);
 
 // ==================== 트래킹 기능 메서드들 ====================
@@ -3076,6 +5113,24 @@ document.head.appendChild(style);
 // 트래킹 포스트 로드
 DualTextWriter.prototype.loadTrackingPosts = async function() {
     if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    // 로딩 스켈레톤 표시
+    if (this.trackingPostsList) {
+        this.trackingPostsList.innerHTML = `
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-chip"></div>
+                <div class="skeleton skeleton-chip"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-card-header"></div>
+                <div class="skeleton skeleton-card-content"></div>
+                <div class="skeleton skeleton-chip"></div>
+            </div>
+        `;
+    }
     
     try {
         const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
@@ -3085,52 +5140,470 @@ DualTextWriter.prototype.loadTrackingPosts = async function() {
         this.trackingPosts = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            
+            // 레퍼런스 타입 포스트는 트래킹 목록에서 제외
+            // 레퍼런스 글은 사용 여부 표시용이지 트래킹 대상이 아님
+            const postType = data.type || 'edit';
+            const sourceType = data.sourceType || data.type || 'edit';
+            
+            // 레퍼런스 타입 포스트 필터링 (type === 'reference' 또는 sourceType === 'reference')
+            if (postType === 'reference' || sourceType === 'reference') {
+                console.log('레퍼런스 포스트는 트래킹 목록에서 제외:', doc.id);
+                return; // 이 포스트는 트래킹 목록에 추가하지 않음
+            }
+            
             this.trackingPosts.push({
                 id: doc.id,
                 content: data.content,
-                type: data.type || 'edit',
+                type: postType,
                 postedAt: data.postedAt ? data.postedAt.toDate() : new Date(),
                 trackingEnabled: data.trackingEnabled || false,
                 metrics: data.metrics || [],
                 analytics: data.analytics || {},
                 sourceTextId: data.sourceTextId || null, // 원본 텍스트 참조
-                sourceType: data.sourceType || data.type || 'edit' // 원본 텍스트 타입
+                sourceType: sourceType, // 원본 텍스트 타입
+                sourceTextExists: null // 검증 결과 (나중에 설정)
             });
         });
         
         console.log(`${this.trackingPosts.length}개의 트래킹 포스트를 불러왔습니다.`);
-        this.renderTrackingPosts();
+        
+        // 데이터 무결성 검증: 각 포스트의 sourceTextId가 유효한지 확인
+        await this.validateSourceTexts();
+        
+        // 포스트 선택 드롭다운 업데이트 (개별 포스트 모드일 때)
+        if (this.chartMode === 'individual') {
+            this.populatePostSelector();
+        }
+        
+        // loadTrackingPosts는 초기 로드 시에만 사용, 이후에는 refreshUI 사용
+        this.refreshUI({ trackingPosts: true, trackingSummary: true, trackingChart: true, force: true });
         
     } catch (error) {
-        console.error('트래킹 포스트 불러오기 실패:', error);
+        // Firebase 데이터 로드 실패 시 에러 처리
+        console.error('[loadTrackingPosts] Failed to load tracking posts:', error);
         this.trackingPosts = [];
+        // 사용자에게 에러 메시지 표시
+        this.showMessage('트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.', 'error');
+        // 빈 상태 표시
+        if (this.trackingPostsList) {
+            this.trackingPostsList.innerHTML = `
+                <div class="tracking-post-no-data" style="text-align: center; padding: 40px 20px;">
+                    <span class="no-data-icon" style="font-size: 3rem; display: block; margin-bottom: 16px;">📭</span>
+                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.</span>
+                </div>
+            `;
+        }
     }
 };
 
+// 즐겨찾기 관리
+DualTextWriter.prototype.isFavorite = function(postId) {
+    try {
+        const favs = JSON.parse(localStorage.getItem('dtw_favorites') || '[]');
+        return favs.includes(postId);
+    } catch { return false; }
+};
+
+DualTextWriter.prototype.toggleFavorite = function(postId) {
+    try {
+        const favs = JSON.parse(localStorage.getItem('dtw_favorites') || '[]');
+        const idx = favs.indexOf(postId);
+        if (idx >= 0) favs.splice(idx, 1); else favs.push(postId);
+        localStorage.setItem('dtw_favorites', JSON.stringify(favs));
+        this.refreshUI({ trackingPosts: true });
+    } catch (e) {
+        console.error('즐겨찾기 저장 실패', e);
+    }
+};
+
+// CSV 내보내기 (현재 필터/정렬 적용된 리스트 기준)
+DualTextWriter.prototype.exportTrackingCsv = function() {
+    if (!this.trackingPosts || this.trackingPosts.length === 0) {
+        this.showMessage('내보낼 데이터가 없습니다.', 'info');
+        return;
+    }
+    // renderTrackingPosts의 필터/정렬 로직을 재사용하기 위해 동일 계산 수행
+    const getLatest = (p) => (p.metrics && p.metrics.length > 0) ? p.metrics[p.metrics.length - 1] : null;
+    let list = [...this.trackingPosts];
+    // 상태
+    if (this.trackingStatusFilter === 'active') list = list.filter(p => !!p.trackingEnabled);
+    else if (this.trackingStatusFilter === 'inactive') list = list.filter(p => !p.trackingEnabled);
+    else if (this.trackingStatusFilter === 'hasData') list = list.filter(p => (p.metrics && p.metrics.length > 0));
+    else if (this.trackingStatusFilter === 'noData') list = list.filter(p => !(p.metrics && p.metrics.length > 0));
+    // 검색
+    if (this.trackingSearch && this.trackingSearch.trim()) {
+        const tokens = this.trackingSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        list = list.filter(p => {
+            const text = (p.content || '').toLowerCase();
+            return tokens.every(tk => text.includes(tk));
+        });
+    }
+    // 기간
+    if (this.trackingUpdatedFrom || this.trackingUpdatedTo) {
+        const fromMs = this.trackingUpdatedFrom ? new Date(this.trackingUpdatedFrom + 'T00:00:00').getTime() : null;
+        const toMs = this.trackingUpdatedTo ? new Date(this.trackingUpdatedTo + 'T23:59:59').getTime() : null;
+        list = list.filter(p => {
+            const lt = getLatest(p)?.timestamp; if (!lt) return false;
+            const ms = lt.toDate ? lt.toDate().getTime() : new Date(lt).getTime();
+            if (fromMs && ms < fromMs) return false; if (toMs && ms > toMs) return false; return true;
+        });
+    }
+    // 수치 범위
+    const rf = this.rangeFilters || {};
+    const inRange = (val, min, max) => {
+        if (min !== undefined && min !== '' && val < Number(min)) return false;
+        if (max !== undefined && max !== '' && val > Number(max)) return false;
+        return true;
+    };
+    list = list.filter(p => {
+        const lt = getLatest(p) || {};
+        return (
+            inRange(lt.views || 0, rf.minViews, rf.maxViews) &&
+            inRange(lt.likes || 0, rf.minLikes, rf.maxLikes) &&
+            inRange(lt.comments || 0, rf.minComments, rf.maxComments) &&
+            inRange(lt.shares || 0, rf.minShares, rf.maxShares) &&
+            inRange(lt.follows || 0, rf.minFollows, rf.maxFollows)
+        );
+    });
+    // 정렬 (간단 버전: favoritesFirst만 별도 처리)
+    if (this.trackingSort === 'favoritesFirst') {
+        list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id)));
+    }
+
+    // CSV 작성
+    const header = ['postId','title','active','entries','lastUpdated','views','likes','comments','shares','follows'];
+    const rows = [header.join(',')];
+    list.forEach(p => {
+        const lt = getLatest(p) || {};
+        const dt = lt.timestamp ? (lt.timestamp.toDate ? lt.timestamp.toDate() : new Date(lt.timestamp)) : null;
+        const title = (p.content || '').replace(/\n/g,' ').replace(/"/g,'""');
+        const csvTitle = `"${title.substring(0,80)}${title.length>80?'...':''}"`;
+        rows.push([
+            p.id,
+            csvTitle,
+            p.trackingEnabled ? 'Y':'N',
+            p.metrics?.length || 0,
+            dt ? dt.toISOString() : '',
+            lt.views||0,
+            lt.likes||0,
+            lt.comments||0,
+            lt.shares||0,
+            lt.follows||0
+        ].join(','));
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tracking_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+// 원본 텍스트 존재 여부 검증
+DualTextWriter.prototype.validateSourceTexts = async function() {
+    if (!this.currentUser || !this.isFirebaseReady || !this.trackingPosts) return;
+    
+    try {
+        // sourceTextId가 있는 포스트들만 검증
+        const postsToValidate = this.trackingPosts.filter(post => post.sourceTextId);
+        
+        if (postsToValidate.length === 0) {
+            // sourceTextId가 없는 포스트들은 orphan으로 표시
+            this.trackingPosts.forEach(post => {
+                if (!post.sourceTextId) {
+                    post.sourceTextExists = false;
+                    post.isOrphan = true;
+                }
+            });
+            return;
+        }
+        
+        // 모든 sourceTextId 수집
+        const sourceTextIds = [...new Set(postsToValidate.map(post => post.sourceTextId))];
+        
+        // 원본 텍스트 존재 여부 일괄 확인
+        const validationPromises = sourceTextIds.map(async (textId) => {
+            try {
+                const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', textId);
+                const textDoc = await window.firebaseGetDoc(textRef);
+                return { textId, exists: textDoc.exists() };
+            } catch (error) {
+                console.error(`원본 텍스트 검증 실패 (${textId}):`, error);
+                return { textId, exists: false };
+            }
+        });
+        
+        const validationResults = await Promise.all(validationPromises);
+        const validationMap = new Map(validationResults.map(r => [r.textId, r.exists]));
+        
+        // 각 포스트에 검증 결과 적용
+        this.trackingPosts.forEach(post => {
+            if (post.sourceTextId) {
+                post.sourceTextExists = validationMap.get(post.sourceTextId) || false;
+                post.isOrphan = !post.sourceTextExists;
+            } else {
+                // sourceTextId가 없으면 orphan으로 표시 (업그레이드 전 데이터)
+                post.sourceTextExists = false;
+                post.isOrphan = true;
+            }
+        });
+        
+        const orphanCount = this.trackingPosts.filter(p => p.isOrphan).length;
+        if (orphanCount > 0) {
+            console.log(`⚠️ ${orphanCount}개의 orphan 포스트가 발견되었습니다.`);
+        }
+        
+    } catch (error) {
+        console.error('원본 텍스트 검증 실패:', error);
+        // 에러 발생 시 모든 포스트를 검증 실패로 표시하지 않고, sourceTextId가 없는 것만 orphan으로 표시
+        this.trackingPosts.forEach(post => {
+            if (!post.sourceTextId) {
+                post.isOrphan = true;
+                post.sourceTextExists = false;
+            }
+        });
+    }
+};
 // 트래킹 포스트 렌더링
 DualTextWriter.prototype.renderTrackingPosts = function() {
     if (!this.trackingPostsList) return;
     
     if (this.trackingPosts.length === 0) {
         this.trackingPostsList.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #666;">
-                <div style="font-size: 3rem; margin-bottom: 20px;">📊</div>
-                <h3>트래킹 중인 포스트가 없습니다</h3>
-                <p>저장된 글에서 트래킹을 시작해보세요!</p>
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-text">트래킹 중인 포스트가 없습니다</div>
+                <div class="empty-state-subtext">저장된 글에서 트래킹을 시작해보세요!</div>
             </div>
         `;
         return;
     }
     
-    this.trackingPostsList.innerHTML = this.trackingPosts.map(post => {
+    // Orphan 포스트 개수 확인
+    const orphanPosts = this.trackingPosts.filter(post => post.isOrphan);
+    const orphanCount = orphanPosts.length;
+    
+    // Orphan 포스트 경고 배너 HTML
+    const orphanBannerHtml = orphanCount > 0 ? `
+        <div class="orphan-posts-warning" style="
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #fdcb6e;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        ">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 1.2rem;">⚠️</span>
+                    <strong style="color: #856404; font-size: 1rem;">원본이 삭제된 포스트 ${orphanCount}개 발견</strong>
+                </div>
+                <div style="color: #856404; font-size: 0.9rem; margin-left: 28px;">
+                    원본 글(저장된 글)이 삭제되어 연결이 끊어진 포스트입니다.
+                </div>
+            </div>
+            <button 
+                class="btn btn-danger" 
+                onclick="dualTextWriter.cleanupOrphanPosts()"
+                style="
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    white-space: nowrap;
+                "
+            >
+                🗑️ 정리하기
+            </button>
+        </div>
+    ` : '';
+    
+    // 상태/검색/기간 필터 적용
+    let list = [...this.trackingPosts];
+    
+    // 레퍼런스 포스트 필터링 (트래킹 대상 아님)
+    // 레퍼런스 글은 사용 여부 표시용이지 트래킹 대상이 아님
+    list = list.filter(post => {
+        const postType = post.type || 'edit';
+        const sourceType = post.sourceType || post.type || 'edit';
+        
+        // 레퍼런스 타입 포스트는 제외
+        if (postType === 'reference' || sourceType === 'reference') {
+            return false;
+        }
+        return true;
+    });
+    
+    if (this.trackingStatusFilter === 'active') {
+        list = list.filter(p => !!p.trackingEnabled);
+    } else if (this.trackingStatusFilter === 'inactive') {
+        list = list.filter(p => !p.trackingEnabled);
+    } else if (this.trackingStatusFilter === 'hasData') {
+        list = list.filter(p => (p.metrics && p.metrics.length > 0));
+    } else if (this.trackingStatusFilter === 'noData') {
+        list = list.filter(p => !(p.metrics && p.metrics.length > 0));
+    }
+
+    // 정렬 기준 계산에 필요한 최신 메트릭
+    const getLatest = (p) => (p.metrics && p.metrics.length > 0) ? p.metrics[p.metrics.length - 1] : null;
+    
+    // 검색(제목/키워드/해시태그)
+    if (this.trackingSearch && this.trackingSearch.trim()) {
+        const tokens = this.trackingSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        list = list.filter(p => {
+            const text = (p.content || '').toLowerCase();
+            return tokens.every(tk => text.includes(tk));
+        });
+    }
+    
+    // 기간(최종 업데이트) 필터
+    if (this.trackingUpdatedFrom || this.trackingUpdatedTo) {
+        const fromMs = this.trackingUpdatedFrom ? new Date(this.trackingUpdatedFrom + 'T00:00:00').getTime() : null;
+        const toMs = this.trackingUpdatedTo ? new Date(this.trackingUpdatedTo + 'T23:59:59').getTime() : null;
+        list = list.filter(p => {
+            const lt = getLatest(p)?.timestamp;
+            if (!lt) return false;
+            const ms = lt.toDate ? lt.toDate().getTime() : new Date(lt).getTime();
+            if (fromMs && ms < fromMs) return false;
+            if (toMs && ms > toMs) return false;
+            return true;
+        });
+    }
+
+    // 수치 범위 필터 (최신 메트릭 기준)
+    const inRange = (val, min, max) => {
+        if (min !== undefined && min !== null && min !== '' && val < Number(min)) return false;
+        if (max !== undefined && max !== null && max !== '' && val > Number(max)) return false;
+        return true;
+    };
+    const rf = this.rangeFilters || {};
+    list = list.filter(p => {
+        const lt = getLatest(p) || {};
+        const v = lt.views || 0;
+        const l = lt.likes || 0;
+        const c = lt.comments || 0;
+        const s = lt.shares || 0;
+        const f = lt.follows || 0;
+        return (
+            inRange(v, rf.minViews, rf.maxViews) &&
+            inRange(l, rf.minLikes, rf.maxLikes) &&
+            inRange(c, rf.minComments, rf.maxComments) &&
+            inRange(s, rf.minShares, rf.maxShares) &&
+            inRange(f, rf.minFollows, rf.maxFollows)
+        );
+    });
+    
+    // 정렬 적용
+    switch (this.trackingSort) {
+        case 'favoritesFirst':
+            list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id))); break;
+        case 'viewsDesc':
+            list.sort((a, b) => ((getLatest(b)?.views || 0) - (getLatest(a)?.views || 0))); break;
+        case 'likesDesc':
+            list.sort((a, b) => ((getLatest(b)?.likes || 0) - (getLatest(a)?.likes || 0))); break;
+        case 'commentsDesc':
+            list.sort((a, b) => ((getLatest(b)?.comments || 0) - (getLatest(a)?.comments || 0))); break;
+        case 'sharesDesc':
+            list.sort((a, b) => ((getLatest(b)?.shares || 0) - (getLatest(a)?.shares || 0))); break;
+        case 'followsDesc':
+            list.sort((a, b) => ((getLatest(b)?.follows || 0) - (getLatest(a)?.follows || 0))); break;
+        case 'entriesDesc':
+            list.sort((a, b) => ((b.metrics?.length || 0) - (a.metrics?.length || 0))); break;
+        case 'updatedDesc':
+        default:
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return bMs - aMs;
+            });
+            break;
+    }
+
+    // 이벤트 위임 설정 (최초 1회만)
+    if (!this._trackingPostsEventBound) {
+        this._trackingPostsEventBound = true;
+        if (this.trackingPostsList) {
+            this.trackingPostsList.addEventListener('click', (e) => {
+                const button = e.target.closest('button[data-action], [data-action][role="button"]');
+                if (!button) return;
+                
+                const action = button.getAttribute('data-action');
+                const postId = button.getAttribute('data-post-id');
+                
+                if (!postId) return;
+                
+                switch(action) {
+                    case 'toggle-favorite':
+                        e.preventDefault();
+                        this.toggleFavorite(postId);
+                        break;
+                    case 'show-chart':
+                        e.preventDefault();
+                        this.showPostInChart(postId);
+                        break;
+                    case 'add-tracking-data':
+                        e.preventDefault();
+                        this.addTrackingData(postId);
+                        break;
+                    case 'start-tracking':
+                        e.preventDefault();
+                        this.startTracking(postId);
+                        break;
+                    case 'stop-tracking':
+                        e.preventDefault();
+                        this.stopTracking(postId);
+                        break;
+                    case 'manage-metrics':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.manageMetrics(postId);
+                        break;
+                    case 'more-menu':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const trackingEnabled = button.getAttribute('data-tracking-enabled') === 'true';
+                        this.toggleTrackingMoreMenu(button, postId, trackingEnabled);
+                        break;
+                }
+            });
+        }
+    }
+
+    this.trackingPostsList.innerHTML = orphanBannerHtml + list.map(post => {
         const latestMetrics = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         const hasMetrics = post.metrics.length > 0;
         const metricsCount = post.metrics.length;
+        const isFav = this.isFavorite(post.id);
         
         // 상태 정보
         const statusClass = post.trackingEnabled ? 'active' : 'inactive';
         const statusIcon = post.trackingEnabled ? '🟢' : '⚪';
         const statusText = post.trackingEnabled ? '활성' : '비활성';
+        
+        // Orphan 포스트 표시
+        const orphanBadge = post.isOrphan ? `
+            <div class="orphan-badge" style="
+                background: #dc3545;
+                color: white;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                margin-left: 8px;
+            ">
+                ⚠️ 원본 삭제됨
+            </div>
+        ` : '';
         
         // 메트릭 데이터 표시
         const metricsBadgeClass = hasMetrics ? 'has-data' : 'no-data';
@@ -3153,11 +5626,16 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             }
         }
         
+        // Orphan 포스트는 시각적으로 다르게 표시
+        const orphanClass = post.isOrphan ? 'orphan-post' : '';
+        
         return `
-            <div class="tracking-post-item ${statusClass}" data-post-id="${post.id}">
+            <div class="tracking-post-item ${statusClass} ${orphanClass}" data-post-id="${post.id}" data-is-orphan="${post.isOrphan ? 'true' : 'false'}">
                 <div class="tracking-post-header">
-                    <div class="tracking-post-title">
-                        ${post.content.substring(0, 50)}${post.content.length > 50 ? '...' : ''}
+                <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap; gap:8px;">
+                        <button class="fav-toggle" data-action="toggle-favorite" data-post-id="${post.id}" title="즐겨찾기" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem; min-height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center;">${isFav ? '⭐' : '☆'}</button>
+                        <span class="card-title line-clamp-2">${this.escapeHtml(post.content.substring(0, 50))}${post.content.length > 50 ? '...' : ''}</span>
+                        ${orphanBadge}
                     </div>
                     <div class="tracking-post-status-group">
                         <div class="tracking-post-status ${statusClass}" aria-label="트래킹 상태: ${statusText}">
@@ -3179,7 +5657,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                 </div>
                 
                 ${latestMetrics ? `
-                    <div class="tracking-post-metrics">
+                    <div class="tracking-post-metrics metrics-chips" data-action="show-chart" data-post-id="${post.id}" title="그래프에서 보기" role="button" tabindex="0" aria-label="그래프에서 보기">
                         <div class="metric-item">
                             <div class="metric-icon">👀</div>
                             <div class="metric-value">${latestMetrics.views || 0}</div>
@@ -3200,6 +5678,11 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                             <div class="metric-value">${latestMetrics.shares || 0}</div>
                             <div class="metric-label">공유</div>
                         </div>
+                        <div class="metric-item">
+                            <div class="metric-icon">👥</div>
+                            <div class="metric-value">${latestMetrics.follows || 0}</div>
+                            <div class="metric-label">팔로우</div>
+                        </div>
                     </div>
                 ` : `
                     <div class="tracking-post-no-data">
@@ -3208,16 +5691,68 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                     </div>
                 `}
                 
-                <div class="tracking-post-actions">
+                <div class="tracking-post-actions actions--primary">
                     ${post.trackingEnabled ? 
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.addTrackingData('${post.id}')" aria-label="성과 데이터 추가">데이터 추가</button>` :
-                        `<button class="tracking-btn primary" onclick="dualTextWriter.startTracking('${post.id}')" aria-label="트래킹 시작">트래킹 시작</button>`
+                        `<button class="tracking-btn primary" data-action="add-tracking-data" data-post-id="${post.id}" aria-label="성과 데이터 추가">데이터 추가</button>` :
+                        `<button class="tracking-btn primary" data-action="start-tracking" data-post-id="${post.id}" aria-label="트래킹 시작">트래킹 시작</button>`
                     }
-                    <button class="tracking-btn secondary" onclick="dualTextWriter.stopTracking('${post.id}')" aria-label="트래킹 중지">트래킹 중지</button>
+                    <div class="more-menu actions--more">
+                        <button class="more-menu-btn" data-action="more-menu" data-post-id="${post.id}" data-tracking-enabled="${post.trackingEnabled ? 'true' : 'false'}" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업">⋯</button>
+                        <div class="more-menu-list" role="menu">
+                            ${hasMetrics ? 
+                                `<button class="more-menu-item" role="menuitem" data-action="manage-metrics" data-post-id="${post.id}">📊 메트릭 관리</button>` :
+                                ''
+                            }
+                            ${post.trackingEnabled ? 
+                                `<button class="more-menu-item" role="menuitem" data-action="stop-tracking" data-post-id="${post.id}">트래킹 중지</button>` :
+                                ''
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
+};
+
+// 트래킹 카드 ⋯ 메뉴 토글
+DualTextWriter.prototype.toggleTrackingMoreMenu = function(button, postId, trackingEnabled) {
+    const menu = button.nextElementSibling;
+    if (menu && menu.classList.contains('more-menu-list')) {
+        const isOpen = menu.classList.toggle('open');
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        
+        // 스마트 포지셔닝: 화면 위치에 따라 메뉴 표시 방향 결정
+        if (isOpen) {
+            dualTextWriter.applySmartMenuPosition(menu, button);
+            
+            // 포커스 트랩: 메뉴가 열리면 첫 번째 메뉴 아이템에 포커스
+            const firstMenuItem = menu.querySelector('.more-menu-item');
+            if (firstMenuItem) {
+                setTimeout(() => firstMenuItem.focus(), 50);
+            }
+        } else {
+            // 메뉴 닫힐 때 위치 클래스 제거
+            menu.classList.remove('open-top', 'open-bottom');
+        }
+    }
+    // 바깥 클릭 시 모든 메뉴 닫기 (이벤트 위임으로 처리)
+    setTimeout(() => {
+        document.addEventListener('click', function closeHandler(e) {
+            if (!e.target.closest('.more-menu')) {
+                document.querySelectorAll('.more-menu-list.open').forEach(el => {
+                    el.classList.remove('open');
+                    // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
+                    const menuBtn = el.previousElementSibling;
+                    if (menuBtn && menuBtn.classList.contains('more-menu-btn')) {
+                        menuBtn.focus();
+                    }
+                });
+                document.querySelectorAll('.more-menu-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+                document.removeEventListener('click', closeHandler);
+            }
+        }, { once: true });
+    }, 0);
 };
 
 // 트래킹 시작
@@ -3235,7 +5770,7 @@ DualTextWriter.prototype.startTracking = async function(postId) {
         const post = this.trackingPosts.find(p => p.id === postId);
         if (post) {
             post.trackingEnabled = true;
-            this.renderTrackingPosts();
+            this.refreshUI({ trackingPosts: true, force: true });
             
             // 시각적 피드백: 성공 메시지
             this.showMessage('✅ 트래킹이 시작되었습니다!', 'success');
@@ -3263,7 +5798,7 @@ DualTextWriter.prototype.stopTracking = async function(postId) {
         const post = this.trackingPosts.find(p => p.id === postId);
         if (post) {
             post.trackingEnabled = false;
-            this.renderTrackingPosts();
+            this.refreshUI({ trackingPosts: true, force: true });
             
             // 시각적 피드백: 성공 메시지
             this.showMessage('⏸️ 트래킹이 중지되었습니다.', 'info');
@@ -3292,184 +5827,72 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
     this.openTrackingModal();
 };
 
-// 트래킹 모달 열기 (개선 버전)
-DualTextWriter.prototype.openTrackingModal = function() {
+// 트래킹 모달 열기
+DualTextWriter.prototype.openTrackingModal = function(textId = null) {
     const modal = document.getElementById('tracking-modal');
-    if (!modal || !this.currentTrackingPost) return;
-    
-    // 현재 포스트 정보 가져오기
-    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
-    if (!post) return;
-    
-    // 포스트 정보 표시
-    const postTextElement = document.getElementById('tracking-modal-post-text');
-    if (postTextElement) {
-        const previewText = post.content.substring(0, 80);
-        postTextElement.textContent = previewText + (post.content.length > 80 ? '...' : '');
-    }
-    
-    // 데이터 입력 횟수 표시
-    const dataCountElement = document.getElementById('tracking-modal-data-count');
-    if (dataCountElement) {
-        dataCountElement.textContent = post.metrics.length;
-    }
-    
-    // 이전 데이터 표시
-    const previousDataSection = document.getElementById('tracking-modal-previous-data');
-    if (post.metrics.length > 0) {
-        const latestMetric = post.metrics[post.metrics.length - 1];
+    if (modal) {
+        this.openBottomSheet(modal);
+        // 폼 초기화
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('tracking-date');
+        dateInput.value = today;
+        // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
+        modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+        const todayTab = modal.querySelector('.date-tab[data-date="today"]');
+        if (todayTab) todayTab.classList.add('active');
+        dateInput.style.display = 'none';
         
-        // 이전 데이터 섹션 표시
-        if (previousDataSection) {
-            previousDataSection.style.display = 'block';
-        }
+        document.getElementById('tracking-views').value = '';
+        document.getElementById('tracking-likes').value = '';
+        document.getElementById('tracking-comments').value = '';
+        document.getElementById('tracking-shares').value = '';
+        const followsInput = document.getElementById('tracking-follows');
+        if (followsInput) followsInput.value = '';
+        document.getElementById('tracking-notes').value = '';
         
-        // 이전 값 표시
-        document.getElementById('prev-views').textContent = (latestMetric.views || 0).toLocaleString();
-        document.getElementById('prev-likes').textContent = (latestMetric.likes || 0).toLocaleString();
-        document.getElementById('prev-comments').textContent = (latestMetric.comments || 0).toLocaleString();
-        document.getElementById('prev-shares').textContent = (latestMetric.shares || 0).toLocaleString();
-        
-        // 이전 날짜 표시
-        const prevDateElement = document.getElementById('prev-date');
-        if (prevDateElement && latestMetric.timestamp) {
-            try {
-                const date = latestMetric.timestamp.toDate ? latestMetric.timestamp.toDate() : new Date(latestMetric.timestamp);
-                prevDateElement.textContent = date.toLocaleString('ko-KR', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } catch (e) {
-                prevDateElement.textContent = '-';
-            }
-        }
-    } else {
-        // 이전 데이터가 없으면 섹션 숨김
-        if (previousDataSection) {
-            previousDataSection.style.display = 'none';
-        }
+        // 저장된 글에서 호출한 경우 textId 저장
+        this.currentTrackingTextId = textId;
     }
-    
-    // 폼 초기화
-    document.getElementById('tracking-views').value = '';
-    document.getElementById('tracking-likes').value = '';
-    document.getElementById('tracking-comments').value = '';
-    document.getElementById('tracking-shares').value = '';
-    document.getElementById('tracking-notes').value = '';
-    
-    // 증가량 표시 초기화
-    ['views', 'likes', 'comments', 'shares'].forEach(metric => {
-        const growthElement = document.getElementById(`growth-${metric}`);
-        if (growthElement) {
-            growthElement.style.display = 'none';
-            growthElement.textContent = '';
-        }
-    });
-    
-    // 입력 필드에 이벤트 리스너 추가 (증가량 자동 계산)
-    this.setupTrackingInputListeners(post);
-    
-    // 모달 표시
-    modal.style.display = 'flex';
-    
-    // 첫 번째 입력 필드에 포커스
-    setTimeout(() => {
-        document.getElementById('tracking-views').focus();
-    }, 100);
 };
 
-// 트래킹 입력 필드 이벤트 리스너 설정
-DualTextWriter.prototype.setupTrackingInputListeners = function(post) {
-    const metrics = ['views', 'likes', 'comments', 'shares'];
-    const latestMetric = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
-    
-    metrics.forEach(metric => {
-        const inputElement = document.getElementById(`tracking-${metric}`);
-        const growthElement = document.getElementById(`growth-${metric}`);
-        
-        if (!inputElement || !growthElement) return;
-        
-        // 기존 이벤트 리스너 제거
-        inputElement.removeEventListener('input', inputElement._trackingInputHandler);
-        
-        // 새 이벤트 리스너 추가
-        inputElement._trackingInputHandler = (e) => {
-            const currentValue = parseInt(e.target.value) || 0;
-            
-            if (latestMetric && currentValue > 0) {
-                const previousValue = latestMetric[metric] || 0;
-                const growth = currentValue - previousValue;
-                const growthPercent = previousValue > 0 ? ((growth / previousValue) * 100).toFixed(1) : 0;
-                
-                if (growth !== 0) {
-                    const growthIcon = growth > 0 ? '📈' : '📉';
-                    const growthClass = growth > 0 ? 'positive' : 'negative';
-                    const growthSign = growth > 0 ? '+' : '';
-                    
-                    growthElement.className = `input-growth ${growthClass}`;
-                    growthElement.innerHTML = `
-                        <span class="growth-icon">${growthIcon}</span>
-                        <span class="growth-value">${growthSign}${growth.toLocaleString()}</span>
-                        <span class="growth-percent">(${growthSign}${growthPercent}%)</span>
-                    `;
-                    growthElement.style.display = 'flex';
-                } else {
-                    growthElement.style.display = 'none';
-                }
-            } else {
-                growthElement.style.display = 'none';
-            }
-        };
-        
-        inputElement.addEventListener('input', inputElement._trackingInputHandler);
-    });
-};
-
-// 트래킹 데이터 저장 (개선 버전)
+// 트래킹 데이터 저장
 DualTextWriter.prototype.saveTrackingData = async function() {
-    if (!this.currentTrackingPost || !this.currentUser || !this.isFirebaseReady) return;
+    if (!this.currentUser || !this.isFirebaseReady) return;
     
+    // 저장된 글에서 직접 입력하는 경우
+    if (this.currentTrackingTextId && !this.currentTrackingPost) {
+        return await this.saveTrackingDataFromSavedText();
+    }
+    
+    // 기존 방식: 트래킹 포스트에 데이터 추가
+    if (!this.currentTrackingPost) return;
+    
+    const dateValue = document.getElementById('tracking-date').value;
     const views = parseInt(document.getElementById('tracking-views').value) || 0;
     const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
     const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
     const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
-    const notes = document.getElementById('tracking-notes').value.trim();
+    const follows = parseInt((document.getElementById('tracking-follows')||{value:''}).value) || 0;
+    const notes = document.getElementById('tracking-notes').value;
     
-    // 유효성 검증
-    if (views === 0 && likes === 0) {
-        this.showMessage('⚠️ 조회수 또는 좋아요 중 하나는 반드시 입력해야 합니다.', 'warning');
-        return;
-    }
-    
-    // 이전 데이터와 비교하여 감소 확인
-    const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
-    if (post && post.metrics.length > 0) {
-        const latestMetric = post.metrics[post.metrics.length - 1];
-        
-        // 조회수나 좋아요가 감소한 경우 경고
-        if (views < (latestMetric.views || 0) || likes < (latestMetric.likes || 0)) {
-            const confirmMessage = '⚠️ 이전 데이터보다 낮은 값이 입력되었습니다.\n' +
-                                 '계속 저장하시겠습니까?\n\n' +
-                                 `이전 조회수: ${(latestMetric.views || 0).toLocaleString()}\n` +
-                                 `현재 조회수: ${views.toLocaleString()}\n\n` +
-                                 `이전 좋아요: ${(latestMetric.likes || 0).toLocaleString()}\n` +
-                                 `현재 좋아요: ${likes.toLocaleString()}`;
-            
-            if (!confirm(confirmMessage)) {
-                return;
-            }
-        }
+    // 날짜 처리: 사용자가 선택한 날짜를 Timestamp로 변환
+    let timestamp;
+    if (dateValue) {
+        const selectedDate = new Date(dateValue);
+        // 시간을 자정(00:00:00)으로 설정
+        selectedDate.setHours(0, 0, 0, 0);
+        timestamp = window.firebaseTimestamp(selectedDate);
+    } else {
+        timestamp = window.firebaseServerTimestamp();
     }
     
     const trackingData = {
-        timestamp: window.firebaseServerTimestamp(),
+        timestamp: timestamp,
         views,
         likes,
         comments,
         shares,
+        follows,
         notes
     };
     
@@ -3481,6 +5904,13 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             const postData = postDoc.data();
             const updatedMetrics = [...(postData.metrics || []), trackingData];
             
+            // 날짜 순으로 정렬 (오래된 것부터)
+            updatedMetrics.sort((a, b) => {
+                const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+                const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+                return dateA - dateB;
+            });
+            
             // 분석 데이터 계산
             const analytics = this.calculateAnalytics(updatedMetrics);
             
@@ -3491,35 +5921,186 @@ DualTextWriter.prototype.saveTrackingData = async function() {
             });
             
             // 로컬 데이터 업데이트
+            const post = this.trackingPosts.find(p => p.id === this.currentTrackingPost);
             if (post) {
                 post.metrics = updatedMetrics;
                 post.analytics = analytics;
             }
             
+            // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
             this.closeTrackingModal();
-            this.renderTrackingPosts();
-            this.updateTrackingSummary();
-            this.updateTrackingChart();
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
             
-            // 시각적 피드백: 성공 메시지 (증가량 표시)
-            let successMessage = '✅ 성과 데이터가 저장되었습니다!';
-            if (post && post.metrics.length > 1) {
-                const previousMetric = post.metrics[post.metrics.length - 2];
-                const viewsGrowth = views - (previousMetric.views || 0);
-                const likesGrowth = likes - (previousMetric.likes || 0);
-                
-                if (viewsGrowth > 0 || likesGrowth > 0) {
-                    successMessage += `\n📈 조회수 +${viewsGrowth.toLocaleString()}, 좋아요 +${likesGrowth.toLocaleString()}`;
-                }
-            }
+            // 시각적 피드백: 성공 메시지
+            this.showMessage('✅ 성과 데이터가 저장되었습니다!', 'success');
             
-            this.showMessage(successMessage, 'success');
-            
-            console.log('트래킹 데이터가 저장되었습니다:', trackingData);
+            console.log('트래킹 데이터가 저장되었습니다.');
         }
         
     } catch (error) {
         console.error('트래킹 데이터 저장 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 저장에 실패했습니다: ' + error.message, 'error');
+    }
+};
+// 저장된 글에서 직접 트래킹 데이터 저장
+DualTextWriter.prototype.saveTrackingDataFromSavedText = async function() {
+    if (!this.currentTrackingTextId || !this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        // 먼저 저장된 텍스트 정보 가져오기
+        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', this.currentTrackingTextId);
+        const textDoc = await window.firebaseGetDoc(textRef);
+        
+        if (!textDoc.exists()) {
+            this.showMessage('❌ 원본 텍스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const textData = textDoc.data();
+        
+        // 해당 텍스트에 연결된 포스트 찾기 또는 생성
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', this.currentTrackingTextId));
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        let postId;
+        let postData;
+        
+        if (!querySnapshot.empty) {
+            // 기존 포스트가 있으면 사용
+            const existingPost = querySnapshot.docs[0];
+            postId = existingPost.id;
+            postData = existingPost.data();
+        } else {
+            // 새 포스트 생성
+            const newPostData = {
+                content: textData.content,
+                type: textData.type || 'edit',
+                postedAt: window.firebaseServerTimestamp(),
+                trackingEnabled: true,
+                metrics: [],
+                analytics: {},
+                sourceTextId: this.currentTrackingTextId,
+                sourceType: textData.type || 'edit',
+                createdAt: window.firebaseServerTimestamp(),
+                updatedAt: window.firebaseServerTimestamp()
+            };
+            
+            const postDocRef = await window.firebaseAddDoc(postsRef, newPostData);
+            postId = postDocRef.id;
+            postData = newPostData;
+            
+            // 트래킹 포스트 목록에 추가
+            if (!this.trackingPosts) {
+                this.trackingPosts = [];
+            }
+            this.trackingPosts.push({
+                id: postId,
+                ...newPostData,
+                postedAt: new Date()
+            });
+        }
+        
+        // 트래킹 데이터 수집
+        const dateValue = document.getElementById('tracking-date').value;
+        const views = parseInt(document.getElementById('tracking-views').value) || 0;
+        const likes = parseInt(document.getElementById('tracking-likes').value) || 0;
+        const comments = parseInt(document.getElementById('tracking-comments').value) || 0;
+        const shares = parseInt(document.getElementById('tracking-shares').value) || 0;
+        const follows = parseInt((document.getElementById('tracking-follows')||{value:''}).value) || 0;
+        const notes = document.getElementById('tracking-notes').value;
+        
+        // 날짜 처리
+        let timestamp;
+        if (dateValue) {
+            const selectedDate = new Date(dateValue);
+            selectedDate.setHours(0, 0, 0, 0);
+            timestamp = window.firebaseTimestamp(selectedDate);
+        } else {
+            timestamp = window.firebaseServerTimestamp();
+        }
+        
+        const trackingData = {
+            timestamp: timestamp,
+            views,
+            likes,
+            comments,
+            shares,
+            follows,
+            notes
+        };
+        
+        // 포스트에 트래킹 데이터 추가
+        const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+        const updatedMetrics = [...(postData.metrics || []), trackingData];
+        
+        // 날짜 순으로 정렬
+        updatedMetrics.sort((a, b) => {
+            const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+            const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+            return dateA - dateB;
+        });
+        
+        // 분석 데이터 계산
+        const analytics = this.calculateAnalytics(updatedMetrics);
+        
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            trackingEnabled: true,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts.find(p => p.id === postId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+            post.trackingEnabled = true;
+        } else {
+            // 로컬 목록에 없으면 추가
+            this.trackingPosts.push({
+                id: postId,
+                content: textData.content,
+                type: textData.type || 'edit',
+                postedAt: new Date(),
+                trackingEnabled: true,
+                metrics: updatedMetrics,
+                analytics: analytics,
+                sourceTextId: this.currentTrackingTextId,
+                sourceType: textData.type || 'edit'
+            });
+        }
+        
+        this.closeTrackingModal();
+        
+        // Optimistic UI: 로컬 데이터 업데이트로 즉시 반영 (Firebase 전체 재조회 불필요)
+        // 트래킹 탭 목록은 로컬 데이터가 이미 업데이트되었으므로 재조회 불필요
+        
+        // UI 업데이트
+        this.refreshUI({
+            savedTexts: true,
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
+        
+        // 초기화
+        this.currentTrackingTextId = null;
+        
+        this.showMessage('✅ 트래킹 데이터가 저장되었습니다!', 'success');
+        console.log('저장된 글에서 트래킹 데이터 저장 완료');
+        
+    } catch (error) {
+        console.error('저장된 글에서 트래킹 데이터 저장 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 저장에 실패했습니다: ' + error.message, 'error');
     }
 };
 
@@ -3527,9 +6108,660 @@ DualTextWriter.prototype.saveTrackingData = async function() {
 DualTextWriter.prototype.closeTrackingModal = function() {
     const modal = document.getElementById('tracking-modal');
     if (modal) {
-        modal.style.display = 'none';
+        this.closeBottomSheet(modal);
     }
     this.currentTrackingPost = null;
+    this.currentTrackingTextId = null;
+};
+// 메트릭 관리 모달 열기 (트래킹 탭에서 사용)
+DualTextWriter.prototype.manageMetrics = async function(postId) {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        if (this.trackingPosts) {
+            postData = this.trackingPosts.find(p => p.id === postId);
+        }
+        
+        // 로컬에 없으면 Firebase에서 조회
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            try {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+                const postDoc = await window.firebaseGetDoc(postRef);
+                
+                if (postDoc.exists()) {
+                    const data = postDoc.data();
+                    postData = {
+                        id: postDoc.id,
+                        content: data.content || '',
+                        metrics: data.metrics || [],
+                        sourceTextId: data.sourceTextId || null
+                    };
+                }
+            } catch (error) {
+                console.error('포스트 조회 실패:', error);
+            }
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            this.showMessage('메트릭 데이터가 없습니다.', 'warning');
+            return;
+        }
+        
+        // 메트릭 목록 렌더링
+        const metricsHtml = this.renderMetricsListForManage(postData.metrics, postData.id, postData.sourceTextId);
+        
+        // 모달 열기
+        const modal = document.getElementById('metrics-manage-modal');
+        const content = document.getElementById('metrics-manage-content');
+        if (modal && content) {
+            content.innerHTML = `
+                <div style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(postData.content.substring(0, 50))}${postData.content.length > 50 ? '...' : ''}</div>
+                    <div style="font-size: 0.85rem; color: #666;">메트릭 ${postData.metrics.length}개</div>
+                </div>
+                ${metricsHtml}
+            `;
+            this.openBottomSheet(modal);
+            
+            // 모달 내부의 수정/삭제 버튼 이벤트 바인딩
+            this.bindMetricsManageEvents(postData.id, postData.sourceTextId);
+        }
+        
+    } catch (error) {
+        console.error('메트릭 관리 모달 열기 실패:', error);
+        this.showMessage('메트릭 데이터를 불러오는데 실패했습니다.', 'error');
+    }
+};
+
+// 메트릭 관리 모달용 메트릭 목록 렌더링
+DualTextWriter.prototype.renderMetricsListForManage = function(metrics, postId, textId) {
+    if (!metrics || metrics.length === 0) {
+        return '<div style="text-align: center; padding: 40px; color: #666;">메트릭 데이터가 없습니다.</div>';
+    }
+    
+    // 날짜 순으로 정렬 (최신 것부터)
+    const sortedMetrics = [...metrics].sort((a, b) => {
+        const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
+                     (a.timestamp instanceof Date ? a.timestamp.getTime() : 0);
+        const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
+                     (b.timestamp instanceof Date ? b.timestamp.getTime() : 0);
+        return dateB - dateA; // 최신 것부터
+    });
+    
+    return `
+        <div class="metrics-manage-list">
+            ${sortedMetrics.map((metric, sortedIdx) => {
+                // 원본 인덱스 찾기
+                const originalIndex = metrics.findIndex(m => {
+                    const mDate = m.timestamp?.toDate ? m.timestamp.toDate().getTime() : 
+                                 (m.timestamp instanceof Date ? m.timestamp.getTime() : 0);
+                    const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate().getTime() : 
+                                      (metric.timestamp instanceof Date ? metric.timestamp.getTime() : 0);
+                    return mDate === metricDate && 
+                           m.views === metric.views && 
+                           m.likes === metric.likes &&
+                           m.comments === metric.comments &&
+                           m.shares === metric.shares;
+                });
+                const metricIndex = originalIndex >= 0 ? originalIndex : sortedIdx;
+                
+                // 메트릭 인덱스가 유효한지 확인 (원본 배열 범위 내)
+                const finalMetricIndex = metricIndex < metrics.length ? metricIndex : sortedIdx;
+                
+                const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                            (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+                const dateStr = date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div class="metric-manage-item" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}">
+                        <div class="metric-manage-header">
+                            <div class="metric-manage-date">📅 ${dateStr}</div>
+                            <div class="metric-manage-actions">
+                                <button class="btn-edit-metric" data-action="edit-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="수정">✏️ 수정</button>
+                                <button class="btn-delete-metric" data-action="delete-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="삭제">🗑️ 삭제</button>
+                            </div>
+                        </div>
+                        <div class="metric-manage-data">
+                            <div class="metric-chip"><span class="metric-icon">👀</span> <span class="metric-value">${metric.views || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">❤️</span> <span class="metric-value">${metric.likes || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">💬</span> <span class="metric-value">${metric.comments || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">🔄</span> <span class="metric-value">${metric.shares || 0}</span></div>
+                            <div class="metric-chip"><span class="metric-icon">👥</span> <span class="metric-value">${metric.follows || 0}</span></div>
+                            ${metric.notes ? `<div class="metric-notes">📝 ${this.escapeHtml(metric.notes)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+};
+
+// 메트릭 관리 모달 내부 이벤트 바인딩
+DualTextWriter.prototype.bindMetricsManageEvents = function(postId, textId) {
+    const content = document.getElementById('metrics-manage-content');
+    if (!content) return;
+    
+    // 기존 리스너 제거하고 새로 바인딩
+    content.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        
+        const action = button.getAttribute('data-action');
+        const metricIndex = parseInt(button.getAttribute('data-metric-index'));
+        const buttonPostId = button.getAttribute('data-post-id') || postId;
+        const buttonTextId = button.getAttribute('data-text-id') || textId;
+        
+        if (action === 'edit-metric') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.editMetricFromManage(buttonPostId, buttonTextId, metricIndex);
+        } else if (action === 'delete-metric') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (confirm('정말로 이 메트릭을 삭제하시겠습니까?')) {
+                this.deleteMetricFromManage(buttonPostId, buttonTextId, metricIndex);
+            }
+        }
+    }, { once: false });
+};
+
+// 메트릭 관리 모달에서 메트릭 수정
+DualTextWriter.prototype.editMetricFromManage = async function(postId, textId, metricIndex) {
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        if (this.trackingPosts) {
+            postData = this.trackingPosts.find(p => p.id === postId);
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+            // Firebase에서 조회
+            try {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+                const postDoc = await window.firebaseGetDoc(postRef);
+                
+                if (postDoc.exists()) {
+                    const data = postDoc.data();
+                    postData = {
+                        id: postDoc.id,
+                        metrics: data.metrics || []
+                    };
+                }
+            } catch (error) {
+                console.error('포스트 조회 실패:', error);
+            }
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+            this.showMessage('메트릭을 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const metric = postData.metrics[metricIndex];
+        
+        // 편집 데이터 설정
+        this.editingMetricData = {
+            postId: postId,
+            textId: textId,
+            metricIndex: metricIndex
+        };
+        
+        // 메트릭 관리 모달 닫기
+        const manageModal = document.getElementById('metrics-manage-modal');
+        if (manageModal) {
+            this.closeBottomSheet(manageModal);
+        }
+        
+        // 기존 editTrackingMetric의 모달 열기 로직 재사용
+        const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                    (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+        const dateStr = date.toISOString().split('T')[0];
+        
+        document.getElementById('tracking-edit-date').value = dateStr;
+        document.getElementById('tracking-edit-views').value = metric.views || 0;
+        document.getElementById('tracking-edit-likes').value = metric.likes || 0;
+        document.getElementById('tracking-edit-comments').value = metric.comments || 0;
+        document.getElementById('tracking-edit-shares').value = metric.shares || 0;
+        const followsInput = document.getElementById('tracking-edit-follows');
+        if (followsInput) followsInput.value = metric.follows || 0;
+        document.getElementById('tracking-edit-notes').value = metric.notes || '';
+        
+        // 수정 모달 열기
+        const editModal = document.getElementById('tracking-edit-modal');
+        if (editModal) {
+            // 날짜 탭 설정
+            editModal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+            const customTab = editModal.querySelector('.date-tab[data-date="custom"]');
+            if (customTab) customTab.classList.add('active');
+            document.getElementById('tracking-edit-date').style.display = 'block';
+            
+            this.openBottomSheet(editModal);
+        }
+        
+    } catch (error) {
+        console.error('메트릭 수정 실패:', error);
+        this.showMessage('메트릭을 불러오는데 실패했습니다.', 'error');
+    }
+};
+
+// 메트릭 관리 모달에서 메트릭 삭제
+DualTextWriter.prototype.deleteMetricFromManage = async function(postId, textId, metricIndex) {
+    if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    if (!confirm('정말로 이 트래킹 데이터를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        let postRef = null;
+        
+        try {
+            // postId로 직접 조회
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+            const postDoc = await window.firebaseGetDoc(postRef);
+            
+            if (postDoc.exists()) {
+                postData = postDoc.data();
+            } else if (textId) {
+                // textId로 찾기
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const textQuerySnapshot = await window.firebaseGetDocs(window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId)));
+                if (!textQuerySnapshot.empty) {
+                    const postDoc = textQuerySnapshot.docs[0];
+                    postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+                    postData = postDoc.data();
+                }
+            }
+        } catch (error) {
+            console.error('포스트 조회 실패:', error);
+        }
+        
+        if (!postData || !postRef) {
+            this.showMessage('포스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 메트릭 배열에서 해당 항목 제거
+        const updatedMetrics = postData.metrics.filter((_, idx) => idx !== metricIndex);
+        
+        // 분석 데이터 계산
+        const analytics = updatedMetrics.length > 0 ? this.calculateAnalytics(updatedMetrics) : {};
+        
+        // Firebase 업데이트
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts?.find(p => p.id === postRef.id || p.sourceTextId === textId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+        }
+        
+        // 메트릭 관리 모달 새로고침
+        const manageModal = document.getElementById('metrics-manage-modal');
+        const isManageModalOpen = manageModal && (manageModal.classList.contains('bottom-sheet-open') || manageModal.style.display !== 'none');
+        
+        if (isManageModalOpen) {
+            // 메트릭 관리 모달이 열려있으면 새로고침
+            const refreshPostId = postRef.id || postId;
+            setTimeout(() => {
+                this.manageMetrics(refreshPostId);
+            }, 300);
+        } else {
+            // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+        }
+        
+        this.showMessage('✅ 트래킹 데이터가 삭제되었습니다!', 'success');
+        
+    } catch (error) {
+        console.error('트래킹 데이터 삭제 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 삭제에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+// 트래킹 메트릭 수정 모달 열기
+DualTextWriter.prototype.editTrackingMetric = async function(button, metricIndexStr) {
+    const metricIndex = parseInt(metricIndexStr);
+    const timelineItem = button.closest('.timeline-item');
+    const savedItem = timelineItem.closest('.saved-item');
+    const textId = savedItem.getAttribute('data-item-id');
+    
+    if (!textId) {
+        this.showMessage('❌ 저장된 글 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 해당 텍스트에 연결된 포스트 찾기
+    let postData = null;
+    if (this.trackingPosts) {
+        postData = this.trackingPosts.find(p => p.sourceTextId === textId);
+    }
+    
+    if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+        // Firebase에서 조회
+        try {
+            const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+            const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId));
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const postDoc = querySnapshot.docs[0];
+                const data = postDoc.data();
+                postData = {
+                    id: postDoc.id,
+                    metrics: data.metrics || [],
+                    trackingEnabled: data.trackingEnabled || false
+                };
+            }
+        } catch (error) {
+            console.error('포스트 조회 실패:', error);
+            this.showMessage('❌ 트래킹 데이터를 찾을 수 없습니다.', 'error');
+            return;
+        }
+    }
+    
+    if (!postData || !postData.metrics || postData.metrics.length <= metricIndex) {
+        this.showMessage('❌ 수정할 데이터를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    const metric = postData.metrics[metricIndex];
+    const date = metric.timestamp?.toDate ? metric.timestamp.toDate() : 
+                (metric.timestamp instanceof Date ? metric.timestamp : new Date());
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // 수정 모달에 데이터 채우기
+    document.getElementById('tracking-edit-date').value = dateStr;
+    document.getElementById('tracking-edit-views').value = metric.views || 0;
+    document.getElementById('tracking-edit-likes').value = metric.likes || 0;
+    document.getElementById('tracking-edit-comments').value = metric.comments || 0;
+    document.getElementById('tracking-edit-shares').value = metric.shares || 0;
+    const editFollows = document.getElementById('tracking-edit-follows');
+    if (editFollows) editFollows.value = metric.follows || 0;
+    document.getElementById('tracking-edit-notes').value = metric.notes || '';
+    
+    // 수정할 데이터 저장
+    this.editingMetricData = {
+        postId: postData.id || null,
+        textId: textId,
+        metricIndex: metricIndex
+    };
+    
+    // 수정 모달 열기
+    const editModal = document.getElementById('tracking-edit-modal');
+    if (editModal) {
+        this.openBottomSheet(editModal);
+        // 날짜 탭 초기화: 현재 날짜에 따라 탭 설정
+        const editDateInput = document.getElementById('tracking-edit-date');
+        if (editDateInput && metric.timestamp) {
+            const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+            const metricDateStr = metricDate.toISOString().split('T')[0];
+            editDateInput.value = metricDateStr;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            editModal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+            if (metricDateStr === today) {
+                const todayTab = editModal.querySelector('.date-tab[data-date="today"]');
+                if (todayTab) todayTab.classList.add('active');
+                editDateInput.style.display = 'none';
+            } else if (metricDateStr === yesterdayStr) {
+                const yesterdayTab = editModal.querySelector('.date-tab[data-date="yesterday"]');
+                if (yesterdayTab) yesterdayTab.classList.add('active');
+                editDateInput.style.display = 'none';
+            } else {
+                const customTab = editModal.querySelector('.date-tab[data-date="custom"]');
+                if (customTab) customTab.classList.add('active');
+                editDateInput.style.display = 'block';
+            }
+        }
+    }
+};
+// 트래킹 데이터 수정
+DualTextWriter.prototype.updateTrackingDataItem = async function() {
+    if (!this.editingMetricData || !this.currentUser || !this.isFirebaseReady) return;
+    
+    try {
+        const { postId, textId, metricIndex } = this.editingMetricData;
+        
+        // 포스트 데이터 가져오기
+        let postData;
+        let postRef;
+        
+        if (postId) {
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+            const postDoc = await window.firebaseGetDoc(postRef);
+            if (!postDoc.exists()) {
+                this.showMessage('❌ 포스트를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            postData = postDoc.data();
+        } else {
+            // textId로 포스트 찾기
+            const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+            const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId));
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            if (querySnapshot.empty) {
+                this.showMessage('❌ 포스트를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const postDoc = querySnapshot.docs[0];
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+            postData = postDoc.data();
+        }
+        
+        // 수정된 데이터 수집
+        const dateValue = document.getElementById('tracking-edit-date').value;
+        const views = parseInt(document.getElementById('tracking-edit-views').value) || 0;
+        const likes = parseInt(document.getElementById('tracking-edit-likes').value) || 0;
+        const comments = parseInt(document.getElementById('tracking-edit-comments').value) || 0;
+        const shares = parseInt(document.getElementById('tracking-edit-shares').value) || 0;
+        const follows = parseInt((document.getElementById('tracking-edit-follows')||{value:''}).value) || 0;
+        const notes = document.getElementById('tracking-edit-notes').value;
+        
+        // 날짜 처리
+        let timestamp;
+        if (dateValue) {
+            const selectedDate = new Date(dateValue);
+            selectedDate.setHours(0, 0, 0, 0);
+            timestamp = window.firebaseTimestamp(selectedDate);
+        } else {
+            timestamp = postData.metrics[metricIndex].timestamp || window.firebaseServerTimestamp();
+        }
+        
+        // 메트릭 배열 업데이트
+        const updatedMetrics = [...postData.metrics];
+        updatedMetrics[metricIndex] = {
+            timestamp: timestamp,
+            views,
+            likes,
+            comments,
+            shares,
+            follows,
+            notes
+        };
+        
+        // 날짜 순으로 정렬
+        updatedMetrics.sort((a, b) => {
+            const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 0;
+            const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 0;
+            return dateA - dateB;
+        });
+        
+        // 분석 데이터 계산
+        const analytics = this.calculateAnalytics(updatedMetrics);
+        
+        // Firebase 업데이트
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts.find(p => p.id === postRef.id || p.sourceTextId === textId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+        }
+        
+        // 수정 모달 닫기
+        const editModal = document.getElementById('tracking-edit-modal');
+        if (editModal) {
+            this.closeBottomSheet(editModal);
+        }
+        
+        // 메트릭 관리 모달이 열려있으면 새로고침
+        const manageModal = document.getElementById('metrics-manage-modal');
+        const isManageModalOpen = manageModal && (manageModal.classList.contains('bottom-sheet-open') || manageModal.style.display !== 'none');
+        
+        if (isManageModalOpen) {
+            // 메트릭 관리 모달 새로고침
+            const refreshPostId = postRef.id || postId;
+            setTimeout(() => {
+                this.manageMetrics(refreshPostId);
+            }, 300);
+        } else {
+            // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+        }
+        
+        this.editingMetricData = null;
+        
+        this.showMessage('✅ 트래킹 데이터가 수정되었습니다!', 'success');
+        console.log('트래킹 데이터 수정 완료');
+        
+    } catch (error) {
+        console.error('트래킹 데이터 수정 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 수정에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+// 트래킹 데이터 삭제
+DualTextWriter.prototype.deleteTrackingDataItem = async function() {
+    if (!this.editingMetricData || !this.currentUser || !this.isFirebaseReady) {
+        const editModal = document.getElementById('tracking-edit-modal');
+        if (editModal) {
+            editModal.style.display = 'none';
+        }
+        return;
+    }
+    
+    if (!confirm('정말로 이 트래킹 데이터를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const { postId, textId, metricIndex } = this.editingMetricData;
+        
+        // 포스트 데이터 가져오기
+        let postData;
+        let postRef;
+        
+        if (postId) {
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+            const postDoc = await window.firebaseGetDoc(postRef);
+            if (!postDoc.exists()) {
+                this.showMessage('❌ 포스트를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            postData = postDoc.data();
+        } else {
+            // textId로 포스트 찾기
+            const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+            const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId));
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            if (querySnapshot.empty) {
+                this.showMessage('❌ 포스트를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const postDoc = querySnapshot.docs[0];
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postDoc.id);
+            postData = postDoc.data();
+        }
+        
+        // 메트릭 배열에서 해당 항목 제거
+        const updatedMetrics = postData.metrics.filter((_, idx) => idx !== metricIndex);
+        
+        // 분석 데이터 계산
+        const analytics = updatedMetrics.length > 0 ? this.calculateAnalytics(updatedMetrics) : {};
+        
+        // Firebase 업데이트
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts.find(p => p.id === postRef.id || p.sourceTextId === textId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+        }
+        
+        // 모달 닫기
+        const editModal = document.getElementById('tracking-edit-modal');
+        if (editModal) {
+            editModal.style.display = 'none';
+        }
+        
+        this.editingMetricData = null;
+        
+        // 화면 새로고침
+        this.refreshUI({
+            savedTexts: true,
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
+        
+        this.showMessage('✅ 트래킹 데이터가 삭제되었습니다!', 'success');
+        console.log('트래킹 데이터 삭제 완료');
+        
+    } catch (error) {
+        console.error('트래킹 데이터 삭제 실패:', error);
+        this.showMessage('❌ 트래킹 데이터 삭제에 실패했습니다: ' + error.message, 'error');
+    }
 };
 
 // 분석 데이터 계산
@@ -3564,24 +6796,84 @@ DualTextWriter.prototype.updateTrackingSummary = function() {
         const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
         return sum + (latest ? latest.likes : 0);
     }, 0);
+    const totalComments = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.comments || 0 : 0);
+    }, 0);
+    const totalShares = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.shares || 0 : 0);
+    }, 0);
+    const totalFollows = this.trackingPosts.reduce((sum, post) => {
+        const latest = post.metrics.length > 0 ? post.metrics[post.metrics.length - 1] : null;
+        return sum + (latest ? latest.follows || 0 : 0);
+    }, 0);
     
     if (this.totalPostsElement) this.totalPostsElement.textContent = totalPosts;
     if (this.totalViewsElement) this.totalViewsElement.textContent = totalViews.toLocaleString();
     if (this.totalLikesElement) this.totalLikesElement.textContent = totalLikes.toLocaleString();
+    if (this.totalCommentsElement) this.totalCommentsElement.textContent = totalComments.toLocaleString();
+    if (this.totalSharesElement) this.totalSharesElement.textContent = totalShares.toLocaleString();
+    const totalFollowsElement = document.getElementById('total-follows');
+    if (totalFollowsElement) totalFollowsElement.textContent = totalFollows.toLocaleString();
 };
-
-// 트래킹 차트 초기화
+/**
+ * 트래킹 차트 초기화
+ * 
+ * Chart.js를 사용하여 트래킹 데이터를 시각화하는 차트를 초기화합니다.
+ * Canvas 요소가 없거나 Chart.js 라이브러리가 로드되지 않은 경우 에러 처리를 수행합니다.
+ * 
+ * **주요 기능:**
+ * - Canvas 요소 존재 확인 및 2D 컨텍스트 검증
+ * - Chart.js 라이브러리 로드 확인
+ * - 기존 차트 제거로 메모리 누수 방지
+ * - 반응형 차트 설정 (responsive: true, maintainAspectRatio: false)
+ * - 애니메이션 비활성화로 스크롤 문제 방지
+ * - 레이아웃 패딩 설정으로 축 레이블 보호
+ * 
+ * **에러 처리:**
+ * - Canvas 요소가 없을 때: console.warn 로그 출력 및 조기 반환
+ * - Chart.js 라이브러리 미로드: 사용자 메시지 표시 및 조기 반환
+ * - 2D 컨텍스트 실패: 사용자 메시지 표시 및 조기 반환
+ * - 초기화 실패: try-catch 블록으로 에러 캐치 및 사용자 메시지 표시
+ * 
+ * **성능 최적화:**
+ * - animation.duration: 0 설정으로 불필요한 애니메이션 제거
+ * - 기존 차트 destroy() 호출로 메모리 누수 방지
+ * 
+ * @returns {void}
+ * @throws {Error} Chart.js 초기화 실패 시 에러 발생
+ */
 DualTextWriter.prototype.initTrackingChart = function() {
-    if (!this.trackingChartCanvas) return;
-    
-    const ctx = this.trackingChartCanvas.getContext('2d');
-    
-    // 기존 차트가 있다면 제거
-    if (this.trackingChart) {
-        this.trackingChart.destroy();
+    // 에러 처리: Canvas 요소가 없을 때 Chart.js 초기화 실패 방지
+    if (!this.trackingChartCanvas) {
+        console.warn('[initTrackingChart] Canvas element not found');
+        return;
     }
     
-    this.trackingChart = new Chart(ctx, {
+    // Chart.js 라이브러리 로드 실패 시 폴백 처리
+    if (typeof Chart === 'undefined') {
+        console.error('[initTrackingChart] Chart.js library not loaded');
+        this.showMessage('차트 라이브러리를 불러올 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        const ctx = this.trackingChartCanvas.getContext('2d');
+        if (!ctx) {
+            console.error('[initTrackingChart] Failed to get 2D context');
+            this.showMessage('차트를 초기화할 수 없습니다. 브라우저를 새로고침해주세요.', 'error');
+            return;
+        }
+        
+        // 기존 차트가 있다면 제거 (메모리 누수 방지)
+        if (this.trackingChart) {
+            this.trackingChart.destroy();
+            this.trackingChart = null;
+        }
+        
+        // Chart.js 초기화: responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
+        this.trackingChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
@@ -3597,6 +6889,24 @@ DualTextWriter.prototype.initTrackingChart = function() {
                 borderColor: '#e74c3c',
                 backgroundColor: 'rgba(231, 76, 60, 0.1)',
                 tension: 0.4
+            }, {
+                label: '댓글',
+                data: [],
+                borderColor: '#9b59b6',
+                backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                tension: 0.4
+            }, {
+                label: '공유',
+                data: [],
+                borderColor: '#f39c12',
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4
+            }, {
+                label: '팔로우',
+                data: [],
+                borderColor: '#16a085',
+                backgroundColor: 'rgba(22, 160, 133, 0.1)',
+                tension: 0.4
             }]
         },
         options: {
@@ -3604,57 +6914,924 @@ DualTextWriter.prototype.initTrackingChart = function() {
             maintainAspectRatio: false,
             plugins: {
                 title: {
-                    display: true,
+                    display: false, // HTML 헤더 사용으로 차트 내부 제목 숨김
                     text: '포스트 성과 추이'
+                },
+                legend: {
+                    display: false // 범례는 탭으로 표시
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        maxTicksLimit: 8,
+                        precision: 0,
+                        stepSize: 1 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
+                    },
+                    max: 10 // 초기값, updateTrackingChart에서 동적으로 업데이트됨
+                },
+                y2: {
+                    beginAtZero: true,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        maxTicksLimit: 8,
+                        precision: 0,
+                        stepSize: 1
+                    },
+                    max: 10
+                }
+            },
+            animation: {
+                duration: 0 // 애니메이션 비활성화로 스크롤 문제 방지
+            },
+            layout: {
+                padding: {
+                    top: 20,
+                    bottom: 40,  // 하단 여백 증가 (축 레이블 보호)
+                    left: 15,
+                    right: 15
+                }
+            },
+            // 인터랙션 설정: 드래그/줌 허용
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            // 요소 클릭 가능하도록 설정
+            elements: {
+                point: {
+                    radius: 4,
+                    hoverRadius: 6
                 }
             }
         }
     });
     
+    // Chart.js 초기화 후 차트 업데이트
+    this.updateTrackingChart();
+    
+    } catch (error) {
+        // Chart.js 초기화 실패 시 사용자에게 에러 메시지 표시
+        console.error('[initTrackingChart] Chart initialization failed:', error);
+        this.showMessage('차트를 초기화하는 중 오류가 발생했습니다: ' + error.message, 'error');
+        this.trackingChart = null;
+    }
+};
+
+/**
+ * 스케일 모드 설정
+ * 
+ * 그래프의 스케일 모드를 변경합니다.
+ * 'combined' 모드: 모든 지표가 동일한 y축 스케일을 사용
+ * 'split' 모드: 조회수는 왼쪽 y축, 나머지 지표는 오른쪽 y2축 사용
+ * 
+ * @param {string} mode - 스케일 모드 ('combined' | 'split')
+ * @returns {void}
+ */
+DualTextWriter.prototype.setScaleMode = function(mode) {
+    // 그래프 스케일 모드 변경 시 즉시 반영 및 축 반응형 유지
+    this.scaleMode = mode; // 'combined' | 'split'
+    const combinedBtn = document.getElementById('chart-scale-combined');
+    const splitBtn = document.getElementById('chart-scale-split');
+    if (combinedBtn && splitBtn) {
+        if (mode === 'combined') {
+            combinedBtn.classList.add('active');
+            combinedBtn.style.background = 'white';
+            combinedBtn.style.color = '#667eea';
+            combinedBtn.setAttribute('aria-pressed', 'true');
+            splitBtn.classList.remove('active');
+            splitBtn.style.background = 'transparent';
+            splitBtn.style.color = '#666';
+            splitBtn.setAttribute('aria-pressed', 'false');
+        } else {
+            splitBtn.classList.add('active');
+            splitBtn.style.background = 'white';
+            splitBtn.style.color = '#667eea';
+            splitBtn.setAttribute('aria-pressed', 'true');
+            combinedBtn.classList.remove('active');
+            combinedBtn.style.background = 'transparent';
+            combinedBtn.style.color = '#666';
+            combinedBtn.setAttribute('aria-pressed', 'false');
+        }
+    }
+    this.updateTrackingChart();
+};
+/**
+ * 차트 모드 설정
+ * 
+ * 그래프의 모드를 변경합니다.
+ * 'total' 모드: 모든 포스트의 누적 총합 표시
+ * 'individual' 모드: 선택한 개별 포스트의 데이터만 표시
+ * 
+ * @param {string} mode - 차트 모드 ('total' | 'individual')
+ * @returns {void}
+ */
+DualTextWriter.prototype.setChartMode = function(mode) {
+    // 그래프 모드 변경 시 즉시 반영
+    this.chartMode = mode;
+    
+    // 버튼 스타일 업데이트
+    const totalBtn = document.getElementById('chart-mode-total');
+    const individualBtn = document.getElementById('chart-mode-individual');
+    const postSelectorContainer = document.getElementById('post-selector-container');
+    
+    if (mode === 'total') {
+        totalBtn.classList.add('active');
+        totalBtn.style.background = 'white';
+        totalBtn.style.color = '#667eea';
+        totalBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        totalBtn.setAttribute('aria-pressed', 'true');
+        
+        individualBtn.classList.remove('active');
+        individualBtn.style.background = 'transparent';
+        individualBtn.style.color = '#666';
+        individualBtn.style.boxShadow = 'none';
+        individualBtn.setAttribute('aria-pressed', 'false');
+        
+        postSelectorContainer.style.display = 'none';
+        this.selectedChartPostId = null;
+        // 전체 총합 모드로 전환 시 검색 입력창 초기화
+        const searchInput = document.getElementById('chart-post-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        const dropdown = document.getElementById('post-selector-dropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+        document.removeEventListener('click', this.handlePostSelectorClickOutside);
+    } else {
+        individualBtn.classList.add('active');
+        individualBtn.style.background = 'white';
+        individualBtn.style.color = '#667eea';
+        individualBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        individualBtn.setAttribute('aria-pressed', 'true');
+        
+        totalBtn.classList.remove('active');
+        totalBtn.style.background = 'transparent';
+        totalBtn.style.color = '#666';
+        totalBtn.style.boxShadow = 'none';
+        totalBtn.setAttribute('aria-pressed', 'false');
+        
+        postSelectorContainer.style.display = 'block';
+        this.populatePostSelector();
+    }
+    
+    // 차트 업데이트
     this.updateTrackingChart();
 };
 
-// 트래킹 차트 업데이트
-DualTextWriter.prototype.updateTrackingChart = function() {
-    if (!this.trackingChart) return;
+/**
+ * 차트 범위 설정
+ * 
+ * 그래프에 표시할 데이터 범위를 변경합니다.
+ * '7d': 최근 7일 데이터만 표시
+ * '30d': 최근 30일 데이터만 표시
+ * 'all': 전체 데이터 표시
+ * 
+ * @param {string} range - 차트 범위 ('7d' | '30d' | 'all')
+ * @returns {void}
+ */
+DualTextWriter.prototype.setChartRange = function(range) {
+    // 그래프 범위 변경 시 즉시 반영 및 축 반응형 유지
+    this.chartRange = range; // '7d' | '30d' | 'all'
+    // 버튼 스타일 업데이트
+    const ranges = ['7d', '30d', 'all'];
+    ranges.forEach(r => {
+        const btn = document.getElementById(`chart-range-${r}`);
+        if (!btn) return;
+        if (r === range) {
+            btn.classList.add('active');
+            btn.style.background = 'white';
+            btn.style.color = '#667eea';
+            btn.setAttribute('aria-pressed', 'true');
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = '#666';
+            btn.setAttribute('aria-pressed', 'false');
+        }
+    });
+    this.updateTrackingChart();
+};
+
+// 포스트 선택 드롭다운 채우기 (검색 가능한 커스텀 드롭다운)
+DualTextWriter.prototype.populatePostSelector = function() {
+    if (!this.trackingPosts || this.trackingPosts.length === 0) return;
     
-    // 최근 7일간의 데이터만 표시
-    const last7Days = [];
-    const viewsData = [];
-    const likesData = [];
+    // 전체 포스트 목록 저장 (검색 필터링용)
+    this.allTrackingPostsForSelector = [...this.trackingPosts].sort((a, b) => {
+        // 최근 포스트 우선 정렬
+        const dateA = a.postedAt instanceof Date ? a.postedAt : (a.postedAt?.toDate ? a.postedAt.toDate() : new Date(0));
+        const dateB = b.postedAt instanceof Date ? b.postedAt : (b.postedAt?.toDate ? b.postedAt.toDate() : new Date(0));
+        return dateB.getTime() - dateA.getTime();
+    });
     
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        last7Days.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
-        
-        // 해당 날짜의 모든 포스트 데이터 합계
-        let dayViews = 0;
-        let dayLikes = 0;
-        
-        this.trackingPosts.forEach(post => {
-            post.metrics.forEach(metric => {
-                const metricDate = metric.timestamp.toDate();
-                if (metricDate.toDateString() === date.toDateString()) {
-                    dayViews += metric.views || 0;
-                    dayLikes += metric.likes || 0;
-                }
-            });
+    // 드롭다운 렌더링
+    this.renderPostSelectorDropdown('');
+    
+    // 선택된 포스트가 있으면 검색 입력창에 표시
+    if (this.selectedChartPostId) {
+        const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+        if (selectedPost) {
+            const searchInput = document.getElementById('chart-post-search');
+            if (searchInput) {
+                const contentPreview = selectedPost.content.length > 50 ? selectedPost.content.substring(0, 50) + '...' : selectedPost.content;
+                searchInput.value = contentPreview;
+            }
+        }
+    }
+};
+// 포스트 선택 드롭다운 렌더링
+DualTextWriter.prototype.renderPostSelectorDropdown = function(searchTerm = '') {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (!dropdown) return;
+    
+    // 검색어로 필터링
+    let filteredPosts = this.allTrackingPostsForSelector;
+    if (searchTerm && searchTerm.trim()) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filteredPosts = this.allTrackingPostsForSelector.filter(post => {
+            const content = post.content.toLowerCase();
+            return content.includes(lowerSearchTerm);
         });
-        
-        viewsData.push(dayViews);
-        likesData.push(dayLikes);
     }
     
-    this.trackingChart.data.labels = last7Days;
-    this.trackingChart.data.datasets[0].data = viewsData;
-    this.trackingChart.data.datasets[1].data = likesData;
-    this.trackingChart.update();
+    // 최근 포스트 우선 정렬 (이미 정렬되어 있지만 확실히)
+    filteredPosts = [...filteredPosts].sort((a, b) => {
+        const dateA = a.postedAt instanceof Date ? a.postedAt : (a.postedAt?.toDate ? a.postedAt.toDate() : new Date(0));
+        const dateB = b.postedAt instanceof Date ? b.postedAt : (b.postedAt?.toDate ? b.postedAt.toDate() : new Date(0));
+        return dateB.getTime() - dateA.getTime();
+    });
+    
+    if (filteredPosts.length === 0) {
+        dropdown.innerHTML = `
+            <div class="post-selector-empty" style="padding: 20px; text-align: center; color: #666;">
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">🔍</div>
+                <div>검색 결과가 없습니다.</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // 포스트 목록 HTML 생성
+    dropdown.innerHTML = filteredPosts.map(post => {
+        const contentPreview = post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content;
+        const isSelected = this.selectedChartPostId === post.id;
+        const metricsCount = post.metrics?.length || 0;
+        const lastUpdate = post.metrics && post.metrics.length > 0 
+            ? post.metrics[post.metrics.length - 1] 
+            : null;
+        
+        return `
+            <div 
+                class="post-selector-item ${isSelected ? 'selected' : ''}" 
+                data-post-id="${post.id}"
+                onclick="dualTextWriter.selectPostFromDropdown('${post.id}')"
+                style="padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s; ${isSelected ? 'background-color: #e3f2fd;' : ''}"
+                onmouseover="this.style.backgroundColor='#f5f5f5'"
+                onmouseout="this.style.backgroundColor=${isSelected ? "'#e3f2fd'" : "'transparent'"}">
+                <div style="font-weight: ${isSelected ? '600' : '500'}; color: #333; margin-bottom: 4px; line-height: 1.4;">
+                    ${this.escapeHtml(contentPreview)}
+                </div>
+                <div style="font-size: 0.8rem; color: #666; display: flex; gap: 12px; align-items: center;">
+                    <span>📊 ${metricsCount}회 입력</span>
+                    ${lastUpdate ? `<span>최근: ${lastUpdate.views || 0} 조회</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// 포스트 선택 드롭다운 표시
+DualTextWriter.prototype.showPostSelectorDropdown = function() {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    const searchInput = document.getElementById('chart-post-search');
+    
+    if (!dropdown || !searchInput) return;
+    
+    // 드롭다운 표시
+    dropdown.style.display = 'block';
+    
+    // 검색어가 없으면 전체 목록 표시, 있으면 필터링
+    const searchTerm = searchInput.value || '';
+    this.renderPostSelectorDropdown(searchTerm);
+    
+    // 외부 클릭 시 드롭다운 닫기
+    setTimeout(() => {
+        document.addEventListener('click', this.handlePostSelectorClickOutside);
+    }, 100);
+};
+
+// 외부 클릭 처리
+DualTextWriter.prototype.handlePostSelectorClickOutside = function(event) {
+    const container = document.querySelector('.post-selector-container');
+    const dropdown = document.getElementById('post-selector-dropdown');
+    
+    if (!container || !dropdown) return;
+    
+    if (!container.contains(event.target) && dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+        document.removeEventListener('click', dualTextWriter.handlePostSelectorClickOutside);
+    }
+};
+
+// 포스트 선택 필터링
+DualTextWriter.prototype.filterPostSelector = function(searchTerm) {
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (!dropdown) return;
+    
+    // 드롭다운이 닫혀있으면 열기
+    if (dropdown.style.display === 'none') {
+        dropdown.style.display = 'block';
+    }
+    
+    // 검색어로 필터링하여 렌더링
+    this.renderPostSelectorDropdown(searchTerm);
+};
+
+// 드롭다운에서 포스트 선택
+DualTextWriter.prototype.selectPostFromDropdown = function(postId) {
+    const selectedPost = this.trackingPosts.find(p => p.id === postId);
+    if (!selectedPost) return;
+    
+    this.selectedChartPostId = postId;
+    
+    // 검색 입력창에 선택된 포스트 제목 표시
+    const searchInput = document.getElementById('chart-post-search');
+    if (searchInput) {
+        const contentPreview = selectedPost.content.length > 50 ? selectedPost.content.substring(0, 50) + '...' : selectedPost.content;
+        searchInput.value = contentPreview;
+    }
+    
+    // 드롭다운 닫기
+    const dropdown = document.getElementById('post-selector-dropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+    
+    // 외부 클릭 이벤트 리스너 제거
+    document.removeEventListener('click', this.handlePostSelectorClickOutside);
+    
+    // 차트 업데이트
+    this.updateTrackingChart();
+};
+
+// 트래킹 목록에서 클릭 시 차트에 표시
+DualTextWriter.prototype.showPostInChart = function(postId) {
+    // 모드 전환 및 포스트 선택
+    this.setChartMode('individual');
+    this.selectedChartPostId = postId;
+    // 검색 입력창에 제목 표시
+    const selectedPost = this.trackingPosts.find(p => p.id === postId);
+    const searchInput = document.getElementById('chart-post-search');
+    if (selectedPost && searchInput) {
+        const preview = selectedPost.content.length > 50 ? selectedPost.content.substring(0,50) + '...' : selectedPost.content;
+        searchInput.value = preview;
+    }
+    // 드롭다운 목록 갱신
+    this.populatePostSelector();
+    // 차트 업데이트
+    this.updateTrackingChart();
+    // 차트 영역 포커스/스크롤
+    if (this.trackingChartCanvas && this.trackingChartCanvas.scrollIntoView) {
+        this.trackingChartCanvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+};
+
+// 포스트 선택 변경 (구버전 호환, 더 이상 사용 안 함)
+DualTextWriter.prototype.updateChartPostSelection = function() {
+    // 새로운 검색 가능한 드롭다운 사용 중이므로 이 함수는 더 이상 사용되지 않음
+    // 호환성을 위해 유지
+};
+
+// 그래프 헤더 업데이트
+DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
+    const titleEl = document.getElementById('chart-post-title');
+    const updateEl = document.getElementById('chart-last-update');
+    
+    if (titleEl) {
+        const maxLength = 50;
+        const displayTitle = postTitle && postTitle.length > maxLength 
+            ? postTitle.substring(0, maxLength) + '...' 
+            : postTitle || '전체 포스트 누적 총합 추이';
+        titleEl.textContent = displayTitle;
+    }
+    
+    if (updateEl) {
+        if (lastUpdate) {
+            const formattedDate = lastUpdate.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            updateEl.textContent = `최근 업데이트: ${formattedDate}`;
+        } else {
+            updateEl.textContent = '최근 업데이트: -';
+        }
+    }
+};
+/**
+ * 트래킹 차트 업데이트
+ * 
+ * 현재 설정된 모드와 범위에 따라 차트 데이터를 업데이트합니다.
+ * 데이터 형식 검증 및 에러 처리를 포함합니다.
+ * 
+ * **데이터 처리:**
+ * - 전체 총합 모드: 모든 포스트의 메트릭을 합산하여 표시
+ * - 개별 포스트 모드: 선택한 포스트의 메트릭만 표시
+ * - 날짜 필터링: 설정된 범위(7d/30d/all)에 따라 데이터 필터링
+ * 
+ * **스케일 계산:**
+ * - combined 모드: 모든 지표가 동일한 y축 스케일 사용
+ * - split 모드: 조회수는 y축, 나머지 지표는 y2축 사용
+ * - 동적 스케일 계산: 데이터 최대값의 1.2배 또는 1.8배로 설정
+ * 
+ * **에러 처리:**
+ * - 차트 미초기화: console.warn 로그 출력 및 조기 반환
+ * - 데이터 형식 오류: try-catch 블록으로 에러 캐치 및 로그 출력
+ * - 날짜 유효성 검증: 유효하지 않은 날짜 필터링
+ * - 숫자 형식 검증: NaN 및 Infinity 방지
+ * 
+ * **성능 최적화:**
+ * - animation.duration: 0 설정으로 애니메이션 없이 즉시 업데이트
+ * - update('none') 모드 사용으로 스크롤 문제 방지
+ * 
+ * @returns {void}
+ * @throws {Error} 차트 업데이트 실패 시 에러 발생
+ */
+DualTextWriter.prototype.updateTrackingChart = function() {
+    // 에러 처리: 차트가 아직 초기화되지 않았을 때 처리
+    if (!this.trackingChart) {
+        console.warn('[updateTrackingChart] Chart not initialized yet');
+        return;
+    }
+    
+    try {
+    
+    // 선택된 범위에 따른 날짜 배열 생성
+    const dateRange = [];
+    const viewsData = [];
+    const likesData = [];
+    const commentsData = [];
+    const sharesData = [];
+    const followsData = [];
+    
+    // 범위 계산 함수
+    const makeRange = (startDate, endDate, maxDays = 365) => {
+        const days = [];
+        const start = new Date(startDate.getTime());
+        const end = new Date(endDate.getTime());
+        start.setHours(0,0,0,0);
+        end.setHours(0,0,0,0);
+        let current = start;
+        let cnt = 0;
+        while (current.getTime() <= end.getTime() && cnt < maxDays) {
+            days.push(new Date(current.getTime()));
+            current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
+            cnt++;
+        }
+        return days;
+    };
+    
+    // 범위 결정
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (this.chartRange === '7d') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+            dateRange.push(d);
+        }
+    } else if (this.chartRange === '30d') {
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+            dateRange.push(d);
+        }
+    } else {
+        // 'all' 범위
+        if (this.chartMode === 'individual' && this.selectedChartPostId) {
+            const post = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+            if (post && post.metrics && post.metrics.length > 0) {
+                try {
+                    // 데이터 형식 검증: timestamp가 유효한지 확인
+                    const firstMetric = post.metrics[0];
+                    const lastMetric = post.metrics[post.metrics.length - 1];
+                    if (!firstMetric || !firstMetric.timestamp || !lastMetric || !lastMetric.timestamp) {
+                        throw new Error('Invalid metric timestamp');
+                    }
+                    
+                    const first = firstMetric.timestamp?.toDate ? firstMetric.timestamp.toDate() : new Date(firstMetric.timestamp);
+                    const last = lastMetric.timestamp?.toDate ? lastMetric.timestamp.toDate() : new Date(lastMetric.timestamp);
+                    
+                    // 날짜 유효성 검증
+                    if (isNaN(first.getTime()) || isNaN(last.getTime())) {
+                        throw new Error('Invalid date in metric');
+                    }
+                    
+                    dateRange.push(...makeRange(first, last));
+                } catch (err) {
+                    console.warn('[updateTrackingChart] Error processing date range for individual post:', err);
+                    // 폴백: 기본 7일 범위 사용
+                    for (let i = 6; i >= 0; i--) {
+                        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                        dateRange.push(d);
+                    }
+                }
+            } else {
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                    dateRange.push(d);
+                }
+            }
+        } else {
+            let minDate = null; let maxDate = null;
+            this.trackingPosts.forEach(post => {
+                (post.metrics || []).forEach(m => {
+                    // 데이터 형식 검증: timestamp가 유효한지 확인
+                    if (!m || !m.timestamp) return;
+                    
+                    try {
+                        const dt = m.timestamp?.toDate ? m.timestamp.toDate() : new Date(m.timestamp);
+                        // 날짜 유효성 검증
+                        if (isNaN(dt.getTime())) {
+                            console.warn('[updateTrackingChart] Invalid date in metric:', m);
+                            return;
+                        }
+                        dt.setHours(0,0,0,0);
+                        if (!minDate || dt < minDate) minDate = new Date(dt);
+                        if (!maxDate || dt > maxDate) maxDate = new Date(dt);
+                    } catch (err) {
+                        console.warn('[updateTrackingChart] Error processing metric for date range:', err, m);
+                    }
+                });
+            });
+            if (minDate && maxDate) {
+                dateRange.push(...makeRange(minDate, maxDate));
+            } else {
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                    dateRange.push(d);
+                }
+            }
+        }
+    }
+    
+    if (this.chartMode === 'total') {
+        // 전체 총합 모드: 각 날짜까지의 모든 포스트 최신 메트릭 누적 합계
+        dateRange.forEach((targetDate) => {
+            let dayTotalViews = 0;
+            let dayTotalLikes = 0;
+            let dayTotalComments = 0;
+            let dayTotalShares = 0;
+            let dayTotalFollows = 0;
+            
+            // 각 포스트에 대해 해당 날짜까지의 최신 메트릭 찾기
+            this.trackingPosts.forEach(post => {
+                if (!post.metrics || post.metrics.length === 0) return;
+                
+                // 해당 날짜 이전 또는 당일의 가장 최근 메트릭 찾기
+                let latestMetricBeforeDate = null;
+                for (let i = post.metrics.length - 1; i >= 0; i--) {
+                    const metric = post.metrics[i];
+                    const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                    metricDate.setHours(0, 0, 0, 0);
+                    
+                    if (metricDate.getTime() <= targetDate.getTime()) {
+                        latestMetricBeforeDate = metric;
+                        break;
+                    }
+                }
+                
+                // 최신 메트릭이 있으면 합산 (없으면 해당 포스트는 0으로 처리)
+                if (latestMetricBeforeDate) {
+                    // 숫자 형식 검증: NaN이나 Infinity 방지
+                    dayTotalViews += Number(latestMetricBeforeDate.views) || 0;
+                    dayTotalLikes += Number(latestMetricBeforeDate.likes) || 0;
+                    dayTotalComments += Number(latestMetricBeforeDate.comments) || 0;
+                    dayTotalShares += Number(latestMetricBeforeDate.shares) || 0;
+                    dayTotalFollows += Number(latestMetricBeforeDate.follows) || 0;
+                }
+            });
+            
+            viewsData.push(dayTotalViews);
+            likesData.push(dayTotalLikes);
+            commentsData.push(dayTotalComments);
+            sharesData.push(dayTotalShares);
+            followsData.push(dayTotalFollows);
+        });
+        
+        // 차트 제목 업데이트
+        this.trackingChart.options.plugins.title.text = '전체 포스트 누적 총합 추이';
+        // 헤더 업데이트
+        this.updateChartHeader('전체 포스트 누적 총합 추이', null);
+        
+    } else {
+        // 개별 포스트 모드: 선택된 포스트의 날짜별 데이터
+        if (!this.selectedChartPostId) {
+            // 포스트가 선택되지 않았으면 빈 데이터
+            dateRange.forEach(() => {
+                viewsData.push(0);
+                likesData.push(0);
+                commentsData.push(0);
+                sharesData.push(0);
+                followsData.push(0);
+            });
+                this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (포스트를 선택하세요)';
+                this.updateChartHeader('포스트 성과 추이 (포스트를 선택하세요)', null);
+        } else {
+            const selectedPost = this.trackingPosts.find(p => p.id === this.selectedChartPostId);
+            
+            if (selectedPost && selectedPost.metrics) {
+                // 범위에 데이터가 없으면 자동으로 전체 범위로 전환
+                if (dateRange.length > 0) {
+                    const firstDate = dateRange[0].getTime();
+                    const lastDate = dateRange[dateRange.length - 1].getTime();
+                    const hasAnyInRange = selectedPost.metrics.some(metric => {
+                        const md = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                        md.setHours(0,0,0,0);
+                        const t = md.getTime();
+                        return t >= firstDate && t <= lastDate;
+                    });
+                    if (!hasAnyInRange && this.chartRange !== 'all') {
+                        this.setChartRange('all');
+                        return;
+                    }
+                }
+
+                dateRange.forEach((targetDate) => {
+                    // 해당 날짜에 입력된 메트릭 찾기
+                    let dayViews = 0;
+                    let dayLikes = 0;
+                    let dayComments = 0;
+                    let dayShares = 0;
+                    let dayFollows = 0;
+                    
+                    selectedPost.metrics.forEach(metric => {
+                        // 데이터 형식 검증: timestamp가 유효한지 확인
+                        if (!metric || !metric.timestamp) return;
+                        
+                        try {
+                            const metricDate = metric.timestamp?.toDate ? metric.timestamp.toDate() : new Date(metric.timestamp);
+                            // 날짜 유효성 검증
+                            if (isNaN(metricDate.getTime())) {
+                                console.warn('[updateTrackingChart] Invalid date in metric:', metric);
+                                return;
+                            }
+                            metricDate.setHours(0, 0, 0, 0);
+                            
+                            if (metricDate.getTime() === targetDate.getTime()) {
+                                // 숫자 형식 검증: NaN이나 Infinity 방지
+                                dayViews += Number(metric.views) || 0;
+                                dayLikes += Number(metric.likes) || 0;
+                                dayComments += Number(metric.comments) || 0;
+                                dayShares += Number(metric.shares) || 0;
+                                dayFollows += Number(metric.follows) || 0;
+                            }
+                        } catch (err) {
+                            console.warn('[updateTrackingChart] Error processing metric:', err, metric);
+                        }
+                    });
+                    
+                    viewsData.push(dayViews);
+                    likesData.push(dayLikes);
+                    commentsData.push(dayComments);
+                    sharesData.push(dayShares);
+                    followsData.push(dayFollows);
+                });
+                
+                // 차트 제목 업데이트
+                const contentPreview = selectedPost.content.length > 30 
+                    ? selectedPost.content.substring(0, 30) + '...' 
+                    : selectedPost.content;
+                this.trackingChart.options.plugins.title.text = `포스트 성과 추이: ${contentPreview}`;
+                
+                // 헤더 업데이트: 포스트 제목과 최근 업데이트
+                const latestMetric = selectedPost.metrics && selectedPost.metrics.length > 0 
+                    ? selectedPost.metrics[selectedPost.metrics.length - 1] 
+                    : null;
+                let lastUpdate = null;
+                if (latestMetric && latestMetric.timestamp) {
+                    lastUpdate = latestMetric.timestamp?.toDate ? latestMetric.timestamp.toDate() : new Date(latestMetric.timestamp);
+                }
+                this.updateChartHeader(selectedPost.content, lastUpdate);
+            } else {
+                dateRange.forEach(() => {
+                    viewsData.push(0);
+                    likesData.push(0);
+                    commentsData.push(0);
+                    sharesData.push(0);
+                    followsData.push(0);
+                });
+                this.trackingChart.options.plugins.title.text = '포스트 성과 추이 (데이터 없음)';
+                this.updateChartHeader('포스트 성과 추이 (데이터 없음)', null);
+            }
+        }
+    }
+    
+    // 날짜 레이블 포맷팅
+    const dateLabels = dateRange.map(date => 
+        date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+    );
+    
+    this.trackingChart.data.labels = dateLabels;
+    // 데이터 바인딩
+    const datasets = this.trackingChart.data.datasets;
+    datasets[0].data = viewsData;
+    datasets[1].data = likesData;
+    datasets[2].data = commentsData;
+    datasets[3].data = sharesData;
+    if (datasets[4]) datasets[4].data = followsData;
+    
+    // 축 배치: combined는 모두 y, split은 조회수 y / 나머지 y2
+    if (this.scaleMode === 'split') {
+        datasets[0].yAxisID = 'y';
+        for (let i = 1; i < datasets.length; i++) {
+            datasets[i].yAxisID = 'y2';
+        }
+    } else {
+        for (let i = 0; i < datasets.length; i++) {
+            datasets[i].yAxisID = 'y';
+        }
+    }
+    
+    // y축 스케일 재계산 (데이터 범위에 맞게 최적화)
+    const maxValue = Math.max(
+        ...(viewsData.length ? viewsData : [0]),
+        ...(likesData.length ? likesData : [0]),
+        ...(commentsData.length ? commentsData : [0]),
+        ...(sharesData.length ? sharesData : [0]),
+        ...(followsData.length ? followsData : [0])
+    );
+    // 스케일 계산
+    if (this.scaleMode === 'split') {
+        // 왼쪽 y: 조회수 전용
+        const maxViews = Math.max(...(viewsData.length ? viewsData : [0]));
+        const yMax = maxViews > 0 ? Math.ceil(maxViews * 1.2) : 10;
+        const yStep = Math.max(1, Math.ceil((yMax || 10) / 8));
+        this.trackingChart.options.scales.y.max = yMax;
+        this.trackingChart.options.scales.y.ticks.stepSize = yStep;
+        
+        // 오른쪽 y2: 나머지 지표
+        const maxOthers = Math.max(
+            ...(likesData.length ? likesData : [0]),
+            ...(commentsData.length ? commentsData : [0]),
+            ...(sharesData.length ? sharesData : [0]),
+            ...(followsData.length ? followsData : [0])
+        );
+        const y2Max = maxOthers > 0 ? Math.ceil(maxOthers * 1.8) : 10;
+        const y2Step = Math.max(1, Math.ceil((y2Max || 10) / 6));
+        this.trackingChart.options.scales.y2.max = y2Max;
+        this.trackingChart.options.scales.y2.ticks.stepSize = y2Step;
+    } else {
+        if (maxValue > 0) {
+            const suggestedMax = Math.ceil(maxValue * 1.2);
+            const stepSize = Math.max(1, Math.ceil(suggestedMax / 8));
+            this.trackingChart.options.scales.y.max = suggestedMax;
+            this.trackingChart.options.scales.y.ticks.stepSize = stepSize;
+        } else {
+            this.trackingChart.options.scales.y.max = 10;
+            this.trackingChart.options.scales.y.ticks.stepSize = 1;
+        }
+        // y2는 비활성처럼 동일 값으로 최소화
+        this.trackingChart.options.scales.y2.max = this.trackingChart.options.scales.y.max;
+        this.trackingChart.options.scales.y2.ticks.stepSize = this.trackingChart.options.scales.y.ticks.stepSize;
+    }
+    
+    // 애니메이션 없이 업데이트 (스크롤 문제 방지)
+    this.trackingChart.update('none');
+    
+    } catch (error) {
+        // 차트 업데이트 실패 시 에러 처리
+        console.error('[updateTrackingChart] Chart update failed:', error);
+        // 사용자에게 에러 메시지 표시 (필요시)
+        // this.showMessage('차트 업데이트 중 오류가 발생했습니다. 페이지를 새로고침해주세요.', 'error');
+    }
+};
+
+/**
+ * 범례 탭 토글 (데이터셋 show/hide)
+ * 
+ * 차트의 특정 데이터셋을 표시하거나 숨깁니다.
+ * 버튼의 스타일을 업데이트하여 현재 상태를 시각적으로 표시합니다.
+ * 
+ * @param {HTMLElement} button - 토글 버튼 요소
+ * @param {number} datasetIndex - 데이터셋 인덱스 (0: 조회수, 1: 좋아요, 2: 댓글, 3: 공유, 4: 팔로우)
+ * @returns {void}
+ */
+DualTextWriter.prototype.toggleLegend = function(button, datasetIndex) {
+    if (!this.trackingChart) return;
+    
+    const dataset = this.trackingChart.data.datasets[datasetIndex];
+    if (!dataset) return;
+    
+    // 데이터셋 표시/숨김 토글 (즉시 반영)
+    const isVisible = dataset.hidden !== true;
+    dataset.hidden = isVisible;
+    
+    // 버튼 스타일 업데이트
+    if (isVisible) {
+        button.style.opacity = '0.4';
+        button.style.textDecoration = 'line-through';
+        button.setAttribute('aria-pressed', 'false');
+    } else {
+        button.style.opacity = '1';
+        button.style.textDecoration = 'none';
+        button.setAttribute('aria-pressed', 'true');
+    }
+    
+    // 차트 즉시 업데이트 및 축 반응형 유지
+    this.trackingChart.update('none');
+    
+    // 축 반응형 재계산
+    if (this.trackingChart && this.trackingChart.options && this.trackingChart.options.scales) {
+        this.updateTrackingChart(); // 전체 차트 업데이트로 축 재계산
+    }
+};
+/**
+ * 차트 컨트롤 키보드 접근성 이벤트 바인딩
+ * 
+ * 모든 차트 컨트롤 버튼에 키보드 이벤트 리스너를 추가합니다.
+ * Enter 또는 Space 키로 버튼을 활성화할 수 있도록 합니다.
+ * 
+ * **바인딩 대상:**
+ * - 차트 모드 버튼 (전체 총합 / 개별 포스트)
+ * - 차트 범위 버튼 (7일 / 30일 / 전체)
+ * - 차트 스케일 버튼 (공동 / 분리)
+ * - 범례 버튼 (조회수, 좋아요, 댓글, 공유, 팔로우)
+ * 
+ * **이벤트 처리:**
+ * - 이벤트 위임 사용으로 동적으로 추가된 범례 버튼도 처리 가능
+ * - `preventDefault()`로 기본 동작 방지
+ * 
+ * **접근성:**
+ * - WCAG 2.1 AA 기준 충족
+ * - 키보드만으로 모든 차트 기능 접근 가능
+ * 
+ * @returns {void}
+ */
+DualTextWriter.prototype.bindChartKeyboardEvents = function() {
+    // 차트 모드 버튼 키보드 이벤트
+    const modeButtons = ['chart-mode-total', 'chart-mode-individual'];
+    modeButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const mode = btnId === 'chart-mode-total' ? 'total' : 'individual';
+                    this.setChartMode(mode);
+                }
+            });
+        }
+    });
+    
+    // 차트 범위 버튼 키보드 이벤트
+    const rangeButtons = ['chart-range-7d', 'chart-range-30d', 'chart-range-all'];
+    rangeButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const range = btnId.replace('chart-range-', '');
+                    this.setChartRange(range);
+                }
+            });
+        }
+    });
+    
+    // 차트 스케일 버튼 키보드 이벤트
+    const scaleButtons = ['chart-scale-combined', 'chart-scale-split'];
+    scaleButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const mode = btnId === 'chart-scale-combined' ? 'combined' : 'split';
+                    this.setScaleMode(mode);
+                }
+            });
+        }
+    });
+    
+    // 범례 버튼 키보드 이벤트 (이벤트 위임 사용)
+    const legendContainer = document.querySelector('.chart-legend-tabs');
+    if (legendContainer) {
+        legendContainer.addEventListener('keydown', (e) => {
+            const legendBtn = e.target.closest('.legend-tab');
+            if (!legendBtn) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const datasetIndex = parseInt(legendBtn.getAttribute('data-dataset') || '0');
+                this.toggleLegend(legendBtn, datasetIndex);
+            }
+        });
+    }
 };
 
 // 저장된 글에서 트래킹 시작
@@ -3745,33 +7922,497 @@ DualTextWriter.prototype.checkExistingPostForText = async function(textId) {
     }
 };
 
+/**
+ * 레퍼런스 글의 사용 여부를 확인합니다.
+ * 
+ * Firebase `posts` 컬렉션에서 `sourceType === 'reference'`이고 
+ * `sourceTextId`가 일치하는 포스트 개수를 반환합니다.
+ * 
+ * @param {string} referenceTextId - 레퍼런스 텍스트의 ID (texts 컬렉션 문서 ID)
+ * @returns {Promise<number>} 사용 횟수 (0이면 사용 안됨, 1 이상이면 사용됨)
+ * 
+ * @example
+ * const usageCount = await dualTextWriter.checkReferenceUsage('abc123');
+ * if (usageCount > 0) {
+ *     console.log(`이 레퍼런스는 ${usageCount}회 사용되었습니다.`);
+ * }
+ */
+DualTextWriter.prototype.checkReferenceUsage = async function(referenceTextId) {
+    // 에러 처리: 파라미터 유효성 검사
+    if (!referenceTextId || typeof referenceTextId !== 'string') {
+        console.warn('checkReferenceUsage: 잘못된 referenceTextId:', referenceTextId);
+        return 0;
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('checkReferenceUsage: Firebase가 준비되지 않았습니다.');
+        return 0;
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('checkReferenceUsage: 사용자가 로그인하지 않았습니다.');
+        return 0;
+    }
+    
+    try {
+        // Firebase posts 컬렉션 참조
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        
+        // Firebase 쿼리: sourceType이 'reference'이고 sourceTextId가 일치하는 포스트 조회
+        // 참고: Firestore는 where 절을 여러 개 사용할 수 있음 (복합 인덱스 필요할 수 있음)
+        const q = window.firebaseQuery(
+            postsRef,
+            window.firebaseWhere('sourceType', '==', 'reference'),
+            window.firebaseWhere('sourceTextId', '==', referenceTextId)
+        );
+        
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        // 사용 횟수 계산 (쿼리 결과의 문서 개수)
+        const usageCount = querySnapshot.size;
+        
+        return usageCount;
+    } catch (error) {
+        // 에러 처리: Firebase 조회 실패 시 기본값(0) 반환
+        console.error('레퍼런스 사용 여부 확인 실패:', error);
+        return 0;
+    }
+};
+
+/**
+ * 여러 레퍼런스 글의 사용 여부를 한번에 확인합니다 (성능 최적화).
+ * 
+ * Firebase `posts` 컬렉션에서 `sourceType === 'reference'`인 포스트들을 조회한 후,
+ * JavaScript에서 `sourceTextId`별로 그룹핑하여 사용 횟수를 계산합니다.
+ * 
+ * **성능 최적화 전략:**
+ * - 모든 레퍼런스 포스트를 한 번의 쿼리로 조회
+ * - JavaScript에서 그룹핑하여 카운트 (Firebase `whereIn` 10개 제한 회피)
+ * 
+ * @param {Array<string>} referenceTextIds - 레퍼런스 텍스트 ID 배열 (texts 컬렉션 문서 ID들)
+ * @returns {Promise<Object>} 사용 횟수 객체: `{ textId1: count1, textId2: count2, ... }`
+ * 
+ * @example
+ * const usageMap = await dualTextWriter.checkMultipleReferenceUsage(['id1', 'id2', 'id3']);
+ * // 결과: { id1: 2, id2: 0, id3: 1 }
+ * 
+ * if (usageMap.id1 > 0) {
+ *     console.log(`레퍼런스 id1은 ${usageMap.id1}회 사용되었습니다.`);
+ * }
+ */
+DualTextWriter.prototype.checkMultipleReferenceUsage = async function(referenceTextIds) {
+    // 에러 처리: 빈 배열 입력 처리
+    if (!Array.isArray(referenceTextIds) || referenceTextIds.length === 0) {
+        return {};
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('checkMultipleReferenceUsage: Firebase가 준비되지 않았습니다.');
+        // 모든 ID에 대해 0 반환
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('checkMultipleReferenceUsage: 사용자가 로그인하지 않았습니다.');
+        // 모든 ID에 대해 0 반환
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
+    }
+    
+    try {
+        // Firebase posts 컬렉션 참조
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        
+        // 성능 최적화: sourceType이 'reference'인 모든 포스트를 한 번의 쿼리로 조회
+        // (whereIn 10개 제한을 회피하기 위해 JavaScript에서 필터링)
+        const q = window.firebaseQuery(
+            postsRef,
+            window.firebaseWhere('sourceType', '==', 'reference')
+        );
+        
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        // 사용 횟수 계산을 위한 Map 초기화 (모든 ID에 대해 0으로 초기화)
+        const usageMap = new Map();
+        referenceTextIds.forEach(id => {
+            // 유효한 ID만 처리
+            if (id && typeof id === 'string') {
+                usageMap.set(id, 0);
+            }
+        });
+        
+        // 쿼리 결과를 순회하며 sourceTextId별로 카운트
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const sourceTextId = data.sourceTextId;
+            
+            // 요청한 ID 목록에 포함된 경우에만 카운트
+            if (sourceTextId && usageMap.has(sourceTextId)) {
+                const currentCount = usageMap.get(sourceTextId);
+                usageMap.set(sourceTextId, currentCount + 1);
+            }
+        });
+        
+        // Map을 객체로 변환하여 반환
+        const result = {};
+        usageMap.forEach((count, id) => {
+            result[id] = count;
+        });
+        
+        return result;
+    } catch (error) {
+        // 에러 처리: Firebase 조회 실패 시 모든 ID에 대해 0 반환
+        console.error('여러 레퍼런스 사용 여부 확인 실패:', error);
+        return referenceTextIds.reduce((result, id) => {
+            result[id] = 0;
+            return result;
+        }, {});
+    }
+};
+/**
+ * 레퍼런스를 사용된 것으로 표시합니다 (간단한 클릭 동작).
+ * 
+ * 레퍼런스를 사용했다고 표시하기 위해 레퍼런스 사용 포스트를 생성합니다.
+ * 사용자가 "사용 안됨" 배지를 클릭했을 때 호출됩니다.
+ * 
+ * @param {string} referenceTextId - 레퍼런스 텍스트의 ID (texts 컬렉션 문서 ID)
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * await dualTextWriter.markReferenceAsUsed('abc123');
+ */
+DualTextWriter.prototype.markReferenceAsUsed = async function(referenceTextId) {
+    // 에러 처리: 파라미터 유효성 검사
+    if (!referenceTextId || typeof referenceTextId !== 'string') {
+        console.warn('markReferenceAsUsed: 잘못된 referenceTextId:', referenceTextId);
+        this.showMessage('❌ 레퍼런스 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('markReferenceAsUsed: Firebase가 준비되지 않았습니다.');
+        this.showMessage('❌ Firebase 연결이 준비되지 않았습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('markReferenceAsUsed: 사용자가 로그인하지 않았습니다.');
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    try {
+        // 레퍼런스 텍스트 조회
+        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', referenceTextId);
+        const textDoc = await window.firebaseGetDoc(textRef);
+        
+        if (!textDoc.exists()) {
+            console.error('레퍼런스 텍스트를 찾을 수 없습니다.');
+            this.showMessage('❌ 레퍼런스 텍스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const textData = textDoc.data();
+        
+        // 레퍼런스 타입 확인
+        if ((textData.type || 'edit') !== 'reference') {
+            console.warn('markReferenceAsUsed: 레퍼런스가 아닌 텍스트입니다.');
+            this.showMessage('❌ 레퍼런스 글만 사용 표시할 수 있습니다.', 'error');
+            return;
+        }
+        
+        // 이미 사용된 레퍼런스인지 확인
+        const existingUsageCount = await this.checkReferenceUsage(referenceTextId);
+        if (existingUsageCount > 0) {
+            console.log('이미 사용된 레퍼런스입니다. 사용 횟수:', existingUsageCount);
+            // 이미 사용된 경우에도 메시지 표시하지 않고 조용히 처리
+            // UI만 업데이트
+            await this.refreshSavedTextsUI();
+            return;
+        }
+        
+        // 레퍼런스 사용 포스트 생성
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const referencePostData = {
+            content: textData.content, // 레퍼런스 내용
+            type: 'reference',
+            postedAt: window.firebaseServerTimestamp(),
+            trackingEnabled: false, // 레퍼런스 포스트는 트래킹 비활성화
+            metrics: [],
+            analytics: {},
+            sourceTextId: referenceTextId, // 레퍼런스 텍스트 참조
+            sourceType: 'reference', // 레퍼런스 타입으로 설정
+            createdAt: window.firebaseServerTimestamp(),
+            updatedAt: window.firebaseServerTimestamp()
+        };
+        
+        await window.firebaseAddDoc(postsRef, referencePostData);
+        console.log('✅ 레퍼런스 사용 표시 완료 (레퍼런스 ID:', referenceTextId, ')');
+        
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 사용됨으로 표시되었습니다.', 'success');
+        
+        // "사용됨" 탭으로 자동 이동
+        this.setSavedFilter('reference-used');
+        
+        // UI 즉시 업데이트 (새로고침 없이)
+        await this.refreshSavedTextsUI();
+        
+    } catch (error) {
+        // 에러 처리: Firebase 조회/생성 실패 시 에러 메시지 표시
+        console.error('레퍼런스 사용 표시 실패:', error);
+        this.showMessage('❌ 레퍼런스 사용 표시에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+/**
+ * 레퍼런스를 사용 안된 것으로 되돌립니다 (토글 기능).
+ * 
+ * 레퍼런스 사용 포스트를 삭제하여 사용 안됨 상태로 복원합니다.
+ * 사용자가 "사용됨" 배지를 클릭했을 때 호출됩니다.
+ * 
+ * @param {string} referenceTextId - 레퍼런스 텍스트의 ID (texts 컬렉션 문서 ID)
+ * @returns {Promise<void>}
+ * 
+ * @example
+ * await dualTextWriter.unmarkReferenceAsUsed('abc123');
+ */
+DualTextWriter.prototype.unmarkReferenceAsUsed = async function(referenceTextId) {
+    // 에러 처리: 파라미터 유효성 검사
+    if (!referenceTextId || typeof referenceTextId !== 'string') {
+        console.warn('unmarkReferenceAsUsed: 잘못된 referenceTextId:', referenceTextId);
+        this.showMessage('❌ 레퍼런스 ID를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: Firebase 준비 상태 확인
+    if (!this.isFirebaseReady) {
+        console.warn('unmarkReferenceAsUsed: Firebase가 준비되지 않았습니다.');
+        this.showMessage('❌ Firebase 연결이 준비되지 않았습니다.', 'error');
+        return;
+    }
+    
+    // 에러 처리: 사용자 로그인 여부 확인
+    if (!this.currentUser) {
+        console.warn('unmarkReferenceAsUsed: 사용자가 로그인하지 않았습니다.');
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    try {
+        // 레퍼런스 텍스트 조회
+        const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', referenceTextId);
+        const textDoc = await window.firebaseGetDoc(textRef);
+        
+        if (!textDoc.exists()) {
+            console.error('레퍼런스 텍스트를 찾을 수 없습니다.');
+            this.showMessage('❌ 레퍼런스 텍스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        const textData = textDoc.data();
+        
+        // 레퍼런스 타입 확인
+        if ((textData.type || 'edit') !== 'reference') {
+            console.warn('unmarkReferenceAsUsed: 레퍼런스가 아닌 텍스트입니다.');
+            this.showMessage('❌ 레퍼런스 글만 사용 안됨으로 되돌릴 수 있습니다.', 'error');
+            return;
+        }
+        
+        // 현재 사용 여부 확인
+        const existingUsageCount = await this.checkReferenceUsage(referenceTextId);
+        if (existingUsageCount === 0) {
+            console.log('이미 사용 안된 레퍼런스입니다.');
+            // 이미 사용 안된 경우에도 메시지 표시하지 않고 조용히 처리
+            // UI만 업데이트
+            await this.refreshSavedTextsUI();
+            return;
+        }
+        
+        // 레퍼런스 사용 포스트 조회 및 삭제
+        const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+        const q = window.firebaseQuery(
+            postsRef,
+            window.firebaseWhere('sourceTextId', '==', referenceTextId),
+            window.firebaseWhere('sourceType', '==', 'reference')
+        );
+        const querySnapshot = await window.firebaseGetDocs(q);
+        
+        if (querySnapshot.empty) {
+            console.warn('unmarkReferenceAsUsed: 레퍼런스 사용 포스트를 찾을 수 없습니다.');
+            // 사용 포스트가 없어도 UI만 업데이트
+            await this.refreshSavedTextsUI();
+            return;
+        }
+        
+        // 모든 레퍼런스 사용 포스트 삭제 (배치 삭제)
+        const deletePromises = querySnapshot.docs.map(doc => {
+            return window.firebaseDeleteDoc(window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', doc.id));
+        });
+        
+        await Promise.all(deletePromises);
+        console.log('✅ 레퍼런스 사용 안됨 복원 완료 (레퍼런스 ID:', referenceTextId, ', 삭제된 포스트:', querySnapshot.docs.length, '개)');
+        
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 사용 안됨으로 되돌려졌습니다.', 'success');
+        
+        // "레퍼런스" 탭으로 자동 이동 (사용 안됨 레퍼런스를 보기 위해)
+        this.setSavedFilter('reference');
+        
+        // UI 즉시 업데이트 (새로고침 없이)
+        await this.refreshSavedTextsUI();
+        
+    } catch (error) {
+        // 에러 처리: Firebase 조회/삭제 실패 시 에러 메시지 표시
+        console.error('레퍼런스 사용 안됨 복원 실패:', error);
+        this.showMessage('❌ 레퍼런스 사용 안됨 복원에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+/**
+ * 저장된 글 목록 UI를 새로고침합니다.
+ * 레퍼런스 사용 여부를 다시 확인하여 배지 업데이트합니다.
+ * 
+ * @returns {Promise<void>}
+ */
+DualTextWriter.prototype.refreshSavedTextsUI = async function() {
+    try {
+        // 저장된 글 목록 다시 렌더링
+        await this.renderSavedTexts();
+    } catch (error) {
+        console.error('저장된 글 UI 새로고침 실패:', error);
+    }
+};
+
+// Orphan 포스트 정리 (원본이 삭제된 포스트 일괄 삭제)
+DualTextWriter.prototype.cleanupOrphanPosts = async function() {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    // Orphan 포스트 필터링
+    const orphanPosts = this.trackingPosts.filter(post => post.isOrphan);
+    
+    if (orphanPosts.length === 0) {
+        this.showMessage('✅ 정리할 orphan 포스트가 없습니다.', 'success');
+        return;
+    }
+    
+    // 삭제 전 확인
+    const metricsCount = orphanPosts.reduce((sum, post) => sum + (post.metrics?.length || 0), 0);
+    const confirmMessage = `원본이 삭제된 포스트 ${orphanPosts.length}개를 삭제하시겠습니까?\n\n` +
+        `⚠️ 삭제될 데이터:\n` +
+        `   - 트래킹 포스트: ${orphanPosts.length}개\n` +
+        `   - 트래킹 기록: ${metricsCount}개\n\n` +
+        `이 작업은 되돌릴 수 없습니다.`;
+    
+    if (!confirm(confirmMessage)) {
+        console.log('사용자가 orphan 포스트 정리 취소');
+        return;
+    }
+    
+    try {
+        // 진행 중 메시지
+        this.showMessage('🔄 Orphan 포스트를 정리하는 중...', 'info');
+        
+        // 모든 orphan 포스트 삭제 (병렬 처리)
+        const deletePromises = orphanPosts.map(post => {
+            const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+            return window.firebaseDeleteDoc(postRef);
+        });
+        
+        await Promise.all(deletePromises);
+        
+        // 로컬 배열에서도 제거
+        this.trackingPosts = this.trackingPosts.filter(post => !post.isOrphan);
+        
+        // UI 업데이트
+        this.refreshUI({
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true
+        });
+        
+        // 성공 메시지
+        this.showMessage(`✅ Orphan 포스트 ${orphanPosts.length}개가 정리되었습니다!`, 'success');
+        console.log('Orphan 포스트 정리 완료', { deletedCount: orphanPosts.length });
+        
+    } catch (error) {
+        console.error('Orphan 포스트 정리 실패:', error);
+        this.showMessage('❌ Orphan 포스트 정리에 실패했습니다: ' + error.message, 'error');
+    }
+};
 // 일괄 마이그레이션 확인 대화상자 표시
-DualTextWriter.prototype.showBatchMigrationConfirm = function() {
+DualTextWriter.prototype.showBatchMigrationConfirm = async function() {
     if (!this.currentUser || !this.isFirebaseReady) {
         this.showMessage('로그인이 필요합니다.', 'error');
         return;
     }
     
-    const textCount = this.savedTexts.length;
-    if (textCount === 0) {
-        this.showMessage('📭 마이그레이션할 저장된 글이 없습니다.', 'info');
+    // 미트래킹 글만 찾기
+    const untrackedTexts = [];
+    
+    for (const textItem of this.savedTexts) {
+        // 로컬에서 먼저 확인
+        let hasTracking = false;
+        if (this.trackingPosts) {
+            hasTracking = this.trackingPosts.some(p => p.sourceTextId === textItem.id);
+        }
+        
+        // 로컬에 없으면 Firebase에서 확인
+        if (!hasTracking) {
+            try {
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textItem.id));
+                const querySnapshot = await window.firebaseGetDocs(q);
+                hasTracking = !querySnapshot.empty;
+            } catch (error) {
+                console.error('트래킹 확인 실패:', error);
+            }
+        }
+        
+        if (!hasTracking) {
+            untrackedTexts.push(textItem);
+        }
+    }
+    
+    if (untrackedTexts.length === 0) {
+        this.showMessage('✅ 모든 저장된 글이 이미 트래킹 중입니다!', 'success');
+        // 버튼 상태 업데이트
+        this.updateBatchMigrationButton();
         return;
     }
     
-    const confirmMessage = `모든 저장된 글(${textCount}개)을 트래킹 포스트로 변환하시겠습니까?\n\n` +
+    const confirmMessage = `트래킹이 시작되지 않은 저장된 글 ${untrackedTexts.length}개를 트래킹 포스트로 변환하시겠습니까?\n\n` +
         `⚠️ 주의사항:\n` +
-        `- 이미 포스트가 있는 텍스트도 새 포스트가 생성됩니다\n` +
+        `- 이미 트래킹 중인 글은 제외됩니다\n` +
         `- 중복 생성 방지를 위해 각 텍스트의 기존 포스트를 확인합니다\n` +
         `- 마이그레이션 중에는 페이지를 닫지 마세요`;
     
     if (confirm(confirmMessage)) {
-        this.executeBatchMigration();
+        // 미트래킹 글만 마이그레이션 실행
+        this.executeBatchMigrationForUntracked(untrackedTexts);
     }
 };
 
-// 일괄 마이그레이션 실행
-DualTextWriter.prototype.executeBatchMigration = async function() {
-    if (!this.currentUser || !this.isFirebaseReady) return;
+// 미트래킹 글만 일괄 마이그레이션 실행
+DualTextWriter.prototype.executeBatchMigrationForUntracked = async function(untrackedTexts) {
+    if (!this.currentUser || !this.isFirebaseReady || !untrackedTexts || untrackedTexts.length === 0) {
+        return;
+    }
     
     const button = this.batchMigrationBtn;
     let successCount = 0;
@@ -3785,14 +8426,14 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
             button.textContent = '마이그레이션 진행 중...';
         }
         
-        this.showMessage('🔄 일괄 마이그레이션을 시작합니다...', 'info');
+        this.showMessage(`🔄 미트래킹 글 ${untrackedTexts.length}개의 트래킹을 시작합니다...`, 'info');
         
-        // 각 텍스트에 대해 포스트 생성
-        for (let i = 0; i < this.savedTexts.length; i++) {
-            const textItem = this.savedTexts[i];
+        // 각 미트래킹 텍스트에 대해 포스트 생성
+        for (let i = 0; i < untrackedTexts.length; i++) {
+            const textItem = untrackedTexts[i];
             
             try {
-                // 기존 포스트 확인
+                // 기존 포스트 확인 (안전장치)
                 const existingPosts = await this.checkExistingPostForText(textItem.id);
                 if (existingPosts.length > 0) {
                     console.log(`텍스트 ${textItem.id}: 이미 ${existingPosts.length}개의 포스트 존재, 건너뜀`);
@@ -3829,8 +8470,8 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
                 successCount++;
                 
                 // 진행 상황 표시 (마지막 항목이 아닐 때만)
-                if (i < this.savedTexts.length - 1) {
-                    const progress = Math.round((i + 1) / this.savedTexts.length * 100);
+                if (i < untrackedTexts.length - 1) {
+                    const progress = Math.round((i + 1) / untrackedTexts.length * 100);
                     if (button) {
                         button.textContent = `마이그레이션 진행 중... (${progress}%)`;
                     }
@@ -3846,7 +8487,7 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
         }
         
         // 결과 메시지
-        const resultMessage = `✅ 마이그레이션 완료!\n` +
+        const resultMessage = `✅ 미트래킹 글 마이그레이션 완료!\n` +
             `- 성공: ${successCount}개\n` +
             `- 건너뜀: ${skipCount}개 (이미 포스트 존재)\n` +
             `- 실패: ${errorCount}개`;
@@ -3854,19 +8495,24 @@ DualTextWriter.prototype.executeBatchMigration = async function() {
         this.showMessage(resultMessage, 'success');
         console.log('일괄 마이그레이션 결과:', { successCount, skipCount, errorCount });
         
-        // 트래킹 탭으로 전환 및 목록 새로고침
-        this.switchTab('tracking');
-        await this.loadTrackingPosts();
+        // 트래킹 포스트 목록 새로고침 (트래킹 탭이 활성화되어 있으면)
+        if (this.loadTrackingPosts) {
+            await this.loadTrackingPosts();
+        }
+        
+        // 저장된 글 목록도 새로고침 (버튼 상태 업데이트를 위해)
+        await this.renderSavedTexts();
         
     } catch (error) {
         console.error('일괄 마이그레이션 중 오류:', error);
         this.showMessage('❌ 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
     } finally {
-        // 버튼 복원
+        // 버튼 복원 및 상태 업데이트
         if (button) {
             button.disabled = false;
-            button.textContent = '📊 모든 글 트래킹 시작';
         }
+        // 버튼 텍스트는 updateBatchMigrationButton에서 업데이트됨
+        await this.updateBatchMigrationButton();
     }
 };
 
@@ -3885,228 +8531,19 @@ window.closeModal = function(modalId) {
     if (modalId === 'tracking-modal' && dualTextWriter) {
         dualTextWriter.closeTrackingModal();
     }
+    if (modalId === 'tracking-edit-modal' && dualTextWriter) {
+        dualTextWriter.editingMetricData = null;
+    }
 };
 
-// 트래킹 포스트 필터링
-DualTextWriter.prototype.filterTrackingPosts = function(filter) {
-    // 필터 버튼 활성화 상태 업데이트
-    const filterButtons = document.querySelectorAll('.btn-filter');
-    filterButtons.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(filter) || 
-            (filter === 'all' && btn.textContent === '전체')) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 포스트 필터링
-    const postItems = document.querySelectorAll('.tracking-post-item');
-    postItems.forEach(item => {
-        if (filter === 'all') {
-            item.style.display = 'block';
-        } else if (filter === 'active') {
-            item.style.display = item.classList.contains('active') ? 'block' : 'none';
-        } else if (filter === 'inactive') {
-            item.style.display = item.classList.contains('inactive') ? 'block' : 'none';
-        }
-    });
+window.updateTrackingDataItem = function() {
+    if (dualTextWriter) {
+        dualTextWriter.updateTrackingDataItem();
+    }
 };
 
-
-// 차트 기간 변경
-DualTextWriter.prototype.changeChartPeriod = function(period) {
-    this.chartPeriod = period;
-    
-    // 버튼 활성화 상태 업데이트
-    document.querySelectorAll('.period-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-period') == period) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 차트 업데이트
-    this.updateTrackingChart();
-};
-
-// 차트 데이터셋 토글
-DualTextWriter.prototype.toggleChartDataset = function(dataset) {
-    this.chartDataset = dataset;
-    
-    // 버튼 활성화 상태 업데이트
-    document.querySelectorAll('.dataset-toggle-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-dataset') === dataset) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // 범례 표시/숨김
-    document.querySelectorAll('.legend-item').forEach(item => {
-        const itemDataset = item.getAttribute('data-dataset');
-        if (dataset === 'all') {
-            item.style.display = 'flex';
-        } else if (dataset === 'views') {
-            item.style.display = itemDataset === 'views' ? 'flex' : 'none';
-        } else if (dataset === 'engagement') {
-            item.style.display = ['likes', 'shares', 'comments'].includes(itemDataset) ? 'flex' : 'none';
-        }
-    });
-    
-    // 차트 업데이트
-    this.updateTrackingChart();
-};
-
-
-// 인사이트 생성 및 표시
-DualTextWriter.prototype.generateInsights = function() {
-    const insightsSection = document.getElementById('tracking-insights');
-    const insightsGrid = document.getElementById('insights-grid');
-    
-    if (!insightsSection || !insightsGrid) return;
-    
-    // 데이터가 있는 포스트만 필터링
-    const postsWithData = this.trackingPosts.filter(post => post.metrics && post.metrics.length > 0);
-    
-    if (postsWithData.length === 0) {
-        insightsSection.style.display = 'none';
-        return;
-    }
-    
-    const insights = [];
-    
-    // 1. 최고 성과 포스트
-    let bestPost = null;
-    let maxViews = 0;
-    
-    postsWithData.forEach(post => {
-        const latestMetric = post.metrics[post.metrics.length - 1];
-        if (latestMetric.views > maxViews) {
-            maxViews = latestMetric.views;
-            bestPost = post;
-        }
-    });
-    
-    if (bestPost) {
-        const previewText = bestPost.content.substring(0, 40);
-        insights.push({
-            icon: '🏆',
-            title: '최고 성과 포스트',
-            description: `"${previewText}..."`,
-            value: `${maxViews.toLocaleString()} 조회수`,
-            type: 'success'
-        });
-    }
-    
-    // 2. 평균 대비 성과
-    const avgViews = postsWithData.reduce((sum, post) => {
-        const latest = post.metrics[post.metrics.length - 1];
-        return sum + (latest.views || 0);
-    }, 0) / postsWithData.length;
-    
-    if (bestPost && maxViews > avgViews * 1.5) {
-        const percentAbove = ((maxViews / avgViews - 1) * 100).toFixed(0);
-        insights.push({
-            icon: '📊',
-            title: '평균 대비 성과',
-            description: '최고 포스트가 평균보다',
-            value: `${percentAbove}% 높음`,
-            type: 'info'
-        });
-    }
-    
-    // 3. 참여율 분석
-    const avgEngagement = postsWithData.reduce((sum, post) => {
-        const latest = post.metrics[post.metrics.length - 1];
-        const engagement = (latest.likes || 0) + (latest.shares || 0) + (latest.comments || 0);
-        const views = latest.views || 1;
-        return sum + (engagement / views);
-    }, 0) / postsWithData.length;
-    
-    const engagementPercent = (avgEngagement * 100).toFixed(2);
-    
-    insights.push({
-        icon: '🎯',
-        title: '평균 참여율',
-        description: '조회수 대비 인터랙션',
-        value: `${engagementPercent}%`,
-        type: engagementPercent > 5 ? 'success' : 'warning'
-    });
-    
-    // 4. 포스트 타입별 성과
-    const editPosts = postsWithData.filter(p => p.type === 'edit');
-    const refPosts = postsWithData.filter(p => p.type === 'reference');
-    
-    if (editPosts.length > 0 && refPosts.length > 0) {
-        const editAvgViews = editPosts.reduce((sum, post) => {
-            const latest = post.metrics[post.metrics.length - 1];
-            return sum + (latest.views || 0);
-        }, 0) / editPosts.length;
-        
-        const refAvgViews = refPosts.reduce((sum, post) => {
-            const latest = post.metrics[post.metrics.length - 1];
-            return sum + (latest.views || 0);
-        }, 0) / refPosts.length;
-        
-        const betterType = editAvgViews > refAvgViews ? '작성 글' : '레퍼런스 글';
-        const diff = Math.abs(editAvgViews - refAvgViews);
-        const diffPercent = ((diff / Math.min(editAvgViews, refAvgViews)) * 100).toFixed(0);
-        
-        insights.push({
-            icon: '📝',
-            title: '타입별 성과',
-            description: `${betterType}이 더 높은 성과`,
-            value: `+${diffPercent}%`,
-            type: 'info'
-        });
-    }
-    
-    // 5. 최근 트렌드
-    if (postsWithData.length >= 2) {
-        const recentPosts = postsWithData.slice(0, Math.min(3, postsWithData.length));
-        const olderPosts = postsWithData.slice(Math.min(3, postsWithData.length));
-        
-        if (olderPosts.length > 0) {
-            const recentAvg = recentPosts.reduce((sum, post) => {
-                const latest = post.metrics[post.metrics.length - 1];
-                return sum + (latest.views || 0);
-            }, 0) / recentPosts.length;
-            
-            const olderAvg = olderPosts.reduce((sum, post) => {
-                const latest = post.metrics[post.metrics.length - 1];
-                return sum + (latest.views || 0);
-            }, 0) / olderPosts.length;
-            
-            const trendPercent = ((recentAvg / olderAvg - 1) * 100).toFixed(0);
-            const trendIcon = trendPercent > 0 ? '📈' : '📉';
-            const trendType = trendPercent > 0 ? 'success' : 'warning';
-            const trendText = trendPercent > 0 ? '증가' : '감소';
-            
-            insights.push({
-                icon: trendIcon,
-                title: '최근 트렌드',
-                description: `최근 포스트 성과 ${trendText}`,
-                value: `${Math.abs(trendPercent)}%`,
-                type: trendType
-            });
-        }
-    }
-    
-    // 인사이트 렌더링
-    if (insights.length > 0) {
-        insightsGrid.innerHTML = insights.map(insight => `
-            <div class="insight-card ${insight.type}">
-                <div class="insight-icon">${insight.icon}</div>
-                <div class="insight-content">
-                    <div class="insight-title">${insight.title}</div>
-                    <div class="insight-description">${insight.description}</div>
-                    <div class="insight-value">${insight.value}</div>
-                </div>
-            </div>
-        `).join('');
-        
-        insightsSection.style.display = 'block';
-    } else {
-        insightsSection.style.display = 'none';
+window.deleteTrackingDataItem = function() {
+    if (dualTextWriter) {
+        dualTextWriter.deleteTrackingDataItem();
     }
 };
