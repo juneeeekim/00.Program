@@ -1110,16 +1110,23 @@ class DualTextWriter {
         // 성능 최적화: 레퍼런스 글의 사용 여부를 배치 조회로 미리 확인
         const referenceItems = list.filter(item => (item.type || 'edit') === 'reference');
         let referenceUsageMap = {};
+        // 모든 레퍼런스 항목에 대해 기본값 0으로 초기화 (배지가 항상 표시되도록 보장)
+        referenceItems.forEach(item => {
+            if (item.id) {
+                referenceUsageMap[item.id] = 0;
+            }
+        });
         if (referenceItems.length > 0 && this.currentUser && this.isFirebaseReady) {
             try {
-                const referenceIds = referenceItems.map(item => item.id);
-                referenceUsageMap = await this.checkMultipleReferenceUsage(referenceIds);
+                const referenceIds = referenceItems.map(item => item.id).filter(id => id);
+                if (referenceIds.length > 0) {
+                    const fetchedUsageMap = await this.checkMultipleReferenceUsage(referenceIds);
+                    // 조회된 결과를 referenceUsageMap에 병합
+                    Object.assign(referenceUsageMap, fetchedUsageMap);
+                }
             } catch (error) {
                 console.error('레퍼런스 사용 여부 배치 조회 실패:', error);
-                // 에러 발생 시 모든 레퍼런스에 대해 0으로 초기화
-                referenceItems.forEach(item => {
-                    referenceUsageMap[item.id] = 0;
-                });
+                // 에러 발생 시에도 기본값 0이 이미 설정되어 있으므로 배지는 표시됨
             }
         }
         
@@ -1158,10 +1165,11 @@ class DualTextWriter {
             // 레퍼런스 글인 경우 사용 여부 추가
             let usageCount = 0;
             if ((item.type || 'edit') === 'reference') {
-                usageCount = referenceUsageMap[item.id] || 0;
+                // referenceUsageMap에서 usageCount를 가져오되, 없으면 0으로 설정
+                usageCount = referenceUsageMap[item.id] !== undefined ? referenceUsageMap[item.id] : 0;
             }
             
-            // 사용 여부를 item 객체에 추가하여 캐싱
+            // 사용 여부를 item 객체에 추가하여 캐싱 (레퍼런스 글은 항상 usageCount 포함)
             const itemWithUsage = { ...item, usageCount };
             
             // reference 필터인 경우, usageCount가 0인 항목만 포함 (사용 안된 레퍼런스만)
@@ -1281,7 +1289,8 @@ class DualTextWriter {
         
         // 레퍼런스 글인 경우 사용 여부 배지 및 유형 배지 생성
         const isReference = (item.type || 'edit') === 'reference';
-        const usageCount = item.usageCount || 0;
+        // usageCount가 undefined일 경우 0으로 설정 (레퍼런스 글은 항상 사용 여부 배지 표시)
+        const usageCount = isReference ? (item.usageCount !== undefined ? item.usageCount : 0) : 0;
         const usageBadgeHtml = isReference ? this.renderReferenceUsageBadge(usageCount) : '';
         const refType = (item.referenceType || 'unspecified');
         const refTypeBadgeHtml = isReference ? this.renderReferenceTypeBadge(refType) : '';
@@ -5830,42 +5839,74 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
 // 트래킹 모달 열기
 DualTextWriter.prototype.openTrackingModal = function(textId = null) {
     const modal = document.getElementById('tracking-modal');
-    if (modal) {
+    if (!modal) {
+        console.error('트래킹 모달을 찾을 수 없습니다.');
+        this.showMessage('❌ 트래킹 모달을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    try {
         this.openBottomSheet(modal);
         // 폼 초기화
         const today = new Date().toISOString().split('T')[0];
         const dateInput = document.getElementById('tracking-date');
-        dateInput.value = today;
+        if (dateInput) {
+            dateInput.value = today;
+        }
         // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
         modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
         const todayTab = modal.querySelector('.date-tab[data-date="today"]');
         if (todayTab) todayTab.classList.add('active');
-        dateInput.style.display = 'none';
+        if (dateInput) dateInput.style.display = 'none';
         
-        document.getElementById('tracking-views').value = '';
-        document.getElementById('tracking-likes').value = '';
-        document.getElementById('tracking-comments').value = '';
-        document.getElementById('tracking-shares').value = '';
+        const viewsInput = document.getElementById('tracking-views');
+        const likesInput = document.getElementById('tracking-likes');
+        const commentsInput = document.getElementById('tracking-comments');
+        const sharesInput = document.getElementById('tracking-shares');
         const followsInput = document.getElementById('tracking-follows');
+        const notesInput = document.getElementById('tracking-notes');
+        
+        if (viewsInput) viewsInput.value = '';
+        if (likesInput) likesInput.value = '';
+        if (commentsInput) commentsInput.value = '';
+        if (sharesInput) sharesInput.value = '';
         if (followsInput) followsInput.value = '';
-        document.getElementById('tracking-notes').value = '';
+        if (notesInput) notesInput.value = '';
         
         // 저장된 글에서 호출한 경우 textId 저장
         this.currentTrackingTextId = textId;
+        console.log('트래킹 모달 열기:', { textId, currentTrackingTextId: this.currentTrackingTextId });
+    } catch (error) {
+        console.error('트래킹 모달 열기 실패:', error);
+        this.showMessage('❌ 트래킹 모달을 열 수 없습니다.', 'error');
     }
 };
 
 // 트래킹 데이터 저장
 DualTextWriter.prototype.saveTrackingData = async function() {
-    if (!this.currentUser || !this.isFirebaseReady) return;
+    if (!this.currentUser || !this.isFirebaseReady) {
+        console.warn('트래킹 데이터 저장 실패: 사용자가 로그인하지 않았거나 Firebase가 준비되지 않았습니다.');
+        this.showMessage('❌ 로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    console.log('트래킹 데이터 저장 시작:', { 
+        currentTrackingTextId: this.currentTrackingTextId, 
+        currentTrackingPost: this.currentTrackingPost 
+    });
     
     // 저장된 글에서 직접 입력하는 경우
     if (this.currentTrackingTextId && !this.currentTrackingPost) {
+        console.log('저장된 글에서 트래킹 데이터 저장:', this.currentTrackingTextId);
         return await this.saveTrackingDataFromSavedText();
     }
     
     // 기존 방식: 트래킹 포스트에 데이터 추가
-    if (!this.currentTrackingPost) return;
+    if (!this.currentTrackingPost) {
+        console.warn('트래킹 데이터 저장 실패: currentTrackingPost가 없습니다.');
+        this.showMessage('❌ 트래킹할 포스트를 찾을 수 없습니다.', 'error');
+        return;
+    }
     
     const dateValue = document.getElementById('tracking-date').value;
     const views = parseInt(document.getElementById('tracking-views').value) || 0;
