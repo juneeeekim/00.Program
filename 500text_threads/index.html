@@ -109,19 +109,6 @@
                             <div id="ref-progress-fill" class="progress-fill"></div>
                         </div>
 
-                        <!-- 레퍼런스 유형 선택 -->
-                        <div class="reference-type-group" aria-label="레퍼런스 유형 선택">
-                            <span class="reference-type-label">유형:</span>
-                            <label class="reference-type-option">
-                                <input type="radio" name="reference-type" id="ref-type-structure" value="structure" aria-label="구조" />
-                                <span>구조</span>
-                            </label>
-                            <label class="reference-type-option">
-                                <input type="radio" name="reference-type" id="ref-type-idea" value="idea" aria-label="아이디어" />
-                                <span>아이디어</span>
-                            </label>
-                        </div>
-
                         <div class="panel-controls">
                             <div class="control-group basic-actions">
                                 <button id="ref-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
@@ -179,6 +166,18 @@
                                             </div>
                                         </button>
                                     </div>
+                                </div>
+                                <!-- 레퍼런스 유형 선택을 LLM 검증 오른쪽으로 이동 -->
+                                <div class="reference-type-group" aria-label="레퍼런스 유형 선택">
+                                    <span class="reference-type-label">유형:</span>
+                                    <label class="reference-type-option">
+                                        <input type="radio" name="reference-type" id="ref-type-structure" value="structure" aria-label="구조" />
+                                        <span>구조</span>
+                                    </label>
+                                    <label class="reference-type-option">
+                                        <input type="radio" name="reference-type" id="ref-type-idea" value="idea" aria-label="아이디어" />
+                                        <span>아이디어</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>

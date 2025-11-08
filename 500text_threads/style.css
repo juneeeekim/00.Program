@@ -677,7 +677,8 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 0; /* advanced-actions 안에 있으므로 margin-top 제거 */
+    margin-left: 12px; /* LLM 검증 버튼과의 간격 */
 }
 .reference-type-label {
     font-weight: 600;
@@ -2861,11 +2862,20 @@ body {
     
     .control-group.advanced-actions {
     margin-top: 8px;
+    display: flex; /* LLM 검증과 유형 선택을 가로로 배치 */
+    flex-direction: row; /* 가로 배치 */
+    align-items: center; /* 수직 중앙 정렬 */
+    gap: 12px; /* 요소 간 간격 */
+    flex-wrap: wrap; /* 공간 부족 시 줄바꿈 */
     }
     
     .control-group.advanced-actions .btn-mobile {
-    width: 100%;
+    width: auto; /* 가로 배치이므로 width: 100% 제거 */
     font-size: 14px;
+    }
+    
+    .control-group.advanced-actions .reference-type-group {
+    margin-left: 0; /* 모바일에서는 margin-left 제거 */
     }
     
     /* 저장된 글 모바일 최적화 */
@@ -3112,6 +3122,11 @@ body {
     .control-group.advanced-actions {
     justify-content: flex-start;
     margin-top: 4px;
+    display: flex; /* LLM 검증과 유형 선택을 가로로 배치 */
+    flex-direction: row; /* 가로 배치 */
+    align-items: center; /* 수직 중앙 정렬 */
+    gap: 12px; /* 요소 간 간격 */
+    flex-wrap: wrap; /* 공간 부족 시 줄바꿈 */
     }
     
     /* 버튼 크기 개선 */
