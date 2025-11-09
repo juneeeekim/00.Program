@@ -5580,8 +5580,33 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                         const trackingEnabled = button.getAttribute('data-tracking-enabled') === 'true';
                         this.toggleTrackingMoreMenu(button, postId, trackingEnabled);
                         break;
+                    case 'toggle-content':
+                        e.preventDefault();
+                        const contentEl = button.closest('.tracking-post-item').querySelector('.tracking-post-content');
+                        if (contentEl) {
+                            const nowExpanded = contentEl.classList.toggle('expanded');
+                            button.textContent = nowExpanded ? '접기' : '더보기';
+                            button.setAttribute('aria-expanded', nowExpanded ? 'true' : 'false');
+                            try {
+                                // localStorage에 상태 저장 (통일된 스키마: card:{postId}:expanded)
+                                localStorage.setItem(`card:${postId}:expanded`, nowExpanded ? '1' : '0');
+                            } catch (e) { /* ignore quota */ }
+                        }
+                        break;
                 }
             });
+            
+            // 키보드 접근성 지원 (Enter/Space 키 처리) - 최초 1회만
+            if (!this._trackingPostsKeydownBound) {
+                this._trackingPostsKeydownBound = true;
+                this.trackingPostsList.addEventListener('keydown', (e) => {
+                    const button = e.target.closest('button[data-action="toggle-content"]');
+                    if (button && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        button.click();
+                    }
+                });
+            }
         }
     }
 
@@ -5638,12 +5663,15 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         // Orphan 포스트는 시각적으로 다르게 표시
         const orphanClass = post.isOrphan ? 'orphan-post' : '';
         
+        // localStorage에서 확장 상태 복원 (통일된 스키마: card:{postId}:expanded)
+        const expanded = (localStorage.getItem(`card:${post.id}:expanded`) === '1');
+        const shouldShowToggle = post.content && post.content.length > 100;
+        
         return `
             <div class="tracking-post-item ${statusClass} ${orphanClass}" data-post-id="${post.id}" data-is-orphan="${post.isOrphan ? 'true' : 'false'}">
                 <div class="tracking-post-header">
                 <div class="tracking-post-title" style="display: flex; align-items: center; flex-wrap: wrap; gap:8px;">
                         <button class="fav-toggle" data-action="toggle-favorite" data-post-id="${post.id}" title="즐겨찾기" style="border:none; background:transparent; cursor:pointer; font-size:1.1rem; min-height: 44px; min-width: 44px; display: flex; align-items: center; justify-content: center;">${isFav ? '⭐' : '☆'}</button>
-                        <span class="card-title line-clamp-2">${this.escapeHtml(post.content.substring(0, 50))}${post.content.length > 50 ? '...' : ''}</span>
                         ${orphanBadge}
                     </div>
                     <div class="tracking-post-status-group">
@@ -5653,6 +5681,9 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                         </div>
                     </div>
                 </div>
+                
+                <div class="tracking-post-content ${expanded ? 'expanded' : ''}" aria-label="포스트 내용">${this.escapeHtml(post.content || '')}</div>
+                ${shouldShowToggle ? `<button class="tracking-post-toggle" data-action="toggle-content" data-post-id="${post.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>` : ''}
                 
                 <div class="tracking-post-info">
                     <div class="tracking-post-metrics-badge ${metricsBadgeClass}">
