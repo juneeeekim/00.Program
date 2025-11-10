@@ -66,10 +66,17 @@ class DualTextWriter {
         this.tempSaveStatus = document.getElementById('temp-save-status');
         this.tempSaveText = document.getElementById('temp-save-text');
 
-        // 주제 필터 관련 요소들
+        // 주제 필터 관련 요소들 (작성 글용)
         this.topicFilter = document.getElementById('topic-filter');
+        this.topicFilterGroup = document.getElementById('topic-filter-group');
         this.currentTopicFilter = 'all'; // 현재 선택된 주제 필터
         this.availableTopics = []; // 사용 가능한 주제 목록
+        
+        // 소스 필터 관련 요소들 (레퍼런스 글용)
+        this.sourceFilter = document.getElementById('source-filter');
+        this.sourceFilterGroup = document.getElementById('source-filter-group');
+        this.currentSourceFilter = 'all'; // 현재 선택된 소스 필터
+        this.availableSources = []; // 사용 가능한 소스 목록
 
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
@@ -544,13 +551,25 @@ class DualTextWriter {
             };
         }
 
-        // 주제 필터 이벤트 리스너 설정
+        // 주제 필터 이벤트 리스너 설정 (작성 글용)
         if (this.topicFilter) {
             this.currentTopicFilter = localStorage.getItem('dualTextWriter_topicFilter') || 'all';
             this.topicFilter.value = this.currentTopicFilter;
             this.topicFilter.onchange = () => {
                 this.currentTopicFilter = this.topicFilter.value;
                 localStorage.setItem('dualTextWriter_topicFilter', this.currentTopicFilter);
+                this.renderSavedTextsCache = null; // 캐시 무효화
+                this.renderSavedTexts();
+            };
+        }
+        
+        // 소스 필터 이벤트 리스너 설정 (레퍼런스 글용)
+        if (this.sourceFilter) {
+            this.currentSourceFilter = localStorage.getItem('dualTextWriter_sourceFilter') || 'all';
+            this.sourceFilter.value = this.currentSourceFilter;
+            this.sourceFilter.onchange = () => {
+                this.currentSourceFilter = this.sourceFilter.value;
+                localStorage.setItem('dualTextWriter_sourceFilter', this.currentSourceFilter);
                 this.renderSavedTextsCache = null; // 캐시 무효화
                 this.renderSavedTexts();
             };
@@ -602,6 +621,9 @@ class DualTextWriter {
 
         // 유형 필터 표시/숨김
         this.updateReferenceTypeFilterVisibility();
+        
+        // 주제/소스 필터 표시/숨김
+        this.updateTopicSourceFilterVisibility();
 
         // 목록 렌더링
         this.renderSavedTexts();
@@ -619,10 +641,11 @@ class DualTextWriter {
     updateTopicFilterOptions() {
         if (!this.topicFilter) return;
         
-        // 저장된 글에서 고유한 주제 목록 추출
+        // 작성 글(type === 'edit')에서만 고유한 주제 목록 추출
         const topics = new Set();
         this.savedTexts.forEach(item => {
-            if (item.topic && item.topic.trim()) {
+            // 작성 글만 필터링
+            if ((item.type || 'edit') === 'edit' && item.topic && item.topic.trim()) {
                 topics.add(item.topic.trim());
             }
         });
@@ -647,6 +670,71 @@ class DualTextWriter {
         } else {
             this.topicFilter.value = 'all';
             this.currentTopicFilter = 'all';
+        }
+    }
+    
+    updateSourceFilterOptions() {
+        if (!this.sourceFilter) return;
+        
+        // 레퍼런스 글(type === 'reference')에서만 고유한 소스(주제) 목록 추출
+        const sources = new Set();
+        this.savedTexts.forEach(item => {
+            // 레퍼런스 글만 필터링
+            if ((item.type || 'edit') === 'reference' && item.topic && item.topic.trim()) {
+                sources.add(item.topic.trim());
+            }
+        });
+        
+        // 소스 목록을 배열로 변환하고 정렬
+        this.availableSources = Array.from(sources).sort();
+        
+        // 드롭다운 옵션 업데이트
+        const currentValue = this.sourceFilter.value;
+        this.sourceFilter.innerHTML = '<option value="all">전체 소스</option>';
+        
+        this.availableSources.forEach(source => {
+            const option = document.createElement('option');
+            option.value = source;
+            option.textContent = source;
+            this.sourceFilter.appendChild(option);
+        });
+        
+        // 이전 선택값 복원
+        if (currentValue && this.availableSources.includes(currentValue)) {
+            this.sourceFilter.value = currentValue;
+        } else {
+            this.sourceFilter.value = 'all';
+            this.currentSourceFilter = 'all';
+        }
+    }
+    
+    updateTopicSourceFilterVisibility() {
+        // 작성 글 필터일 때: 주제 필터 표시, 소스 필터 숨김
+        if (this.savedFilter === 'edit') {
+            if (this.topicFilterGroup) {
+                this.topicFilterGroup.style.display = 'flex';
+            }
+            if (this.sourceFilterGroup) {
+                this.sourceFilterGroup.style.display = 'none';
+            }
+        }
+        // 레퍼런스 글 필터일 때: 소스 필터 표시, 주제 필터 숨김
+        else if (this.savedFilter === 'reference' || this.savedFilter === 'reference-used') {
+            if (this.topicFilterGroup) {
+                this.topicFilterGroup.style.display = 'none';
+            }
+            if (this.sourceFilterGroup) {
+                this.sourceFilterGroup.style.display = 'flex';
+            }
+        }
+        // 전체 필터일 때: 둘 다 숨김
+        else {
+            if (this.topicFilterGroup) {
+                this.topicFilterGroup.style.display = 'none';
+            }
+            if (this.sourceFilterGroup) {
+                this.sourceFilterGroup.style.display = 'none';
+            }
         }
     }
 
@@ -1046,7 +1134,10 @@ class DualTextWriter {
     
     async _renderSavedTextsImpl() {
         // 메모이제이션: 캐시 키 생성 (필터 조건 기반)
-        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${this.currentTopicFilter || 'all'}`;
+        const topicOrSourceFilter = this.savedFilter === 'edit' 
+            ? (this.currentTopicFilter || 'all')
+            : (this.currentSourceFilter || 'all');
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${topicOrSourceFilter}`;
         
         // 캐시 확인 (같은 필터 조건에서 재호출 방지)
         if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
@@ -1080,16 +1171,29 @@ class DualTextWriter {
             });
         }
 
-        // 주제 필터 적용
-        if (this.currentTopicFilter && this.currentTopicFilter !== 'all') {
+        // 주제 필터 적용 (작성 글용)
+        if (this.savedFilter === 'edit' && this.currentTopicFilter && this.currentTopicFilter !== 'all') {
             list = list.filter(item => {
                 const itemTopic = item.topic || '';
                 return itemTopic === this.currentTopicFilter;
             });
         }
+        
+        // 소스 필터 적용 (레퍼런스 글용)
+        if ((this.savedFilter === 'reference' || this.savedFilter === 'reference-used') 
+            && this.currentSourceFilter && this.currentSourceFilter !== 'all') {
+            list = list.filter(item => {
+                const itemTopic = item.topic || '';
+                return itemTopic === this.currentSourceFilter;
+            });
+        }
 
-        // 주제 필터 옵션 업데이트
-        this.updateTopicFilterOptions();
+        // 필터 옵션 업데이트
+        if (this.savedFilter === 'edit') {
+            this.updateTopicFilterOptions();
+        } else if (this.savedFilter === 'reference' || this.savedFilter === 'reference-used') {
+            this.updateSourceFilterOptions();
+        }
 
         if (list.length === 0) {
             // 에러 처리: 필터 적용 시 데이터가 없는 경우 처리

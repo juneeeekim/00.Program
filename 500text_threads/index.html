@@ -307,12 +307,20 @@
                             <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
                             <button class="segment-btn" data-filter="reference-used" role="tab" aria-selected="false" aria-label="사용된 레퍼런스만 표시">✅ 사용됨</button>
                         </div>
-                            <!-- 주제 필터 -->
-                            <div class="topic-filter-group" id="topic-filter-group" style="display: flex; align-items:center; gap:8px; margin-top: 12px;">
+                            <!-- 주제 필터 (작성 글용) -->
+                            <div class="topic-filter-group" id="topic-filter-group" style="display: none; align-items:center; gap:8px; margin-top: 12px;">
                                 <label for="topic-filter" class="topic-filter-label" style="font-weight:600; color:#333; font-size:0.9rem; line-height: 1.5;">주제 필터:</label>
                                 <select id="topic-filter" class="topic-filter-select" aria-label="주제 필터" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
                                     <option value="all">전체 주제</option>
                                     <!-- 동적으로 주제 목록이 채워짐 -->
+                                </select>
+                            </div>
+                            <!-- 소스 필터 (레퍼런스 글용) -->
+                            <div class="source-filter-group" id="source-filter-group" style="display: none; align-items:center; gap:8px; margin-top: 12px;">
+                                <label for="source-filter" class="source-filter-label" style="font-weight:600; color:#333; font-size:0.9rem; line-height: 1.5;">소스 필터:</label>
+                                <select id="source-filter" class="source-filter-select" aria-label="소스 필터" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
+                                    <option value="all">전체 소스</option>
+                                    <!-- 동적으로 소스 목록이 채워짐 -->
                                 </select>
                             </div>
                             <!-- 레퍼런스 유형 필터 -->
