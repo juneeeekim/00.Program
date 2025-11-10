@@ -52,6 +52,9 @@ class DualTextWriter {
         this.editTopicInput = document.getElementById('edit-topic-input');
         this.editCurrentCount = document.getElementById('edit-current-count');
         this.editMaxCount = document.getElementById('edit-max-count');
+        
+        // 레퍼런스 글 관련 요소들
+        this.refTopicInput = document.getElementById('ref-topic-input');
         this.editProgressFill = document.getElementById('edit-progress-fill');
         this.editClearBtn = document.getElementById('edit-clear-btn');
         this.editSaveBtn = document.getElementById('edit-save-btn');
@@ -882,6 +885,9 @@ class DualTextWriter {
             if (panel === 'edit' && this.editTopicInput) {
                 this.editTopicInput.value = '';
             }
+            if (panel === 'ref' && this.refTopicInput) {
+                this.refTopicInput.value = '';
+            }
             this.updateCharacterCount(panel);
             textInput.focus();
         }
@@ -931,6 +937,14 @@ class DualTextWriter {
                     textData.topic = topic;
                 }
             }
+            
+            // 레퍼런스 글 저장 시 주제 추가 (선택사항)
+            if (panel === 'ref' && this.refTopicInput) {
+                const topic = this.refTopicInput.value.trim();
+                if (topic) {
+                    textData.topic = topic;
+                }
+            }
 
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
@@ -964,6 +978,9 @@ class DualTextWriter {
         textInput.value = '';
         if (panel === 'edit' && this.editTopicInput) {
             this.editTopicInput.value = '';
+        }
+        if (panel === 'ref' && this.refTopicInput) {
+            this.refTopicInput.value = '';
         }
         this.updateCharacterCount(panel);
 

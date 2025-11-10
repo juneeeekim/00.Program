@@ -91,6 +91,19 @@
                     <div class="writing-panel left-panel">
                         <div class="panel-header">
                             <h3>📖 레퍼런스 글</h3>
+                            <!-- 주제 입력 필드를 헤더 내부로 추가 -->
+                            <div class="topic-input-group topic-input-group--header">
+                                <label for="ref-topic-input" class="topic-label topic-label--header">주제 (선택사항)</label>
+                                <input 
+                                    type="text"
+                                    id="ref-topic-input"
+                                    class="topic-input topic-input--header"
+                                    placeholder="예: 마케팅, 개발일지, 일상 등"
+                                    maxlength="50"
+                                    aria-label="주제 입력 (선택사항)"
+                                    aria-required="false"
+                                />
+                            </div>
                             <div class="character-counter">
                                 <span id="ref-current-count">0</span>
                                 <span class="separator">/</span>
