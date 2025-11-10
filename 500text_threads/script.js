@@ -1499,10 +1499,14 @@ class DualTextWriter {
     }
 
     /**
-     * 트래킹 메트릭의 전체 합계를 계산합니다.
+     * 트래킹 메트릭의 최신 값을 반환합니다.
+     * 
+     * 사용자는 기록을 기존에서 이후로 적어가는 방식으로,
+     * 각 날짜의 값은 해당 시점의 누적값을 나타냅니다.
+     * 따라서 가장 마지막(최신) 기록의 값이 현재 총합을 나타냅니다.
      * 
      * @param {Array} metrics - 메트릭 배열
-     * @returns {Object} 각 메트릭의 총합 객체
+     * @returns {Object} 가장 최신 메트릭의 값 객체
      */
     calculateMetricsTotal(metrics) {
         if (!metrics || metrics.length === 0) {
@@ -1515,21 +1519,25 @@ class DualTextWriter {
             };
         }
         
-        return metrics.reduce((totals, metric) => {
-            return {
-                totalViews: totals.totalViews + (metric.views || 0),
-                totalLikes: totals.totalLikes + (metric.likes || 0),
-                totalComments: totals.totalComments + (metric.comments || 0),
-                totalShares: totals.totalShares + (metric.shares || 0),
-                totalFollows: totals.totalFollows + (metric.follows || 0)
-            };
-        }, {
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0,
-            totalShares: 0,
-            totalFollows: 0
+        // 날짜 순으로 정렬하여 가장 최신 메트릭 찾기
+        const sortedMetrics = [...metrics].sort((a, b) => {
+            const dateA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : 
+                         (a.timestamp instanceof Date ? a.timestamp.getTime() : 0);
+            const dateB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : 
+                         (b.timestamp instanceof Date ? b.timestamp.getTime() : 0);
+            return dateA - dateB; // 오래된 것부터 정렬
         });
+        
+        // 가장 마지막(최신) 메트릭의 값 반환
+        const latestMetric = sortedMetrics[sortedMetrics.length - 1];
+        
+        return {
+            totalViews: latestMetric.views || 0,
+            totalLikes: latestMetric.likes || 0,
+            totalComments: latestMetric.comments || 0,
+            totalShares: latestMetric.shares || 0,
+            totalFollows: latestMetric.follows || 0
+        };
     }
 
     /**
@@ -1590,24 +1598,24 @@ class DualTextWriter {
      */
     renderMetricsTotals(totals) {
         return `
-            <div class="metrics-totals" role="group" aria-label="전체 합계">
-                <span class="total-badge views" aria-label="총 조회수: ${totals.totalViews.toLocaleString()}">
+            <div class="metrics-totals" role="group" aria-label="현재 합계">
+                <span class="total-badge views" aria-label="현재 조회수: ${totals.totalViews.toLocaleString()}">
                     <span class="total-icon">👀</span>
                     <span class="total-value">${totals.totalViews.toLocaleString()}</span>
                 </span>
-                <span class="total-badge likes" aria-label="총 좋아요: ${totals.totalLikes.toLocaleString()}">
+                <span class="total-badge likes" aria-label="현재 좋아요: ${totals.totalLikes.toLocaleString()}">
                     <span class="total-icon">❤️</span>
                     <span class="total-value">${totals.totalLikes.toLocaleString()}</span>
                 </span>
-                <span class="total-badge comments" aria-label="총 댓글: ${totals.totalComments.toLocaleString()}">
+                <span class="total-badge comments" aria-label="현재 댓글: ${totals.totalComments.toLocaleString()}">
                     <span class="total-icon">💬</span>
                     <span class="total-value">${totals.totalComments.toLocaleString()}</span>
                 </span>
-                <span class="total-badge shares" aria-label="총 공유: ${totals.totalShares.toLocaleString()}">
+                <span class="total-badge shares" aria-label="현재 공유: ${totals.totalShares.toLocaleString()}">
                     <span class="total-icon">🔄</span>
                     <span class="total-value">${totals.totalShares.toLocaleString()}</span>
                 </span>
-                <span class="total-badge follows" aria-label="총 팔로우: ${totals.totalFollows.toLocaleString()}">
+                <span class="total-badge follows" aria-label="현재 팔로우: ${totals.totalFollows.toLocaleString()}">
                     <span class="total-icon">👥</span>
                     <span class="total-value">${totals.totalFollows.toLocaleString()}</span>
                 </span>
@@ -7388,7 +7396,7 @@ DualTextWriter.prototype.updateChartHeader = function(postTitle, lastUpdate) {
         const maxLength = 50;
         const displayTitle = postTitle && postTitle.length > maxLength 
             ? postTitle.substring(0, maxLength) + '...' 
-            : postTitle || '전체 포스트 누적 총합 추이';
+            : postTitle || '전체 포스트 현재값 합계 추이';
         titleEl.textContent = displayTitle;
     }
     
@@ -7596,9 +7604,9 @@ DualTextWriter.prototype.updateTrackingChart = function() {
         });
         
         // 차트 제목 업데이트
-        this.trackingChart.options.plugins.title.text = '전체 포스트 누적 총합 추이';
+        this.trackingChart.options.plugins.title.text = '전체 포스트 현재값 합계 추이';
         // 헤더 업데이트
-        this.updateChartHeader('전체 포스트 누적 총합 추이', null);
+        this.updateChartHeader('전체 포스트 현재값 합계 추이', null);
         
     } else {
         // 개별 포스트 모드: 선택된 포스트의 날짜별 데이터
