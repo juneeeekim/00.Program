@@ -19,6 +19,10 @@ class DualTextWriter {
         this.chartRange = '7d'; // '7d' | '30d' | 'all'
         this.scaleMode = 'combined'; // 'combined' | 'split'
         
+        // 일괄 삭제 관련 상태
+        this.isBatchSelectMode = false; // 일괄 선택 모드 활성화 여부
+        this.selectedMetricIndices = []; // 선택된 메트릭 인덱스 배열
+        
         // Firebase 초기화 대기
         this.waitForFirebase();
 
@@ -5404,9 +5408,66 @@ DualTextWriter.prototype.exportTrackingCsv = function() {
             inRange(lt.follows || 0, rf.minFollows, rf.maxFollows)
         );
     });
-    // 정렬 (간단 버전: favoritesFirst만 별도 처리)
-    if (this.trackingSort === 'favoritesFirst') {
-        list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id)));
+    // 정렬 적용 (renderTrackingPosts와 동일한 로직)
+    switch (this.trackingSort) {
+        case 'favoritesFirst':
+            list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id))); break;
+        // 조회수 정렬
+        case 'viewsDesc':
+            list.sort((a, b) => ((getLatest(b)?.views || 0) - (getLatest(a)?.views || 0))); break;
+        case 'viewsAsc':
+            list.sort((a, b) => ((getLatest(a)?.views || 0) - (getLatest(b)?.views || 0))); break;
+        // 좋아요 정렬
+        case 'likesDesc':
+            list.sort((a, b) => ((getLatest(b)?.likes || 0) - (getLatest(a)?.likes || 0))); break;
+        case 'likesAsc':
+            list.sort((a, b) => ((getLatest(a)?.likes || 0) - (getLatest(b)?.likes || 0))); break;
+        // 댓글 정렬
+        case 'commentsDesc':
+            list.sort((a, b) => ((getLatest(b)?.comments || 0) - (getLatest(a)?.comments || 0))); break;
+        case 'commentsAsc':
+            list.sort((a, b) => ((getLatest(a)?.comments || 0) - (getLatest(b)?.comments || 0))); break;
+        // 공유 정렬
+        case 'sharesDesc':
+            list.sort((a, b) => ((getLatest(b)?.shares || 0) - (getLatest(a)?.shares || 0))); break;
+        case 'sharesAsc':
+            list.sort((a, b) => ((getLatest(a)?.shares || 0) - (getLatest(b)?.shares || 0))); break;
+        // 팔로우 정렬
+        case 'followsDesc':
+            list.sort((a, b) => ((getLatest(b)?.follows || 0) - (getLatest(a)?.follows || 0))); break;
+        case 'followsAsc':
+            list.sort((a, b) => ((getLatest(a)?.follows || 0) - (getLatest(b)?.follows || 0))); break;
+        // 입력 횟수 정렬
+        case 'entriesDesc':
+            list.sort((a, b) => ((b.metrics?.length || 0) - (a.metrics?.length || 0))); break;
+        case 'entriesAsc':
+            list.sort((a, b) => ((a.metrics?.length || 0) - (b.metrics?.length || 0))); break;
+        // 날짜 정렬
+        case 'updatedDesc':
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return bMs - aMs;
+            });
+            break;
+        case 'updatedAsc':
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return aMs - bMs;
+            });
+            break;
+        default:
+            // 기본값: 최신 업데이트순
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return bMs - aMs;
+            });
+            break;
     }
 
     // CSV 작성
@@ -5641,20 +5702,55 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
     switch (this.trackingSort) {
         case 'favoritesFirst':
             list.sort((a, b) => (this.isFavorite(b.id) - this.isFavorite(a.id))); break;
+        // 조회수 정렬
         case 'viewsDesc':
             list.sort((a, b) => ((getLatest(b)?.views || 0) - (getLatest(a)?.views || 0))); break;
+        case 'viewsAsc':
+            list.sort((a, b) => ((getLatest(a)?.views || 0) - (getLatest(b)?.views || 0))); break;
+        // 좋아요 정렬
         case 'likesDesc':
             list.sort((a, b) => ((getLatest(b)?.likes || 0) - (getLatest(a)?.likes || 0))); break;
+        case 'likesAsc':
+            list.sort((a, b) => ((getLatest(a)?.likes || 0) - (getLatest(b)?.likes || 0))); break;
+        // 댓글 정렬
         case 'commentsDesc':
             list.sort((a, b) => ((getLatest(b)?.comments || 0) - (getLatest(a)?.comments || 0))); break;
+        case 'commentsAsc':
+            list.sort((a, b) => ((getLatest(a)?.comments || 0) - (getLatest(b)?.comments || 0))); break;
+        // 공유 정렬
         case 'sharesDesc':
             list.sort((a, b) => ((getLatest(b)?.shares || 0) - (getLatest(a)?.shares || 0))); break;
+        case 'sharesAsc':
+            list.sort((a, b) => ((getLatest(a)?.shares || 0) - (getLatest(b)?.shares || 0))); break;
+        // 팔로우 정렬
         case 'followsDesc':
             list.sort((a, b) => ((getLatest(b)?.follows || 0) - (getLatest(a)?.follows || 0))); break;
+        case 'followsAsc':
+            list.sort((a, b) => ((getLatest(a)?.follows || 0) - (getLatest(b)?.follows || 0))); break;
+        // 입력 횟수 정렬
         case 'entriesDesc':
             list.sort((a, b) => ((b.metrics?.length || 0) - (a.metrics?.length || 0))); break;
+        case 'entriesAsc':
+            list.sort((a, b) => ((a.metrics?.length || 0) - (b.metrics?.length || 0))); break;
+        // 날짜 정렬
         case 'updatedDesc':
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return bMs - aMs;
+            });
+            break;
+        case 'updatedAsc':
+            list.sort((a, b) => {
+                const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
+                const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
+                const bMs = bt ? (bt.toDate ? bt.toDate().getTime() : new Date(bt).getTime()) : 0;
+                return aMs - bMs;
+            });
+            break;
         default:
+            // 기본값: 최신 업데이트순
             list.sort((a, b) => {
                 const at = getLatest(a)?.timestamp; const bt = getLatest(b)?.timestamp;
                 const aMs = at ? (at.toDate ? at.toDate().getTime() : new Date(at).getTime()) : 0;
@@ -6356,21 +6452,48 @@ DualTextWriter.prototype.manageMetrics = async function(postId) {
         // 메트릭 목록 렌더링
         const metricsHtml = this.renderMetricsListForManage(postData.metrics, postData.id, postData.sourceTextId);
         
+        // 일괄 선택 모드 초기화
+        this.isBatchSelectMode = false;
+        this.selectedMetricIndices = [];
+        
         // 모달 열기
         const modal = document.getElementById('metrics-manage-modal');
         const content = document.getElementById('metrics-manage-content');
         if (modal && content) {
             content.innerHTML = `
                 <div style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(postData.content.substring(0, 50))}${postData.content.length > 50 ? '...' : ''}</div>
-                    <div style="font-size: 0.85rem; color: #666;">메트릭 ${postData.metrics.length}개</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${this.escapeHtml(postData.content.substring(0, 50))}${postData.content.length > 50 ? '...' : ''}</div>
+                            <div style="font-size: 0.85rem; color: #666;">메트릭 ${postData.metrics.length}개</div>
+                        </div>
+                        <button id="batch-select-toggle" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" aria-label="일괄 선택 모드">
+                            📋 일괄 선택
+                        </button>
+                    </div>
+                    <div id="batch-select-info" style="display: none; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 0.85rem; color: #1976d2;">
+                        <span id="selected-count">0</span>개 선택됨
+                        <button id="select-all-metrics" class="btn-link" style="margin-left: 12px; color: #1976d2; text-decoration: underline; background: none; border: none; cursor: pointer;">전체 선택</button>
+                        <button id="deselect-all-metrics" class="btn-link" style="margin-left: 8px; color: #1976d2; text-decoration: underline; background: none; border: none; cursor: pointer;">전체 해제</button>
+                    </div>
                 </div>
                 ${metricsHtml}
+                <div id="batch-delete-actions" style="display: none; margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107;">
+                    <div style="margin-bottom: 8px; font-weight: 600; color: #856404;">
+                        선택된 항목: <span id="batch-delete-count">0</span>개
+                    </div>
+                    <button id="batch-delete-btn" class="btn btn-danger" style="width: 100%;" aria-label="선택된 항목 일괄 삭제">
+                        🗑️ 선택된 항목 삭제
+                    </button>
+                </div>
             `;
             this.openBottomSheet(modal);
             
             // 모달 내부의 수정/삭제 버튼 이벤트 바인딩
             this.bindMetricsManageEvents(postData.id, postData.sourceTextId);
+            
+            // 일괄 선택 모드 토글 버튼 이벤트 바인딩
+            this.bindBatchSelectEvents(postData.id, postData.sourceTextId);
         }
         
     } catch (error) {
@@ -6424,11 +6547,22 @@ DualTextWriter.prototype.renderMetricsListForManage = function(metrics, postId, 
                     minute: '2-digit'
                 });
                 
+                const isSelected = this.isBatchSelectMode && this.selectedMetricIndices.includes(finalMetricIndex);
+                
                 return `
                     <div class="metric-manage-item" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}">
                         <div class="metric-manage-header">
-                            <div class="metric-manage-date">📅 ${dateStr}</div>
-                            <div class="metric-manage-actions">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" 
+                                    class="metric-checkbox" 
+                                    data-metric-index="${finalMetricIndex}"
+                                    ${isSelected ? 'checked' : ''}
+                                    style="display: ${this.isBatchSelectMode ? 'block' : 'none'}; width: 18px; height: 18px; cursor: pointer;"
+                                    aria-label="메트릭 선택"
+                                />
+                                <div class="metric-manage-date">📅 ${dateStr}</div>
+                            </div>
+                            <div class="metric-manage-actions" style="display: ${this.isBatchSelectMode ? 'none' : 'flex'};">
                                 <button class="btn-edit-metric" data-action="edit-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="수정">✏️ 수정</button>
                                 <button class="btn-delete-metric" data-action="delete-metric" data-metric-index="${finalMetricIndex}" data-post-id="${postId}" data-text-id="${textId || ''}" aria-label="삭제">🗑️ 삭제</button>
                             </div>
@@ -6642,6 +6776,261 @@ DualTextWriter.prototype.deleteMetricFromManage = async function(postId, textId,
     } catch (error) {
         console.error('트래킹 데이터 삭제 실패:', error);
         this.showMessage('❌ 트래킹 데이터 삭제에 실패했습니다: ' + error.message, 'error');
+    }
+};
+
+// 일괄 선택 모드 이벤트 바인딩
+DualTextWriter.prototype.bindBatchSelectEvents = function(postId, textId) {
+    const toggleBtn = document.getElementById('batch-select-toggle');
+    const selectInfo = document.getElementById('batch-select-info');
+    const selectAllBtn = document.getElementById('select-all-metrics');
+    const deselectAllBtn = document.getElementById('deselect-all-metrics');
+    const batchDeleteActions = document.getElementById('batch-delete-actions');
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    const content = document.getElementById('metrics-manage-content');
+    
+    if (!toggleBtn || !content) return;
+    
+    // 일괄 선택 모드 토글
+    toggleBtn.addEventListener('click', () => {
+        this.isBatchSelectMode = !this.isBatchSelectMode;
+        this.selectedMetricIndices = [];
+        
+        if (this.isBatchSelectMode) {
+            toggleBtn.textContent = '❌ 취소';
+            toggleBtn.style.background = '#dc3545';
+            if (selectInfo) selectInfo.style.display = 'block';
+            if (batchDeleteActions) batchDeleteActions.style.display = 'none';
+        } else {
+            toggleBtn.textContent = '📋 일괄 선택';
+            toggleBtn.style.background = '';
+            if (selectInfo) selectInfo.style.display = 'none';
+            if (batchDeleteActions) batchDeleteActions.style.display = 'none';
+        }
+        
+        // 메트릭 목록 다시 렌더링
+        this.refreshMetricsListForManage(postId, textId);
+    });
+    
+    // 전체 선택
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            const checkboxes = content.querySelectorAll('.metric-checkbox');
+            checkboxes.forEach(cb => {
+                const index = parseInt(cb.getAttribute('data-metric-index'));
+                if (!this.selectedMetricIndices.includes(index)) {
+                    this.selectedMetricIndices.push(index);
+                }
+                cb.checked = true;
+            });
+            this.updateBatchSelectUI();
+        });
+    }
+    
+    // 전체 해제
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', () => {
+            this.selectedMetricIndices = [];
+            const checkboxes = content.querySelectorAll('.metric-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            this.updateBatchSelectUI();
+        });
+    }
+    
+    // 체크박스 클릭 이벤트
+    content.addEventListener('change', (e) => {
+        if (e.target.classList.contains('metric-checkbox')) {
+            const index = parseInt(e.target.getAttribute('data-metric-index'));
+            if (e.target.checked) {
+                if (!this.selectedMetricIndices.includes(index)) {
+                    this.selectedMetricIndices.push(index);
+                }
+            } else {
+                this.selectedMetricIndices = this.selectedMetricIndices.filter(i => i !== index);
+            }
+            this.updateBatchSelectUI();
+        }
+    });
+    
+    // 일괄 삭제 버튼
+    if (batchDeleteBtn) {
+        batchDeleteBtn.addEventListener('click', () => {
+            if (this.selectedMetricIndices.length === 0) {
+                this.showMessage('선택된 항목이 없습니다.', 'warning');
+                return;
+            }
+            
+            if (confirm(`선택된 ${this.selectedMetricIndices.length}개의 메트릭을 삭제하시겠습니까?`)) {
+                this.batchDeleteMetrics(postId, textId);
+            }
+        });
+    }
+};
+
+// 일괄 선택 UI 업데이트
+DualTextWriter.prototype.updateBatchSelectUI = function() {
+    const selectedCount = document.getElementById('selected-count');
+    const batchDeleteCount = document.getElementById('batch-delete-count');
+    const batchDeleteActions = document.getElementById('batch-delete-actions');
+    
+    const count = this.selectedMetricIndices.length;
+    
+    if (selectedCount) {
+        selectedCount.textContent = count;
+    }
+    
+    if (batchDeleteCount) {
+        batchDeleteCount.textContent = count;
+    }
+    
+    if (batchDeleteActions) {
+        batchDeleteActions.style.display = count > 0 ? 'block' : 'none';
+    }
+};
+
+// 메트릭 목록 새로고침 (일괄 선택 모드 상태 반영)
+DualTextWriter.prototype.refreshMetricsListForManage = async function(postId, textId) {
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        if (this.trackingPosts) {
+            postData = this.trackingPosts.find(p => p.id === postId);
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            try {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+                const postDoc = await window.firebaseGetDoc(postRef);
+                
+                if (postDoc.exists()) {
+                    const data = postDoc.data();
+                    postData = {
+                        id: postDoc.id,
+                        metrics: data.metrics || []
+                    };
+                }
+            } catch (error) {
+                console.error('포스트 조회 실패:', error);
+            }
+        }
+        
+        if (!postData || !postData.metrics || postData.metrics.length === 0) {
+            return;
+        }
+        
+        // 메트릭 목록 다시 렌더링
+        const metricsHtml = this.renderMetricsListForManage(postData.metrics, postId, textId);
+        const content = document.getElementById('metrics-manage-content');
+        if (content) {
+            const listContainer = content.querySelector('.metrics-manage-list');
+            if (listContainer) {
+                listContainer.outerHTML = metricsHtml;
+            }
+        }
+        
+    } catch (error) {
+        console.error('메트릭 목록 새로고침 실패:', error);
+    }
+};
+
+// 일괄 삭제 함수
+DualTextWriter.prototype.batchDeleteMetrics = async function(postId, textId) {
+    if (!this.currentUser || !this.isFirebaseReady) {
+        this.showMessage('로그인이 필요합니다.', 'error');
+        return;
+    }
+    
+    if (this.selectedMetricIndices.length === 0) {
+        this.showMessage('선택된 항목이 없습니다.', 'warning');
+        return;
+    }
+    
+    try {
+        // 포스트 데이터 가져오기
+        let postData = null;
+        let postRef = null;
+        
+        try {
+            postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', postId);
+            const postDoc = await window.firebaseGetDoc(postRef);
+            
+            if (postDoc.exists()) {
+                postData = postDoc.data();
+            } else if (textId) {
+                const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                const textQuerySnapshot = await window.firebaseGetDocs(window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textId)));
+                if (!textQuerySnapshot.empty) {
+                    const doc = textQuerySnapshot.docs[0];
+                    postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', doc.id);
+                    postData = doc.data();
+                }
+            }
+        } catch (error) {
+            console.error('포스트 조회 실패:', error);
+        }
+        
+        if (!postData || !postRef) {
+            this.showMessage('포스트를 찾을 수 없습니다.', 'error');
+            return;
+        }
+        
+        // 선택된 인덱스를 내림차순으로 정렬 (뒤에서부터 삭제하여 인덱스 변경 방지)
+        const sortedIndices = [...this.selectedMetricIndices].sort((a, b) => b - a);
+        
+        // 메트릭 배열에서 선택된 항목 제거
+        let updatedMetrics = [...(postData.metrics || [])];
+        sortedIndices.forEach(index => {
+            if (index >= 0 && index < updatedMetrics.length) {
+                updatedMetrics.splice(index, 1);
+            }
+        });
+        
+        // 분석 데이터 계산
+        const analytics = updatedMetrics.length > 0 ? this.calculateAnalytics(updatedMetrics) : {};
+        
+        // Firebase 업데이트
+        await window.firebaseUpdateDoc(postRef, {
+            metrics: updatedMetrics,
+            analytics,
+            updatedAt: window.firebaseServerTimestamp()
+        });
+        
+        // 로컬 데이터 업데이트
+        const post = this.trackingPosts?.find(p => p.id === postRef.id || p.sourceTextId === textId);
+        if (post) {
+            post.metrics = updatedMetrics;
+            post.analytics = analytics;
+        }
+        
+        // 일괄 선택 모드 해제
+        this.isBatchSelectMode = false;
+        this.selectedMetricIndices = [];
+        
+        // 메트릭 관리 모달 새로고침
+        const manageModal = document.getElementById('metrics-manage-modal');
+        const isManageModalOpen = manageModal && (manageModal.classList.contains('bottom-sheet-open') || manageModal.style.display !== 'none');
+        
+        if (isManageModalOpen) {
+            // 메트릭 관리 모달이 열려있으면 새로고침
+            setTimeout(() => {
+                this.manageMetrics(postRef.id || postId);
+            }, 300);
+        } else {
+            // 메트릭 관리 모달이 닫혀있으면 일반 UI 업데이트
+            this.refreshUI({
+                savedTexts: true,
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+        }
+        
+        this.showMessage(`✅ ${sortedIndices.length}개의 트래킹 데이터가 삭제되었습니다!`, 'success');
+        
+    } catch (error) {
+        console.error('일괄 삭제 실패:', error);
+        this.showMessage('❌ 일괄 삭제에 실패했습니다: ' + error.message, 'error');
     }
 };
 

@@ -457,15 +457,38 @@
                         </div>
                         <div style="display:flex; gap:6px; align-items:center;">
                             <span style="font-weight:600; color:#333; font-size:0.9rem;">정렬:</span>
-                            <select id="tracking-sort" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
-                                <option value="updatedDesc">최신 업데이트순</option>
-                                <option value="viewsDesc">조회수 높은순</option>
-                                <option value="likesDesc">좋아요 높은순</option>
-                                <option value="commentsDesc">댓글 많은순</option>
-                                <option value="sharesDesc">공유 많은순</option>
-                                <option value="followsDesc">팔로우 많은순</option>
-                                <option value="entriesDesc">입력 횟수 많은순</option>
-                                <option value="favoritesFirst">즐겨찾기 먼저</option>
+                            <select id="tracking-sort" aria-label="트래킹 정렬 옵션" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
+                                <optgroup label="날짜">
+                                    <option value="updatedDesc">최신 업데이트순</option>
+                                    <option value="updatedAsc">오래된 업데이트순</option>
+                                </optgroup>
+                                <optgroup label="조회수">
+                                    <option value="viewsDesc">조회수 높은순</option>
+                                    <option value="viewsAsc">조회수 낮은순</option>
+                                </optgroup>
+                                <optgroup label="좋아요">
+                                    <option value="likesDesc">좋아요 높은순</option>
+                                    <option value="likesAsc">좋아요 낮은순</option>
+                                </optgroup>
+                                <optgroup label="댓글">
+                                    <option value="commentsDesc">댓글 많은순</option>
+                                    <option value="commentsAsc">댓글 적은순</option>
+                                </optgroup>
+                                <optgroup label="공유">
+                                    <option value="sharesDesc">공유 많은순</option>
+                                    <option value="sharesAsc">공유 적은순</option>
+                                </optgroup>
+                                <optgroup label="팔로우">
+                                    <option value="followsDesc">팔로우 많은순</option>
+                                    <option value="followsAsc">팔로우 적은순</option>
+                                </optgroup>
+                                <optgroup label="입력 횟수">
+                                    <option value="entriesDesc">입력 횟수 많은순</option>
+                                    <option value="entriesAsc">입력 횟수 적은순</option>
+                                </optgroup>
+                                <optgroup label="기타">
+                                    <option value="favoritesFirst">즐겨찾기 먼저</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div style="display:flex; gap:6px; align-items:center;">
