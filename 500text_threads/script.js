@@ -143,6 +143,72 @@ class DualTextWriter {
         this.init();
     }
 
+    /**
+     * 레퍼런스 입력란에 대한 실시간 중복 체크 초기화
+     */
+    initLiveDuplicateCheck() {
+        if (!this.refTextInput) return;
+        // 힌트 영역이 없다면 생성
+        let hint = document.getElementById('ref-duplicate-hint');
+        if (!hint) {
+            hint = document.createElement('div');
+            hint.id = 'ref-duplicate-hint';
+            hint.setAttribute('role', 'alert');
+            hint.setAttribute('aria-live', 'polite');
+            hint.style.cssText = 'margin-top:8px;font-size:0.9rem;display:none;color:#b35400;background:#fff3cd;border:1px solid #ffeeba;padding:8px;border-radius:8px;';
+            this.refTextInput.parentElement && this.refTextInput.parentElement.appendChild(hint);
+        }
+
+        const DEBOUNCE_MS = 300;
+        this.refTextInput.addEventListener('input', () => {
+            // 디바운스 처리
+            clearTimeout(this.debounceTimers.refDuplicate);
+            this.debounceTimers.refDuplicate = setTimeout(() => {
+                const value = this.refTextInput.value || '';
+                // 너무 짧으면 검사하지 않음 (성능/UX)
+                if (value.trim().length < 10) {
+                    this.hideInlineDuplicateHint();
+                    return;
+                }
+                try {
+                    const duplicate = this.checkDuplicateReference(value);
+                    if (duplicate) {
+                        this.showInlineDuplicateHint(duplicate);
+                    } else {
+                        this.hideInlineDuplicateHint();
+                    }
+                } catch (e) {
+                    // 입력 중 오류가 있어도 무시하고 힌트 숨김
+                    console.warn('실시간 중복 체크 중 경고:', e);
+                    this.hideInlineDuplicateHint();
+                }
+            }, DEBOUNCE_MS);
+        });
+    }
+
+    /**
+     * 인라인 중복 경고 표시
+     * @param {Object} duplicate
+     */
+    showInlineDuplicateHint(duplicate) {
+        const hint = document.getElementById('ref-duplicate-hint');
+        if (!hint) return;
+        const createdAtStr = this.formatDateFromFirestore?.(duplicate?.createdAt) || '';
+        const topicStr = duplicate?.topic ? ` · 주제: ${this.escapeHtml(duplicate.topic)}` : '';
+        hint.innerHTML = `⚠️ 동일한 레퍼런스가 이미 있습니다${createdAtStr ? ` · 저장일: ${createdAtStr}` : ''}${topicStr}. 저장 시 중복으로 저장될 수 있습니다.`;
+        hint.style.display = 'block';
+    }
+
+    /**
+     * 인라인 중복 경고 숨김
+     */
+    hideInlineDuplicateHint() {
+        const hint = document.getElementById('ref-duplicate-hint');
+        if (!hint) return;
+        hint.style.display = 'none';
+        hint.textContent = '';
+    }
+
     // 레퍼런스 유형 배지 렌더링
     renderReferenceTypeBadge(referenceType) {
         const type = (referenceType || 'unspecified');
@@ -164,6 +230,8 @@ class DualTextWriter {
         this.initCharLimitToggle();
         // 초기 글자 제한 반영
         this.applyCharLimit(this.maxLength);
+        // 실시간 중복 체크 초기화
+        this.initLiveDuplicateCheck();
     }
 
     // Firebase 초기화 대기
@@ -782,6 +850,324 @@ class DualTextWriter {
         return text.length;
     }
 
+    /**
+     * 텍스트 내용을 정규화합니다.
+     * 
+     * 중복 체크를 위해 텍스트를 정규화합니다. 공백, 줄바꿈, 캐리지 리턴을 정리하여
+     * 동일한 내용을 다른 형식으로 입력한 경우에도 중복으로 인식할 수 있도록 합니다.
+     * 
+     * @param {string} text - 정규화할 텍스트
+     * @returns {string} 정규화된 텍스트 (빈 문자열 또는 정규화된 텍스트)
+     * 
+     * @example
+     * // 공백 차이 정규화
+     * normalizeContent('hello   world') // 'hello world'
+     * 
+     * // 줄바꿈 정리
+     * normalizeContent('hello\nworld') // 'hello world'
+     * 
+     * // 앞뒤 공백 제거
+     * normalizeContent('  hello world  ') // 'hello world'
+     */
+    normalizeContent(text) {
+        // null, undefined, 빈 문자열 처리
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+
+        try {
+            // 앞뒤 공백 제거
+            let normalized = text.trim();
+            
+            // 연속된 공백을 하나로 변환
+            normalized = normalized.replace(/\s+/g, ' ');
+            
+            // 줄바꿈을 공백으로 변환
+            normalized = normalized.replace(/\n+/g, ' ');
+            
+            // 캐리지 리턴을 공백으로 변환
+            normalized = normalized.replace(/\r+/g, ' ');
+            
+            // 최종적으로 연속된 공백이 생길 수 있으므로 다시 정리
+            normalized = normalized.replace(/\s+/g, ' ');
+            
+            return normalized.trim();
+        } catch (error) {
+            // 정규식 에러 발생 시 원본 텍스트의 trim만 반환
+            console.warn('텍스트 정규화 중 오류 발생:', error);
+            return typeof text === 'string' ? text.trim() : '';
+        }
+    }
+
+    /**
+     * 레퍼런스 내용의 중복 여부를 확인합니다.
+     *
+     * 저장된 레퍼런스(`this.savedTexts` 중 type === 'reference'인 항목)와
+     * 입력된 내용(`content`)을 정규화하여 완전 일치 여부를 확인합니다.
+     * 첫 번째로 발견된 중복 레퍼런스 객체를 반환하며, 없으면 null을 반환합니다.
+     *
+     * 성능: O(N) - 레퍼런스 수가 많지 않은 현재 구조에서 적합하며,
+     * 추후 해시 기반 최적화(Phase 3)로 확장 가능합니다.
+     *
+     * @param {string} content - 확인할 레퍼런스 내용
+     * @returns {Object|null} 중복된 레퍼런스 객체 또는 null
+     *
+     * @example
+     * const dup = this.checkDuplicateReference('  같은  내용\\n입니다 ');
+     * if (dup) { console.log('중복 발견:', dup.id); }
+     */
+    checkDuplicateReference(content) {
+        // 안전성 체크
+        if (!content || typeof content !== 'string') {
+            return null;
+        }
+        if (!Array.isArray(this.savedTexts) || this.savedTexts.length === 0) {
+            return null;
+        }
+
+        // 1) 해시가 있는 경우: 해시 우선 비교
+        try {
+            const normalizedForHash = this.normalizeContent(content);
+            const targetHash = this.calculateContentHashSync
+                ? this.calculateContentHashSync(normalizedForHash)
+                : null;
+
+            if (targetHash) {
+                const byHash = this.savedTexts.find((item) => {
+                    if ((item.type || 'edit') !== 'reference') return false;
+                    return (item.contentHash && item.contentHash === targetHash);
+                });
+                if (byHash) {
+                    return byHash;
+                }
+            }
+        } catch (e) {
+            // 해시 계산 실패 시 무시하고 정규화 비교로 폴백
+        }
+
+        // 2) 정규화 기반 완전 일치 비교
+        const normalizedContent = this.normalizeContent(content);
+        if (!normalizedContent) return null;
+        const duplicate = this.savedTexts.find((item) => {
+            if ((item.type || 'edit') !== 'reference') return false;
+            const itemContent = typeof item.content === 'string' ? item.content : '';
+            const normalizedItem = this.normalizeContent(itemContent);
+            return normalizedItem === normalizedContent;
+        });
+
+        return duplicate || null;
+    }
+
+    /**
+     * 내용 해시(SHA-256)를 계산합니다. 브라우저 SubtleCrypto 사용.
+     * 사용이 불가한 환경을 위해 동기 폴백 해시도 제공합니다.
+     *
+     * @param {string} content - 정규화된 내용
+     * @returns {Promise<string>} 16진수 해시 문자열
+     */
+    async calculateContentHash(content) {
+        if (!content || typeof content !== 'string') return '';
+        try {
+            if (window.crypto && window.crypto.subtle) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(content);
+                const digest = await window.crypto.subtle.digest('SHA-256', data);
+                return Array.from(new Uint8Array(digest))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+            }
+        } catch (e) {
+            console.warn('SHA-256 해시 계산 실패, 폴백 해시 사용:', e);
+        }
+        // 폴백: 간단한 동기 해시 (충돌 가능성 있으나 임시용)
+        return this.calculateContentHashSync(content);
+    }
+
+    /**
+     * 동기 폴백 해시 (간단한 32비트 누적 해시)
+     * @param {string} content
+     * @returns {string} 16진수 해시
+     */
+    calculateContentHashSync(content) {
+        let hash = 0;
+        for (let i = 0; i < content.length; i++) {
+            hash = (hash << 5) - hash + content.charCodeAt(i);
+            hash |= 0;
+        }
+        // 32비트 정수 -> 8자리 16진수
+        return ('00000000' + (hash >>> 0).toString(16)).slice(-8);
+    }
+
+    /**
+     * 기존 레퍼런스에 contentHash를 채워 넣는 마이그레이션 유틸리티.
+     * 대량 문서에는 배치/백오프 전략이 필요할 수 있음.
+     */
+    async migrateHashesForExistingReferences() {
+        if (!this.currentUser || !this.isFirebaseReady) return;
+        if (!Array.isArray(this.savedTexts) || this.savedTexts.length === 0) return;
+        try {
+            const updates = [];
+            for (const item of this.savedTexts) {
+                if ((item.type || 'edit') !== 'reference') continue;
+                if (item.contentHash) continue;
+                const normalized = this.normalizeContent(item.content || '');
+                const hash = await this.calculateContentHash(normalized);
+                if (!hash) continue;
+                updates.push({ id: item.id, contentHash: hash });
+            }
+            // Firestore 업데이트
+            for (const u of updates) {
+                const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', u.id);
+                await window.firebaseUpdateDoc(textRef, {
+                    contentHash: u.contentHash,
+                    hashVersion: 1,
+                    updatedAt: window.firebaseServerTimestamp()
+                });
+                // 로컬 반영
+                const local = this.savedTexts.find(t => t.id === u.id);
+                if (local) {
+                    local.contentHash = u.contentHash;
+                    local.hashVersion = 1;
+                }
+            }
+            if (updates.length > 0) {
+                this.showMessage(`중복 체크 해시를 ${updates.length}개 문서에 적용했습니다.`, 'success');
+            } else {
+                this.showMessage('적용할 해시가 없습니다. (모두 최신 상태)', 'info');
+            }
+        } catch (e) {
+            console.error('해시 마이그레이션 실패:', e);
+            this.showMessage('해시 마이그레이션 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 중복 레퍼런스 확인 모달을 표시합니다.
+     *
+     * 중복된 레퍼런스의 요약 정보를 보여주고, 사용자에게
+     * 저장 취소, 기존 레퍼런스 보기, 그래도 저장 중 하나를 선택하게 합니다.
+     *
+     * 접근성:
+     * - role="dialog", aria-modal="true" 적용
+     * - ESC 로 닫기 지원
+     * - 버튼에 명확한 라벨 적용
+     *
+     * @param {Object} duplicate - 중복된 레퍼런스 정보 객체
+     * @returns {Promise<boolean>} true: 그래도 저장, false: 취소/보기 선택
+     */
+    async showDuplicateConfirmModal(duplicate) {
+        return new Promise((resolve) => {
+            // 기존 모달 제거 (중복 표시 방지)
+            const existing = document.getElementById('duplicate-confirm-overlay');
+            if (existing) existing.remove();
+
+            // 날짜 포맷 유틸 (내부 전용)
+            // 날짜 포맷팅은 클래스 메서드 formatDateFromFirestore 사용
+
+            const overlay = document.createElement('div');
+            overlay.id = 'duplicate-confirm-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.35);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+            `;
+
+            const modal = document.createElement('div');
+            modal.id = 'duplicate-confirm-modal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'duplicate-confirm-title');
+            modal.style.cssText = `
+                width: 100%;
+                max-width: 560px;
+                background: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+                padding: 20px;
+            `;
+
+            const createdAtStr = this.formatDateFromFirestore(duplicate?.createdAt);
+            const topicStr = duplicate?.topic ? this.escapeHtml(duplicate.topic) : '';
+            const contentPreview = this.escapeHtml(
+                (duplicate?.content || '').substring(0, 140)
+            ) + ((duplicate?.content || '').length > 140 ? '...' : '');
+
+            modal.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom: 12px;">
+                    <div style="font-size: 1.25rem;">⚠️</div>
+                    <h3 id="duplicate-confirm-title" style="margin:0; font-size:1.1rem; font-weight:700; color:#333;">
+                        중복 레퍼런스 발견
+                    </h3>
+                </div>
+                <p style="margin:0 0 12px; color:#555; line-height:1.6;">
+                    입력하신 내용과 동일한 레퍼런스가 이미 저장되어 있습니다. 어떻게 하시겠습니까?
+                </p>
+                <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; padding:12px; margin-bottom: 16px;">
+                    ${createdAtStr ? `<div style="font-size:0.9rem; color:#666; margin-bottom:6px;"><strong>저장 날짜:</strong> ${createdAtStr}</div>` : ''}
+                    ${topicStr ? `<div style="font-size:0.9rem; color:#666; margin-bottom:6px;"><strong>주제:</strong> ${topicStr}</div>` : ''}
+                    <div style="font-size:0.95rem; color:#444;"><strong>내용:</strong> ${contentPreview}</div>
+                </div>
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button type="button" data-action="cancel" class="btn btn-secondary" aria-label="저장 취소"
+                        style="padding:8px 12px; border-radius:8px; background:#e9ecef; border:none; color:#333; cursor:pointer;">
+                        취소
+                    </button>
+                    <button type="button" data-action="view" class="btn btn-primary" aria-label="기존 레퍼런스 보기"
+                        style="padding:8px 12px; border-radius:8px; background:#0d6efd; border:none; color:#fff; cursor:pointer;">
+                        기존 레퍼런스 보기
+                    </button>
+                    <button type="button" data-action="save" class="btn btn-warning" aria-label="그래도 저장"
+                        style="padding:8px 12px; border-radius:8px; background:#ffc107; border:none; color:#333; cursor:pointer;">
+                        그래도 저장
+                    </button>
+                </div>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            const cleanup = (result) => {
+                window.removeEventListener('keydown', onKeyDown);
+                overlay.remove();
+                resolve(result);
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup(false);
+                }
+            };
+            window.addEventListener('keydown', onKeyDown);
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    cleanup(false);
+                }
+            });
+
+            modal.querySelector('[data-action="cancel"]').addEventListener('click', () => cleanup(false));
+            modal.querySelector('[data-action="view"]').addEventListener('click', async () => {
+                try {
+                    this.setSavedFilter && this.setSavedFilter('reference');
+                    await this.refreshSavedTextsUI?.();
+                } catch (err) {
+                    console.warn('기존 레퍼런스 보기 처리 중 경고:', err);
+                }
+                cleanup(false);
+            });
+            modal.querySelector('[data-action="save"]').addEventListener('click', () => cleanup(true));
+
+            // 포커스 초기 버튼로 이동
+            const firstBtn = modal.querySelector('[data-action="save"]');
+            if (firstBtn) firstBtn.focus();
+        });
+    }
+
     // Firebase 기반 인증으로 대체됨
     // Firebase Google 로그인 처리
     async googleLogin() {
@@ -1038,6 +1424,40 @@ class DualTextWriter {
                 }
             }
 
+            // 레퍼런스 저장 시 해시 필드 추가 (정규화 기반)
+            if (panel === 'ref') {
+                try {
+                    const normalizedForHash = this.normalizeContent(text);
+                    const contentHash = await this.calculateContentHash(normalizedForHash);
+                    if (contentHash) {
+                        textData.contentHash = contentHash;
+                        textData.hashVersion = 1;
+                    }
+                } catch (e) {
+                    console.warn('contentHash 계산 실패: 해시 없이 저장합니다.', e);
+                }
+            }
+
+            // 레퍼런스 저장 시 중복 체크 (referenceType 체크 이후, Firestore 저장 이전)
+            if (panel === 'ref') {
+                try {
+                    const duplicate = this.checkDuplicateReference(text);
+                    if (duplicate) {
+                        // 중복 확인 모달 표시
+                        const shouldProceed = await this.showDuplicateConfirmModal(duplicate);
+                        if (!shouldProceed) {
+                            // 사용자가 취소 선택 시 저장 중단
+                            return;
+                        }
+                        // shouldProceed가 true이면 계속 진행 (그래도 저장)
+                    }
+                } catch (error) {
+                    // 중복 체크 실패 시 저장 계속 진행 (안전한 기본값)
+                    console.warn('중복 체크 중 오류 발생, 저장을 계속 진행합니다:', error);
+                    // 에러 로그만 기록하고 저장은 계속 진행
+                }
+            }
+
             // Firestore에 저장
             const docRef = await window.firebaseAddDoc(
                 window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
@@ -1052,7 +1472,9 @@ class DualTextWriter {
             characterCount: this.getKoreanCharacterCount(text),
             type: panel === 'ref' ? 'reference' : 'edit',
             referenceType: panel === 'ref' ? textData.referenceType : undefined,
-            topic: panel === 'edit' ? textData.topic : undefined
+            topic: panel === 'edit' ? textData.topic : (panel === 'ref' ? textData.topic : undefined),
+            contentHash: panel === 'ref' ? textData.contentHash : undefined,
+            hashVersion: panel === 'ref' ? textData.hashVersion : undefined
         };
 
         // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
@@ -1621,6 +2043,71 @@ class DualTextWriter {
         const month = date.getMonth() + 1;
         const day = date.getDate();
         return `${year}년 ${month}월 ${day}일`;
+    }
+
+    /**
+     * Firestore Timestamp 또는 다양한 날짜 형식을 한국어 날짜 문자열로 변환합니다.
+     * 
+     * Firestore Timestamp, Date 객체, 숫자(타임스탬프), 문자열 등 다양한 형식을
+     * 한국어 날짜 형식("2025년 11월 11일")으로 변환합니다.
+     * 
+     * @param {Object|Date|number|string} dateInput - 변환할 날짜 (Firestore Timestamp, Date, 숫자, 문자열)
+     * @returns {string} 한국어 날짜 형식 문자열 (예: "2025년 11월 11일") 또는 빈 문자열
+     * 
+     * @example
+     * // Firestore Timestamp
+     * formatDateFromFirestore(timestamp) // "2025년 11월 11일"
+     * 
+     * // Date 객체
+     * formatDateFromFirestore(new Date()) // "2025년 11월 11일"
+     * 
+     * // 숫자 타임스탬프
+     * formatDateFromFirestore(1699718400000) // "2025년 11월 11일"
+     */
+    formatDateFromFirestore(dateInput) {
+        if (!dateInput) {
+            return '';
+        }
+
+        try {
+            let dateObj = null;
+
+            // Firestore Timestamp 처리
+            if (dateInput.toDate && typeof dateInput.toDate === 'function') {
+                dateObj = dateInput.toDate();
+            }
+            // Date 객체 처리
+            else if (dateInput instanceof Date) {
+                dateObj = dateInput;
+            }
+            // 숫자 타임스탬프 처리
+            else if (typeof dateInput === 'number') {
+                dateObj = new Date(dateInput);
+            }
+            // 문자열 날짜 처리
+            else if (typeof dateInput === 'string') {
+                const parsed = Date.parse(dateInput);
+                if (!Number.isNaN(parsed)) {
+                    dateObj = new Date(parsed);
+                }
+            }
+
+            // 유효한 Date 객체인지 확인
+            if (!dateObj || !(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) {
+                return '';
+            }
+
+            // 한국어 날짜 형식으로 변환
+            return dateObj.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        } catch (error) {
+            // 에러 발생 시 빈 문자열 반환
+            console.warn('날짜 포맷팅 중 오류 발생:', error);
+            return '';
+        }
     }
 
     /**
@@ -3320,7 +3807,9 @@ class DualTextWriter {
                     characterCount: data.characterCount,
                     type: normalizedType,
                     referenceType: data.referenceType || 'unspecified',
-                    topic: data.topic || undefined
+                    topic: data.topic || undefined,
+                    contentHash: data.contentHash || undefined,
+                    hashVersion: data.hashVersion || undefined
                 });
             });
 
@@ -3328,6 +3817,16 @@ class DualTextWriter {
             
             // 주제 필터 옵션 업데이트 (데이터 로드 후)
             this.updateTopicFilterOptions();
+
+            // 해시 미보유 레퍼런스 안내 (접근성: 토스트는 aria-live로 표시됨)
+            try {
+                const missingHashCount = this.savedTexts.filter(t => (t.type || 'edit') === 'reference' && !t.contentHash).length;
+                if (missingHashCount > 0) {
+                    this.showMessage(`ℹ️ 해시가 없는 레퍼런스 ${missingHashCount}개가 있습니다. 필요 시 해시 마이그레이션을 실행하세요.`, 'info');
+                }
+            } catch (e) {
+                // 무시
+            }
 
         } catch (error) {
             console.error('Firestore에서 텍스트 불러오기 실패:', error);
