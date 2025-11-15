@@ -5695,6 +5695,40 @@ class DualTextWriter {
                         updatedAt: window.firebaseServerTimestamp()
                     };
                     
+                    // 주제 추가 (선택사항)
+                    if (this.editTopicInput) {
+                        const topic = this.editTopicInput.value.trim();
+                        if (topic) {
+                            textData.topic = topic;
+                        }
+                    }
+                    
+                    // ✅ 참고 레퍼런스 선택 정보 추가
+                    if (this.selectedReferences && this.selectedReferences.length > 0) {
+                        // 유효한 레퍼런스 ID만 필터링 (존재 여부 확인)
+                        const validReferences = this.selectedReferences.filter(refId =>
+                            this.savedTexts && this.savedTexts.some(item => 
+                                item.id === refId && (item.type || 'edit') === 'reference'
+                            )
+                        );
+                        
+                        if (validReferences.length > 0) {
+                            textData.linkedReferences = validReferences;
+                            textData.referenceMeta = {
+                                linkedAt: window.firebaseServerTimestamp(),  // 연결 시점
+                                linkCount: validReferences.length             // 연결 개수 (캐시)
+                            };
+                            
+                            console.log(`📚 ${validReferences.length}개 레퍼런스 연결됨 (반자동 포스팅)`);
+                        } else {
+                            // 빈 배열로 설정 (null이 아닌 빈 배열)
+                            textData.linkedReferences = [];
+                        }
+                    } else {
+                        // 선택된 레퍼런스가 없는 경우 빈 배열로 설정
+                        textData.linkedReferences = [];
+                    }
+                    
                     const textDocRef = await window.firebaseAddDoc(
                         window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts'),
                         textData
@@ -5725,6 +5759,32 @@ class DualTextWriter {
                         createdAt: window.firebaseServerTimestamp(),
                         updatedAt: window.firebaseServerTimestamp()
                     };
+                    
+                    // ✅ 참고 레퍼런스 선택 정보 추가 (posts 컬렉션에도 동일하게 저장)
+                    if (this.selectedReferences && this.selectedReferences.length > 0) {
+                        // 유효한 레퍼런스 ID만 필터링 (존재 여부 확인)
+                        const validReferences = this.selectedReferences.filter(refId =>
+                            this.savedTexts && this.savedTexts.some(item => 
+                                item.id === refId && (item.type || 'edit') === 'reference'
+                            )
+                        );
+                        
+                        if (validReferences.length > 0) {
+                            postData.linkedReferences = validReferences;
+                            postData.referenceMeta = {
+                                linkedAt: window.firebaseServerTimestamp(),  // 연결 시점
+                                linkCount: validReferences.length             // 연결 개수 (캐시)
+                            };
+                            
+                            console.log(`📚 트래킹 포스트에 ${validReferences.length}개 레퍼런스 연결됨`);
+                        } else {
+                            // 빈 배열로 설정 (null이 아닌 빈 배열)
+                            postData.linkedReferences = [];
+                        }
+                    } else {
+                        // 선택된 레퍼런스가 없는 경우 빈 배열로 설정
+                        postData.linkedReferences = [];
+                    }
                     
                     // 레퍼런스가 사용된 경우, 레퍼런스용 포스트도 생성
                     if (referenceTextId) {
@@ -5763,6 +5823,19 @@ class DualTextWriter {
                     // 트래킹 생성 실패해도 포스팅은 계속 진행
                     this.showMessage('⚠️ 트래킹 시작에 실패했지만 포스팅은 계속할 수 있습니다.', 'warning');
                 }
+            }
+            
+            // ✅ 반자동 포스팅 후 선택된 레퍼런스 초기화 (일관성 유지)
+            if (this.selectedReferences && this.selectedReferences.length > 0) {
+                this.selectedReferences = [];
+                this.renderSelectedReferenceTags();
+                if (this.selectedRefCount) {
+                    this.selectedRefCount.textContent = '(0개 선택됨)';
+                }
+                if (this.collapseRefCount) {
+                    this.collapseRefCount.textContent = '(0개 선택됨)';
+                }
+                console.log('✅ 반자동 포스팅 후 레퍼런스 선택 초기화 완료');
             }
 
             // 최적화 완료 후 모달 표시 (원본 텍스트 전달)
