@@ -449,9 +449,8 @@ body {
     
     .panel-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 11px; /* 12px → 11px (10% 축소) */
+    gap: 16px; /* 간격을 좀 더 명확하게 줍니다. */
     margin-bottom: 9px; /* 10px → 9px (10% 축소) */
     padding-bottom: 7px; /* 8px → 7px (10% 축소) */
     border-bottom: 2px solid #f8f9fa;
@@ -462,8 +461,9 @@ body {
     .panel-header h3 {
     margin: 0;
     color: #333;
-    font-size: 1.08rem; /* 1.2rem → 1.08rem (10% 축소) */
+    font-size: 1.1rem; /* 1.2rem → 1.08rem (10% 축소) */
     font-weight: 600;
+    flex-shrink: 0; /* 축소 방지 */
     }
     
     .panel-controls {
@@ -504,9 +504,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    margin-bottom: 15px;
-    font-size: 0.99rem; /* 1.1rem → 0.99rem (10% 축소) */
+    font-size: 1rem; /* 1.1rem → 0.99rem (10% 축소) */
     font-weight: 600;
+    flex-shrink: 0; /* 축소 방지 */
+    margin-bottom: 0; /* 불필요한 마진 제거 */
     }
     
     .character-counter .separator {
@@ -584,12 +585,10 @@ body {
 
 /* 헤더 내부 주제 입력 필드 스타일 */
 .topic-input-group--header {
-    flex: 1;
-    min-width: 180px; /* 200px → 180px (10% 축소) */
-    max-width: 270px; /* 300px → 270px (10% 축소) */
-    margin-bottom: 0;
-    margin-left: auto;
-    margin-right: auto;
+    flex-grow: 1; /* 확장 */
+    flex-shrink: 1; /* 축소 */
+    min-width: 150px; /* 최소 너비 보장 */
+    margin: 0; /* auto 마진 제거 */
     display: flex; /* 라벨과 입력 필드를 가로로 배치 */
     align-items: center; /* 수직 중앙 정렬 */
     gap: 8px; /* 라벨과 입력 필드 사이 간격 */
