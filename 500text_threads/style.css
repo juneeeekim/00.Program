@@ -4696,16 +4696,80 @@ body {
     }
 
 /* ============================================
-   레퍼런스 선택 UI 스타일
+   레퍼런스 선택 UI 스타일 (접을 수 있는 패널)
    ============================================ */
 
-/* 참고 레퍼런스 섹션 */
-.reference-link-section {
+/* 접을 수 있는 레퍼런스 패널 */
+.reference-link-collapsible {
     margin: 16px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    background: #fff;
+}
+
+/* 토글 버튼 */
+.collapse-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #495057;
+    text-align: left;
+}
+
+.collapse-toggle:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.collapse-toggle:focus {
+    outline: 2px solid #0d6efd;
+    outline-offset: -2px;
+}
+
+.collapse-toggle .toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+    color: #6c757d;
+}
+
+.collapse-toggle[aria-expanded="true"] .toggle-icon {
+    transform: rotate(90deg);
+}
+
+.collapse-toggle .toggle-text {
+    flex: 1;
+}
+
+.collapse-toggle .toggle-count {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* 접히는 콘텐츠 */
+.collapse-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.collapse-content.expanded {
+    max-height: 800px;
+}
+
+/* 참고 레퍼런스 섹션 (내부) */
+.reference-link-section {
     padding: 16px;
     background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
 }
 
 .reference-link-section label {
@@ -5080,9 +5144,26 @@ body {
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
+    /* 접을 수 있는 패널 */
+    .reference-link-collapsible {
+        margin: 12px 0;
+    }
+    
+    .collapse-toggle {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    
+    .collapse-toggle .toggle-icon {
+        font-size: 0.75rem;
+    }
+    
+    .collapse-toggle .toggle-count {
+        font-size: 0.8rem;
+    }
+    
     .reference-link-section {
         padding: 12px;
-        margin: 12px 0;
     }
     
     .reference-tags {
@@ -5131,6 +5212,24 @@ body {
 }
 
 @media (max-width: 480px) {
+    /* 접을 수 있는 패널 */
+    .reference-link-collapsible {
+        margin: 10px 0;
+    }
+    
+    .collapse-toggle {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .collapse-toggle .toggle-text {
+        font-size: 0.85rem;
+    }
+    
+    .collapse-toggle .toggle-count {
+        font-size: 0.75rem;
+    }
+    
     .reference-link-section {
         padding: 10px;
     }

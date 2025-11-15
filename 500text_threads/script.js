@@ -243,12 +243,16 @@ class DualTextWriter {
     /**
      * 레퍼런스 선택 기능 초기화
      * 
+     * - 접을 수 있는 패널 토글 기능
      * - 모달 DOM 요소 참조
      * - 이벤트 리스너 바인딩
      * - 초기 상태 설정
      */
     initReferenceSelection() {
         // DOM 요소 참조
+        this.referenceCollapseToggle = document.getElementById('reference-collapse-toggle');
+        this.referenceLinkContent = document.getElementById('reference-link-content');
+        this.collapseRefCount = document.getElementById('collapse-ref-count');
         this.selectReferencesBtn = document.getElementById('select-references-btn');
         this.referenceSelectionModal = document.getElementById('reference-selection-modal');
         this.referenceSelectionList = document.getElementById('reference-selection-list');
@@ -263,6 +267,11 @@ class DualTextWriter {
         if (!this.selectReferencesBtn || !this.referenceSelectionModal) {
             console.warn('⚠️ 레퍼런스 선택 UI 요소를 찾을 수 없습니다.');
             return;
+        }
+        
+        // 접을 수 있는 패널 토글 이벤트
+        if (this.referenceCollapseToggle && this.referenceLinkContent) {
+            this.referenceCollapseToggle.addEventListener('click', () => this.toggleReferenceCollapse());
         }
         
         // 이벤트 리스너 바인딩
@@ -298,6 +307,40 @@ class DualTextWriter {
         }
         
         console.log('✅ 레퍼런스 선택 기능 초기화 완료');
+    }
+
+    /**
+     * 참고 레퍼런스 패널 토글
+     * 
+     * - 패널 펼치기/접기
+     * - 아이콘 회전 애니메이션
+     * - ARIA 속성 업데이트
+     */
+    toggleReferenceCollapse() {
+        try {
+            if (!this.referenceLinkContent || !this.referenceCollapseToggle) {
+                console.warn('⚠️ 레퍼런스 패널 요소를 찾을 수 없습니다.');
+                return;
+            }
+            
+            const isExpanded = this.referenceCollapseToggle.getAttribute('aria-expanded') === 'true';
+            
+            if (isExpanded) {
+                // 패널 접기
+                this.referenceLinkContent.classList.remove('expanded');
+                this.referenceCollapseToggle.setAttribute('aria-expanded', 'false');
+                this.referenceLinkContent.setAttribute('aria-hidden', 'true');
+                console.log('📚 레퍼런스 패널 접힘');
+            } else {
+                // 패널 펼치기
+                this.referenceLinkContent.classList.add('expanded');
+                this.referenceCollapseToggle.setAttribute('aria-expanded', 'true');
+                this.referenceLinkContent.setAttribute('aria-hidden', 'false');
+                console.log('📚 레퍼런스 패널 펼침');
+            }
+        } catch (error) {
+            console.error('레퍼런스 패널 토글 실패:', error);
+        }
     }
 
     // 레퍼런스 유형 배지 렌더링
@@ -6254,12 +6297,17 @@ class DualTextWriter {
      */
     confirmReferenceSelection() {
         try {
-            // 태그 렌더링
+            // 태그 렌더링 (토글 버튼 카운트도 함께 업데이트)
             this.renderSelectedReferenceTags();
             
             // 버튼 개수 업데이트
             if (this.selectedRefCount) {
                 this.selectedRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
+            }
+            
+            // 토글 버튼 카운트 업데이트
+            if (this.collapseRefCount) {
+                this.collapseRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
             }
             
             // 모달 닫기
@@ -6284,6 +6332,10 @@ class DualTextWriter {
         try {
             if (this.selectedReferences.length === 0) {
                 this.selectedReferencesTags.innerHTML = '';
+                // 토글 버튼 카운트도 업데이트
+                if (this.collapseRefCount) {
+                    this.collapseRefCount.textContent = '(0개 선택됨)';
+                }
                 return;
             }
             
@@ -6314,6 +6366,11 @@ class DualTextWriter {
             }).join('');
             
             this.selectedReferencesTags.innerHTML = html;
+            
+            // 토글 버튼 카운트도 업데이트
+            if (this.collapseRefCount) {
+                this.collapseRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
+            }
             
             // 제거 버튼 이벤트 바인딩
             this.bindReferenceTagRemoveEvents();
