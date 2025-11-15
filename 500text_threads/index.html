@@ -231,6 +231,36 @@
                             <div id="edit-progress-fill" class="progress-fill"></div>
                         </div>
 
+                        <!-- 참고 레퍼런스 섹션 -->
+                        <div class="reference-link-section">
+                            <label for="linked-references">
+                                📚 참고 레퍼런스 (선택사항)
+                            </label>
+                            <button 
+                                id="select-references-btn" 
+                                class="secondary-btn"
+                                type="button"
+                                aria-label="참고 레퍼런스 선택"
+                                aria-describedby="selected-references-description">
+                                <span class="icon">🔗</span>
+                                <span class="text">레퍼런스 선택</span>
+                                <span class="count" id="selected-ref-count">(0개 선택됨)</span>
+                            </button>
+                            
+                            <!-- 선택된 레퍼런스 태그 표시 영역 -->
+                            <div 
+                                id="selected-references-tags" 
+                                class="reference-tags"
+                                role="list"
+                                aria-label="선택된 참고 레퍼런스 목록">
+                                <!-- 동적으로 태그 추가됨 -->
+                            </div>
+                            
+                            <span id="selected-references-description" class="sr-only">
+                                선택된 레퍼런스는 태그로 표시되며, X 버튼을 클릭하여 제거할 수 있습니다.
+                            </span>
+                        </div>
+
                         <div class="panel-controls">
                             <div class="control-group basic-actions">
                                 <button id="edit-clear-btn" class="btn btn-secondary btn-mobile">지우기</button>
@@ -551,6 +581,58 @@
                 <button id="hashtag-settings-btn" class="btn btn-hashtag-settings btn-mobile" title="해시태그 설정">⚙️ 설정</button>
             </div>
         </main>
+    </div>
+
+    <!-- 레퍼런스 선택 모달 -->
+    <div id="reference-selection-modal" class="modal" role="dialog" aria-modal="true" 
+         aria-labelledby="reference-modal-title" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="reference-modal-title">📚 참고 레퍼런스 선택</h3>
+                <button class="close-btn" type="button" aria-label="모달 닫기">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- 검색 -->
+                <div class="search-box">
+                    <input 
+                        type="text" 
+                        id="reference-search-input" 
+                        placeholder="레퍼런스 검색..."
+                        aria-label="레퍼런스 검색">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <!-- 필터 (레퍼런스 타입) -->
+                <div class="filter-section">
+                    <label for="reference-type-filter-modal">타입 필터:</label>
+                    <select id="reference-type-filter-modal" aria-label="레퍼런스 타입 필터">
+                        <option value="all">전체</option>
+                        <option value="structure">구조</option>
+                        <option value="idea">아이디어</option>
+                    </select>
+                </div>
+                
+                <!-- 레퍼런스 목록 -->
+                <div id="reference-selection-list" class="reference-list" role="listbox" 
+                     aria-label="선택 가능한 레퍼런스 목록">
+                    <!-- 동적으로 체크박스 항목 추가됨 -->
+                </div>
+                
+                <!-- 선택 개수 표시 -->
+                <div class="selection-count" aria-live="polite" aria-atomic="true">
+                    선택됨: <span id="modal-selected-count">0</span>개
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="confirm-reference-selection-btn" class="primary-btn" type="button"
+                        aria-label="선택 완료">
+                    완료
+                </button>
+                <button class="cancel-btn" type="button" aria-label="선택 취소">취소</button>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->

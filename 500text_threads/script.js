@@ -42,6 +42,11 @@ class DualTextWriter {
         this.isBatchSelectMode = false; // 일괄 선택 모드 활성화 여부
         this.selectedMetricIndices = []; // 선택된 메트릭 인덱스 배열
         
+        // 작성글-레퍼런스 연동 기능 관련 프로퍼티
+        this.selectedReferences = [];           // 현재 선택된 레퍼런스 ID 배열
+        this.referenceSelectionModal = null;    // 레퍼런스 선택 모달 DOM
+        this.referenceLinkCache = new Map();    // 역방향 조회 캐시 (refId -> editIds[])
+        
         // Firebase 초기화 대기
         this.waitForFirebase();
 
@@ -235,6 +240,66 @@ class DualTextWriter {
         hint.textContent = '';
     }
 
+    /**
+     * 레퍼런스 선택 기능 초기화
+     * 
+     * - 모달 DOM 요소 참조
+     * - 이벤트 리스너 바인딩
+     * - 초기 상태 설정
+     */
+    initReferenceSelection() {
+        // DOM 요소 참조
+        this.selectReferencesBtn = document.getElementById('select-references-btn');
+        this.referenceSelectionModal = document.getElementById('reference-selection-modal');
+        this.referenceSelectionList = document.getElementById('reference-selection-list');
+        this.referenceSearchInput = document.getElementById('reference-search-input');
+        this.referenceTypeFilterModal = document.getElementById('reference-type-filter-modal');
+        this.selectedRefCount = document.getElementById('selected-ref-count');
+        this.modalSelectedCount = document.getElementById('modal-selected-count');
+        this.selectedReferencesTags = document.getElementById('selected-references-tags');
+        this.confirmReferenceSelectionBtn = document.getElementById('confirm-reference-selection-btn');
+        
+        // 유효성 검사
+        if (!this.selectReferencesBtn || !this.referenceSelectionModal) {
+            console.warn('⚠️ 레퍼런스 선택 UI 요소를 찾을 수 없습니다.');
+            return;
+        }
+        
+        // 이벤트 리스너 바인딩
+        this.selectReferencesBtn.addEventListener('click', () => this.openReferenceSelectionModal());
+        this.confirmReferenceSelectionBtn.addEventListener('click', () => this.confirmReferenceSelection());
+        
+        // 모달 닫기 버튼
+        const closeBtns = this.referenceSelectionModal.querySelectorAll('.close-btn, .cancel-btn');
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.closeReferenceSelectionModal());
+        });
+        
+        // 모달 외부 클릭 시 닫기
+        this.referenceSelectionModal.addEventListener('click', (e) => {
+            if (e.target === this.referenceSelectionModal) {
+                this.closeReferenceSelectionModal();
+            }
+        });
+        
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.referenceSelectionModal.style.display === 'flex') {
+                this.closeReferenceSelectionModal();
+            }
+        });
+        
+        // 검색 및 필터 이벤트
+        if (this.referenceSearchInput) {
+            this.referenceSearchInput.addEventListener('input', () => this.filterReferenceList());
+        }
+        if (this.referenceTypeFilterModal) {
+            this.referenceTypeFilterModal.addEventListener('change', () => this.filterReferenceList());
+        }
+        
+        console.log('✅ 레퍼런스 선택 기능 초기화 완료');
+    }
+
     // 레퍼런스 유형 배지 렌더링
     renderReferenceTypeBadge(referenceType) {
         const type = (referenceType || 'unspecified');
@@ -258,6 +323,8 @@ class DualTextWriter {
         this.applyCharLimit(this.maxLength);
         // 실시간 중복 체크 초기화
         this.initLiveDuplicateCheck();
+        // 레퍼런스 선택 기능 초기화
+        this.initReferenceSelection();
     }
 
     // Firebase 초기화 대기
@@ -1556,6 +1623,27 @@ class DualTextWriter {
                 }
             }
             
+            // 작성글 저장 시 연결된 레퍼런스 ID 배열 추가
+            if (panel === 'edit') {
+                // ✅ 유효한 레퍼런스 ID만 필터링 (존재 여부 확인)
+                const validReferences = this.selectedReferences.filter(refId =>
+                    this.savedTexts.some(item => item.id === refId && (item.type || 'edit') === 'reference')
+                );
+                
+                if (validReferences.length > 0) {
+                    textData.linkedReferences = validReferences;
+                    textData.referenceMeta = {
+                        linkedAt: window.firebaseServerTimestamp(),  // 연결 시점
+                        linkCount: validReferences.length             // 연결 개수 (캐시)
+                    };
+                    
+                    console.log(`📚 ${validReferences.length}개 레퍼런스 연결됨`);
+                } else {
+                    // 빈 배열로 설정 (null이 아닌 빈 배열)
+                    textData.linkedReferences = [];
+                }
+            }
+            
             // 레퍼런스 글 저장 시 주제 추가 (선택사항)
             if (panel === 'ref' && this.refTopicInput) {
                 const topic = this.refTopicInput.value.trim();
@@ -1614,7 +1702,9 @@ class DualTextWriter {
             referenceType: panel === 'ref' ? textData.referenceType : undefined,
             topic: panel === 'edit' ? textData.topic : (panel === 'ref' ? textData.topic : undefined),
             contentHash: panel === 'ref' ? textData.contentHash : undefined,
-            hashVersion: panel === 'ref' ? textData.hashVersion : undefined
+            hashVersion: panel === 'ref' ? textData.hashVersion : undefined,
+            linkedReferences: panel === 'edit' ? textData.linkedReferences : undefined,
+            referenceMeta: panel === 'edit' ? textData.referenceMeta : undefined
         };
 
         // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
@@ -1636,6 +1726,17 @@ class DualTextWriter {
         if (panel === 'ref' && this.refTopicInput) {
             this.refTopicInput.value = '';
         }
+        
+        // ✅ 작성글 저장 후 선택된 레퍼런스 초기화
+        if (panel === 'edit') {
+            this.selectedReferences = [];
+            this.renderSelectedReferenceTags();
+            if (this.selectedRefCount) {
+                this.selectedRefCount.textContent = '(0개 선택됨)';
+            }
+            console.log('✅ 레퍼런스 선택 초기화 완료');
+        }
+        
         this.updateCharacterCount(panel);
 
         } catch (error) {
@@ -1946,6 +2047,7 @@ class DualTextWriter {
                     // DOM 렌더링 완료 후 이벤트 리스너 설정
                     setTimeout(() => {
                         this.setupSavedItemEventListeners();
+                        this.bindLinkedReferenceBadgeEvents();
                     }, 100);
                 }
             };
@@ -1962,7 +2064,48 @@ class DualTextWriter {
         if (totalItems <= batchSize) {
             setTimeout(() => {
                 this.setupSavedItemEventListeners();
+                this.bindLinkedReferenceBadgeEvents();
             }, 100);
+        }
+    }
+    
+    /**
+     * Phase 1.6.1: 작성글-레퍼런스 연동 배지 이벤트 바인딩
+     * 
+     * - 작성글 카드의 "참고 레퍼런스 N개" 배지 클릭 이벤트
+     * - 레퍼런스 카드의 "이 레퍼런스를 참고한 글 N개" 배지 클릭 이벤트
+     */
+    bindLinkedReferenceBadgeEvents() {
+        try {
+            // 작성글 카드의 "참고 레퍼런스 N개" 배지 클릭
+            const linkedRefBadges = document.querySelectorAll('.linked-ref-badge');
+            linkedRefBadges.forEach(badge => {
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const editId = badge.getAttribute('data-edit-id');
+                    if (editId) {
+                        this.showLinkedReferencesModal(editId);
+                    }
+                });
+            });
+            
+            // 레퍼런스 카드의 "이 레퍼런스를 참고한 글 N개" 배지 클릭
+            const usedInEditsBadges = document.querySelectorAll('.used-in-edits-badge');
+            usedInEditsBadges.forEach(badge => {
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const refId = badge.getAttribute('data-ref-id');
+                    if (refId) {
+                        this.showEditsByReferenceModal(refId);
+                    }
+                });
+            });
+            
+            console.log('✅ 배지 클릭 이벤트 바인딩 완료');
+        } catch (error) {
+            console.error('배지 이벤트 바인딩 실패:', error);
         }
     }
     
@@ -1982,6 +2125,43 @@ class DualTextWriter {
         const refType = (item.referenceType || 'unspecified');
         const refTypeBadgeHtml = isReference ? this.renderReferenceTypeBadge(refType) : '';
         
+        // ✅ Phase 1.6.1: 작성글-레퍼런스 연동 배지 생성
+        // 작성글 카드: 연결된 레퍼런스 개수 표시
+        let linkedRefBadge = '';
+        const isEdit = (item.type || 'edit') === 'edit';
+        if (isEdit && Array.isArray(item.linkedReferences)) {
+            const refCount = item.linkedReferences.length;
+            if (refCount > 0) {
+                linkedRefBadge = `
+                    <button 
+                        class="linked-ref-badge" 
+                        data-edit-id="${item.id}"
+                        aria-label="${refCount}개의 참고 레퍼런스 보기"
+                        title="이 글이 참고한 레퍼런스 목록">
+                        📚 참고 레퍼런스 ${refCount}개
+                    </button>
+                `;
+            }
+        }
+        
+        // 레퍼런스 카드: 이 레퍼런스를 참고한 작성글 개수 표시 (역방향)
+        let usedInEditsBadge = '';
+        if (isReference) {
+            const usedEdits = this.getEditsByReference(item.id);
+            const editCount = usedEdits.length;
+            if (editCount > 0) {
+                usedInEditsBadge = `
+                    <button 
+                        class="used-in-edits-badge" 
+                        data-ref-id="${item.id}"
+                        aria-label="이 레퍼런스를 참고한 글 ${editCount}개 보기"
+                        title="이 레퍼런스를 참고한 작성글 목록">
+                        📝 이 레퍼런스를 참고한 글 ${editCount}개
+                    </button>
+                `;
+            }
+        }
+        
         return `
         <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
             <div class="saved-item-header" id="item-header-${item.id}">
@@ -1991,7 +2171,11 @@ class DualTextWriter {
                     ${usageBadgeHtml}
                 </div>
             </div>
-            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">${metaText}</div>
+            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">
+                ${metaText}
+                ${linkedRefBadge ? `<span class="meta-separator">·</span>${linkedRefBadge}` : ''}
+                ${usedInEditsBadge ? `<span class="meta-separator">·</span>${usedInEditsBadge}` : ''}
+            </div>
             ${item.topic ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(item.topic)}">🏷️ ${this.escapeHtml(item.topic)}</div>` : ''}
             <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>
@@ -3132,6 +3316,22 @@ class DualTextWriter {
                 return;
             }
             
+            // Phase 1.7.1: 레퍼런스 삭제 시 연결된 작성글 확인
+            if ((itemToDelete.type || 'edit') === 'reference') {
+                const usedEdits = this.getEditsByReference(id);
+                if (usedEdits.length > 0) {
+                    const confirmed = confirm(
+                        `⚠️ 이 레퍼런스는 ${usedEdits.length}개의 작성글에서 참고되고 있습니다.\n\n` +
+                        `삭제하시겠습니까?\n\n` +
+                        `(작성글의 연결 정보는 유지되지만, 레퍼런스 내용은 볼 수 없게 됩니다.)`
+                    );
+                    if (!confirmed) {
+                        console.log('사용자가 레퍼런스 삭제 취소');
+                        return;
+                    }
+                }
+            }
+            
             // 연결된 트래킹 포스트 찾기
             const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
             const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', id));
@@ -3955,12 +4155,17 @@ class DualTextWriter {
                     id: doc.id,
                     content: data.content,
                     date: data.createdAt ? data.createdAt.toDate().toLocaleString('ko-KR') : '날짜 없음',
+                    createdAt: data.createdAt,  // Firestore Timestamp 원본 보존
                     characterCount: data.characterCount,
                     type: normalizedType,
                     referenceType: data.referenceType || 'unspecified',
                     topic: data.topic || undefined,
                     contentHash: data.contentHash || undefined,
-                    hashVersion: data.hashVersion || undefined
+                    hashVersion: data.hashVersion || undefined,
+                    
+                    // ✅ 연결된 레퍼런스 (기존 데이터는 undefined이므로 빈 배열로 처리)
+                    linkedReferences: Array.isArray(data.linkedReferences) ? data.linkedReferences : [],
+                    referenceMeta: data.referenceMeta || undefined
                 });
             });
 
@@ -5523,6 +5728,770 @@ class DualTextWriter {
                 }
             }, 0);
         });
+    }
+
+    /**
+     * 레퍼런스 선택 모달 열기
+     * 
+     * - 레퍼런스 목록 렌더링
+     * - 현재 선택된 항목 복원
+     * - 모달 표시 및 포커스 이동
+     */
+    openReferenceSelectionModal() {
+        try {
+            if (!this.referenceSelectionModal) {
+                console.warn('⚠️ 레퍼런스 선택 모달을 찾을 수 없습니다.');
+                return;
+            }
+            
+            // 레퍼런스만 필터링 (type이 없는 경우 'edit'로 간주)
+            const references = this.savedTexts.filter(item => 
+                (item.type || 'edit') === 'reference'
+            );
+            
+            if (references.length === 0) {
+                this.showMessage('⚠️ 저장된 레퍼런스가 없습니다. 먼저 레퍼런스를 저장해주세요.', 'info');
+                return;
+            }
+            
+            // 레퍼런스 목록 렌더링
+            this.renderReferenceSelectionList(references);
+            
+            // 검색/필터 초기화
+            if (this.referenceSearchInput) this.referenceSearchInput.value = '';
+            if (this.referenceTypeFilterModal) this.referenceTypeFilterModal.value = 'all';
+            
+            // 선택 개수 업데이트
+            this.updateReferenceSelectionCount();
+            
+            // 모달 표시
+            this.referenceSelectionModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';  // 배경 스크롤 방지
+            
+            // 접근성: 포커스 이동 (검색 입력 필드로)
+            setTimeout(() => {
+                if (this.referenceSearchInput) {
+                    this.referenceSearchInput.focus();
+                }
+            }, 100);
+            
+            console.log('📚 레퍼런스 선택 모달 열림');
+        } catch (error) {
+            console.error('모달 열기 실패:', error);
+            this.showMessage('❌ 모달을 열 수 없습니다.', 'error');
+        }
+    }
+
+    /**
+     * 레퍼런스 선택 모달 닫기
+     * 
+     * - 모달 숨김
+     * - 배경 스크롤 복원
+     * - 포커스 복원 (원래 버튼으로)
+     */
+    closeReferenceSelectionModal() {
+        if (!this.referenceSelectionModal) return;
+        
+        this.referenceSelectionModal.style.display = 'none';
+        document.body.style.overflow = '';  // 배경 스크롤 복원
+        
+        // 접근성: 포커스 복원
+        if (this.selectReferencesBtn) {
+            this.selectReferencesBtn.focus();
+        }
+        
+        console.log('📚 레퍼런스 선택 모달 닫힘');
+    }
+
+    /**
+     * Phase 1.6.2: 작성글이 참고한 레퍼런스 목록 모달 표시
+     * 
+     * @param {string} editId - 작성글 ID
+     * 
+     * - 작성글이 연결한 레퍼런스 목록 조회
+     * - 커스텀 모달로 표시
+     * - 각 레퍼런스 "내용 보기" 버튼 제공
+     */
+    showLinkedReferencesModal(editId) {
+        try {
+            const editItem = this.savedTexts.find(item => item.id === editId);
+            if (!editItem) {
+                this.showMessage('❌ 작성글을 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const linkedRefs = this.getLinkedReferences(editId);
+            
+            if (linkedRefs.length === 0) {
+                this.showMessage('ℹ️ 연결된 레퍼런스가 없습니다.', 'info');
+                return;
+            }
+            
+            // 모달 내용 생성
+            const editTitle = this.escapeHtml(editItem.content || '').substring(0, 50);
+            const refsHtml = linkedRefs.map((ref, index) => {
+                const content = this.escapeHtml(ref.content || '').substring(0, 100);
+                const date = this.formatDateFromFirestore(ref.createdAt) || ref.date || '';
+                const refType = ref.referenceType || 'other';
+                const refTypeLabel = refType === 'structure' ? '구조' : refType === 'idea' ? '아이디어' : '기타';
+                
+                return `
+                    <div class="linked-item" role="listitem">
+                        <div class="item-number">${index + 1}.</div>
+                        <div class="item-details">
+                            <div class="item-content">${content}${content.length >= 100 ? '...' : ''}</div>
+                            <div class="item-meta">
+                                <span>${date}</span>
+                                <span>·</span>
+                                <span class="reference-type-badge badge-${this.escapeHtml(refType)}">${this.escapeHtml(refTypeLabel)}</span>
+                            </div>
+                            <button 
+                                class="view-item-btn" 
+                                data-item-id="${ref.id}"
+                                aria-label="레퍼런스 내용 보기">
+                                내용 보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            const modalHtml = `
+                <div class="custom-modal" role="dialog" aria-modal="true" 
+                     aria-labelledby="linked-ref-modal-title">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3 id="linked-ref-modal-title">📚 이 글이 참고한 레퍼런스</h3>
+                            <button class="close-btn" aria-label="모달 닫기">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="source-title">
+                                <strong>작성글:</strong> ${editTitle}${editTitle.length >= 50 ? '...' : ''}
+                            </div>
+                            <div class="linked-items-list" role="list" aria-label="참고 레퍼런스 목록">
+                                ${refsHtml}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="primary-btn close-modal-btn" aria-label="닫기">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 모달 표시
+            const existingModal = document.querySelector('.custom-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.querySelector('.custom-modal');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // 이벤트 바인딩
+            this.bindCustomModalEvents(modal);
+            
+            console.log(`📚 연결 레퍼런스 모달 표시: ${linkedRefs.length}개`);
+        } catch (error) {
+            console.error('연결된 레퍼런스 모달 표시 실패:', error);
+            this.showMessage('❌ 레퍼런스를 불러올 수 없습니다.', 'error');
+        }
+    }
+
+    /**
+     * Phase 1.6.2: 레퍼런스를 참고한 작성글 목록 모달 표시
+     * 
+     * @param {string} refId - 레퍼런스 ID
+     * 
+     * - 레퍼런스를 참고한 작성글 목록 조회 (역방향)
+     * - 커스텀 모달로 표시
+     * - 각 작성글 "내용 보기" 버튼 제공
+     */
+    showEditsByReferenceModal(refId) {
+        try {
+            const refItem = this.savedTexts.find(item => item.id === refId);
+            if (!refItem) {
+                this.showMessage('❌ 레퍼런스를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const usedEdits = this.getEditsByReference(refId);
+            
+            if (usedEdits.length === 0) {
+                this.showMessage('ℹ️ 이 레퍼런스를 참고한 글이 없습니다.', 'info');
+                return;
+            }
+            
+            // 모달 내용 생성
+            const refTitle = this.escapeHtml(refItem.content || '').substring(0, 50);
+            const editsHtml = usedEdits.map((edit, index) => {
+                const content = this.escapeHtml(edit.content || '').substring(0, 100);
+                const date = this.formatDateFromFirestore(edit.createdAt) || edit.date || '';
+                const topic = this.escapeHtml(edit.topic || '주제 없음');
+                
+                return `
+                    <div class="linked-item" role="listitem">
+                        <div class="item-number">${index + 1}.</div>
+                        <div class="item-details">
+                            <div class="item-content">${content}${content.length >= 100 ? '...' : ''}</div>
+                            <div class="item-meta">
+                                <span>${date}</span>
+                                <span>·</span>
+                                <span>🏷️ ${topic}</span>
+                            </div>
+                            <button 
+                                class="view-item-btn" 
+                                data-item-id="${edit.id}"
+                                aria-label="작성글 내용 보기">
+                                내용 보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            const modalHtml = `
+                <div class="custom-modal" role="dialog" aria-modal="true" 
+                     aria-labelledby="used-in-edits-modal-title">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3 id="used-in-edits-modal-title">📝 이 레퍼런스를 참고한 작성글</h3>
+                            <button class="close-btn" aria-label="모달 닫기">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="source-title">
+                                <strong>레퍼런스:</strong> ${refTitle}${refTitle.length >= 50 ? '...' : ''}
+                            </div>
+                            <div class="linked-items-list" role="list" aria-label="참고한 작성글 목록">
+                                ${editsHtml}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="primary-btn close-modal-btn" aria-label="닫기">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 모달 표시
+            const existingModal = document.querySelector('.custom-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.querySelector('.custom-modal');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // 이벤트 바인딩
+            this.bindCustomModalEvents(modal);
+            
+            console.log(`📝 참고한 작성글 모달 표시: ${usedEdits.length}개`);
+        } catch (error) {
+            console.error('참고한 작성글 모달 표시 실패:', error);
+            this.showMessage('❌ 작성글을 불러올 수 없습니다.', 'error');
+        }
+    }
+
+    /**
+     * Phase 1.6.2: 커스텀 모달 이벤트 바인딩
+     * 
+     * @param {HTMLElement} modal - 모달 DOM 요소
+     * 
+     * - 닫기 버튼 이벤트
+     * - 모달 외부 클릭
+     * - ESC 키
+     * - "내용 보기" 버튼
+     */
+    bindCustomModalEvents(modal) {
+        if (!modal) return;
+        
+        // 닫기 버튼
+        const closeBtns = modal.querySelectorAll('.close-btn, .close-modal-btn');
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.remove();
+                document.body.style.overflow = '';
+            });
+        });
+        
+        // 모달 외부 클릭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // ESC 키
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.body.style.overflow = '';
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
+        // "내용 보기" 버튼
+        const viewBtns = modal.querySelectorAll('.view-item-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const itemId = btn.getAttribute('data-item-id');
+                // 기존 "내용 보기" 로직 재사용
+                this.viewSavedText(itemId);
+                modal.remove();
+                document.body.style.overflow = '';
+            });
+        });
+    }
+
+    /**
+     * 레퍼런스 선택 목록 렌더링
+     * 
+     * @param {Array} references - 레퍼런스 배열 (옵션, 없으면 전체 조회)
+     * 
+     * - 체크박스로 다중 선택 가능
+     * - 현재 선택된 항목 체크 표시
+     * - 검색 및 필터 적용
+     * - 최신순 정렬
+     */
+    renderReferenceSelectionList(references = null) {
+        if (!this.referenceSelectionList) return;
+        
+        try {
+            // 레퍼런스 목록 가져오기 (파라미터 없으면 전체 조회)
+            let refs = references || this.savedTexts.filter(item => 
+                (item.type || 'edit') === 'reference'
+            );
+            
+            // 검색 필터 적용
+            const searchTerm = this.referenceSearchInput?.value.toLowerCase().trim() || '';
+            if (searchTerm) {
+                refs = refs.filter(ref => {
+                    const content = (ref.content || '').toLowerCase();
+                    const topic = (ref.topic || '').toLowerCase();
+                    return content.includes(searchTerm) || topic.includes(searchTerm);
+                });
+            }
+            
+            // 타입 필터 적용
+            const typeFilter = this.referenceTypeFilterModal?.value || 'all';
+            if (typeFilter !== 'all') {
+                refs = refs.filter(ref => (ref.referenceType || 'other') === typeFilter);
+            }
+            
+            // 정렬 (최신순)
+            refs.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+                return dateB - dateA;
+            });
+            
+            // HTML 생성
+            if (refs.length === 0) {
+                this.referenceSelectionList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px; text-align: center; color: #6c757d;">
+                        <p>검색 결과가 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = refs.map(ref => {
+                const isSelected = this.selectedReferences.includes(ref.id);
+                const content = this.escapeHtml(ref.content || '').substring(0, 100);
+                const topic = this.escapeHtml(ref.topic || '주제 없음');
+                const refType = ref.referenceType || 'other';
+                const typeLabel = refType === 'structure' ? '구조' : refType === 'idea' ? '아이디어' : '미지정';
+                const badgeClass = refType === 'structure' ? 'structure' : refType === 'idea' ? 'idea' : '';
+                const date = this.formatDateFromFirestore?.(ref.createdAt) || ref.date || '';
+                
+                return `
+                    <div class="reference-list-item" role="option" aria-selected="${isSelected}">
+                        <input 
+                            type="checkbox" 
+                            id="ref-check-${ref.id}" 
+                            value="${ref.id}"
+                            ${isSelected ? 'checked' : ''}
+                            aria-labelledby="ref-label-${ref.id}">
+                        <div class="reference-item-content">
+                            <div class="reference-item-title" id="ref-label-${ref.id}">
+                                ${content}${content.length >= 100 ? '...' : ''}
+                            </div>
+                            <div class="reference-item-meta">
+                                ${date ? `<span>${date}</span>` : ''}
+                                ${date ? '<span>·</span>' : ''}
+                                <span class="reference-type-badge ${badgeClass}">${typeLabel}</span>
+                                <span>·</span>
+                                <span>${topic}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            this.referenceSelectionList.innerHTML = html;
+            
+            // 체크박스 이벤트 바인딩
+            this.bindReferenceCheckboxEvents();
+            
+            console.log(`✅ 레퍼런스 목록 렌더링 완료: ${refs.length}개`);
+        } catch (error) {
+            console.error('레퍼런스 목록 렌더링 실패:', error);
+            this.referenceSelectionList.innerHTML = `
+                <div class="error-state" style="padding: 40px; text-align: center; color: #dc3545;">
+                    <p>❌ 목록을 불러올 수 없습니다.</p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * 레퍼런스 체크박스 이벤트 바인딩
+     * 
+     * - 체크박스 변경 시 선택 배열 업데이트
+     * - 선택 개수 실시간 표시
+     * - 리스트 아이템 클릭으로도 토글 가능
+     */
+    bindReferenceCheckboxEvents() {
+        if (!this.referenceSelectionList) return;
+        
+        // 체크박스 변경 이벤트
+        const checkboxes = this.referenceSelectionList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const refId = e.target.value;
+                
+                if (e.target.checked) {
+                    // 선택 추가
+                    if (!this.selectedReferences.includes(refId)) {
+                        this.selectedReferences.push(refId);
+                    }
+                } else {
+                    // 선택 제거
+                    this.selectedReferences = this.selectedReferences.filter(id => id !== refId);
+                }
+                
+                // 선택 개수 업데이트
+                this.updateReferenceSelectionCount();
+                
+                console.log('선택된 레퍼런스:', this.selectedReferences);
+            });
+        });
+        
+        // 리스트 아이템 클릭 시 체크박스 토글 (UX 개선)
+        const listItems = this.referenceSelectionList.querySelectorAll('.reference-list-item');
+        listItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                // 체크박스 자체를 클릭한 경우는 제외
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        // change 이벤트 트리거
+                        checkbox.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+        });
+    }
+
+    /**
+     * 선택된 레퍼런스 개수 업데이트
+     * 
+     * - 모달 내 개수 표시
+     * - aria-live로 스크린 리더에 알림
+     */
+    updateReferenceSelectionCount() {
+        const count = this.selectedReferences.length;
+        
+        if (this.modalSelectedCount) {
+            this.modalSelectedCount.textContent = count;
+        }
+        
+        // aria-live로 스크린 리더에 알림
+        const selectionCountDiv = this.referenceSelectionModal?.querySelector('.selection-count');
+        if (selectionCountDiv) {
+            selectionCountDiv.setAttribute('aria-live', 'polite');
+        }
+    }
+
+    /**
+     * 레퍼런스 선택/해제 토글 (레거시 호환용)
+     * @deprecated bindReferenceCheckboxEvents의 change 이벤트로 대체됨
+     */
+    toggleReferenceSelection(refId) {
+        const index = this.selectedReferences.indexOf(refId);
+        if (index > -1) {
+            // 이미 선택된 경우 제거
+            this.selectedReferences.splice(index, 1);
+        } else {
+            // 선택되지 않은 경우 추가
+            this.selectedReferences.push(refId);
+        }
+        
+        this.updateReferenceSelectionCount();
+    }
+
+    /**
+     * 모달 내 선택 개수 업데이트 (레거시 호환용)
+     * @deprecated updateReferenceSelectionCount로 통합됨
+     */
+    updateModalSelectedCount() {
+        this.updateReferenceSelectionCount();
+    }
+
+    /**
+     * 레퍼런스 선택 확인
+     * 
+     * - 선택된 레퍼런스 태그 표시
+     * - 모달 닫기
+     * - 선택 개수 버튼 업데이트
+     */
+    confirmReferenceSelection() {
+        try {
+            // 태그 렌더링
+            this.renderSelectedReferenceTags();
+            
+            // 버튼 개수 업데이트
+            if (this.selectedRefCount) {
+                this.selectedRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
+            }
+            
+            // 모달 닫기
+            this.closeReferenceSelectionModal();
+            
+            console.log(`✅ ${this.selectedReferences.length}개 레퍼런스 선택 완료`);
+        } catch (error) {
+            console.error('선택 확인 실패:', error);
+            this.showMessage('❌ 선택을 저장할 수 없습니다.', 'error');
+        }
+    }
+
+    /**
+     * 선택된 레퍼런스 태그 렌더링
+     * 
+     * - 선택된 각 레퍼런스를 태그로 표시
+     * - X 버튼으로 제거 가능
+     */
+    renderSelectedReferenceTags() {
+        if (!this.selectedReferencesTags) return;
+        
+        try {
+            if (this.selectedReferences.length === 0) {
+                this.selectedReferencesTags.innerHTML = '';
+                return;
+            }
+            
+            // 선택된 레퍼런스 객체 가져오기
+            const selectedRefs = this.selectedReferences
+                .map(refId => this.savedTexts.find(item => item.id === refId))
+                .filter(Boolean);  // null 제거
+            
+            const html = selectedRefs.map(ref => {
+                const content = this.escapeHtml(ref.content || '').substring(0, 30);
+                const title = `${content}${content.length >= 30 ? '...' : ''}`;
+                
+                return `
+                    <div class="reference-tag" role="listitem" data-ref-id="${ref.id}">
+                        <span class="tag-text" title="${this.escapeHtml(ref.content || '')}">
+                            ${title}
+                        </span>
+                        <button 
+                            class="remove-btn" 
+                            data-ref-id="${ref.id}"
+                            type="button"
+                            aria-label="${this.escapeHtml(content)} 제거"
+                            title="제거">
+                            ×
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            
+            this.selectedReferencesTags.innerHTML = html;
+            
+            // 제거 버튼 이벤트 바인딩
+            this.bindReferenceTagRemoveEvents();
+            
+            console.log(`✅ ${selectedRefs.length}개 태그 렌더링 완료`);
+        } catch (error) {
+            console.error('태그 렌더링 실패:', error);
+            this.selectedReferencesTags.innerHTML = '<p style="color: #dc3545;">태그를 표시할 수 없습니다.</p>';
+        }
+    }
+
+    /**
+     * 레퍼런스 태그 제거 버튼 이벤트 바인딩
+     */
+    bindReferenceTagRemoveEvents() {
+        if (!this.selectedReferencesTags) return;
+        
+        const removeBtns = this.selectedReferencesTags.querySelectorAll('.remove-btn');
+        
+        removeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const refId = btn.getAttribute('data-ref-id');
+                
+                // 선택 배열에서 제거
+                this.selectedReferences = this.selectedReferences.filter(id => id !== refId);
+                
+                // 태그 재렌더링
+                this.renderSelectedReferenceTags();
+                
+                // 버튼 개수 업데이트
+                if (this.selectedRefCount) {
+                    this.selectedRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
+                }
+                
+                console.log(`레퍼런스 제거: ${refId}`);
+            });
+        });
+    }
+
+    /**
+     * 선택된 레퍼런스를 태그로 렌더링 (레거시 호환용)
+     * @deprecated renderSelectedReferenceTags로 통합됨
+     */
+    renderSelectedReferencesTags() {
+        this.renderSelectedReferenceTags();
+    }
+
+    /**
+     * 선택된 레퍼런스 제거 (레거시 호환용, 전역 함수에서 호출)
+     */
+    removeSelectedReference(refId) {
+        const index = this.selectedReferences.indexOf(refId);
+        if (index > -1) {
+            this.selectedReferences.splice(index, 1);
+            this.renderSelectedReferenceTags();
+            
+            // 버튼 텍스트 업데이트
+            if (this.selectedRefCount) {
+                this.selectedRefCount.textContent = `(${this.selectedReferences.length}개 선택됨)`;
+            }
+        }
+    }
+
+    /**
+     * 레퍼런스 목록 필터링 (검색 + 타입)
+     */
+    filterReferenceList() {
+        const searchTerm = this.referenceSearchInput?.value.toLowerCase() || '';
+        const selectedType = this.referenceTypeFilterModal?.value || 'all';
+        
+        let filtered = this.savedTexts.filter(item => item.type === 'reference');
+        
+        // 검색어 필터
+        if (searchTerm) {
+            filtered = filtered.filter(ref => 
+                ref.content.toLowerCase().includes(searchTerm) ||
+                (ref.topic && ref.topic.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        // 타입 필터
+        if (selectedType !== 'all') {
+            filtered = filtered.filter(ref => ref.referenceType === selectedType);
+        }
+        
+        // 재렌더링
+        this.renderReferenceSelectionList(filtered);
+    }
+
+    /**
+     * 작성글에 연결된 레퍼런스 조회 (직접 조회)
+     * 
+     * @param {string} editId - 작성글 ID
+     * @returns {Array} 연결된 레퍼런스 객체 배열
+     * 
+     * - 작성글의 linkedReferences ID 배열을 기반으로 레퍼런스 객체 조회
+     * - 존재하지 않는 레퍼런스는 제외
+     * - 최신순 정렬
+     */
+    getLinkedReferences(editId) {
+        try {
+            // 작성글 찾기
+            const editItem = this.savedTexts.find(item => item.id === editId);
+            if (!editItem || (editItem.type || 'edit') !== 'edit') {
+                return [];
+            }
+            
+            // linkedReferences 배열 확인
+            const linkedRefIds = editItem.linkedReferences || [];
+            if (linkedRefIds.length === 0) {
+                return [];
+            }
+            
+            // ID를 객체로 변환 (O(n) 검색)
+            const linkedRefs = linkedRefIds
+                .map(refId => this.savedTexts.find(item => item.id === refId && (item.type || 'edit') === 'reference'))
+                .filter(Boolean);  // null 제거
+            
+            // 최신순 정렬
+            linkedRefs.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+                return dateB - dateA;
+            });
+            
+            return linkedRefs;
+        } catch (error) {
+            console.error('연결된 레퍼런스 조회 실패:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 레퍼런스를 참고한 작성글 조회 (역방향)
+     * 
+     * @param {string} referenceId - 레퍼런스 ID
+     * @returns {Array} 이 레퍼런스를 참고한 작성글 객체 배열
+     * 
+     * - 클라이언트에서 계산 (Firebase 쿼리 없음)
+     * - 메모리에 로드된 savedTexts 배열을 O(n) 검색
+     * - 최신순 정렬
+     */
+    getEditsByReference(referenceId) {
+        try {
+            // 작성글만 필터링 + linkedReferences에 referenceId 포함
+            const edits = this.savedTexts.filter(item => 
+                (item.type || 'edit') === 'edit' &&
+                Array.isArray(item.linkedReferences) &&
+                item.linkedReferences.includes(referenceId)
+            );
+            
+            // 최신순 정렬
+            edits.sort((a, b) => {
+                const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+                const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+                return dateB - dateA;
+            });
+            
+            return edits;
+        } catch (error) {
+            console.error('역방향 조회 실패:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 역방향 조회 캐시 무효화
+     * 
+     * - 데이터 변경 시 (저장, 삭제) 캐시 초기화
+     * - 현재는 캐싱을 사용하지 않지만, 향후 확장성을 위해 함수 제공
+     */
+    invalidateReferenceLinkCache() {
+        if (this.referenceLinkCache) {
+            this.referenceLinkCache.clear();
+        }
+        // 현재는 매번 계산하므로 별도 작업 불필요
+        console.log('📚 레퍼런스 링크 캐시 무효화 (현재는 캐싱 미사용)');
     }
 }
 
