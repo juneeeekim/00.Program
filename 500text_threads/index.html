@@ -353,6 +353,16 @@
                             <button class="segment-btn" data-filter="reference" role="tab" aria-selected="false">📖 레퍼런스</button>
                             <button class="segment-btn" data-filter="reference-used" role="tab" aria-selected="false" aria-label="사용된 레퍼런스만 표시">✅ 사용됨</button>
                         </div>
+                            <!-- 검색 입력 필드 -->
+                            <div class="saved-search" style="margin-top: 12px; margin-bottom: 12px;">
+                                <input 
+                                    id="saved-search" 
+                                    type="text" 
+                                    placeholder="내용/주제 검색 (공백으로 여러 개)" 
+                                    aria-label="저장된 글 검색"
+                                    style="width: 100%; padding: 10px 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;"
+                                />
+                            </div>
                             <!-- 주제 필터 (작성 글용) -->
                             <div class="topic-filter-group" id="topic-filter-group" style="display: none; align-items:center; gap:8px; margin-top: 12px;">
                                 <label for="topic-filter" class="topic-filter-label" style="font-weight:600; color:#333; font-size:0.9rem; line-height: 1.5;">주제 필터:</label>

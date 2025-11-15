@@ -156,6 +156,9 @@ class DualTextWriter {
         this.currentUser = null;
         this.savedTexts = [];
         this.savedFilter = localStorage.getItem('dualTextWriter_savedFilter') || 'all';
+        this.savedSearchInput = document.getElementById('saved-search');
+        this.savedSearch = localStorage.getItem('dtw_saved_search') || '';
+        this.savedSearchDebounce = null;
         this.tempSaveInterval = null;
         this.lastTempSave = null;
         this.savedItemClickHandler = null; // 이벤트 핸들러 참조
@@ -586,6 +589,22 @@ class DualTextWriter {
                         // refreshUI 사용으로 통합 업데이트
                         this.refreshUI({ trackingPosts: true });
                     }, 300);
+                });
+            }
+            // ✅ 저장된 글 검색 이벤트 바인딩
+            if (this.savedSearchInput) {
+                this.savedSearchInput.value = this.savedSearch;
+                this.savedSearchDebounce = null;
+                this.savedSearchInput.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    clearTimeout(this.savedSearchDebounce);
+                    // debounce로 성능 최적화 (600ms)
+                    this.savedSearchDebounce = setTimeout(() => {
+                        this.savedSearch = val;
+                        localStorage.setItem('dtw_saved_search', this.savedSearch);
+                        // 저장된 글 목록 새로고침
+                        this.renderSavedTexts();
+                    }, 600);
                 });
             }
             if (this.trackingUpdatedFromInput) {
@@ -1843,13 +1862,16 @@ class DualTextWriter {
     }
     
     async _renderSavedTextsImpl() {
-        // 메모이제이션: 캐시 키 생성 (필터 조건 기반)
+        // 메모이제이션: 캐시 키 생성 (필터 조건 + 검색어 기반)
         const topicOrSourceFilter = this.savedFilter === 'edit' 
             ? (this.currentTopicFilter || 'all')
             : (this.currentSourceFilter || 'all');
-        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${topicOrSourceFilter}`;
+        const searchKey = (this.savedSearch && this.savedSearch.trim()) 
+            ? this.savedSearch.trim().toLowerCase() 
+            : '';
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${topicOrSourceFilter}_${searchKey}`;
         
-        // 캐시 확인 (같은 필터 조건에서 재호출 방지)
+        // 캐시 확인 (같은 필터 조건 + 검색어에서 재호출 방지)
         if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
             console.log('renderSavedTexts: 캐시된 결과 사용 (성능 최적화)');
             return;
@@ -1895,6 +1917,18 @@ class DualTextWriter {
             list = list.filter(item => {
                 const itemTopic = item.topic || '';
                 return itemTopic === this.currentSourceFilter;
+            });
+        }
+
+        // ✅ 검색 필터 적용 (내용 + 주제에서 검색)
+        if (this.savedSearch && this.savedSearch.trim()) {
+            const tokens = this.savedSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            list = list.filter(item => {
+                const content = (item.content || '').toLowerCase();
+                const topic = (item.topic || '').toLowerCase();
+                const searchText = `${content} ${topic}`;
+                // 모든 키워드가 포함되어야 함 (AND 검색)
+                return tokens.every(tk => searchText.includes(tk));
             });
         }
 
@@ -2030,18 +2064,35 @@ class DualTextWriter {
         // 필터링 후 빈 목록 체크
         if (filteredItemsWithTracking.length === 0) {
             let emptyMsg = '저장된 글이 없습니다.';
-            if (this.savedFilter === 'edit') {
-                emptyMsg = '작성 글이 없습니다.';
-            } else if (this.savedFilter === 'reference') {
-                emptyMsg = '레퍼런스 글이 없습니다.';
-            } else if (this.savedFilter === 'reference-used') {
-                emptyMsg = '사용된 레퍼런스가 없습니다.';
+            let emptySubMsg = '글을 작성하고 저장해보세요!';
+            
+            // ✅ 검색어가 있을 때 검색 결과 없음 메시지 표시
+            if (this.savedSearch && this.savedSearch.trim()) {
+                if (this.savedFilter === 'edit') {
+                    emptyMsg = `"${this.savedSearch}" 검색 결과가 없습니다.`;
+                } else if (this.savedFilter === 'reference') {
+                    emptyMsg = `"${this.savedSearch}" 검색 결과가 없습니다.`;
+                } else if (this.savedFilter === 'reference-used') {
+                    emptyMsg = `"${this.savedSearch}" 검색 결과가 없습니다.`;
+                } else {
+                    emptyMsg = `"${this.savedSearch}" 검색 결과가 없습니다.`;
+                }
+                emptySubMsg = '다른 검색어를 시도해보세요.';
+            } else {
+                if (this.savedFilter === 'edit') {
+                    emptyMsg = '작성 글이 없습니다.';
+                } else if (this.savedFilter === 'reference') {
+                    emptyMsg = '레퍼런스 글이 없습니다.';
+                } else if (this.savedFilter === 'reference-used') {
+                    emptyMsg = '사용된 레퍼런스가 없습니다.';
+                }
             }
+            
             this.savedList.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📝</div>
                     <div class="empty-state-text">${emptyMsg}</div>
-                    <div class="empty-state-subtext">글을 작성하고 저장해보세요!</div>
+                    <div class="empty-state-subtext">${emptySubMsg}</div>
                 </div>
             `;
             // 접근성: 스크린 리더에 빈 목록 상태 전달 (aria-live로 자동 전달됨)
@@ -2058,7 +2109,13 @@ class DualTextWriter {
             : this.savedFilter === 'reference' ? '레퍼런스 글'
             : this.savedFilter === 'reference-used' ? '사용된 레퍼런스'
             : '저장된 글';
-        this.savedList.setAttribute('aria-label', `저장된 글 목록: ${filterDescription} ${totalItems}개`);
+        
+        // ✅ 검색 결과 개수 표시
+        let ariaLabelText = `저장된 글 목록: ${filterDescription} ${totalItems}개`;
+        if (this.savedSearch && this.savedSearch.trim()) {
+            ariaLabelText = `저장된 글 목록: ${filterDescription} 검색 결과 ${totalItems}개`;
+        }
+        this.savedList.setAttribute('aria-label', ariaLabelText);
         
         if (totalItems > batchSize) {
             // 대량 렌더링: 첫 번째 배치만 즉시 렌더링, 나머지는 requestAnimationFrame으로 처리
