@@ -4154,6 +4154,31 @@ class DualTextWriter {
         }
     }
 
+    /**
+     * 저장된 글 데이터를 보장합니다.
+     * 
+     * @param {boolean} forceReload - true면 Firestore에서 다시 불러옵니다.
+     */
+    async loadSavedTexts(forceReload = false) {
+        try {
+            const hasCachedData = Array.isArray(this.savedTexts) && this.savedTexts.length > 0;
+            if (!forceReload && hasCachedData) {
+                return;
+            }
+
+            if (!this.currentUser || !this.isFirebaseReady) {
+                console.warn('loadSavedTexts: Firebase�� �����Ǿ� �ִ� �Ǵ� �α����� �ʿ��մϴ�.');
+                return;
+            }
+
+            await this.loadSavedTextsFromFirestore();
+            await this.renderSavedTexts();
+        } catch (error) {
+            console.error('loadSavedTexts ����:', error);
+            this.showMessage('❌ ����� �� �ҷ����� �� �����߽��ϴ�.', 'error');
+        }
+    }
+
     // Firestore에서 저장된 텍스트들 불러오기
     // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
     async loadSavedTextsFromFirestore(filterOptions = {}) {
@@ -6043,66 +6068,86 @@ class DualTextWriter {
      * 저장된 글 내용 보기
      * 
      * @param {string} itemId - 저장된 글 ID
+     * @param {Object|string} [options] - 추가 옵션 (type 등)
      * 
-     * - 저장된 글 탭으로 전환
-     * - 해당 항목 찾기 및 스크롤
+     * - 저장된 글 목록으로 전환
+     * - 해당 글을 찾아 스크롤
      * - 내용 자동 펼치기
      * - 강조 표시 (2초)
-     * - 폴백: 항목을 찾지 못한 경우 편집 모드로 전환
+     * - 예외: 글을 찾지 못한 경우 편집 화면 전환
      */
-    viewSavedText(itemId) {
+    async viewSavedText(itemId, options = {}) {
         try {
             if (!itemId) {
                 console.warn('⚠️ viewSavedText: itemId가 없습니다.');
                 return;
             }
-            
-            // 저장된 글 탭으로 전환
+
+            const optionObject = typeof options === 'string' ? { type: options } : (options || {});
+            const cachedItem = this.savedTexts?.find(t => t.id === itemId);
+            const requestedType = optionObject.type || (cachedItem ? (cachedItem.type || 'edit') : null);
+            const normalizedType = requestedType === 'reference' ? 'reference' : 'edit';
+
+            // 저장된 글 목록으로 전환
             this.switchTab('saved');
-            
-            // DOM이 업데이트될 때까지 약간의 지연
-            setTimeout(() => {
-                // 해당 항목 찾기
-                const savedItem = document.querySelector(`[data-item-id="${itemId}"]`);
-                
-                if (savedItem) {
-                    // 스크롤 및 강조 표시
-                    savedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    savedItem.classList.add('highlight');
-                    
-                    // 내용 자동 펼치기 (더보기 버튼 클릭)
-                    const toggleBtn = savedItem.querySelector('.saved-item-toggle');
-                    const contentEl = savedItem.querySelector('.saved-item-content');
-                    
-                    if (toggleBtn && contentEl && !contentEl.classList.contains('expanded')) {
-                        toggleBtn.click();
-                    }
-                    
-                    // 강조 표시 제거 (2초 후)
-                    setTimeout(() => {
-                        savedItem.classList.remove('highlight');
-                    }, 2000);
-                    
-                    // 포커스 설정 (접근성)
-                    savedItem.setAttribute('tabindex', '-1');
-                    savedItem.focus();
-                    
-                    console.log(`✅ 저장된 글 내용 보기: ${itemId}`);
-                } else {
-                    // 항목을 찾지 못한 경우 폴백 (편집 모드로 전환)
-                    console.warn(`⚠️ 저장된 글 항목을 찾지 못함: ${itemId}, 편집 모드로 전환`);
-                    
-                    const item = this.savedTexts.find(t => t.id === itemId);
-                    if (item) {
-                        const type = (item.type || 'edit') === 'reference' ? 'reference' : 'edit';
-                        this.editText(itemId, type);
-                        this.showMessage('📝 편집 모드로 전환했습니다.', 'info');
-                    } else {
-                        this.showMessage('❌ 글을 찾을 수 없습니다.', 'error');
-                    }
+
+            // 필터를 자동 조정하여 대상 카드가 DOM에 존재하도록 처리
+            let filterChanged = false;
+            if (normalizedType === 'reference') {
+                if (!['reference', 'reference-used'].includes(this.savedFilter)) {
+                    this.setSavedFilter('reference');
+                    filterChanged = true;
                 }
-            }, 300); // DOM 업데이트 대기 시간
-            
+            } else {
+                if (['reference', 'reference-used'].includes(this.savedFilter)) {
+                    this.setSavedFilter('edit');
+                    filterChanged = true;
+                }
+            }
+
+            const waitTime = filterChanged ? 600 : 300;
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+            // 해당 글 찾기
+            const savedItem = document.querySelector(`[data-item-id="${itemId}"]`);
+
+            if (savedItem) {
+                // 스크롤 및 강조 표시
+                savedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                savedItem.classList.add('highlight');
+
+                // 내용 자동 펼치기 (더보기 버튼 클릭)
+                const toggleBtn = savedItem.querySelector('.saved-item-toggle');
+                const contentEl = savedItem.querySelector('.saved-item-content');
+
+                if (toggleBtn && contentEl && !contentEl.classList.contains('expanded')) {
+                    toggleBtn.click();
+                }
+
+                // 강조 표시 제거 (2초 후)
+                setTimeout(() => {
+                    savedItem.classList.remove('highlight');
+                }, 2000);
+
+                // 포커스 이동 (접근성)
+                savedItem.setAttribute('tabindex', '-1');
+                savedItem.focus();
+
+                console.log(`✅ 저장된 글 내용 보기: ${itemId}`);
+            } else {
+                // 글을 찾지 못한 경우 (필터 변경 또는 편집 화면 전환)
+                console.warn(`⚠️ 저장된 글 카드를 찾을 수 없음: ${itemId}, 편집 화면 전환`);
+
+                const item = cachedItem || this.savedTexts.find(t => t.id === itemId);
+                if (item) {
+                    const type = (item.type || 'edit') === 'reference' ? 'reference' : 'edit';
+                    this.editText(itemId, type);
+                    this.showMessage('📝 편집 화면으로 전환했습니다.', 'info');
+                } else {
+                    this.showMessage('❌ 글을 찾을 수 없습니다.', 'error');
+                }
+            }
+
         } catch (error) {
             console.error('viewSavedText 실패:', error);
             this.showMessage('❌ 내용을 불러올 수 없습니다.', 'error');
