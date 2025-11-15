@@ -6040,6 +6040,76 @@ class DualTextWriter {
     }
 
     /**
+     * 저장된 글 내용 보기
+     * 
+     * @param {string} itemId - 저장된 글 ID
+     * 
+     * - 저장된 글 탭으로 전환
+     * - 해당 항목 찾기 및 스크롤
+     * - 내용 자동 펼치기
+     * - 강조 표시 (2초)
+     * - 폴백: 항목을 찾지 못한 경우 편집 모드로 전환
+     */
+    viewSavedText(itemId) {
+        try {
+            if (!itemId) {
+                console.warn('⚠️ viewSavedText: itemId가 없습니다.');
+                return;
+            }
+            
+            // 저장된 글 탭으로 전환
+            this.switchTab('saved');
+            
+            // DOM이 업데이트될 때까지 약간의 지연
+            setTimeout(() => {
+                // 해당 항목 찾기
+                const savedItem = document.querySelector(`[data-item-id="${itemId}"]`);
+                
+                if (savedItem) {
+                    // 스크롤 및 강조 표시
+                    savedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    savedItem.classList.add('highlight');
+                    
+                    // 내용 자동 펼치기 (더보기 버튼 클릭)
+                    const toggleBtn = savedItem.querySelector('.saved-item-toggle');
+                    const contentEl = savedItem.querySelector('.saved-item-content');
+                    
+                    if (toggleBtn && contentEl && !contentEl.classList.contains('expanded')) {
+                        toggleBtn.click();
+                    }
+                    
+                    // 강조 표시 제거 (2초 후)
+                    setTimeout(() => {
+                        savedItem.classList.remove('highlight');
+                    }, 2000);
+                    
+                    // 포커스 설정 (접근성)
+                    savedItem.setAttribute('tabindex', '-1');
+                    savedItem.focus();
+                    
+                    console.log(`✅ 저장된 글 내용 보기: ${itemId}`);
+                } else {
+                    // 항목을 찾지 못한 경우 폴백 (편집 모드로 전환)
+                    console.warn(`⚠️ 저장된 글 항목을 찾지 못함: ${itemId}, 편집 모드로 전환`);
+                    
+                    const item = this.savedTexts.find(t => t.id === itemId);
+                    if (item) {
+                        const type = (item.type || 'edit') === 'reference' ? 'reference' : 'edit';
+                        this.editText(itemId, type);
+                        this.showMessage('📝 편집 모드로 전환했습니다.', 'info');
+                    } else {
+                        this.showMessage('❌ 글을 찾을 수 없습니다.', 'error');
+                    }
+                }
+            }, 300); // DOM 업데이트 대기 시간
+            
+        } catch (error) {
+            console.error('viewSavedText 실패:', error);
+            this.showMessage('❌ 내용을 불러올 수 없습니다.', 'error');
+        }
+    }
+
+    /**
      * Phase 1.6.2: 커스텀 모달 이벤트 바인딩
      * 
      * @param {HTMLElement} modal - 모달 DOM 요소

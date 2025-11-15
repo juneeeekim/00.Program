@@ -1563,6 +1563,22 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
     
+    .saved-item.highlight {
+        animation: highlightPulse 2s ease;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3), 0 4px 16px rgba(0,0,0,0.15);
+        border-left-color: #667eea;
+        border-left-width: 6px;
+    }
+    
+    @keyframes highlightPulse {
+        0%, 100% {
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3), 0 4px 16px rgba(0,0,0,0.15);
+        }
+        50% {
+            box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1), 0 4px 16px rgba(0,0,0,0.15);
+        }
+    }
+    
     .saved-item:last-child {
     margin-bottom: 0;
     }
