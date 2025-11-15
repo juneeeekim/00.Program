@@ -5916,6 +5916,7 @@ class DualTextWriter {
                             <button 
                                 class="view-item-btn" 
                                 data-item-id="${ref.id}"
+                                data-item-type="reference"
                                 aria-label="레퍼런스 내용 보기">
                                 내용 보기
                             </button>
@@ -6012,6 +6013,7 @@ class DualTextWriter {
                             <button 
                                 class="view-item-btn" 
                                 data-item-id="${edit.id}"
+                                data-item-type="edit"
                                 aria-label="작성글 내용 보기">
                                 내용 보기
                             </button>
@@ -6155,6 +6157,88 @@ class DualTextWriter {
     }
 
     /**
+     * 참고 레퍼런스 내용을 즉시 표시합니다.
+     *
+     * @param {string} referenceId - 레퍼런스 ID
+     */
+    showReferenceContentModal(referenceId) {
+        try {
+            if (!referenceId) {
+                console.warn('⚠️ showReferenceContentModal: referenceId가 없습니다.');
+                return;
+            }
+
+            const referenceItem = this.savedTexts.find(item =>
+                item.id === referenceId && (item.type || 'edit') === 'reference'
+            );
+
+            if (!referenceItem) {
+                this.showMessage('❌ 레퍼런스 글을 찾을 수 없습니다.', 'error');
+                return;
+            }
+
+            const refType = referenceItem.referenceType || 'unspecified';
+            const refTypeLabel = refType === 'structure' ? '구조' : refType === 'idea' ? '아이디어' : '기타';
+            const dateText = this.formatDateFromFirestore(referenceItem.createdAt) || referenceItem.date || '';
+            const topicText = this.escapeHtml(referenceItem.topic || '출처 정보 없음');
+            const contentHtml = this.escapeHtml(referenceItem.content || '').replace(/\n/g, '<br>');
+
+            const existingModal = document.querySelector('.reference-detail-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            const modalHtml = `
+                <div class="custom-modal reference-detail-modal" role="dialog" aria-modal="true"
+                     aria-labelledby="reference-detail-title">
+                    <div class="modal-content" style="max-width: 640px;">
+                        <div class="modal-header">
+                            <h3 id="reference-detail-title">📚 참고 레퍼런스</h3>
+                            <button class="close-btn" aria-label="모달 닫기">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="reference-detail-meta">
+                                <div><strong>유형:</strong> <span class="reference-type-badge badge-${this.escapeHtml(refType)}">${this.escapeHtml(refTypeLabel)}</span></div>
+                                <div><strong>작성일:</strong> ${dateText || '기록 없음'}</div>
+                                <div><strong>출처:</strong> ${topicText}</div>
+                            </div>
+                            <div class="reference-detail-content" role="region" aria-label="레퍼런스 내용">
+                                ${contentHtml || '<em>내용이 없습니다.</em>'}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="secondary-btn reference-import-btn" data-reference-id="${referenceId}">
+                                ✏️ 작성 영역으로 불러오기
+                            </button>
+                            <button class="primary-btn close-modal-btn" aria-label="닫기">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.querySelector('.reference-detail-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                this.bindCustomModalEvents(modal);
+
+                const importBtn = modal.querySelector('.reference-import-btn');
+                if (importBtn) {
+                    importBtn.addEventListener('click', () => {
+                        this.editText(referenceId, 'reference');
+                        modal.remove();
+                        document.body.style.overflow = '';
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('showReferenceContentModal 실패:', error);
+            this.showMessage('❌ 레퍼런스를 표시하지 못했습니다.', 'error');
+        }
+    }
+
+    /**
      * Phase 1.6.2: 커스텀 모달 이벤트 바인딩
      * 
      * @param {HTMLElement} modal - 모달 DOM 요소
@@ -6199,10 +6283,17 @@ class DualTextWriter {
         viewBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const itemId = btn.getAttribute('data-item-id');
-                // 기존 "내용 보기" 로직 재사용
-                this.viewSavedText(itemId);
+                const itemType = btn.getAttribute('data-item-type') || 'edit';
+
                 modal.remove();
                 document.body.style.overflow = '';
+
+                if (itemType === 'reference') {
+                    this.showReferenceContentModal(itemId);
+                    return;
+                }
+
+                this.viewSavedText(itemId, { type: itemType });
             });
         });
     }
