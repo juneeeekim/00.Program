@@ -1,11 +1,11 @@
-/* Reset and Base Styles */
+﻿/* Reset and Base Styles */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* 성능 최적화: CLS/scroll-jank 방지 */
+/* ?깅뒫 理쒖쟻?? CLS/scroll-jank 諛⑹? */
 .saved-item,
 .tracking-post-item,
 .card--compact {
@@ -28,13 +28,13 @@
     -webkit-transform: translateZ(0);
 }
 
-/* 스크롤 최적화 */
+/* ?ㅽ겕濡?理쒖쟻??*/
 body {
     -webkit-overflow-scrolling: touch;
     overflow-scrolling: touch;
 }
 
-/* 애니메이션 최적화 */
+/* ?좊땲硫붿씠??理쒖쟻??*/
 @keyframes slideIn,
 @keyframes slideOut,
 @keyframes slideInUp,
@@ -43,7 +43,7 @@ body {
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", "맑은 고딕", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", "留묒? 怨좊뵓", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     color: #333;
@@ -73,7 +73,7 @@ body {
     opacity: 0.9;
     }
     
-    /* 사용자 인증 섹션 */
+    /* ?ъ슜???몄쬆 ?뱀뀡 */
     .user-auth-section {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
@@ -121,7 +121,7 @@ body {
     min-width: 80px;
     }
     
-    /* Google 로그인 스타일 */
+    /* Google 濡쒓렇???ㅽ???*/
     .google-login-section {
     margin-bottom: 20px;
     }
@@ -160,7 +160,7 @@ body {
     margin: 0;
     }
     
-    /* 구분선 */
+    /* 援щ텇??*/
     .auth-divider {
     position: relative;
     text-align: center;
@@ -186,7 +186,7 @@ body {
     z-index: 1;
     }
     
-    /* 기존 로그인 섹션 */
+    /* 湲곗〈 濡쒓렇???뱀뀡 */
     .legacy-login-section {
     margin-top: 20px;
     }
@@ -232,7 +232,7 @@ body {
     font-size: 0.9rem;
     }
     
-    /* 새로고침 버튼 스타일 (PC 전용) */
+    /* ?덈줈怨좎묠 踰꾪듉 ?ㅽ???(PC ?꾩슜) */
     .btn-refresh {
         background: rgba(255, 255, 255, 0.2);
         color: white;
@@ -275,7 +275,7 @@ body {
         font-size: 0.9rem;
     }
     
-    /* 회전 애니메이션 */
+    /* ?뚯쟾 ?좊땲硫붿씠??*/
     @keyframes spin {
         from {
             transform: rotate(0deg);
@@ -285,7 +285,7 @@ body {
         }
     }
     
-    /* PC 버전에서만 텍스트 표시 */
+    /* PC 踰꾩쟾?먯꽌留??띿뒪???쒖떆 */
     .desktop-only {
         display: none;
     }
@@ -295,13 +295,13 @@ body {
             display: inline;
         }
         
-        /* PC 버전: 버튼이 더 넓게 */
+        /* PC 踰꾩쟾: 踰꾪듉?????볤쾶 */
         .btn-refresh {
             padding: 8px 16px;
         }
     }
     
-    /* 모바일: PC 전용 버튼은 숨김 */
+    /* 紐⑤컮?? PC ?꾩슜 踰꾪듉? ?④? */
     @media (max-width: 768px) {
         .btn-refresh {
             display: none;
@@ -329,7 +329,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px; /* 아이콘-텍스트 간격 증가 (4px → 6px) */
+    gap: 6px; /* ?꾩씠肄??띿뒪??媛꾧꺽 利앷? (4px ??6px) */
     font-size: 14px;
     color: #666;
     position: relative;
@@ -349,7 +349,7 @@ body {
     }
     
     .tab-icon {
-    font-size: 18px; /* emoji/icon normalized - 크기 증가 (14px → 18px) */
+    font-size: 18px; /* emoji/icon normalized - ?ш린 利앷? (14px ??18px) */
     line-height: 1;
     vertical-align: middle;
     font-feature-settings: "liga" on;
@@ -394,15 +394,15 @@ body {
 }
     
     .tab-text {
-    font-size: 13px; /* 폰트 크기 증가 (12px → 13px) */
+    font-size: 13px; /* ?고듃 ?ш린 利앷? (12px ??13px) */
     font-weight: 600;
-    line-height: 1.2; /* line-height 개선 */
+    line-height: 1.2; /* line-height 媛쒖꽑 */
     }
     
-    /* 데스크톱에서 더 큰 폰트 크기 */
+    /* ?곗뒪?ы넲?먯꽌 ?????고듃 ?ш린 */
     @media (min-width: 768px) {
         .tab-text {
-            font-size: 14px; /* 데스크톱: 14px */
+            font-size: 14px; /* ?곗뒪?ы넲: 14px */
         }
     }
     
@@ -419,7 +419,7 @@ body {
     display: block;
     }
     
-    /* Writing Container - 반응형 레이아웃 */
+    /* Writing Container - 諛섏쓳???덉씠?꾩썐 */
     .writing-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -427,7 +427,7 @@ body {
     margin-bottom: 20px;
     }
     
-    /* 데스크톱에서는 좌우 배치, 모바일에서는 세로 배치 */
+    /* ?곗뒪?ы넲?먯꽌??醫뚯슦 諛곗튂, 紐⑤컮?쇱뿉?쒕뒗 ?몃줈 諛곗튂 */
     @media (max-width: 768px) {
     .writing-container {
     grid-template-columns: 1fr;
@@ -448,22 +448,26 @@ body {
     }
     
     .panel-header {
-    display: flex;
-    align-items: center;
-    gap: 16px; /* 간격을 좀 더 명확하게 줍니다. */
-    margin-bottom: 9px; /* 10px → 9px (10% 축소) */
-    padding-bottom: 7px; /* 8px → 7px (10% 축소) */
+    display: grid;
+    grid-template-columns: auto minmax(180px, 260px) auto;
+    column-gap: 16px;
+    row-gap: 8px;
+    align-items: end;
+    margin-bottom: 9px; /* 10px -> 9px (10% 축소) */
+    padding-bottom: 7px; /* 8px -> 7px (10% 축소) */
     border-bottom: 2px solid #f8f9fa;
     flex-shrink: 0;
-    flex-wrap: wrap;
     }
+}
     
     .panel-header h3 {
     margin: 0;
     color: #333;
-    font-size: 1.1rem; /* 1.2rem → 1.08rem (10% 축소) */
+    font-size: 1.1rem; /* 1.2rem ??1.08rem (10% 異뺤냼) */
     font-weight: 600;
-    flex-shrink: 0; /* 축소 방지 */
+    flex-shrink: 0; /* 異뺤냼 諛⑹? */
+    white-space: nowrap;
+    white-space: nowrap;
     }
     
     .panel-controls {
@@ -504,10 +508,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    font-size: 1rem; /* 1.1rem → 0.99rem (10% 축소) */
+    font-size: 1rem; /* 1.1rem ??0.99rem (10% 異뺤냼) */
     font-weight: 600;
-    flex-shrink: 0; /* 축소 방지 */
-    margin-bottom: 0; /* 불필요한 마진 제거 */
+    flex-shrink: 0; /* 異뺤냼 諛⑹? */
+    margin-bottom: 0; /* 遺덊븘?뷀븳 留덉쭊 ?쒓굅 */
+    white-space: nowrap;
+    justify-self: end;
     }
     
     .character-counter .separator {
@@ -519,6 +525,17 @@ body {
     margin-left: 5px;
     color: #666;
     }
+
+@media (max-width: 1024px) {
+    .panel-header {
+        grid-template-columns: auto 1fr;
+    }
+
+    .panel-header .character-counter {
+        grid-column: 1 / -1;
+        justify-self: end;
+    }
+}
     
     #current-count {
     color: #667eea;
@@ -535,11 +552,11 @@ body {
     border: 2px solid #e1e5e9;
     border-radius: 10px;
     font-size: 1rem;
-    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
+    line-height: 1.7; /* line-height 媛쒖꽑 (1.6 ??1.7) */
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
-    /* 한글 줄바꿈 최적화 */
+    /* ?쒓? 以꾨컮轅?理쒖쟻??*/
     word-break: keep-all;
     overflow-wrap: break-word;
     hyphens: none;
@@ -553,14 +570,14 @@ body {
     border: 2px solid #e1e5e9;
     border-radius: 10px;
     font-size: 1rem;
-    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
+    line-height: 1.7; /* line-height 媛쒖꽑 (1.6 ??1.7) */
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
     flex: 1;
     box-sizing: border-box;
     margin: 10px 0;
-    /* 한글 줄바꿈 최적화 */
+    /* ?쒓? 以꾨컮轅?理쒖쟻??*/
     word-break: keep-all;
     overflow-wrap: break-word;
     hyphens: none;
@@ -578,38 +595,40 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
     
-/* 주제 입력 필드 스타일 */
+/* 二쇱젣 ?낅젰 ?꾨뱶 ?ㅽ???*/
 .topic-input-group {
     margin-bottom: 12px;
 }
 
-/* 헤더 내부 주제 입력 필드 스타일 */
+/* ?ㅻ뜑 ?대? 二쇱젣 ?낅젰 ?꾨뱶 ?ㅽ???*/
 .topic-input-group--header {
-    flex-grow: 1; /* 확장 */
-    flex-shrink: 1; /* 축소 */
-    min-width: 150px; /* 최소 너비 보장 */
-    margin: 0; /* auto 마진 제거 */
-    display: flex; /* 라벨과 입력 필드를 가로로 배치 */
-    align-items: center; /* 수직 중앙 정렬 */
-    gap: 8px; /* 라벨과 입력 필드 사이 간격 */
+    flex-grow: 1; /* ?뺤옣 */
+    flex-shrink: 1; /* 異뺤냼 */
+    min-width: 150px; /* 理쒖냼 ?덈퉬 蹂댁옣 */
+    max-width: 100%;
+    width: 100%;
+    margin: 0; /* auto 留덉쭊 ?쒓굅 */
+    display: flex; /* ?쇰꺼怨??낅젰 ?꾨뱶瑜?媛濡쒕줈 諛곗튂 */
+    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
+    gap: 8px; /* ?쇰꺼怨??낅젰 ?꾨뱶 ?ъ씠 媛꾧꺽 */
 }
 
 .topic-label--header {
-    display: inline-block; /* 라벨 표시 */
-    font-size: 0.77rem; /* 입력 필드와 동일한 크기 */
+    display: inline-block; /* ?쇰꺼 ?쒖떆 */
+    font-size: 0.77rem; /* ?낅젰 ?꾨뱶? ?숈씪???ш린 */
     font-weight: 600;
     color: #333;
-    white-space: nowrap; /* 라벨 텍스트 줄바꿈 방지 */
-    flex-shrink: 0; /* 라벨 크기 고정 */
+    white-space: nowrap; /* ?쇰꺼 ?띿뒪??以꾨컮轅?諛⑹? */
+    flex-shrink: 0; /* ?쇰꺼 ?ш린 怨좎젙 */
 }
 
 .topic-input--header {
-    padding: 5px 9px; /* 6px 10px → 5px 9px (10% 축소) */
-    font-size: 0.77rem; /* 0.85rem → 0.77rem (10% 축소) */
-    min-height: 29px; /* 32px → 29px (10% 축소) */
-    flex: 1; /* 남은 공간을 모두 차지 */
-    min-width: 120px; /* 최소 가로 길이 설정 */
-    max-width: 200px; /* 최대 가로 길이 설정 */
+    padding: 5px 9px; /* 6px 10px ??5px 9px (10% 異뺤냼) */
+    font-size: 0.77rem; /* 0.85rem ??0.77rem (10% 異뺤냼) */
+    min-height: 29px; /* 32px ??29px (10% 異뺤냼) */
+    flex: 1; /* ?⑥? 怨듦컙??紐⑤몢 李⑥? */
+    min-width: 120px; /* 理쒖냼 媛濡?湲몄씠 ?ㅼ젙 */
+    max-width: 200px; /* 理쒕? 媛濡?湲몄씠 ?ㅼ젙 */
 }
 
 .topic-label {
@@ -637,7 +656,7 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* 주제 필터 스타일 */
+/* 二쇱젣 ?꾪꽣 ?ㅽ???*/
 .topic-filter-group {
     display: flex;
     align-items: center;
@@ -649,26 +668,26 @@ body {
     font-weight: 600;
     color: #333;
     font-size: 0.9rem;
-    line-height: 1.5; /* 수평 정렬을 위한 line-height 설정 */
-    display: flex; /* 라벨을 flex로 설정하여 정렬 보장 */
-    align-items: center; /* 수직 중앙 정렬 */
+    line-height: 1.5; /* ?섑룊 ?뺣젹???꾪븳 line-height ?ㅼ젙 */
+    display: flex; /* ?쇰꺼??flex濡??ㅼ젙?섏뿬 ?뺣젹 蹂댁옣 */
+    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
 }
 
-/* 레퍼런스 유형 필터 스타일 */
+/* ?덊띁?곗뒪 ?좏삎 ?꾪꽣 ?ㅽ???*/
 .reference-type-filter {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 12px; /* 주제 필터와 동일한 margin-top */
+    margin-top: 12px; /* 二쇱젣 ?꾪꽣? ?숈씪??margin-top */
 }
 
 .reference-type-filter span {
     font-weight: 600;
     color: #333;
     font-size: 0.9rem;
-    line-height: 1.5; /* 수평 정렬을 위한 line-height 설정 */
-    display: flex; /* 라벨을 flex로 설정하여 정렬 보장 */
-    align-items: center; /* 수직 중앙 정렬 */
+    line-height: 1.5; /* ?섑룊 ?뺣젹???꾪븳 line-height ?ㅼ젙 */
+    display: flex; /* ?쇰꺼??flex濡??ㅼ젙?섏뿬 ?뺣젹 蹂댁옣 */
+    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
 }
 
 .topic-filter-select {
@@ -682,7 +701,7 @@ body {
     cursor: pointer;
     transition: border-color 0.3s ease;
     box-sizing: border-box;
-    min-height: 44px; /* 터치 영역 최소 크기 */
+    min-height: 44px; /* ?곗튂 ?곸뿭 理쒖냼 ?ш린 */
 }
 
 .topic-filter-select:focus {
@@ -691,13 +710,13 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* 레퍼런스 유형 선택 */
+/* ?덊띁?곗뒪 ?좏삎 ?좏깮 */
 .reference-type-group {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    margin-top: 0; /* advanced-actions 안에 있으므로 margin-top 제거 */
-    margin-left: 12px; /* LLM 검증 버튼과의 간격 */
+    margin-top: 0; /* advanced-actions ?덉뿉 ?덉쑝誘濡?margin-top ?쒓굅 */
+    margin-left: 12px; /* LLM 寃利?踰꾪듉怨쇱쓽 媛꾧꺽 */
 }
 .reference-type-label {
     font-weight: 600;
@@ -820,7 +839,7 @@ body {
     box-shadow: none;
     }
     
-    /* 반자동화 포스팅 버튼 스타일 (접근성 강화) */
+    /* 諛섏옄?숉솕 ?ъ뒪??踰꾪듉 ?ㅽ???(?묎렐??媛뺥솕) */
     .btn-semi-auto {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
@@ -832,12 +851,12 @@ body {
     transition: all 0.3s ease !important;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
     
-    /* 접근성 개선 */
-    min-height: 44px !important; /* 터치 타겟 최소 크기 */
-    font-size: 16px !important; /* 모바일에서 확대 방지 */
+    /* ?묎렐??媛쒖꽑 */
+    min-height: 44px !important; /* ?곗튂 ?寃?理쒖냼 ?ш린 */
+    font-size: 16px !important; /* 紐⑤컮?쇱뿉???뺣? 諛⑹? */
     outline: none !important;
     
-    /* 강제 표시 */
+    /* 媛뺤젣 ?쒖떆 */
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -859,7 +878,7 @@ body {
     background: #ccc;
     }
     
-    /* 고대비 모드 지원 */
+    /* 怨좊?鍮?紐⑤뱶 吏??*/
     @media (prefers-contrast: high) {
     .btn-semi-auto {
     border: 2px solid #000;
@@ -868,7 +887,7 @@ body {
     }
     }
     
-    /* 접근성 강화 스타일 */
+    /* ?묎렐??媛뺥솕 ?ㅽ???*/
     .sr-only {
     position: absolute;
     width: 1px;
@@ -881,7 +900,7 @@ body {
     border: 0;
     }
     
-    /* 스크린 리더 전용 텍스트 */
+    /* ?ㅽ겕由?由щ뜑 ?꾩슜 ?띿뒪??*/
     .sr-only:focus {
     position: static;
     width: auto;
@@ -893,13 +912,13 @@ body {
     white-space: normal;
     }
     
-    /* 포커스 표시 강화 */
+    /* ?ъ빱???쒖떆 媛뺥솕 */
     *:focus {
     outline: 2px solid #4CAF50 !important;
     outline-offset: 2px !important;
     }
     
-    /* 고대비 모드 지원 강화 */
+    /* 怨좊?鍮?紐⑤뱶 吏??媛뺥솕 */
     @media (prefers-contrast: high) {
     .btn-semi-auto {
     border: 3px solid #000;
@@ -922,7 +941,7 @@ body {
     }
     }
     
-    /* 모션 감소 설정 지원 */
+    /* 紐⑥뀡 媛먯냼 ?ㅼ젙 吏??*/
     @media (prefers-reduced-motion: reduce) {
     * {
     animation-duration: 0.01ms !important;
@@ -935,7 +954,7 @@ body {
     }
     }
     
-    /* 다크 모드 지원 강화 */
+    /* ?ㅽ겕 紐⑤뱶 吏??媛뺥솕 */
     @media (prefers-color-scheme: dark) {
     .btn-semi-auto {
     background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
@@ -996,14 +1015,14 @@ body {
     }
     }
     
-    /* 모바일 최적화 강화 */
+    /* 紐⑤컮??理쒖쟻??媛뺥솕 */
     @media (max-width: 768px) {
     .btn-semi-auto {
     padding: 16px 20px;
     font-size: 18px;
     width: 100%;
     margin-top: 8px;
-    min-height: 48px; /* 터치 타겟 크기 증가 */
+    min-height: 48px; /* ?곗튂 ?寃??ш린 利앷? */
     }
     
     .optimization-modal {
@@ -1059,7 +1078,7 @@ body {
     }
     }
     
-    /* 태블릿 최적화 */
+    /* ?쒕툝由?理쒖쟻??*/
     @media (min-width: 769px) and (max-width: 1024px) {
     .btn-semi-auto {
     padding: 14px 22px;
@@ -1075,7 +1094,7 @@ body {
     }
     }
     
-    /* 터치 디바이스 최적화 */
+    /* ?곗튂 ?붾컮?댁뒪 理쒖쟻??*/
     @media (hover: none) and (pointer: coarse) {
     .btn-semi-auto:hover {
     transform: none;
@@ -1092,7 +1111,7 @@ body {
     }
     }
     
-    /* 최적화 모달 스타일 */
+    /* 理쒖쟻??紐⑤떖 ?ㅽ???*/
     .optimization-modal {
     position: fixed;
     top: 0;
@@ -1105,7 +1124,7 @@ body {
     align-items: center;
     z-index: 1000;
     
-    /* 접근성 개선 */
+    /* ?묎렐??媛쒖꽑 */
     backdrop-filter: blur(4px);
     }
     
@@ -1117,8 +1136,8 @@ body {
     width: 90%;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     
-    /* 접근성 개선 */
-    /* 접근성 속성은 JavaScript에서 동적으로 설정됩니다 */
+    /* ?묎렐??媛쒖꽑 */
+    /* ?묎렐???띿꽦? JavaScript?먯꽌 ?숈쟻?쇰줈 ?ㅼ젙?⑸땲??*/
     }
     
     .optimization-stats {
@@ -1201,18 +1220,18 @@ body {
     line-height: 1.5;
     }
     
-    /* 미리보기 텍스트 시작 위치 조정 */
+    /* 誘몃━蹂닿린 ?띿뒪???쒖옉 ?꾩튂 議곗젙 */
     .preview-content > *:first-child {
     margin-top: 0;
     padding-top: 0;
     }
     
-    /* 모든 텍스트 요소를 왼쪽 정렬 */
+    /* 紐⑤뱺 ?띿뒪???붿냼瑜??쇱そ ?뺣젹 */
     .preview-content * {
     text-align: left !important;
     }
     
-    /* 해시태그 토글 섹션 */
+    /* ?댁떆?쒓렇 ?좉? ?뱀뀡 */
     .hashtag-toggle-section {
     margin-bottom: 15px;
     padding: 10px;
@@ -1257,7 +1276,7 @@ body {
     z-index: 1;
     }
     
-    /* 미리보기 텍스트를 처음부터 시작 */
+    /* 誘몃━蹂닿린 ?띿뒪?몃? 泥섏쓬遺???쒖옉 */
     .preview-content > *:first-child {
     margin-top: 0;
     padding-top: 0;
@@ -1279,7 +1298,7 @@ body {
     flex: 1;
     }
     
-    /* 수동 복사 모달 */
+    /* ?섎룞 蹂듭궗 紐⑤떖 */
     .manual-copy-modal {
     position: fixed;
     top: 0;
@@ -1304,7 +1323,7 @@ body {
     resize: vertical;
     margin: 12px 0;
     
-    /* 접근성 개선 - aria-label은 JavaScript에서 동적으로 설정됩니다 */
+    /* ?묎렐??媛쒖꽑 - aria-label? JavaScript?먯꽌 ?숈쟻?쇰줈 ?ㅼ젙?⑸땲??*/
     }
     
     .copy-textarea:focus {
@@ -1312,7 +1331,7 @@ body {
     border-color: #4CAF50;
     }
     
-    /* 포스팅 가이드 */
+    /* ?ъ뒪??媛?대뱶 */
     .posting-guide {
     position: fixed;
     top: 50%;
@@ -1370,7 +1389,7 @@ body {
     margin-top: 20px;
     }
     
-    /* 모바일 최적화 */
+    /* 紐⑤컮??理쒖쟻??*/
     @media (max-width: 768px) {
     .optimization-modal {
     padding: 16px;
@@ -1410,7 +1429,7 @@ body {
     #batch-migration-btn { width: 100%; min-height: 44px; font-size: 14px; }
     }
     
-    /* 다크 모드 지원 */
+    /* ?ㅽ겕 紐⑤뱶 吏??*/
     @media (prefers-color-scheme: dark) {
     .optimization-content,
     .posting-guide {
@@ -1500,7 +1519,7 @@ body {
     font-size: 1.3rem;
     }
     
-    /* 저장된 글 필터 - 세그먼트 컨트롤 */
+    /* ??λ맂 湲 ?꾪꽣 - ?멸렇癒쇳듃 而⑦듃濡?*/
     .saved-filters {
     margin-bottom: 12px;
     display: flex;
@@ -1543,7 +1562,7 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     
-    /* 개선된 저장된 글 카드 */
+    /* 媛쒖꽑????λ맂 湲 移대뱶 */
     .saved-item {
     background: white;
     border-radius: 12px;
@@ -1554,7 +1573,7 @@ body {
     position: relative;
     transition: all 0.3s ease;
     display: flex;
-    flex-direction: column; /* 세로 방향 레이아웃 보장 */
+    flex-direction: column; /* ?몃줈 諛⑺뼢 ?덉씠?꾩썐 蹂댁옣 */
     }
     
     .saved-item:hover {
@@ -1591,7 +1610,7 @@ body {
     gap: 8px;
     }
     
-    /* 저장된 글 헤더 좌측 영역 (타입 배지 + 사용 여부 배지) */
+    /* ??λ맂 湲 ?ㅻ뜑 醫뚯륫 ?곸뿭 (???諛곗? + ?ъ슜 ?щ? 諛곗?) */
     .saved-item-header-left {
         display: flex;
         align-items: center;
@@ -1610,7 +1629,7 @@ body {
     letter-spacing: 0.5px;
     }
     
-    /* 저장된 글 헤더 좌측 영역 (타입 배지 + 사용 여부 배지) */
+    /* ??λ맂 湲 ?ㅻ뜑 醫뚯륫 ?곸뿭 (???諛곗? + ?ъ슜 ?щ? 諛곗?) */
     .saved-item-header-left {
         display: flex;
         align-items: center;
@@ -1618,8 +1637,8 @@ body {
         flex-wrap: wrap;
     }
     
-    /* 레퍼런스 사용 여부 배지 스타일 */
-/* 레퍼런스 유형 배지 */
+    /* ?덊띁?곗뒪 ?ъ슜 ?щ? 諛곗? ?ㅽ???*/
+/* ?덊띁?곗뒪 ?좏삎 諛곗? */
 .reference-type-badge {
     display: inline-flex;
     align-items: center;
@@ -1659,13 +1678,13 @@ body {
         transition: all 0.2s ease;
     }
     
-    /* 사용된 레퍼런스 배지 (초록색) */
+    /* ?ъ슜???덊띁?곗뒪 諛곗? (珥덈줉?? */
     .reference-usage-badge--used {
         background: #10b981;
         color: white;
     }
     
-    /* 사용된 레퍼런스 배지 (초록색, 클릭 가능) */
+    /* ?ъ슜???덊띁?곗뒪 諛곗? (珥덈줉?? ?대┃ 媛?? */
     .reference-usage-badge--used.reference-usage-badge--clickable {
         cursor: pointer;
         transition: all 0.2s ease;
@@ -1687,14 +1706,14 @@ body {
         outline-offset: 2px;
     }
     
-    /* 사용 안된 레퍼런스 배지 (회색) */
+    /* ?ъ슜 ?덈맂 ?덊띁?곗뒪 諛곗? (?뚯깋) */
     .reference-usage-badge--unused {
         background: #e5e7eb;
         color: #6b7280;
         border: 1px solid #d1d5db;
     }
     
-    /* 클릭 가능한 사용 안됨 배지 */
+    /* ?대┃ 媛?ν븳 ?ъ슜 ?덈맖 諛곗? */
     .reference-usage-badge--unused.reference-usage-badge--clickable {
         cursor: pointer;
         transition: all 0.2s ease;
@@ -1716,7 +1735,7 @@ body {
         outline-offset: 2px;
     }
     
-    /* 반응형: 모바일에서 간략하게 */
+    /* 諛섏쓳?? 紐⑤컮?쇱뿉??媛꾨왂?섍쾶 */
     @media (max-width: 768px) {
         .reference-usage-badge {
             padding: 2px 6px;
@@ -1746,16 +1765,16 @@ body {
     
 .saved-item-content {
     color: #333;
-    line-height: 1.7; /* line-height 개선 (1.6 → 1.7) */
+    line-height: 1.7; /* line-height 媛쒖꽑 (1.6 ??1.7) */
     margin-bottom: 12px;
     white-space: pre-wrap;
     font-size: 0.95rem;
-    width: 100%; /* 명시적 너비 설정으로 콘텐츠 감싸기 보장 */
-    box-sizing: border-box; /* 패딩 포함 너비 계산 */
-    /* 한글 줄바꿈 최적화 */
-    word-break: keep-all; /* 한글 단어 단위로 줄바꿈 */
-    overflow-wrap: break-word; /* 긴 단어 처리 */
-    hyphens: none; /* 한글 하이픈 사용 안 함 */
+    width: 100%; /* 紐낆떆???덈퉬 ?ㅼ젙?쇰줈 肄섑뀗痢?媛먯떥湲?蹂댁옣 */
+    box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
+    /* ?쒓? 以꾨컮轅?理쒖쟻??*/
+    word-break: keep-all; /* ?쒓? ?⑥뼱 ?⑥쐞濡?以꾨컮轅?*/
+    overflow-wrap: break-word; /* 湲??⑥뼱 泥섎━ */
+    hyphens: none; /* ?쒓? ?섏씠???ъ슜 ????*/
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -1779,21 +1798,21 @@ body {
     -webkit-line-clamp: initial;
     line-clamp: initial;
     overflow: visible;
-    width: 100%; /* 명시적 너비 설정으로 콘텐츠 감싸기 보장 */
-    clear: both; /* float 요소와의 간섭 방지 */
-    margin-bottom: 24px; /* 충분한 간격 */
-    padding-bottom: 16px; /* 추가 패딩 */
-    border-bottom: 1px solid #f0f0f0; /* 시각적 구분선 */
-    box-sizing: border-box; /* 패딩 포함 너비 계산 */
+    width: 100%; /* 紐낆떆???덈퉬 ?ㅼ젙?쇰줈 肄섑뀗痢?媛먯떥湲?蹂댁옣 */
+    clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
+    margin-bottom: 24px; /* 異⑸텇??媛꾧꺽 */
+    padding-bottom: 16px; /* 異붽? ?⑤뵫 */
+    border-bottom: 1px solid #f0f0f0; /* ?쒓컖??援щ텇??*/
+    box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
 }
 
 .saved-item-content.expanded::after { display: none; }
 
 .saved-item-toggle {
-    margin: 0 auto 20px auto; /* 상하 여백, 중앙 정렬 */
+    margin: 0 auto 20px auto; /* ?곹븯 ?щ갚, 以묒븰 ?뺣젹 */
     padding: 12px 24px;
     display: block;
-    width: fit-content; /* 내용에 맞는 너비 */
+    width: fit-content; /* ?댁슜??留욌뒗 ?덈퉬 */
     min-width: 120px;
     text-align: center;
     border: 2px solid #667eea;
@@ -1805,8 +1824,8 @@ body {
     font-size: 0.9rem;
     min-height: 44px;
     transition: all 0.2s ease;
-    position: relative; /* 레이아웃 안정성 */
-    clear: both; /* 콘텐츠 영역과 명확히 분리 */
+    position: relative; /* ?덉씠?꾩썐 ?덉젙??*/
+    clear: both; /* 肄섑뀗痢??곸뿭怨?紐낇솗??遺꾨━ */
 }
 
 .saved-item-toggle:hover {
@@ -1825,7 +1844,7 @@ body {
     outline-offset: 2px;
 }
 
-/* 트래킹 포스트 더보기 기능 스타일 */
+/* ?몃옒???ъ뒪???붾낫湲?湲곕뒫 ?ㅽ???*/
 .tracking-post-content {
     color: #333;
     line-height: 1.7;
@@ -2008,7 +2027,7 @@ body {
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 
-/* Overflow (⋯) menu */
+/* Overflow (?? menu */
 .more-menu {
     position: relative;
     display: inline-block;
@@ -2035,17 +2054,17 @@ body {
 .more-menu-list {
     position: absolute;
     right: 0;
-    bottom: calc(100% + 6px); /* 기본: 버튼 위로 표시 */
+    bottom: calc(100% + 6px); /* 湲곕낯: 踰꾪듉 ?꾨줈 ?쒖떆 */
     top: auto;
     background: #fff;
     border: 1px solid #e1e5e9;
     border-radius: 8px;
-    box-shadow: 0 -6px 20px rgba(0,0,0,0.12); /* 위쪽 그림자 (기본) */
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.12); /* ?꾩そ 洹몃┝??(湲곕낯) */
     min-width: 140px;
     padding: 6px;
     display: none;
     z-index: 99999;
-    transition: opacity 0.2s ease, transform 0.2s ease; /* 부드러운 전환 */
+    transition: opacity 0.2s ease, transform 0.2s ease; /* 遺?쒕윭???꾪솚 */
 }
 
 .more-menu-list.open { 
@@ -2053,18 +2072,18 @@ body {
     z-index: 99999;
 }
 
-/* 스마트 포지셔닝: 화면 상단 근처일 때 아래로 표시 */
+/* ?ㅻ쭏???ъ??붾떇: ?붾㈃ ?곷떒 洹쇱쿂?????꾨옒濡??쒖떆 */
 .more-menu-list.open-bottom {
     bottom: auto;
-    top: calc(100% + 6px); /* 버튼 아래로 표시 */
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12); /* 아래쪽 그림자 */
+    top: calc(100% + 6px); /* 踰꾪듉 ?꾨옒濡??쒖떆 */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12); /* ?꾨옒履?洹몃┝??*/
 }
 
-/* 스마트 포지셔닝: 화면 하단 근처일 때 위로 표시 (기본) */
+/* ?ㅻ쭏???ъ??붾떇: ?붾㈃ ?섎떒 洹쇱쿂?????꾨줈 ?쒖떆 (湲곕낯) */
 .more-menu-list.open-top {
-    bottom: calc(100% + 6px); /* 버튼 위로 표시 */
+    bottom: calc(100% + 6px); /* 踰꾪듉 ?꾨줈 ?쒖떆 */
     top: auto;
-    box-shadow: 0 -6px 20px rgba(0,0,0,0.12); /* 위쪽 그림자 */
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.12); /* ?꾩そ 洹몃┝??*/
 }
 
 .more-menu-item {
@@ -2084,10 +2103,10 @@ body {
     .saved-item-actions {
     display: flex;
     gap: 12px;
-    margin-top: 24px; /* 간격 증가 (16px → 24px) */
-    clear: both; /* 콘텐츠 영역과 명확히 분리 */
-    position: relative; /* 레이아웃 안정성 */
-    z-index: 1; /* 콘텐츠와 겹침 방지 */
+    margin-top: 24px; /* 媛꾧꺽 利앷? (16px ??24px) */
+    clear: both; /* 肄섑뀗痢??곸뿭怨?紐낇솗??遺꾨━ */
+    position: relative; /* ?덉씠?꾩썐 ?덉젙??*/
+    z-index: 1; /* 肄섑뀗痢좎? 寃뱀묠 諛⑹? */
     }
     
     .saved-item-actions.actions--primary {
@@ -2108,7 +2127,7 @@ body {
     transition: all 0.2s ease;
     }
     
-    /* LLM 검증 버튼은 flex 제한 없이 */
+    /* LLM 寃利?踰꾪듉? flex ?쒗븳 ?놁씠 */
     .action-button.btn-llm-main {
     flex: 0 1 auto;
     min-width: auto;
@@ -2140,7 +2159,7 @@ body {
     transform: translateY(-1px);
     }
     
-    /* LLM 검증 드롭다운 스타일 */
+    /* LLM 寃利??쒕∼?ㅼ슫 ?ㅽ???*/
     .llm-validation-dropdown {
     position: relative;
     display: inline-block;
@@ -2164,27 +2183,27 @@ body {
     }
     
     .btn-llm-main::after {
-    content: '▼';
+    content: '??;
     margin-left: 5px;
     font-size: 0.7rem;
     }
     
     .llm-dropdown-menu {
     position: absolute;
-    bottom: calc(100% + 6px); /* 버튼 위로 표시 (기본) */
+    bottom: calc(100% + 6px); /* 踰꾪듉 ?꾨줈 ?쒖떆 (湲곕낯) */
     top: auto;
     left: 0;
     background: white;
     border: 1px solid #ddd;
     border-radius: 8px;
-    box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* 위쪽 그림자 (기본) */
-    z-index: 10000; /* 높은 z-index로 다른 요소 위에 표시 */
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* ?꾩そ 洹몃┝??(湲곕낯) */
+    z-index: 10000; /* ?믪? z-index濡??ㅻⅨ ?붿냼 ?꾩뿉 ?쒖떆 */
     min-width: 220px;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(10px); /* 위로 올라오는 애니메이션 */
+    transform: translateY(10px); /* ?꾨줈 ?щ씪?ㅻ뒗 ?좊땲硫붿씠??*/
     transition: all 0.3s ease;
-    display: block; /* 기본값: block으로 설정하여 open 시 표시 */
+    display: block; /* 湲곕낯媛? block?쇰줈 ?ㅼ젙?섏뿬 open ???쒖떆 */
     }
     
     .llm-validation-dropdown:hover .llm-dropdown-menu,
@@ -2195,18 +2214,18 @@ body {
     display: block !important;
     }
 
-    /* 스마트 포지셔닝: 화면 상단 근처일 때 아래로 표시 */
+    /* ?ㅻ쭏???ъ??붾떇: ?붾㈃ ?곷떒 洹쇱쿂?????꾨옒濡??쒖떆 */
     .llm-dropdown-menu.open-bottom {
         bottom: auto;
-        top: calc(100% + 6px); /* 버튼 아래로 표시 */
-        box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* 아래쪽 그림자 */
+        top: calc(100% + 6px); /* 踰꾪듉 ?꾨옒濡??쒖떆 */
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* ?꾨옒履?洹몃┝??*/
     }
 
-    /* 스마트 포지셔닝: 화면 하단 근처일 때 위로 표시 (기본) */
+    /* ?ㅻ쭏???ъ??붾떇: ?붾㈃ ?섎떒 洹쇱쿂?????꾨줈 ?쒖떆 (湲곕낯) */
     .llm-dropdown-menu.open-top {
-        bottom: calc(100% + 6px); /* 버튼 위로 표시 */
+        bottom: calc(100% + 6px); /* 踰꾪듉 ?꾨줈 ?쒖떆 */
         top: auto;
-        box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* 위쪽 그림자 */
+        box-shadow: 0 -6px 20px rgba(0,0,0,0.15); /* ?꾩そ 洹몃┝??*/
     }
     
     .llm-option {
@@ -2233,7 +2252,7 @@ body {
     }
     
     .llm-option-content {
-    padding: 10px 16px; /* 상하 패딩 축소 (공간 절약) */
+    padding: 10px 16px; /* ?곹븯 ?⑤뵫 異뺤냼 (怨듦컙 ?덉빟) */
     }
     
     .llm-option-header {
@@ -2281,7 +2300,7 @@ body {
     border-radius: 8px;
     }
     
-    /* Gemini 전용 모달 스타일 */
+    /* Gemini ?꾩슜 紐⑤떖 ?ㅽ???*/
     .gemini-modal-overlay {
     position: fixed;
     top: 0;
@@ -2480,7 +2499,7 @@ body {
     }
     }
     
-    /* 반응형 디자인 */
+    /* 諛섏쓳???붿옄??*/
     @media (max-width: 768px) {
     .gemini-modal-content {
     width: 95%;
@@ -2505,7 +2524,7 @@ body {
     }
     }
     
-    /* Threads 프로필 설정 모달 */
+    /* Threads ?꾨줈???ㅼ젙 紐⑤떖 */
     .threads-profile-modal {
     position: fixed;
     top: 0;
@@ -2634,7 +2653,7 @@ body {
     transform: translateY(-1px);
     }
     
-    /* 최적화 모달 버튼 스타일 개선 */
+    /* 理쒖쟻??紐⑤떖 踰꾪듉 ?ㅽ???媛쒖꽑 */
     .modal-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2673,9 +2692,9 @@ body {
     transform: translateY(-1px);
     }
     
-    /* 언어별 텍스트 줄바꿈 최적화 */
+    /* ?몄뼱蹂??띿뒪??以꾨컮轅?理쒖쟻??*/
     .modal-actions button {
-    /* 기본 줄바꿈 설정 - 자연스러운 단어 경계에서 줄바꿈 */
+    /* 湲곕낯 以꾨컮轅??ㅼ젙 - ?먯뿰?ㅻ윭???⑥뼱 寃쎄퀎?먯꽌 以꾨컮轅?*/
     word-break: normal;
     word-wrap: normal;
     overflow-wrap: break-word;
@@ -2690,7 +2709,7 @@ body {
     justify-content: center;
     }
     
-    /* 한글 텍스트 최적화 */
+    /* ?쒓? ?띿뒪??理쒖쟻??*/
     .modal-actions button:lang(ko),
     .modal-actions button[lang="ko"] {
     word-break: keep-all;
@@ -2699,7 +2718,7 @@ body {
     hyphens: none;
     }
     
-    /* 영어 텍스트 최적화 */
+    /* ?곸뼱 ?띿뒪??理쒖쟻??*/
     .modal-actions button:lang(en),
     .modal-actions button[lang="en"] {
     word-break: normal;
@@ -2708,7 +2727,7 @@ body {
     hyphens: auto;
     }
     
-    /* 일본어 텍스트 최적화 */
+    /* ?쇰낯???띿뒪??理쒖쟻??*/
     .modal-actions button:lang(ja),
     .modal-actions button[lang="ja"] {
     word-break: keep-all;
@@ -2717,7 +2736,7 @@ body {
     hyphens: none;
     }
     
-    /* 중국어 텍스트 최적화 */
+    /* 以묎뎅???띿뒪??理쒖쟻??*/
     .modal-actions button:lang(zh),
     .modal-actions button[lang="zh"] {
     word-break: keep-all;
@@ -2726,7 +2745,7 @@ body {
     hyphens: none;
     }
     
-    /* 반응형 텍스트 크기 조정 */
+    /* 諛섏쓳???띿뒪???ш린 議곗젙 */
     @media (max-width: 768px) {
     .modal-actions {
     grid-template-columns: 1fr;
@@ -2748,9 +2767,9 @@ body {
     }
     }
     
-    /* 언어별 폰트 최적화 */
+    /* ?몄뼱蹂??고듃 理쒖쟻??*/
     .lang-ko {
-    font-family: "Noto Sans KR", "Malgun Gothic", "맑은 고딕", sans-serif;
+    font-family: "Noto Sans KR", "Malgun Gothic", "留묒? 怨좊뵓", sans-serif;
     }
     
     .lang-en {
@@ -2758,14 +2777,14 @@ body {
     }
     
     .lang-ja {
-    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", sans-serif;
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "?믡꺀??깕鰲믡궡 ProN W3", sans-serif;
     }
     
     .lang-zh {
     font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     
-    /* 간단한 Threads 가이드 스타일 */
+    /* 媛꾨떒??Threads 媛?대뱶 ?ㅽ???*/
     .simple-threads-guide {
     position: fixed;
     top: 50%;
@@ -2829,7 +2848,7 @@ body {
     color: #dc3545;
     }
     
-    /* 모바일 반응형 디자인 개선 */
+    /* 紐⑤컮??諛섏쓳???붿옄??媛쒖꽑 */
     @media (max-width: 768px) {
     .container {
     padding: 12px;
@@ -2844,7 +2863,7 @@ body {
     font-size: 1rem;
     }
     
-    /* 탭 버튼 모바일 최적화 */
+    /* ??踰꾪듉 紐⑤컮??理쒖쟻??*/
     .tab-button {
     padding: 12px 8px;
     min-height: 56px;
@@ -2855,7 +2874,7 @@ body {
     font-size: 16px;
     }
     
-    /* 주제 입력 필드 모바일 반응형 */
+    /* 二쇱젣 ?낅젰 ?꾨뱶 紐⑤컮??諛섏쓳??*/
     .topic-input-group {
         margin-bottom: 10px;
     }
@@ -2868,10 +2887,10 @@ body {
     .topic-input {
         padding: 12px;
         font-size: 0.9rem;
-        min-height: 44px; /* 터치 영역 최소 크기 */
+        min-height: 44px; /* ?곗튂 ?곸뿭 理쒖냼 ?ш린 */
     }
     
-    /* 주제 필터 모바일 반응형 */
+    /* 二쇱젣 ?꾪꽣 紐⑤컮??諛섏쓳??*/
     .topic-filter-group {
         flex-direction: column;
         align-items: flex-start;
@@ -2881,30 +2900,30 @@ body {
     
     .topic-filter-label {
         font-size: 0.85rem;
-        line-height: 1.5; /* 수평 정렬을 위한 line-height 설정 */
+        line-height: 1.5; /* ?섑룊 ?뺣젹???꾪븳 line-height ?ㅼ젙 */
     }
     
-    /* 레퍼런스 유형 필터 모바일 반응형 */
+    /* ?덊띁?곗뒪 ?좏삎 ?꾪꽣 紐⑤컮??諛섏쓳??*/
     .reference-type-filter {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
-        margin-top: 10px; /* 주제 필터와 동일한 margin-top */
+        margin-top: 10px; /* 二쇱젣 ?꾪꽣? ?숈씪??margin-top */
     }
     
     .reference-type-filter span {
         font-size: 0.85rem;
-        line-height: 1.5; /* 수평 정렬을 위한 line-height 설정 */
+        line-height: 1.5; /* ?섑룊 ?뺣젹???꾪븳 line-height ?ㅼ젙 */
     }
     
     .topic-filter-select {
         width: 100%;
         padding: 10px;
-        font-size: 16px; /* 모바일에서 확대 방지 */
+        font-size: 16px; /* 紐⑤컮?쇱뿉???뺣? 諛⑹? */
         min-height: 44px;
     }
     
-    /* 저장된 글 항목 주제 표시 모바일 반응형 */
+    /* ??λ맂 湲 ??ぉ 二쇱젣 ?쒖떆 紐⑤컮??諛섏쓳??*/
     .saved-item-topic {
         font-size: 0.8rem;
         padding: 3px 6px;
@@ -2916,7 +2935,7 @@ body {
     font-size: 11px;
     }
     
-    /* 패널 모바일 최적화 */
+    /* ?⑤꼸 紐⑤컮??理쒖쟻??*/
     .writing-panel {
     padding: 16px;
     min-height: auto;
@@ -2928,19 +2947,20 @@ body {
     .writing-panel textarea {
     min-height: 300px;
     padding: 16px;
-    font-size: 16px; /* 모바일에서 확대 방지 */
+    font-size: 16px; /* 紐⑤컮?쇱뿉???뺣? 諛⑹? */
     }
     
     .panel-header {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: flex-start;
-    gap: 8px;
+    justify-items: stretch;
+    row-gap: 8px;
     margin-bottom: 12px;
     }
     
-    /* 모바일에서 주제 입력 필드 다시 표시 */
+    /* 紐⑤컮?쇱뿉??二쇱젣 ?낅젰 ?꾨뱶 ?ㅼ떆 ?쒖떆 */
     .topic-input-group--header {
-    flex-direction: row; /* 모바일에서도 가로 배치 유지 */
+    flex-direction: row; /* 紐⑤컮?쇱뿉?쒕룄 媛濡?諛곗튂 ?좎? */
     width: 100%;
     max-width: none;
     margin-left: 0;
@@ -2949,27 +2969,27 @@ body {
     }
     
     .topic-label--header {
-    display: inline-block; /* 모바일에서도 라벨 표시 */
+    display: inline-block; /* 紐⑤컮?쇱뿉?쒕룄 ?쇰꺼 ?쒖떆 */
     font-size: 0.75rem;
-    margin-bottom: 0; /* 가로 배치이므로 margin-bottom 제거 */
-    margin-right: 6px; /* 라벨과 입력 필드 사이 간격 */
+    margin-bottom: 0; /* 媛濡?諛곗튂?대?濡?margin-bottom ?쒓굅 */
+    margin-right: 6px; /* ?쇰꺼怨??낅젰 ?꾨뱶 ?ъ씠 媛꾧꺽 */
     }
     
     .topic-input--header {
-    flex: 1; /* 남은 공간을 모두 차지 */
-    min-width: 100px; /* 모바일 최소 가로 길이 */
-    max-width: none; /* 모바일에서는 최대 길이 제한 없음 */
-    padding: 7px 9px; /* 8px 10px → 7px 9px (10% 축소) */
-    font-size: 0.77rem; /* 0.85rem → 0.77rem (10% 축소) */
-    min-height: 32px; /* 36px → 32px (10% 축소) */
+    flex: 1; /* ?⑥? 怨듦컙??紐⑤몢 李⑥? */
+    min-width: 100px; /* 紐⑤컮??理쒖냼 媛濡?湲몄씠 */
+    max-width: none; /* 紐⑤컮?쇱뿉?쒕뒗 理쒕? 湲몄씠 ?쒗븳 ?놁쓬 */
+    padding: 7px 9px; /* 8px 10px ??7px 9px (10% 異뺤냼) */
+    font-size: 0.77rem; /* 0.85rem ??0.77rem (10% 異뺤냼) */
+    min-height: 32px; /* 36px ??32px (10% 異뺤냼) */
     }
     
     .character-counter {
-    font-size: 0.9rem; /* 1rem → 0.9rem (10% 축소) */
+    font-size: 0.9rem; /* 1rem ??0.9rem (10% 異뺤냼) */
     margin-bottom: 0;
     }
     
-    /* 컨트롤 버튼 모바일 최적화 */
+    /* 而⑦듃濡?踰꾪듉 紐⑤컮??理쒖쟻??*/
     .panel-controls {
     flex-direction: column;
     gap: 8px;
@@ -2994,23 +3014,23 @@ body {
     
     .control-group.advanced-actions {
     margin-top: 8px;
-    display: flex; /* LLM 검증과 유형 선택을 가로로 배치 */
-    flex-direction: row; /* 가로 배치 */
-    align-items: center; /* 수직 중앙 정렬 */
-    gap: 12px; /* 요소 간 간격 */
-    flex-wrap: wrap; /* 공간 부족 시 줄바꿈 */
+    display: flex; /* LLM 寃利앷낵 ?좏삎 ?좏깮??媛濡쒕줈 諛곗튂 */
+    flex-direction: row; /* 媛濡?諛곗튂 */
+    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
+    gap: 12px; /* ?붿냼 媛?媛꾧꺽 */
+    flex-wrap: wrap; /* 怨듦컙 遺議???以꾨컮轅?*/
     }
     
     .control-group.advanced-actions .btn-mobile {
-    width: auto; /* 가로 배치이므로 width: 100% 제거 */
+    width: auto; /* 媛濡?諛곗튂?대?濡?width: 100% ?쒓굅 */
     font-size: 14px;
     }
     
     .control-group.advanced-actions .reference-type-group {
-    margin-left: 0; /* 모바일에서는 margin-left 제거 */
+    margin-left: 0; /* 紐⑤컮?쇱뿉?쒕뒗 margin-left ?쒓굅 */
     }
     
-    /* 저장된 글 모바일 최적화 */
+    /* ??λ맂 湲 紐⑤컮??理쒖쟻??*/
     .saved-item {
     padding: 16px;
     margin-bottom: 12px;
@@ -3028,43 +3048,43 @@ body {
     }
     
     .saved-item-content.expanded {
-        width: 100%; /* 모바일에서도 명시적 너비 설정 */
-        clear: both; /* float 요소와의 간섭 방지 */
+        width: 100%; /* 紐⑤컮?쇱뿉?쒕룄 紐낆떆???덈퉬 ?ㅼ젙 */
+        clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
         margin-bottom: 20px;
         padding-bottom: 12px;
-        box-sizing: border-box; /* 패딩 포함 너비 계산 */
+        box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
     }
     
     .saved-item-toggle {
-        width: 100%; /* 모바일에서는 전체 너비 */
+        width: 100%; /* 紐⑤컮?쇱뿉?쒕뒗 ?꾩껜 ?덈퉬 */
         padding: 14px 20px;
-        margin-bottom: 20px; /* 간격 증가 (16px → 20px) */
-        min-height: 48px; /* 터치 타겟 크기 보장 */
-        clear: both; /* 콘텐츠 영역과 명확히 분리 */
+        margin-bottom: 20px; /* 媛꾧꺽 利앷? (16px ??20px) */
+        min-height: 48px; /* ?곗튂 ?寃??ш린 蹂댁옣 */
+        clear: both; /* 肄섑뀗痢??곸뿭怨?紐낇솗??遺꾨━ */
     }
     
-    /* 트래킹 포스트 더보기 기능 모바일 스타일 */
+    /* ?몃옒???ъ뒪???붾낫湲?湲곕뒫 紐⑤컮???ㅽ???*/
     .tracking-post-content.expanded {
-        width: 100%; /* 모바일에서도 명시적 너비 설정 */
-        clear: both; /* float 요소와의 간섭 방지 */
+        width: 100%; /* 紐⑤컮?쇱뿉?쒕룄 紐낆떆???덈퉬 ?ㅼ젙 */
+        clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
         margin-bottom: 20px;
         padding-bottom: 12px;
-        box-sizing: border-box; /* 패딩 포함 너비 계산 */
+        box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
     }
     
     .tracking-post-toggle {
-        width: 100%; /* 모바일에서는 전체 너비 */
+        width: 100%; /* 紐⑤컮?쇱뿉?쒕뒗 ?꾩껜 ?덈퉬 */
         padding: 14px 20px;
-        margin-bottom: 20px; /* 간격 증가 (16px → 20px) */
-        min-height: 48px; /* 터치 타겟 크기 보장 */
-        clear: both; /* 콘텐츠 영역과 명확히 분리 */
+        margin-bottom: 20px; /* 媛꾧꺽 利앷? (16px ??20px) */
+        min-height: 48px; /* ?곗튂 ?寃??ш린 蹂댁옣 */
+        clear: both; /* 肄섑뀗痢??곸뿭怨?紐낇솗??遺꾨━ */
     }
     
     .saved-item-actions {
         flex-direction: column;
         gap: 8px;
-        margin-top: 20px; /* 모바일에서도 간격 증가 */
-        clear: both; /* 콘텐츠 영역과 명확히 분리 */
+        margin-top: 20px; /* 紐⑤컮?쇱뿉?쒕룄 媛꾧꺽 利앷? */
+        clear: both; /* 肄섑뀗痢??곸뿭怨?紐낇솗??遺꾨━ */
     }
     
     .action-button {
@@ -3073,7 +3093,7 @@ body {
     font-size: 15px;
     }
     
-    /* 해시태그 설정 바 모바일 최적화 */
+    /* ?댁떆?쒓렇 ?ㅼ젙 諛?紐⑤컮??理쒖쟻??*/
     .hashtag-settings-bar {
     flex-direction: column;
     gap: 8px;
@@ -3113,7 +3133,7 @@ body {
     animation: slideIn 0.3s ease;
     }
     
-    /* 해시태그 설정 바 스타일 */
+    /* ?댁떆?쒓렇 ?ㅼ젙 諛??ㅽ???*/
     .hashtag-settings-bar {
     display: flex;
     align-items: center;
@@ -3140,7 +3160,7 @@ body {
     }
     
     .hashtags-display:empty::after {
-    content: '해시태그 없음';
+    content: '?댁떆?쒓렇 ?놁쓬';
     color: #6c757d;
     }
     
@@ -3161,7 +3181,7 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
     
-    /* 해시태그 설정 모달 스타일 */
+    /* ?댁떆?쒓렇 ?ㅼ젙 紐⑤떖 ?ㅽ???*/
     .hashtag-settings-modal {
     position: fixed;
     top: 0;
@@ -3249,7 +3269,7 @@ body {
     border-color: #667eea;
     }
     
-    /* 패널 컨트롤 영역 개선된 레이아웃 */
+    /* ?⑤꼸 而⑦듃濡??곸뿭 媛쒖꽑???덉씠?꾩썐 */
     .panel-controls {
     display: flex;
     flex-direction: column;
@@ -3271,14 +3291,14 @@ body {
     .control-group.advanced-actions {
     justify-content: flex-start;
     margin-top: 4px;
-    display: flex; /* LLM 검증과 유형 선택을 가로로 배치 */
-    flex-direction: row; /* 가로 배치 */
-    align-items: center; /* 수직 중앙 정렬 */
-    gap: 12px; /* 요소 간 간격 */
-    flex-wrap: wrap; /* 공간 부족 시 줄바꿈 */
+    display: flex; /* LLM 寃利앷낵 ?좏삎 ?좏깮??媛濡쒕줈 諛곗튂 */
+    flex-direction: row; /* 媛濡?諛곗튂 */
+    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
+    gap: 12px; /* ?붿냼 媛?媛꾧꺽 */
+    flex-wrap: wrap; /* 怨듦컙 遺議???以꾨컮轅?*/
     }
     
-    /* 버튼 크기 개선 */
+    /* 踰꾪듉 ?ш린 媛쒖꽑 */
     .btn-small {
     padding: 8px 12px;
     font-size: 0.85rem;
@@ -3296,7 +3316,7 @@ body {
     min-width: 80px;
     }
     
-    /* 모바일 최적화 버튼 */
+    /* 紐⑤컮??理쒖쟻??踰꾪듉 */
     .btn-mobile {
     min-height: 48px;
     min-width: 48px;
@@ -3307,7 +3327,7 @@ body {
     -webkit-tap-highlight-color: transparent;
     }
     
-    /* 기본 버튼 스타일 개선 */
+    /* 湲곕낯 踰꾪듉 ?ㅽ???媛쒖꽑 */
     .btn {
     border: none;
     cursor: pointer;
@@ -3333,7 +3353,7 @@ body {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
     
-    /* 버튼 색상 개선 */
+    /* 踰꾪듉 ?됱긽 媛쒖꽑 */
     .btn-primary {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
@@ -3374,7 +3394,7 @@ body {
     background: linear-gradient(135deg, #e8650e, #d63384);
     }
     
-    /* 반응형 디자인 */
+    /* 諛섏쓳???붿옄??*/
     @media (max-width: 768px) {
     .preview-content {
     min-height: 150px;
@@ -3388,7 +3408,7 @@ body {
     }
     }
     
-    /* LLM 검증 드롭다운 스타일 */
+    /* LLM 寃利??쒕∼?ㅼ슫 ?ㅽ???*/
     .panel-controls .llm-validation-dropdown {
     position: relative;
     display: inline-block;
@@ -3413,7 +3433,7 @@ body {
     }
     
     .panel-controls .btn-llm-main::after {
-    content: '▼';
+    content: '??;
     margin-left: 5px;
     font-size: 0.7rem;
     }
@@ -3426,7 +3446,7 @@ body {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    z-index: 10000;          /* 다른 요소 위에 표시 보장 (1000 → 10000) */
+    z-index: 10000;          /* ?ㅻⅨ ?붿냼 ?꾩뿉 ?쒖떆 蹂댁옣 (1000 ??10000) */
     min-width: 200px;
     opacity: 0;
     visibility: hidden;
@@ -3446,9 +3466,9 @@ body {
     width: 100%;
     padding: 0;
     border: none;
-    background: white;         /* 배경색 명시: 투명 → 흰색 */
-    color: #333;              /* 텍스트 색상 명시 (가시성 향상) */
-    text-align: left;         /* 텍스트 정렬 명시 */
+    background: white;         /* 諛곌꼍??紐낆떆: ?щ챸 ???곗깋 */
+    color: #333;              /* ?띿뒪???됱긽 紐낆떆 (媛?쒖꽦 ?μ긽) */
+    text-align: left;         /* ?띿뒪???뺣젹 紐낆떆 */
     cursor: pointer;
     transition: background-color 0.2s ease;
     }
@@ -3458,7 +3478,7 @@ body {
     }
     
     .panel-controls .llm-option-content {
-    padding: 10px 16px; /* 상하 패딩 축소 (공간 절약) */
+    padding: 10px 16px; /* ?곹븯 ?⑤뵫 異뺤냼 (怨듦컙 ?덉빟) */
     text-align: left;
     }
     
@@ -3487,7 +3507,7 @@ body {
     white-space: nowrap;
     }
     
-    /* 트래킹 대시보드 스타일 */
+    /* ?몃옒????쒕낫???ㅽ???*/
     .tracking-dashboard {
         padding: 20px;
         max-width: 1200px;
@@ -3553,10 +3573,10 @@ body {
         font-size: 1.6rem;
         font-weight: 700;
         margin-left: 6px;
-        color: #1a1a1a; /* WCAG 대비 강화 */
+        color: #1a1a1a; /* WCAG ?鍮?媛뺥솕 */
     }
     
-    /* 색상 대비 강화: 숫자/아이콘 */
+    /* ?됱긽 ?鍮?媛뺥솕: ?レ옄/?꾩씠肄?*/
     .metric-value,
     .stat-value,
     .summary-value {
@@ -3599,34 +3619,34 @@ body {
         .summary-value { font-size: 1.4rem; }
     }
     
-    /* 반응형 차트 컨테이너: 모바일 최적화 */
+    /* 諛섏쓳??李⑦듃 而⑦뀒?대꼫: 紐⑤컮??理쒖쟻??*/
     @media (max-width: 768px) {
         .tracking-chart-container {
             padding: 12px;
             margin-bottom: 20px;
         }
         
-        /* 모바일에서 차트 높이 조정 */
+        /* 紐⑤컮?쇱뿉??李⑦듃 ?믪씠 議곗젙 */
         .tracking-chart-container canvas {
-            min-height: 250px; /* 모바일에서 최소 높이 감소 */
+            min-height: 250px; /* 紐⑤컮?쇱뿉??理쒖냼 ?믪씠 媛먯냼 */
         }
     }
     
-    /* 태블릿 최적화 */
+    /* ?쒕툝由?理쒖쟻??*/
     @media (min-width: 769px) and (max-width: 1024px) {
         .tracking-chart-container {
             padding: 16px;
         }
     }
     
-    /* 가로 모드(landscape) 최적화 */
+    /* 媛濡?紐⑤뱶(landscape) 理쒖쟻??*/
     @media (max-width: 896px) and (orientation: landscape) {
         .tracking-chart-container {
-            max-height: 60vh; /* 가로 모드에서 높이 조정 */
+            max-height: 60vh; /* 媛濡?紐⑤뱶?먯꽌 ?믪씠 議곗젙 */
         }
         
         .tracking-chart-container canvas {
-            min-height: 200px; /* 가로 모드에서 최소 높이 감소 */
+            min-height: 200px; /* 媛濡?紐⑤뱶?먯꽌 理쒖냼 ?믪씠 媛먯냼 */
         }
     }
 
@@ -3639,7 +3659,7 @@ body {
         white-space: nowrap;
     }
     
-    /* 차트 컨트롤 버튼 키보드 접근성: Focus 시각적 표시 */
+    /* 李⑦듃 而⑦듃濡?踰꾪듉 ?ㅻ낫???묎렐?? Focus ?쒓컖???쒖떆 */
     .mode-toggle-btn:focus,
     .range-toggle-btn:focus,
     .scale-toggle-btn:focus,
@@ -3649,7 +3669,7 @@ body {
         box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2) !important;
     }
     
-    /* 키보드 접근성: Enter/Space 키 지원 */
+    /* ?ㅻ낫???묎렐?? Enter/Space ??吏??*/
     .mode-toggle-btn:active,
     .range-toggle-btn:active,
     .scale-toggle-btn:active,
@@ -3670,15 +3690,15 @@ body {
         position: relative;
         display: flex;
         flex-direction: column;
-        /* 드래그 스크롤 허용 */
+        /* ?쒕옒洹??ㅽ겕濡??덉슜 */
         -webkit-overflow-scrolling: touch;
         touch-action: pan-y;
     }
     
-    /* Chart.js Canvas: Chart.js가 자동으로 크기 조절
-       - responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
-       - HTML width/height 속성은 제거되어 Chart.js가 자동 설정
-       - !important 사용 이유: Chart.js가 동적으로 인라인 스타일을 추가할 수 있어 우선순위 보장 필요
+    /* Chart.js Canvas: Chart.js媛 ?먮룞?쇰줈 ?ш린 議곗젅
+       - responsive: true濡??ㅼ젙?섏뼱 ?덉뼱 遺紐?而⑦뀒?대꼫 ?ш린??留욎떠 ?먮룞 議곗젅
+       - HTML width/height ?띿꽦? ?쒓굅?섏뼱 Chart.js媛 ?먮룞 ?ㅼ젙
+       - !important ?ъ슜 ?댁쑀: Chart.js媛 ?숈쟻?쇰줈 ?몃씪???ㅽ??쇱쓣 異붽??????덉뼱 ?곗꽑?쒖쐞 蹂댁옣 ?꾩슂
     */
     .tracking-chart-container canvas {
         /* Layout */
@@ -3687,20 +3707,20 @@ body {
         position: relative;
         
         /* Sizing */
-        width: 100% !important; /* Chart.js 동적 스타일 오버라이드 방지 */
-        height: auto !important; /* Chart.js 동적 스타일 오버라이드 방지 */
+        width: 100% !important; /* Chart.js ?숈쟻 ?ㅽ????ㅻ쾭?쇱씠??諛⑹? */
+        height: auto !important; /* Chart.js ?숈쟻 ?ㅽ????ㅻ쾭?쇱씠??諛⑹? */
         min-height: 300px;
         max-width: 100%;
         
         /* Box model */
         box-sizing: border-box;
         
-        /* Performance: Canvas 렌더링 최적화 */
+        /* Performance: Canvas ?뚮뜑留?理쒖쟻??*/
         will-change: contents;
         contain: layout style paint;
     }
     
-    /* 그래프 컨텐츠 영역 (헤더/컨트롤 제외) */
+    /* 洹몃옒??而⑦뀗痢??곸뿭 (?ㅻ뜑/而⑦듃濡??쒖쇅) */
     .tracking-chart-container > div:last-child {
         flex: 1;
         min-height: 300px;
@@ -3781,7 +3801,7 @@ body {
         background: #eeeeee;
     }
     
-    /* 트래킹 포스트 정보 영역 */
+    /* ?몃옒???ъ뒪???뺣낫 ?곸뿭 */
     .tracking-post-info {
         display: flex;
         flex-wrap: wrap;
@@ -3820,7 +3840,7 @@ body {
         font-style: italic;
     }
     
-    /* 데이터 없음 표시 */
+    /* ?곗씠???놁쓬 ?쒖떆 */
     .tracking-post-no-data {
         display: flex;
         align-items: center;
@@ -3842,14 +3862,14 @@ body {
         flex: 1;
     }
     
-    /* 선택된 포스트 강조 효과 */
+    /* ?좏깮???ъ뒪??媛뺤“ ?④낵 */
     .tracking-post-item.selected {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
         transform: scale(1.01);
     }
     
-    /* 활성/비활성 상태에 따른 포스트 아이템 스타일 */
+    /* ?쒖꽦/鍮꾪솢???곹깭???곕Ⅸ ?ъ뒪???꾩씠???ㅽ???*/
     .tracking-post-item.active {
         border-left: 4px solid #4caf50;
     }
@@ -3859,7 +3879,7 @@ body {
         opacity: 0.85;
     }
     
-    /* Orphan 포스트 스타일 (원본이 삭제된 포스트) */
+    /* Orphan ?ъ뒪???ㅽ???(?먮낯????젣???ъ뒪?? */
     .tracking-post-item.orphan-post {
         border-left: 4px solid #dc3545;
         background: #fff5f5;
@@ -3882,7 +3902,7 @@ body {
         gap: 4px;
     }
     
-    /* Orphan 포스트 경고 배너 */
+    /* Orphan ?ъ뒪??寃쎄퀬 諛곕꼫 */
     .orphan-posts-warning {
         animation: slideDown 0.3s ease;
     }
@@ -4032,7 +4052,7 @@ body {
         background: #e9ecef;
     }
     
-    /* 트래킹 모달 스타일 */
+    /* ?몃옒??紐⑤떖 ?ㅽ???*/
     .tracking-form {
         margin: 12px 0;
     }
@@ -4071,7 +4091,7 @@ body {
         min-height: 60px;
     }
     
-    /* 모바일에서 터치 친화적인 크기 유지 */
+    /* 紐⑤컮?쇱뿉???곗튂 移쒗솕?곸씤 ?ш린 ?좎? */
     @media (max-width: 768px) {
         .tracking-form input,
         .tracking-form textarea {
@@ -4173,7 +4193,7 @@ body {
         transform: translateY(-1px);
     }
     
-    /* 트래킹 타임라인 스타일 */
+    /* ?몃옒????꾨씪???ㅽ???*/
     .saved-item-tracking {
         margin: 16px 0;
         padding: 12px;
@@ -4201,7 +4221,7 @@ body {
         flex-shrink: 0;
     }
     
-    /* 트래킹 기록 합계 배지 스타일 */
+    /* ?몃옒??湲곕줉 ?⑷퀎 諛곗? ?ㅽ???*/
     .metrics-totals {
         display: flex;
         flex-wrap: wrap;
@@ -4240,7 +4260,7 @@ body {
         color: #333;
     }
 
-    /* 반응형: 모바일에서 간략하게 */
+    /* 諛섏쓳?? 紐⑤컮?쇱뿉??媛꾨왂?섍쾶 */
     @media (max-width: 768px) {
         .metrics-totals {
             gap: 4px;
@@ -4374,7 +4394,7 @@ body {
         font-style: italic;
     }
     
-    /* 모달 스타일 개선 */
+    /* 紐⑤떖 ?ㅽ???媛쒖꽑 */
     .modal {
         position: fixed;
         top: 0;
@@ -4411,7 +4431,7 @@ body {
         font-size: 1.2rem;
     }
     
-    /* 모바일에서 패딩 유지 */
+    /* 紐⑤컮?쇱뿉???⑤뵫 ?좎? */
     @media (max-width: 768px) {
         .modal.bottom-sheet .modal-content {
             padding: 20px;
@@ -4430,7 +4450,7 @@ body {
         font-size: 0.85rem;
     }
 
-    /* 로딩 스켈레톤 */
+    /* 濡쒕뵫 ?ㅼ펷?덊넠 */
     .skeleton {
         animation: skeleton-loading 1.5s ease-in-out infinite;
         background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
@@ -4475,7 +4495,7 @@ body {
         margin-right: 8px;
     }
 
-    /* 빈 상태 메시지 일관화 */
+    /* 鍮??곹깭 硫붿떆吏 ?쇨???*/
     .empty-state {
         text-align: center;
         padding: 40px 20px;
@@ -4499,7 +4519,7 @@ body {
         color: #999;
     }
     
-    /* 메트릭 관리 모달 스타일 */
+    /* 硫뷀듃由?愿由?紐⑤떖 ?ㅽ???*/
     .metrics-manage-content {
         max-height: 60vh;
         overflow-y: auto;
@@ -4625,7 +4645,7 @@ body {
         overflow-wrap: break-word;
     }
     
-    /* 모바일 반응형 */
+    /* 紐⑤컮??諛섏쓳??*/
     @media (max-width: 768px) {
         .metric-manage-header {
             flex-direction: column;
@@ -4653,7 +4673,7 @@ body {
         }
     }
     
-    /* 범위 필터 접기/펼치기 스타일 */
+    /* 踰붿쐞 ?꾪꽣 ?묎린/?쇱튂湲??ㅽ???*/
     .range-filter-container {
         margin-top: 8px;
     }
@@ -4711,10 +4731,10 @@ body {
     }
 
 /* ============================================
-   레퍼런스 선택 UI 스타일 (접을 수 있는 패널)
+   ?덊띁?곗뒪 ?좏깮 UI ?ㅽ???(?묒쓣 ???덈뒗 ?⑤꼸)
    ============================================ */
 
-/* 접을 수 있는 레퍼런스 패널 */
+/* ?묒쓣 ???덈뒗 ?덊띁?곗뒪 ?⑤꼸 */
 .reference-link-collapsible {
     margin: 16px 0;
     border-radius: 8px;
@@ -4723,7 +4743,7 @@ body {
     background: #fff;
 }
 
-/* 토글 버튼 */
+/* ?좉? 踰꾪듉 */
 .collapse-toggle {
     width: 100%;
     display: flex;
@@ -4770,7 +4790,7 @@ body {
     font-weight: 500;
 }
 
-/* 접히는 콘텐츠 */
+/* ?묓엳??肄섑뀗痢?*/
 .collapse-content {
     max-height: 0;
     overflow: hidden;
@@ -4781,7 +4801,7 @@ body {
     max-height: 800px;
 }
 
-/* 참고 레퍼런스 섹션 (내부) */
+/* 李멸퀬 ?덊띁?곗뒪 ?뱀뀡 (?대?) */
 .reference-link-section {
     padding: 16px;
     background: #f8f9fa;
@@ -4837,7 +4857,7 @@ body {
     margin-left: auto;
 }
 
-/* 레퍼런스 태그 */
+/* ?덊띁?곗뒪 ?쒓렇 */
 .reference-tags {
     display: flex;
     flex-wrap: wrap;
@@ -4912,7 +4932,7 @@ body {
     border-radius: 2px;
 }
 
-/* 모달 내 레퍼런스 목록 */
+/* 紐⑤떖 ???덊띁?곗뒪 紐⑸줉 */
 .reference-list {
     max-height: 400px;
     overflow-y: auto;
@@ -4920,7 +4940,7 @@ body {
     border: 1px solid #dee2e6;
     border-radius: 6px;
     background: #fff;
-    /* 스크롤바 스타일 */
+    /* ?ㅽ겕濡ㅻ컮 ?ㅽ???*/
     scrollbar-width: thin;
     scrollbar-color: #adb5bd #f8f9fa;
 }
@@ -5020,7 +5040,7 @@ body {
     color: #856404;
 }
 
-/* 선택 개수 */
+/* ?좏깮 媛쒖닔 */
 .selection-count {
     text-align: center;
     padding: 12px;
@@ -5030,7 +5050,7 @@ body {
     color: #004085;
 }
 
-/* 검색 박스 */
+/* 寃??諛뺤뒪 */
 .search-box {
     position: relative;
     margin-bottom: 16px;
@@ -5060,7 +5080,7 @@ body {
     font-size: 1.1rem;
 }
 
-/* 필터 섹션 */
+/* ?꾪꽣 ?뱀뀡 */
 .filter-section {
     display: flex;
     align-items: center;
@@ -5091,7 +5111,7 @@ body {
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
 }
 
-/* 스크린 리더 전용 */
+/* ?ㅽ겕由?由щ뜑 ?꾩슜 */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -5104,7 +5124,7 @@ body {
     border: 0;
 }
 
-/* 버튼 스타일 */
+/* 踰꾪듉 ?ㅽ???*/
 .primary-btn {
     background: #0d6efd;
     color: #fff;
@@ -5157,9 +5177,9 @@ body {
     outline-offset: 2px;
 }
 
-/* 반응형 디자인 */
+/* 諛섏쓳???붿옄??*/
 @media (max-width: 768px) {
-    /* 접을 수 있는 패널 */
+    /* ?묒쓣 ???덈뒗 ?⑤꼸 */
     .reference-link-collapsible {
         margin: 12px 0;
     }
@@ -5227,7 +5247,7 @@ body {
 }
 
 @media (max-width: 480px) {
-    /* 접을 수 있는 패널 */
+    /* ?묒쓣 ???덈뒗 ?⑤꼸 */
     .reference-link-collapsible {
         margin: 10px 0;
     }
@@ -5264,10 +5284,9 @@ body {
 }
 
 /* ============================================================
-   Phase 1.6.1: 작성글-레퍼런스 연동 배지 스타일
-   ============================================================ */
+   Phase 1.6.1: ?묒꽦湲-?덊띁?곗뒪 ?곕룞 諛곗? ?ㅽ???   ============================================================ */
 
-/* 공통 배지 스타일 */
+/* 怨듯넻 諛곗? ?ㅽ???*/
 .linked-ref-badge,
 .used-in-edits-badge {
     display: inline-flex;
@@ -5299,12 +5318,12 @@ body {
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
 }
 
-/* 작성글 카드 배지 (참고 레퍼런스) */
+/* ?묒꽦湲 移대뱶 諛곗? (李멸퀬 ?덊띁?곗뒪) */
 .linked-ref-badge {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* 레퍼런스 카드 배지 (참고한 글) */
+/* ?덊띁?곗뒪 移대뱶 諛곗? (李멸퀬??湲) */
 .used-in-edits-badge {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
@@ -5313,21 +5332,21 @@ body {
     background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
 }
 
-/* 메타 섹션 구분자 */
+/* 硫뷀? ?뱀뀡 援щ텇??*/
 .meta-separator {
     margin: 0 8px;
     color: var(--text-light);
     font-weight: 300;
 }
 
-/* 접근성: 포커스 상태 */
+/* ?묎렐?? ?ъ빱???곹깭 */
 .linked-ref-badge:focus,
 .used-in-edits-badge:focus {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
-/* 반응형: 모바일 */
+/* 諛섏쓳?? 紐⑤컮??*/
 @media (max-width: 768px) {
     .linked-ref-badge,
     .used-in-edits-badge {
@@ -5355,12 +5374,11 @@ body {
 }
 
 /* ============================================================
-   Phase 1.6.2: 커스텀 모달 스타일
-   ============================================================ */
+   Phase 1.6.2: 而ㅼ뒪? 紐⑤떖 ?ㅽ???   ============================================================ */
 
-/* 모달 오버레이 */
+/* 紐⑤떖 ?ㅻ쾭?덉씠 */
 .custom-modal {
-    display: none; /* 기본적으로 숨김 */
+    display: none; /* 湲곕낯?곸쑝濡??④? */
     position: fixed;
     top: 0;
     left: 0;
@@ -5384,7 +5402,7 @@ body {
     }
 }
 
-/* 모달 콘텐츠 */
+/* 紐⑤떖 肄섑뀗痢?*/
 .custom-modal .modal-content {
     background: #ffffff;
     border-radius: 12px;
@@ -5408,7 +5426,7 @@ body {
     }
 }
 
-/* 모달 헤더 */
+/* 紐⑤떖 ?ㅻ뜑 */
 .custom-modal .modal-header {
     display: flex;
     justify-content: space-between;
@@ -5452,7 +5470,7 @@ body {
     outline-offset: 2px;
 }
 
-/* 모달 바디 */
+/* 紐⑤떖 諛붾뵒 */
 .custom-modal .modal-body {
     padding: 20px;
     overflow-y: auto;
@@ -5472,7 +5490,7 @@ body {
     color: #212529;
 }
 
-/* 연결된 항목 리스트 */
+/* ?곌껐????ぉ 由ъ뒪??*/
 .linked-items-list {
     display: flex;
     flex-direction: column;
@@ -5574,7 +5592,7 @@ body {
     outline-offset: 2px;
 }
 
-/* 모달 푸터 */
+/* 紐⑤떖 ?명꽣 */
 .custom-modal .modal-footer {
     padding: 16px 20px;
     border-top: 1px solid #dee2e6;
@@ -5608,7 +5626,7 @@ body {
     outline-offset: 2px;
 }
 
-/* 반응형: 태블릿 */
+/* 諛섏쓳?? ?쒕툝由?*/
 @media (max-width: 768px) {
     .custom-modal {
         padding: 10px;
@@ -5639,7 +5657,7 @@ body {
     }
 }
 
-/* 반응형: 모바일 */
+/* 諛섏쓳?? 紐⑤컮??*/
 @media (max-width: 480px) {
     .custom-modal {
         padding: 0;
@@ -5703,3 +5721,5 @@ body {
     }
 }
     
+
+
