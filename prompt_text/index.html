@@ -458,7 +458,27 @@
         <!-- 탭 2: 프롬프트 사용 -->
         <div id="tab-use" class="tab-content" role="tabpanel" aria-labelledby="tab-use">
           <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🚀 프롬프트 사용</h2>
-          <div id="prompt-use-list" style="margin-bottom: 20px;"></div>
+          
+          <!-- 프롬프트 선택 영역 -->
+          <div id="prompt-selector" style="margin-bottom: 24px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">사용할 프롬프트 선택</label>
+            <select id="prompt-select-dropdown" style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; background: white; cursor: pointer;">
+              <option value="">프롬프트를 선택하세요...</option>
+            </select>
+          </div>
+
+          <!-- 선택된 프롬프트 정보 표시 영역 -->
+          <div id="selected-prompt-info" style="display: none; margin-bottom: 24px;">
+            <div style="border: 2px solid #667eea; border-radius: 12px; padding: 20px; background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 id="selected-prompt-title" style="font-size: 20px; color: #333; margin: 0;"></h3>
+                <span id="selected-prompt-category" style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;"></span>
+              </div>
+              <p id="selected-prompt-preview" style="color: #666; line-height: 1.6; margin: 0; font-size: 14px;"></p>
+            </div>
+          </div>
+
+          <!-- 실행 패널 -->
           <div id="execution-panel"></div>
         </div>
 
@@ -531,7 +551,12 @@
         tabContents: document.querySelectorAll('.tab-content'),
         searchInput: document.getElementById('search-input'),
         promptUseList: document.getElementById('prompt-use-list'),
-        promptSearchResults: document.getElementById('prompt-search-results')
+        promptSearchResults: document.getElementById('prompt-search-results'),
+        promptSelectDropdown: document.getElementById('prompt-select-dropdown'),
+        selectedPromptInfo: document.getElementById('selected-prompt-info'),
+        selectedPromptTitle: document.getElementById('selected-prompt-title'),
+        selectedPromptCategory: document.getElementById('selected-prompt-category'),
+        selectedPromptPreview: document.getElementById('selected-prompt-preview')
       };
 
       // 현재 활성 탭
@@ -569,6 +594,11 @@
           // 검색 입력 이벤트 리스너
           if (elements.searchInput) {
             elements.searchInput.addEventListener('input', handleSearch);
+          }
+
+          // 프롬프트 선택 드롭다운 이벤트 리스너
+          if (elements.promptSelectDropdown) {
+            elements.promptSelectDropdown.addEventListener('change', handlePromptSelect);
           }
 
           // Enter 키 처리
@@ -815,9 +845,12 @@
           const useNow = confirm('프롬프트가 저장되었습니다!\n\n바로 사용하시겠습니까?');
           if (useNow) {
             switchTab('use');
-            // 저장된 프롬프트를 실행 패널에 표시
+            // 저장된 프롬프트를 드롭다운에서 선택
             setTimeout(() => {
-              usePrompt(promptId);
+              if (elements.promptSelectDropdown) {
+                elements.promptSelectDropdown.value = promptId;
+                handlePromptSelect();
+              }
             }, 300);
           }
         } catch (error) {
@@ -871,41 +904,104 @@
 
       // 탭 2: 프롬프트 사용용 로드
       async function loadPromptsForUse() {
-        if (!elements.promptUseList) return;
+        if (!elements.promptSelectDropdown) return;
 
         try {
           if (allPrompts.length === 0) {
             await loadPromptsForAllTabs();
           }
 
+          // 드롭다운 옵션 업데이트
+          const dropdown = elements.promptSelectDropdown;
+          const currentValue = dropdown.value; // 현재 선택된 값 저장
+          
+          // 기존 옵션 제거 (첫 번째 옵션 제외)
+          while (dropdown.options.length > 1) {
+            dropdown.remove(1);
+          }
+
           if (allPrompts.length === 0) {
-            elements.promptUseList.innerHTML =
-              '<p style="color: #999; text-align: center; padding: 40px;">사용할 프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</p>';
+            dropdown.disabled = true;
+            dropdown.innerHTML = '<option value="">프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</option>';
+            elements.selectedPromptInfo.style.display = 'none';
             elements.executionPanel.innerHTML = '';
             return;
           }
 
-          let html = '<div style="display: grid; gap: 16px;">';
+          dropdown.disabled = false;
+          
+          // 프롬프트 옵션 추가
           allPrompts.forEach((prompt) => {
-            html += `
-              <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                  <h3 style="font-size: 18px; color: #333;">${escapeHtml(prompt.title)}</h3>
-                  <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(prompt.category)}</span>
-                </div>
-                <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}</p>
-                <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
-              </div>
-            `;
+            const option = document.createElement('option');
+            option.value = prompt.id;
+            option.textContent = `${escapeHtml(prompt.title)} (${escapeHtml(prompt.category)})`;
+            dropdown.appendChild(option);
           });
-          html += '</div>';
 
-          elements.promptUseList.innerHTML = html;
+          // 이전에 선택된 값이 있으면 복원
+          if (currentValue && allPrompts.find(p => p.id === currentValue)) {
+            dropdown.value = currentValue;
+            handlePromptSelect();
+          } else {
+            // 선택 초기화
+            dropdown.value = '';
+            elements.selectedPromptInfo.style.display = 'none';
+            elements.executionPanel.innerHTML = '';
+          }
         } catch (error) {
           console.error('프롬프트 사용 목록 로드 실패:', error);
-          elements.promptUseList.innerHTML =
-            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다.</p>';
+          if (elements.promptSelectDropdown) {
+            elements.promptSelectDropdown.innerHTML = '<option value="">프롬프트를 불러오는데 실패했습니다.</option>';
+            elements.promptSelectDropdown.disabled = true;
+          }
         }
+      }
+
+      // 프롬프트 선택 처리
+      function handlePromptSelect() {
+        const selectedId = elements.promptSelectDropdown.value;
+        
+        if (!selectedId) {
+          elements.selectedPromptInfo.style.display = 'none';
+          elements.executionPanel.innerHTML = '';
+          return;
+        }
+
+        // 선택된 프롬프트 찾기
+        const prompt = allPrompts.find(p => p.id === selectedId);
+        
+        if (!prompt) {
+          showError('선택한 프롬프트를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 선택된 프롬프트 정보 표시
+        elements.selectedPromptTitle.textContent = escapeHtml(prompt.title);
+        elements.selectedPromptCategory.textContent = escapeHtml(prompt.category);
+        elements.selectedPromptPreview.textContent = escapeHtml(prompt.content.substring(0, 200)) + (prompt.content.length > 200 ? '...' : '');
+        elements.selectedPromptInfo.style.display = 'block';
+
+        // 실행 패널에 프롬프트 표시
+        elements.executionPanel.innerHTML = `
+          <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
+          <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
+            <div style="margin-bottom: 16px;">
+              <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+            </div>
+            <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
+            <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+              <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+              <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+              <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
+              <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
+            </div>
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
+              생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
+            </div>
+          </div>
+        `;
       }
 
       // 탭 3: 프롬프트 검색용 로드
@@ -1001,7 +1097,7 @@
         if (elements.promptSearchResults) elements.promptSearchResults.innerHTML = errorHtml;
       }
 
-      // 프롬프트 사용하기
+      // 프롬프트 사용하기 (다른 탭에서 호출 시)
       window.usePrompt = async function (id) {
         showLoading();
 
@@ -1026,32 +1122,17 @@
             prompt = { id: doc.id, ...doc.data() };
           }
 
-          // 사용 탭으로 전환 (데이터는 이미 로드되어 있으므로 skipReload)
+          // 사용 탭으로 전환
           if (currentTab !== 'use') {
             switchTab('use', { skipReload: true });
           }
 
-          // 실행 패널에 프롬프트 표시
-          elements.executionPanel.innerHTML = `
-            <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
-            <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
-              <div style="margin-bottom: 16px;">
-                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
-              </div>
-              <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
-              <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
-              </div>
-              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-                <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
-                <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
-                <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
-              </div>
-              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
-                생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
-              </div>
-            </div>
-          `;
+          // 드롭다운에서 해당 프롬프트 선택
+          if (elements.promptSelectDropdown) {
+            elements.promptSelectDropdown.value = id;
+            handlePromptSelect();
+          }
+
           elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
         } catch (error) {
           console.error('프롬프트 사용 실패:', error);
@@ -1261,10 +1342,9 @@
           await loadPromptsForAllTabs();
           
           // 사용 탭에 수정된 프롬프트가 표시되어 있다면 갱신
-          if (currentTab === 'use' && elements.executionPanel) {
-            const executionContent = elements.executionPanel.innerHTML;
-            if (executionContent.includes(`'${id}'`)) {
-              usePrompt(id);
+          if (currentTab === 'use' && elements.promptSelectDropdown) {
+            if (elements.promptSelectDropdown.value === id) {
+              handlePromptSelect();
             }
           }
         } catch (error) {
