@@ -359,7 +359,7 @@
                 d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"
               />
             </svg>
-            Google로 로그인
+            Google로 시작하기
           </button>
 
           <button type="button" id="signup-btn" class="btn-secondary">회원가입</button>
@@ -469,6 +469,12 @@
           elements.signupBtn.addEventListener('click', handleSignup);
           elements.logoutBtn.addEventListener('click', handleLogout);
           elements.createPromptBtn.addEventListener('click', handleCreatePrompt);
+          
+          // Google 로그인 버튼 이벤트 리스너 추가
+          const googleLoginBtn = document.getElementById('google-login-btn');
+          if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', handleGoogleLogin);
+          }
 
           // Enter 키 처리
           elements.emailInput.addEventListener('keypress', (e) => {
@@ -550,6 +556,55 @@
         }
       }
 
+      // Google 로그인/회원가입
+      async function handleGoogleLogin() {
+        showLoading();
+
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          // 추가 옵션 설정 (선택사항)
+          provider.setCustomParameters({
+            prompt: 'select_account' // 계정 선택 화면 표시
+          });
+          
+          const result = await auth.signInWithPopup(provider);
+          const user = result.user;
+          
+          // 신규 사용자 여부 확인 (추가 정보가 없으면 신규 사용자로 간주)
+          const isNewUser = result.additionalUserInfo?.isNewUser;
+          
+          if (isNewUser) {
+            showSuccess(`환영합니다! ${user.displayName || user.email}님, 회원가입이 완료되었습니다.`);
+            console.log('✅ Google 회원가입 성공:', user.uid, user.email);
+          } else {
+            showSuccess(`환영합니다! ${user.displayName || user.email}님, 로그인되었습니다.`);
+            console.log('✅ Google 로그인 성공:', user.uid, user.email);
+          }
+        } catch (error) {
+          console.error('❌ Google 로그인/회원가입 실패:', error);
+          console.error('에러 코드:', error.code);
+          console.error('에러 메시지:', error.message);
+          
+          // 상세한 에러 처리
+          if (error.code === 'auth/popup-closed-by-user') {
+            showError('로그인 창이 닫혔습니다. 다시 시도해주세요.');
+          } else if (error.code === 'auth/popup-blocked') {
+            showError('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+          } else if (error.code === 'auth/operation-not-allowed') {
+            showError('Google 로그인이 활성화되지 않았습니다. Firebase Console에서 Google 로그인을 활성화해주세요.');
+          } else if (error.code === 'auth/unauthorized-domain') {
+            showError('승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.');
+          } else if (error.code === 'auth/network-request-failed') {
+            showError('네트워크 연결을 확인해주세요.');
+          } else {
+            const errorMsg = getErrorMessage(error.code) || `Google 로그인/회원가입에 실패했습니다. (${error.code})`;
+            showError(errorMsg);
+          }
+        } finally {
+          hideLoading();
+        }
+      }
+
       // 로그아웃
       async function handleLogout() {
         showLoading();
@@ -607,12 +662,22 @@
         showLoading();
 
         try {
-          await db.collection('prompts').add({
+          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts/{promptId}
+          const userId = currentUser.uid;
+          const promptRef = db.collection('users').doc(userId).collection('prompts').doc();
+          const promptId = promptRef.id;
+          
+          // Firestore 규칙에서 요구하는 필수 필드 포함
+          await promptRef.set({
+            id: promptId,
             title,
             content,
             category: category || '기타',
-            userId: currentUser.uid,
+            userId: userId,
             userEmail: currentUser.email,
+            currentVersion: 'v1.0.0', // 초기 버전
+            isDeleted: false,
+            isPublic: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -622,7 +687,7 @@
           loadPrompts();
         } catch (error) {
           console.error('저장 실패:', error);
-          showError('프롬프트 저장에 실패했습니다.');
+          showError('프롬프트 저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         } finally {
           hideLoading();
         }
@@ -638,9 +703,13 @@
         if (!currentUser) return;
 
         try {
+          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts
+          const userId = currentUser.uid;
           const snapshot = await db
+            .collection('users')
+            .doc(userId)
             .collection('prompts')
-            .where('userId', '==', currentUser.uid)
+            .where('isDeleted', '==', false)
             .orderBy('createdAt', 'desc')
             .limit(10)
             .get();
@@ -674,7 +743,7 @@
         } catch (error) {
           console.error('프롬프트 로드 실패:', error);
           elements.promptLibrary.innerHTML =
-            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다.</p>';
+            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류') + '</p>';
         }
       }
 
@@ -683,7 +752,15 @@
         showLoading();
 
         try {
-          const doc = await db.collection('prompts').doc(id).get();
+          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts/{promptId}
+          const userId = currentUser.uid;
+          const doc = await db
+            .collection('users')
+            .doc(userId)
+            .collection('prompts')
+            .doc(id)
+            .get();
+            
           if (!doc.exists) {
             showError('프롬프트를 찾을 수 없습니다.');
             return;
@@ -706,25 +783,36 @@
           elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
         } catch (error) {
           console.error('프롬프트 조회 실패:', error);
-          showError('프롬프트를 불러오는데 실패했습니다.');
+          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         } finally {
           hideLoading();
         }
       };
 
-      // 프롬프트 삭제
+      // 프롬프트 삭제 (소프트 삭제)
       window.deletePrompt = async function (id) {
         if (!confirm('정말 삭제하시겠습니까?')) return;
 
         showLoading();
 
         try {
-          await db.collection('prompts').doc(id).delete();
+          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts/{promptId}
+          // 소프트 삭제: isDeleted = true로 설정
+          const userId = currentUser.uid;
+          await db
+            .collection('users')
+            .doc(userId)
+            .collection('prompts')
+            .doc(id)
+            .update({
+              isDeleted: true,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
           showSuccess('프롬프트가 삭제되었습니다.');
           loadPrompts();
         } catch (error) {
           console.error('삭제 실패:', error);
-          showError('프롬프트 삭제에 실패했습니다.');
+          showError('프롬프트 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         } finally {
           hideLoading();
         }
@@ -772,7 +860,15 @@
           'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
           'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
           'auth/weak-password': '비밀번호가 너무 약합니다. 6자 이상 입력해주세요.',
-          'auth/network-request-failed': '네트워크 연결을 확인해주세요.'
+          'auth/network-request-failed': '네트워크 연결을 확인해주세요.',
+          'auth/popup-closed-by-user': '로그인 창이 닫혔습니다.',
+          'auth/cancelled-popup-request': '로그인 요청이 취소되었습니다.',
+          'auth/popup-blocked': '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.',
+          'auth/operation-not-allowed': 'Google 로그인이 활성화되지 않았습니다. Firebase Console에서 활성화해주세요.',
+          'auth/unauthorized-domain': '승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.',
+          'auth/account-exists-with-different-credential': '이 이메일은 다른 로그인 방법으로 이미 등록되어 있습니다.',
+          'auth/invalid-credential': '인증 정보가 올바르지 않습니다.',
+          'auth/too-many-requests': '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'
         };
         return messages[code] || '오류가 발생했습니다. 다시 시도해주세요.';
       }
