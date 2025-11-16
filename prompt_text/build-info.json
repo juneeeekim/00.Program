@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "buildDate": "2025-11-16T16:05:07.033Z",
+  "environment": "production",
+  "stats": {
+    "files": 48,
+    "originalSize": "796.53 KB",
+    "minifiedSize": "435.49 KB",
+    "savings": "45.3%"
+  }
+}

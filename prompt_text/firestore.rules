@@ -1,0 +1,232 @@
+rules_version = '2';
+
+/**
+ * Firestore 보안 규칙 - PromptHub
+ * 
+ * @description 사용자별 데이터 격리 및 접근 제어
+ * @version 1.0.0
+ * @author Senior Developer
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // 헬퍼 함수
+    // ========================================
+    
+    /**
+     * 사용자 인증 확인
+     */
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    /**
+     * 사용자 본인 확인
+     */
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    /**
+     * 필수 필드 검증
+     */
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    /**
+     * 문자열 길이 검증
+     */
+    function isValidStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string
+        && request.resource.data[field].size() >= minLen
+        && request.resource.data[field].size() <= maxLen;
+    }
+    
+    /**
+     * 타임스탬프 검증
+     */
+    function isValidTimestamp(field) {
+      return request.resource.data[field] is timestamp;
+    }
+    
+    /**
+     * XSS 패턴 검증 (기본적인 체크)
+     */
+    function hasNoXSS(field) {
+      let value = request.resource.data[field];
+      return value is string
+        && !value.matches('.*<script.*') 
+        && !value.matches('.*javascript:.*')
+        && !value.matches('.*on\\w+\\s*=.*');
+    }
+    
+    /**
+     * 불변 필드 검증 (생성 후 변경 불가)
+     */
+    function isImmutableField(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field]);
+    }
+    
+    /**
+     * 배열 길이 검증
+     */
+    function isValidArrayLength(field, maxLen) {
+      return request.resource.data[field] is list
+        && request.resource.data[field].size() <= maxLen;
+    }
+    
+    /**
+     * Rate Limiting (간단한 버전)
+     * 실제로는 Firebase Functions에서 구현 권장
+     */
+    function isNotTooFrequent() {
+      return request.time > resource.data.updatedAt + duration.value(1, 's');
+    }
+    
+    // ========================================
+    // 프롬프트 컬렉션
+    // ========================================
+    
+    match /users/{userId}/prompts/{promptId} {
+      
+      // 읽기 권한: 본인 또는 공개 프롬프트
+      allow read: if isOwner(userId) 
+                  || (isAuthenticated() && resource.data.isPublic == true);
+      
+      // 생성 권한: 본인만 가능
+      allow create: if isOwner(userId)
+                    && hasRequiredFields(['id', 'title', 'category', 'currentVersion', 'createdAt'])
+                    && isValidStringLength('title', 1, 100)
+                    && isValidStringLength('category', 1, 50)
+                    && isValidTimestamp('createdAt')
+                    && request.resource.data.id == promptId
+                    && request.resource.data.userId == userId  // userId 필수 및 검증
+                    && request.resource.data.isDeleted == false;
+      
+      // 수정 권한: 본인만 가능
+      allow update: if isOwner(userId)
+                    && request.resource.data.id == resource.data.id
+                    && request.resource.data.userId == resource.data.userId  // userId 변경 방지
+                    && request.resource.data.createdAt == resource.data.createdAt  // createdAt 변경 방지
+                    && isValidTimestamp('updatedAt');
+      
+      // 삭제 권한: 본인만 가능 (실제로는 소프트 삭제)
+      allow delete: if isOwner(userId);
+      
+      // ========================================
+      // 버전 서브컬렉션
+      // ========================================
+      
+      match /versions/{versionId} {
+        
+        // 읽기 권한: 프롬프트 소유자만
+        allow read: if isOwner(userId);
+        
+        // 생성 권한: 프롬프트 소유자만
+        allow create: if isOwner(userId)
+                      && hasRequiredFields(['id', 'version', 'content', 'changelog', 'createdAt'])
+                      && isValidStringLength('version', 5, 10)  // v1.0.0 형식
+                      && isValidStringLength('content', 1, 10000)
+                      && isValidTimestamp('createdAt')
+                      && request.resource.data.id == versionId
+                      && request.resource.data.createdBy == userId;  // createdBy 검증
+        
+        // 수정 권한: 버전은 수정 불가 (불변)
+        allow update: if false;
+        
+        // 삭제 권한: 프롬프트 소유자만
+        allow delete: if isOwner(userId);
+      }
+      
+      // ========================================
+      // 실행 이력 서브컬렉션
+      // ========================================
+      
+      match /executions/{executionId} {
+        
+        // 읽기 권한: 프롬프트 소유자만
+        allow read: if isOwner(userId);
+        
+        // 생성 권한: 프롬프트 소유자만
+        allow create: if isOwner(userId)
+                      && hasRequiredFields(['id', 'promptId', 'versionId', 'llmModel', 'executedAt'])
+                      && isValidTimestamp('executedAt')
+                      && request.resource.data.id == executionId
+                      && request.resource.data.promptId == promptId;
+        
+        // 수정 권한: 프롬프트 소유자만 (평가 추가용)
+        allow update: if isOwner(userId)
+                      && request.resource.data.id == resource.data.id
+                      && request.resource.data.promptId == resource.data.promptId
+                      && request.resource.data.versionId == resource.data.versionId  // versionId 변경 방지
+                      && request.resource.data.executedAt == resource.data.executedAt;  // executedAt 변경 방지
+        
+        // 삭제 권한: 프롬프트 소유자만
+        allow delete: if isOwner(userId);
+      }
+    }
+    
+    // ========================================
+    // 사용자 설정 컬렉션
+    // ========================================
+    
+    match /users/{userId}/settings/{settingId} {
+      
+      // 읽기 권한: 본인만
+      allow read: if isOwner(userId);
+      
+      // 생성 권한: 본인만
+      allow create: if isOwner(userId);
+      
+      // 수정 권한: 본인만
+      allow update: if isOwner(userId);
+      
+      // 삭제 권한: 본인만
+      allow delete: if isOwner(userId);
+    }
+    
+    // ========================================
+    // 실행 이력 컬렉션 (전역)
+    // ========================================
+    
+    match /users/{userId}/executionHistory/{historyId} {
+      
+      // 읽기 권한: 본인만
+      allow read: if isOwner(userId);
+      
+      // 생성 권한: 본인만
+      allow create: if isOwner(userId)
+                    && hasRequiredFields(['id', 'promptId', 'versionId', 'resultText', 'rating', 'executedAt'])
+                    && isValidStringLength('resultText', 10, 5000)
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && isValidTimestamp('executedAt')
+                    && request.resource.data.id == historyId
+                    && request.resource.data.userId == userId
+                    && request.resource.data.isDeleted == false
+                    && hasNoXSS('resultText');  // XSS 방지
+      
+      // 수정 권한: 본인만 (소프트 삭제용)
+      allow update: if isOwner(userId)
+                    && request.resource.data.id == resource.data.id
+                    && request.resource.data.userId == resource.data.userId  // userId 변경 방지
+                    && request.resource.data.promptId == resource.data.promptId  // promptId 변경 방지
+                    && request.resource.data.versionId == resource.data.versionId  // versionId 변경 방지
+                    && request.resource.data.executedAt == resource.data.executedAt;  // executedAt 변경 방지
+      
+      // 삭제 권한: 본인만
+      allow delete: if isOwner(userId);
+    }
+    
+    // ========================================
+    // 기타 모든 경로 차단
+    // ========================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
