@@ -201,6 +201,60 @@
         align-items: center;
       }
 
+      /* 탭 네비게이션 */
+      .tab-navigation {
+        background: #f8f9fa;
+        border-bottom: 2px solid #e1e5e9;
+        display: flex;
+        gap: 0;
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: 16px 24px;
+        border: none;
+        background: transparent;
+        color: #666;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-bottom: 3px solid transparent;
+        position: relative;
+      }
+
+      .tab-button:hover {
+        background: #e9ecef;
+        color: #333;
+      }
+
+      .tab-button.active {
+        color: #667eea;
+        background: white;
+        border-bottom-color: #667eea;
+      }
+
+      .tab-button.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #667eea;
+      }
+
+      /* 탭 콘텐츠 */
+      .tab-content {
+        display: none;
+        padding: 32px;
+        min-height: 400px;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
       .user-info {
         display: flex;
         align-items: center;
@@ -381,26 +435,46 @@
           <button id="logout-btn" class="btn-secondary">로그아웃</button>
         </div>
 
-        <!-- 프롬프트 라이브러리 -->
-        <section class="section" aria-labelledby="library-heading">
-          <h2 id="library-heading">📚 프롬프트 라이브러리</h2>
-          <button id="create-prompt-btn" class="btn-primary">➕ 새 프롬프트 생성</button>
-          <div id="prompt-library" style="margin-top: 20px"></div>
-        </section>
+        <!-- 탭 네비게이션 -->
+        <div class="tab-navigation" role="tablist">
+          <button class="tab-button active" data-tab="register" role="tab" aria-selected="true" aria-controls="tab-register">
+            ✏️ 프롬프트 등록
+          </button>
+          <button class="tab-button" data-tab="use" role="tab" aria-selected="false" aria-controls="tab-use">
+            🚀 프롬프트 사용
+          </button>
+          <button class="tab-button" data-tab="search" role="tab" aria-selected="false" aria-controls="tab-search">
+            🔍 프롬프트 검색
+          </button>
+        </div>
 
-        <hr class="section-divider" aria-hidden="true" />
+        <!-- 탭 1: 프롬프트 등록 -->
+        <div id="tab-register" class="tab-content active" role="tabpanel" aria-labelledby="tab-register">
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">✨ 새 프롬프트 등록</h2>
+          <button id="create-prompt-btn" class="btn-primary" style="margin-bottom: 20px;">➕ 새 프롬프트 생성</button>
+          <div id="prompt-form"></div>
+        </div>
 
-        <!-- 프롬프트 폼 -->
-        <section id="prompt-form" class="section" aria-labelledby="prompt-form-heading">
-          <h2 id="prompt-form-heading" class="sr-only">프롬프트 폼</h2>
-        </section>
+        <!-- 탭 2: 프롬프트 사용 -->
+        <div id="tab-use" class="tab-content" role="tabpanel" aria-labelledby="tab-use">
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🚀 프롬프트 사용</h2>
+          <div id="prompt-use-list" style="margin-bottom: 20px;"></div>
+          <div id="execution-panel"></div>
+        </div>
 
-        <hr class="section-divider" aria-hidden="true" />
-
-        <!-- 실행 패널 -->
-        <section id="execution-panel" class="section" aria-labelledby="execution-panel-heading">
-          <h2 id="execution-panel-heading" class="sr-only">실행 패널</h2>
-        </section>
+        <!-- 탭 3: 프롬프트 검색 -->
+        <div id="tab-search" class="tab-content" role="tabpanel" aria-labelledby="tab-search">
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🔍 프롬프트 검색</h2>
+          <div style="margin-bottom: 20px;">
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="프롬프트 제목, 내용, 카테고리로 검색..." 
+              style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;"
+            />
+          </div>
+          <div id="prompt-search-results"></div>
+        </div>
       </main>
     </div>
 
@@ -452,8 +526,16 @@
         createPromptBtn: document.getElementById('create-prompt-btn'),
         promptLibrary: document.getElementById('prompt-library'),
         promptForm: document.getElementById('prompt-form'),
-        executionPanel: document.getElementById('execution-panel')
+        executionPanel: document.getElementById('execution-panel'),
+        tabButtons: document.querySelectorAll('.tab-button'),
+        tabContents: document.querySelectorAll('.tab-content'),
+        searchInput: document.getElementById('search-input'),
+        promptUseList: document.getElementById('prompt-use-list'),
+        promptSearchResults: document.getElementById('prompt-search-results')
       };
+
+      // 현재 활성 탭
+      let currentTab = 'register';
 
       // 초기화
       function init() {
@@ -474,6 +556,19 @@
           const googleLoginBtn = document.getElementById('google-login-btn');
           if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', handleGoogleLogin);
+          }
+
+          // 탭 전환 이벤트 리스너
+          elements.tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+              const tabName = button.getAttribute('data-tab');
+              switchTab(tabName);
+            });
+          });
+
+          // 검색 입력 이벤트 리스너
+          if (elements.searchInput) {
+            elements.searchInput.addEventListener('input', handleSearch);
           }
 
           // Enter 키 처리
@@ -498,10 +593,35 @@
         if (user) {
           currentUser = user;
           showMainContent();
-          loadPrompts();
+          loadPromptsForAllTabs();
         } else {
           currentUser = null;
           showAuthSection();
+        }
+      }
+
+      // 탭 전환
+      function switchTab(tabName) {
+        currentTab = tabName;
+        
+        // 탭 버튼 상태 업데이트
+        elements.tabButtons.forEach(button => {
+          const isActive = button.getAttribute('data-tab') === tabName;
+          button.classList.toggle('active', isActive);
+          button.setAttribute('aria-selected', isActive);
+        });
+
+        // 탭 콘텐츠 표시/숨김
+        elements.tabContents.forEach(content => {
+          const isActive = content.id === `tab-${tabName}`;
+          content.classList.toggle('active', isActive);
+        });
+
+        // 탭별 데이터 로드
+        if (tabName === 'use') {
+          loadPromptsForUse();
+        } else if (tabName === 'search') {
+          loadPromptsForSearch();
         }
       }
 
@@ -684,7 +804,8 @@
 
           showSuccess('프롬프트가 저장되었습니다!');
           elements.promptForm.innerHTML = '';
-          loadPrompts();
+          // 모든 탭용 데이터 다시 로드
+          await loadPromptsForAllTabs();
         } catch (error) {
           console.error('저장 실패:', error);
           showError('프롬프트 저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
@@ -698,12 +819,13 @@
         elements.promptForm.innerHTML = '';
       };
 
-      // 프롬프트 로드
-      async function loadPrompts() {
+      // 모든 탭용 프롬프트 로드 (공통)
+      let allPrompts = [];
+
+      async function loadPromptsForAllTabs() {
         if (!currentUser) return;
 
         try {
-          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts
           const userId = currentUser.uid;
           const snapshot = await db
             .collection('users')
@@ -711,81 +833,299 @@
             .collection('prompts')
             .where('isDeleted', '==', false)
             .orderBy('createdAt', 'desc')
-            .limit(10)
             .get();
 
-          if (snapshot.empty) {
-            elements.promptLibrary.innerHTML =
-              '<p style="color: #999; text-align: center; padding: 40px;">아직 프롬프트가 없습니다. 새로 만들어보세요!</p>';
+          allPrompts = [];
+          snapshot.forEach((doc) => {
+            allPrompts.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+
+          // 현재 탭에 맞게 데이터 표시
+          if (currentTab === 'use') {
+            loadPromptsForUse();
+          } else if (currentTab === 'search') {
+            loadPromptsForSearch();
+          }
+        } catch (error) {
+          console.error('프롬프트 로드 실패:', error);
+          handleLoadError(error);
+        }
+      }
+
+      // 탭 2: 프롬프트 사용용 로드
+      async function loadPromptsForUse() {
+        if (!elements.promptUseList) return;
+
+        try {
+          if (allPrompts.length === 0) {
+            await loadPromptsForAllTabs();
+          }
+
+          if (allPrompts.length === 0) {
+            elements.promptUseList.innerHTML =
+              '<p style="color: #999; text-align: center; padding: 40px;">사용할 프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</p>';
+            elements.executionPanel.innerHTML = '';
             return;
           }
 
           let html = '<div style="display: grid; gap: 16px;">';
-          snapshot.forEach((doc) => {
-            const data = doc.data();
+          allPrompts.forEach((prompt) => {
             html += `
-                        <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                                <h3 style="font-size: 18px; color: #333;">${escapeHtml(data.title)}</h3>
-                                <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(data.category)}</span>
-                            </div>
-                            <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(data.content.substring(0, 150))}${data.content.length > 150 ? '...' : ''}</p>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="viewPrompt('${doc.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 보기</button>
-                                <button onclick="deletePrompt('${doc.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
-                            </div>
-                        </div>
-                    `;
+              <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <h3 style="font-size: 18px; color: #333;">${escapeHtml(prompt.title)}</h3>
+                  <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(prompt.category)}</span>
+                </div>
+                <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}</p>
+                <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+              </div>
+            `;
           });
           html += '</div>';
 
-          elements.promptLibrary.innerHTML = html;
+          elements.promptUseList.innerHTML = html;
         } catch (error) {
-          console.error('프롬프트 로드 실패:', error);
-          elements.promptLibrary.innerHTML =
-            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류') + '</p>';
+          console.error('프롬프트 사용 목록 로드 실패:', error);
+          elements.promptUseList.innerHTML =
+            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다.</p>';
         }
       }
 
-      // 프롬프트 보기
+      // 탭 3: 프롬프트 검색용 로드
+      async function loadPromptsForSearch() {
+        if (!elements.promptSearchResults) return;
+
+        try {
+          if (allPrompts.length === 0) {
+            await loadPromptsForAllTabs();
+          }
+
+          // 검색어가 없으면 모든 프롬프트 표시
+          const searchQuery = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
+          let filteredPrompts = allPrompts;
+
+          if (searchQuery) {
+            filteredPrompts = allPrompts.filter(prompt => {
+              const title = (prompt.title || '').toLowerCase();
+              const content = (prompt.content || '').toLowerCase();
+              const category = (prompt.category || '').toLowerCase();
+              return title.includes(searchQuery) || content.includes(searchQuery) || category.includes(searchQuery);
+            });
+          }
+
+          if (filteredPrompts.length === 0) {
+            elements.promptSearchResults.innerHTML =
+              '<p style="color: #999; text-align: center; padding: 40px;">검색 결과가 없습니다.</p>';
+            return;
+          }
+
+          let html = '<div style="display: grid; gap: 16px;">';
+          filteredPrompts.forEach((prompt) => {
+            html += `
+              <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                  <h3 style="font-size: 18px; color: #333;">${escapeHtml(prompt.title)}</h3>
+                  <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(prompt.category)}</span>
+                </div>
+                <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(prompt.content.substring(0, 200))}${prompt.content.length > 200 ? '...' : ''}</p>
+                <div style="display: flex; gap: 8px;">
+                  <button onclick="viewPrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
+                  <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+                  <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+
+          elements.promptSearchResults.innerHTML = html;
+        } catch (error) {
+          console.error('프롬프트 검색 실패:', error);
+          elements.promptSearchResults.innerHTML =
+            '<p style="color: #dc3545; text-align: center; padding: 40px;">검색 중 오류가 발생했습니다.</p>';
+        }
+      }
+
+      // 검색 처리
+      function handleSearch() {
+        if (currentTab === 'search') {
+          loadPromptsForSearch();
+        }
+      }
+
+      // 에러 처리 (공통)
+      function handleLoadError(error) {
+        const errorHtml = `
+          <div style="color: #dc3545; text-align: center; padding: 40px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; margin: 20px;">
+            <h3 style="color: #856404; margin-bottom: 16px;">⚠️ Firestore 인덱스가 필요합니다</h3>
+            <p style="color: #856404; margin-bottom: 16px;">
+              프롬프트를 불러오려면 Firestore 인덱스를 생성해야 합니다.
+            </p>
+            <p style="color: #856404; margin-bottom: 16px; font-size: 14px;">
+              <strong>해결 방법:</strong><br/>
+              1. 아래 링크를 클릭하여 인덱스를 생성하거나<br/>
+              2. Firebase Console에서 직접 인덱스를 생성하세요
+            </p>
+            ${error.message && error.message.includes('create it here') && error.message.includes('http') ? 
+              `<a href="${error.message.match(/https:\/\/[^\s]+/)?.[0]}" target="_blank" 
+                  style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+                인덱스 생성하기 (Firebase Console)
+              </a>` : ''
+            }
+            <p style="color: #856404; margin-top: 16px; font-size: 12px;">
+              또는 터미널에서 다음 명령어를 실행하세요:<br/>
+              <code style="background: #f8f9fa; padding: 4px 8px; border-radius: 4px;">firebase deploy --only firestore:indexes</code>
+            </p>
+          </div>
+        `;
+        
+        if (elements.promptUseList) elements.promptUseList.innerHTML = errorHtml;
+        if (elements.promptSearchResults) elements.promptSearchResults.innerHTML = errorHtml;
+      }
+
+      // 프롬프트 사용하기
+      window.usePrompt = async function (id) {
+        showLoading();
+
+        try {
+          // 로컬 캐시에서 먼저 찾기
+          let prompt = allPrompts.find(p => p.id === id);
+          
+          if (!prompt) {
+            // Firestore에서 직접 가져오기
+            const userId = currentUser.uid;
+            const doc = await db
+              .collection('users')
+              .doc(userId)
+              .collection('prompts')
+              .doc(id)
+              .get();
+              
+            if (!doc.exists) {
+              showError('프롬프트를 찾을 수 없습니다.');
+              return;
+            }
+            prompt = { id: doc.id, ...doc.data() };
+          }
+
+          // 사용 탭으로 전환
+          switchTab('use');
+
+          // 실행 패널에 프롬프트 표시
+          elements.executionPanel.innerHTML = `
+            <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
+            <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
+              <div style="margin-bottom: 16px;">
+                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+              </div>
+              <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
+              <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+                <button onclick="viewPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">👁️ 상세보기</button>
+              </div>
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
+                생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
+              </div>
+            </div>
+          `;
+          elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+          console.error('프롬프트 사용 실패:', error);
+          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // 프롬프트 보기 (상세보기)
       window.viewPrompt = async function (id) {
         showLoading();
 
         try {
-          // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts/{promptId}
-          const userId = currentUser.uid;
-          const doc = await db
-            .collection('users')
-            .doc(userId)
-            .collection('prompts')
-            .doc(id)
-            .get();
-            
-          if (!doc.exists) {
-            showError('프롬프트를 찾을 수 없습니다.');
-            return;
+          // 로컬 캐시에서 먼저 찾기
+          let prompt = allPrompts.find(p => p.id === id);
+          
+          if (!prompt) {
+            // Firestore에서 직접 가져오기
+            const userId = currentUser.uid;
+            const doc = await db
+              .collection('users')
+              .doc(userId)
+              .collection('prompts')
+              .doc(id)
+              .get();
+              
+            if (!doc.exists) {
+              showError('프롬프트를 찾을 수 없습니다.');
+              return;
+            }
+            prompt = { id: doc.id, ...doc.data() };
           }
 
-          const data = doc.data();
-          elements.executionPanel.innerHTML = `
-                    <h2>📄 프롬프트 상세</h2>
-                    <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
-                        <div style="margin-bottom: 16px;">
-                            <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(data.category)}</span>
-                        </div>
-                        <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(data.title)}</h3>
-                        <p style="color: #666; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(data.content)}</p>
-                        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
-                            생성일: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('ko-KR') : '알 수 없음'}
-                        </div>
-                    </div>
-                `;
-          elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
+          // 검색 탭으로 전환하여 상세보기
+          if (currentTab !== 'search') {
+            switchTab('search');
+          }
+
+          // 검색 결과 영역에 상세 정보 표시
+          elements.promptSearchResults.innerHTML = `
+            <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
+              <div style="margin-bottom: 16px;">
+                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+              </div>
+              <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
+              <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">🚀 사용하기</button>
+                <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+                <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🗑️ 삭제</button>
+              </div>
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
+                생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
+              </div>
+            </div>
+          `;
         } catch (error) {
           console.error('프롬프트 조회 실패:', error);
           showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         } finally {
           hideLoading();
+        }
+      };
+
+      // 클립보드에 복사
+      window.copyPromptToClipboard = async function (id) {
+        try {
+          let prompt = allPrompts.find(p => p.id === id);
+          
+          if (!prompt) {
+            const userId = currentUser.uid;
+            const doc = await db
+              .collection('users')
+              .doc(userId)
+              .collection('prompts')
+              .doc(id)
+              .get();
+            if (doc.exists) {
+              prompt = { id: doc.id, ...doc.data() };
+            }
+          }
+
+          if (prompt) {
+            await navigator.clipboard.writeText(prompt.content);
+            showSuccess('프롬프트가 클립보드에 복사되었습니다!');
+          }
+        } catch (error) {
+          console.error('복사 실패:', error);
+          showError('클립보드 복사에 실패했습니다.');
         }
       };
 
@@ -809,7 +1149,8 @@
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           showSuccess('프롬프트가 삭제되었습니다.');
-          loadPrompts();
+          // 모든 탭용 데이터 다시 로드
+          await loadPromptsForAllTabs();
         } catch (error) {
           console.error('삭제 실패:', error);
           showError('프롬프트 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
