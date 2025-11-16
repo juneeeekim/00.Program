@@ -601,7 +601,7 @@
       }
 
       // 탭 전환
-      function switchTab(tabName) {
+      function switchTab(tabName, options = {}) {
         currentTab = tabName;
         
         // 탭 버튼 상태 업데이트
@@ -617,11 +617,13 @@
           content.classList.toggle('active', isActive);
         });
 
-        // 탭별 데이터 로드
-        if (tabName === 'use') {
-          loadPromptsForUse();
-        } else if (tabName === 'search') {
-          loadPromptsForSearch();
+        // 탭별 데이터 로드 (skipReload 옵션이 없을 때만)
+        if (!options.skipReload) {
+          if (tabName === 'use') {
+            loadPromptsForUse();
+          } else if (tabName === 'search') {
+            loadPromptsForSearch();
+          }
         }
       }
 
@@ -804,8 +806,20 @@
 
           showSuccess('프롬프트가 저장되었습니다!');
           elements.promptForm.innerHTML = '';
+          
           // 모든 탭용 데이터 다시 로드
           await loadPromptsForAllTabs();
+          
+          // 저장된 프롬프트를 바로 사용할 수 있도록 사용 탭으로 전환
+          // 사용자에게 선택권 제공: 사용 탭으로 이동하거나 등록 탭에 유지
+          const useNow = confirm('프롬프트가 저장되었습니다!\n\n바로 사용하시겠습니까?');
+          if (useNow) {
+            switchTab('use');
+            // 저장된 프롬프트를 실행 패널에 표시
+            setTimeout(() => {
+              usePrompt(promptId);
+            }, 300);
+          }
         } catch (error) {
           console.error('저장 실패:', error);
           showError('프롬프트 저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
@@ -931,9 +945,10 @@
                   <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(prompt.category)}</span>
                 </div>
                 <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(prompt.content.substring(0, 200))}${prompt.content.length > 200 ? '...' : ''}</p>
-                <div style="display: flex; gap: 8px;">
-                  <button onclick="viewPrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
                   <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+                  <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
                   <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
                 </div>
               </div>
@@ -1011,8 +1026,10 @@
             prompt = { id: doc.id, ...doc.data() };
           }
 
-          // 사용 탭으로 전환
-          switchTab('use');
+          // 사용 탭으로 전환 (데이터는 이미 로드되어 있으므로 skipReload)
+          if (currentTab !== 'use') {
+            switchTab('use', { skipReload: true });
+          }
 
           // 실행 패널에 프롬프트 표시
           elements.executionPanel.innerHTML = `
@@ -1025,9 +1042,10 @@
               <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                 <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
               </div>
-              <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
                 <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
-                <button onclick="viewPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">👁️ 상세보기</button>
+                <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
+                <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
               </div>
               <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
                 생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
@@ -1043,8 +1061,13 @@
         }
       };
 
-      // 프롬프트 보기 (상세보기)
+      // 프롬프트 보기 (상세보기) - 검색 탭에서 사용
       window.viewPrompt = async function (id) {
+        await viewPromptInSearch(id);
+      };
+
+      // 검색 탭에서 프롬프트 상세보기
+      window.viewPromptInSearch = async function (id) {
         showLoading();
 
         try {
@@ -1070,11 +1093,16 @@
 
           // 검색 탭으로 전환하여 상세보기
           if (currentTab !== 'search') {
-            switchTab('search');
+            switchTab('search', { skipReload: true });
+          }
+
+          // 검색어를 프롬프트 제목으로 설정하여 관련 프롬프트도 함께 표시
+          if (elements.searchInput) {
+            elements.searchInput.value = prompt.title;
           }
 
           // 검색 결과 영역에 상세 정보 표시
-          elements.promptSearchResults.innerHTML = `
+          const detailHtml = `
             <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
               <div style="margin-bottom: 16px;">
                 <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
@@ -1083,9 +1111,10 @@
               <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                 <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
               </div>
-              <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
                 <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">🚀 사용하기</button>
                 <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+                <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
                 <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🗑️ 삭제</button>
               </div>
               <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
@@ -1093,9 +1122,154 @@
               </div>
             </div>
           `;
+          
+          // 관련 프롬프트 목록 로드 (현재 프롬프트 제외)
+          const searchQuery = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
+          let filteredPrompts = allPrompts.filter(p => p.id !== prompt.id);
+          
+          if (searchQuery) {
+            filteredPrompts = filteredPrompts.filter(p => {
+              const title = (p.title || '').toLowerCase();
+              const content = (p.content || '').toLowerCase();
+              const category = (p.category || '').toLowerCase();
+              return title.includes(searchQuery) || content.includes(searchQuery) || category.includes(searchQuery);
+            });
+          }
+          
+          let listHtml = '';
+          if (filteredPrompts.length > 0) {
+            listHtml = '<h3 style="font-size: 18px; margin-bottom: 16px; color: #333;">관련 프롬프트</h3><div style="display: grid; gap: 16px;">';
+            filteredPrompts.forEach((p) => {
+              listHtml += `
+                <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
+                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <h3 style="font-size: 18px; color: #333;">${escapeHtml(p.title)}</h3>
+                    <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(p.category)}</span>
+                  </div>
+                  <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(p.content.substring(0, 200))}${p.content.length > 200 ? '...' : ''}</p>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="viewPromptInSearch('${p.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
+                    <button onclick="usePrompt('${p.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+                    <button onclick="editPrompt('${p.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
+                    <button onclick="deletePrompt('${p.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
+                  </div>
+                </div>
+              `;
+            });
+            listHtml += '</div>';
+          }
+          
+          elements.promptSearchResults.innerHTML = detailHtml + listHtml;
         } catch (error) {
           console.error('프롬프트 조회 실패:', error);
           showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // 프롬프트 수정 (등록 탭으로 이동하여 수정)
+      window.editPrompt = async function (id) {
+        showLoading();
+
+        try {
+          // 로컬 캐시에서 먼저 찾기
+          let prompt = allPrompts.find(p => p.id === id);
+          
+          if (!prompt) {
+            // Firestore에서 직접 가져오기
+            const userId = currentUser.uid;
+            const doc = await db
+              .collection('users')
+              .doc(userId)
+              .collection('prompts')
+              .doc(id)
+              .get();
+              
+            if (!doc.exists) {
+              showError('프롬프트를 찾을 수 없습니다.');
+              return;
+            }
+            prompt = { id: doc.id, ...doc.data() };
+          }
+
+          // 등록 탭으로 전환
+          switchTab('register');
+
+          // 수정 폼 표시
+          elements.promptForm.innerHTML = `
+            <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">✏️ 프롬프트 수정</h2>
+            <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
+              <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">제목</label>
+                <input type="text" id="prompt-title-edit" value="${escapeHtml(prompt.title)}" placeholder="프롬프트 제목" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">내용</label>
+                <textarea id="prompt-content-edit" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;">${escapeHtml(prompt.content)}</textarea>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
+                <input type="text" id="prompt-category-edit" value="${escapeHtml(prompt.category || '')}" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+              </div>
+              <div style="display: flex; gap: 12px;">
+                <button onclick="updatePrompt('${prompt.id}')" class="btn-primary" style="flex: 1;">💾 수정 저장</button>
+                <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
+              </div>
+            </div>
+          `;
+          elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+          console.error('프롬프트 수정 폼 로드 실패:', error);
+          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // 프롬프트 수정 저장
+      window.updatePrompt = async function (id) {
+        const title = document.getElementById('prompt-title-edit').value.trim();
+        const content = document.getElementById('prompt-content-edit').value.trim();
+        const category = document.getElementById('prompt-category-edit').value.trim();
+
+        if (!title || !content) {
+          showError('제목과 내용을 입력해주세요.');
+          return;
+        }
+
+        showLoading();
+
+        try {
+          const userId = currentUser.uid;
+          await db
+            .collection('users')
+            .doc(userId)
+            .collection('prompts')
+            .doc(id)
+            .update({
+              title,
+              content,
+              category: category || '기타',
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+          showSuccess('프롬프트가 수정되었습니다!');
+          elements.promptForm.innerHTML = '';
+          
+          // 모든 탭용 데이터 다시 로드
+          await loadPromptsForAllTabs();
+          
+          // 사용 탭에 수정된 프롬프트가 표시되어 있다면 갱신
+          if (currentTab === 'use' && elements.executionPanel) {
+            const executionContent = elements.executionPanel.innerHTML;
+            if (executionContent.includes(`'${id}'`)) {
+              usePrompt(id);
+            }
+          }
+        } catch (error) {
+          console.error('수정 실패:', error);
+          showError('프롬프트 수정에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
         } finally {
           hideLoading();
         }
@@ -1149,8 +1323,22 @@
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           showSuccess('프롬프트가 삭제되었습니다.');
+          
           // 모든 탭용 데이터 다시 로드
           await loadPromptsForAllTabs();
+          
+          // 현재 탭이 사용 탭이고 삭제된 프롬프트가 실행 패널에 표시되어 있다면 초기화
+          if (currentTab === 'use' && elements.executionPanel) {
+            const executionContent = elements.executionPanel.innerHTML;
+            if (executionContent.includes(`'${id}'`)) {
+              elements.executionPanel.innerHTML = '';
+            }
+          }
+          
+          // 현재 탭이 검색 탭이고 검색 결과에 삭제된 프롬프트가 있다면 갱신
+          if (currentTab === 'search') {
+            loadPromptsForSearch();
+          }
         } catch (error) {
           console.error('삭제 실패:', error);
           showError('프롬프트 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
