@@ -851,7 +851,7 @@
             category: category || '기타',
             userId: userId,
             userEmail: currentUser.email,
-            currentVersion: 1, // 초기 버전 (숫자로 저장)
+            currentVersion: 1, // 초기 버전 (숫자로 저장, 하위 호환성 유지)
             isDeleted: false,
             isPublic: false,
             displayOrder: displayOrder, // 카테고리별 순서
@@ -863,10 +863,11 @@
           const versionRef = promptRef.collection('versions').doc();
           await versionRef.set({
             id: versionRef.id,
-            version: 1,
+            version: 'v1', // 문자열 형식으로 저장
             title: title,
             content: content,
             category: category || '기타',
+            changelog: '초기 버전 생성', // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: userId
           });
@@ -1180,8 +1181,13 @@
         const versions = await loadVersionHistory(prompt.id);
         
         // 실행 패널에 프롬프트 즉시 표시 (로딩 없이)
-        const currentVersion = prompt.currentVersion || 1;
-        const versionInfo = versions.find(v => v.version === currentVersion);
+        // currentVersion이 숫자면 문자열로 변환하여 비교
+        let currentVersion = prompt.currentVersion || 1;
+        let currentVersionStr = typeof currentVersion === 'number' ? 'v' + currentVersion : currentVersion;
+        if (!currentVersionStr.startsWith('v')) {
+          currentVersionStr = 'v' + currentVersionStr;
+        }
+        const versionInfo = versions.find(v => v.version === currentVersionStr);
         const versionDate = versionInfo?.createdAt ? 
           new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
           (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
@@ -1191,7 +1197,7 @@
           <div style="margin-top: 20px; border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa;">
             <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
               <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
-              <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersion}</span>
+              <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
             </div>
             <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
             <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
@@ -1214,10 +1220,18 @@
                     style="padding: 8px 16px; font-size: 13px; width: 100%;"
                     id="version-history-toggle-${prompt.id}"
                   >
-                    📜 이전 버전 보기 (${versions.filter(v => v.version < currentVersion).length}개)
+                    📜 이전 버전 보기 (${versions.filter(v => {
+                      const vNum = parseInt(v.version.replace('v', '')) || 0;
+                      const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
+                      return vNum < currentNum;
+                    }).length}개)
                   </button>
                   <div id="version-history-${prompt.id}" style="display: none; margin-top: 16px;">
-                    ${renderVersionHistory(prompt.id, versions.filter(v => v.version < currentVersion))}
+                    ${renderVersionHistory(prompt.id, versions.filter(v => {
+                      const vNum = parseInt(v.version.replace('v', '')) || 0;
+                      const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
+                      return vNum < currentNum;
+                    }))}
                   </div>
                 </div>
               ` : ''}
@@ -1573,8 +1587,13 @@
 
           // 버전 히스토리 로드
           const versions = await loadVersionHistory(prompt.id);
-          const currentVersion = prompt.currentVersion || 1;
-          const versionInfo = versions.find(v => v.version === currentVersion);
+          // currentVersion이 숫자면 문자열로 변환하여 비교
+          let currentVersion = prompt.currentVersion || 1;
+          let currentVersionStr = typeof currentVersion === 'number' ? 'v' + currentVersion : currentVersion;
+          if (!currentVersionStr.startsWith('v')) {
+            currentVersionStr = 'v' + currentVersionStr;
+          }
+          const versionInfo = versions.find(v => v.version === currentVersionStr);
           const versionDate = versionInfo?.createdAt ? 
             new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
             (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
@@ -1584,7 +1603,7 @@
             <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
                 <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
-                <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersion}</span>
+                <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
               </div>
               <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
               <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
@@ -1608,10 +1627,18 @@
                       style="padding: 8px 16px; font-size: 13px; width: 100%;"
                       id="version-history-toggle-search-${prompt.id}"
                     >
-                      📜 이전 버전 보기 (${versions.filter(v => v.version < currentVersion).length}개)
+                      📜 이전 버전 보기 (${versions.filter(v => {
+                        const vNum = parseInt(v.version.replace('v', '')) || 0;
+                        const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
+                        return vNum < currentNum;
+                      }).length}개)
                     </button>
                     <div id="version-history-search-${prompt.id}" style="display: none; margin-top: 16px;">
-                      ${renderVersionHistory(prompt.id, versions.filter(v => v.version < currentVersion))}
+                      ${renderVersionHistory(prompt.id, versions.filter(v => {
+                        const vNum = parseInt(v.version.replace('v', '')) || 0;
+                        const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
+                        return vNum < currentNum;
+                      }))}
                     </div>
                   </div>
                 ` : ''}
@@ -1748,13 +1775,23 @@
           }
 
           const currentData = currentPrompt.data();
-          const currentVersion = currentData.currentVersion || 1;
-          const newVersion = currentVersion + 1;
+          // currentVersion이 숫자면 문자열로 변환, 이미 문자열이면 그대로 사용
+          let currentVersionStr = currentData.currentVersion;
+          if (typeof currentVersionStr === 'number') {
+            currentVersionStr = 'v' + currentVersionStr;
+          } else if (!currentVersionStr) {
+            currentVersionStr = 'v1';
+          }
+          
+          // 버전 번호 추출 (v1 -> 1, v2 -> 2)
+          const currentVersionNum = parseInt(currentVersionStr.replace('v', '')) || 1;
+          const newVersionNum = currentVersionNum + 1;
+          const newVersionStr = 'v' + newVersionNum;
 
           // 현재 버전이 versions에 없으면 저장 (중복 방지)
           const currentVersionSnapshot = await promptRef
             .collection('versions')
-            .where('version', '==', currentVersion)
+            .where('version', '==', currentVersionStr)
             .get();
           
           if (currentVersionSnapshot.empty) {
@@ -1762,21 +1799,22 @@
             const versionRef = promptRef.collection('versions').doc();
             await versionRef.set({
               id: versionRef.id,
-              version: currentVersion,
+              version: currentVersionStr, // 문자열 형식
               title: currentData.title,
               content: currentData.content,
               category: currentData.category || '기타',
+              changelog: '이전 버전 보관', // 필수 필드 추가
               createdAt: currentData.updatedAt || currentData.createdAt,
               createdBy: userId
             });
           }
 
-          // 프롬프트 업데이트 (새 버전으로)
+          // 프롬프트 업데이트 (새 버전으로 - 숫자로 저장하여 하위 호환성 유지)
           await promptRef.update({
             title,
             content,
             category: category || '기타',
-            currentVersion: newVersion,
+            currentVersion: newVersionNum, // 숫자로 저장 (하위 호환성)
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
@@ -1784,15 +1822,16 @@
           const newVersionRef = promptRef.collection('versions').doc();
           await newVersionRef.set({
             id: newVersionRef.id,
-            version: newVersion,
+            version: newVersionStr, // 문자열 형식 (v2, v3 등)
             title: title,
             content: content,
             category: category || '기타',
+            changelog: '프롬프트 수정', // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: userId
           });
 
-          showSuccess(`프롬프트가 수정되었습니다! (버전 ${newVersion})`);
+          showSuccess(`프롬프트가 수정되었습니다! (버전 ${newVersionStr})`);
           elements.promptForm.innerHTML = '';
           
           // 모든 탭용 데이터 다시 로드
