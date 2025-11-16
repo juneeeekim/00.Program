@@ -460,30 +460,16 @@
           <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🚀 프롬프트 사용</h2>
           
           <!-- 카테고리 선택 영역 -->
-          <div id="category-selector" style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">1단계: 카테고리 선택</label>
+          <div id="category-selector" style="margin-bottom: 24px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">카테고리 선택</label>
             <select id="category-select-dropdown" style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; background: white; cursor: pointer;">
               <option value="">카테고리를 선택하세요...</option>
             </select>
           </div>
 
-          <!-- 프롬프트 선택 영역 -->
-          <div id="prompt-selector" style="margin-bottom: 24px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">2단계: 프롬프트 선택</label>
-            <select id="prompt-select-dropdown" style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; background: white; cursor: pointer;" disabled>
-              <option value="">먼저 카테고리를 선택해주세요</option>
-            </select>
-          </div>
-
-          <!-- 선택된 프롬프트 정보 표시 영역 -->
-          <div id="selected-prompt-info" style="display: none; margin-bottom: 24px;">
-            <div style="border: 2px solid #667eea; border-radius: 12px; padding: 20px; background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 id="selected-prompt-title" style="font-size: 20px; color: #333; margin: 0;"></h3>
-                <span id="selected-prompt-category" style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;"></span>
-              </div>
-              <p id="selected-prompt-preview" style="color: #666; line-height: 1.6; margin: 0; font-size: 14px;"></p>
-            </div>
+          <!-- 프롬프트 카드 그리드 -->
+          <div id="prompt-cards-container" style="display: none; margin-bottom: 24px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;" id="prompt-cards-grid"></div>
           </div>
 
           <!-- 실행 패널 -->
@@ -562,10 +548,8 @@
         promptSearchResults: document.getElementById('prompt-search-results'),
         promptSelectDropdown: document.getElementById('prompt-select-dropdown'),
         categorySelectDropdown: document.getElementById('category-select-dropdown'),
-        selectedPromptInfo: document.getElementById('selected-prompt-info'),
-        selectedPromptTitle: document.getElementById('selected-prompt-title'),
-        selectedPromptCategory: document.getElementById('selected-prompt-category'),
-        selectedPromptPreview: document.getElementById('selected-prompt-preview')
+        promptCardsContainer: document.getElementById('prompt-cards-container'),
+        promptCardsGrid: document.getElementById('prompt-cards-grid')
       };
 
       // 현재 활성 탭
@@ -626,11 +610,6 @@
           // 카테고리 선택 드롭다운 이벤트 리스너
           if (elements.categorySelectDropdown) {
             elements.categorySelectDropdown.addEventListener('change', handleCategorySelect);
-          }
-
-          // 프롬프트 선택 드롭다운 이벤트 리스너
-          if (elements.promptSelectDropdown) {
-            elements.promptSelectDropdown.addEventListener('change', handlePromptSelect);
           }
 
           // Enter 키 처리
@@ -882,15 +861,14 @@
             // 저장된 프롬프트의 카테고리를 찾아서 선택
             setTimeout(() => {
               const savedPrompt = allPrompts.find(p => p.id === promptId);
-              if (savedPrompt && elements.categorySelectDropdown && elements.promptSelectDropdown) {
+              if (savedPrompt && elements.categorySelectDropdown) {
                 const category = savedPrompt.category || '기타';
                 elements.categorySelectDropdown.value = category;
                 handleCategorySelect();
                 
                 // 카테고리 로드 후 프롬프트 선택
                 setTimeout(() => {
-                  elements.promptSelectDropdown.value = promptId;
-                  handlePromptSelect();
+                  selectPromptForUse(promptId);
                 }, 200);
               }
             }, 300);
@@ -965,8 +943,7 @@
           if (allPrompts.length === 0) {
             categoryDropdown.disabled = true;
             categoryDropdown.innerHTML = '<option value="">프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</option>';
-            elements.promptSelectDropdown.disabled = true;
-            elements.selectedPromptInfo.style.display = 'none';
+            elements.promptCardsContainer.style.display = 'none';
             elements.executionPanel.innerHTML = '';
             return;
           }
@@ -991,9 +968,7 @@
           } else {
             // 선택 초기화
             categoryDropdown.value = '';
-            elements.promptSelectDropdown.disabled = true;
-            elements.promptSelectDropdown.innerHTML = '<option value="">먼저 카테고리를 선택해주세요</option>';
-            elements.selectedPromptInfo.style.display = 'none';
+            elements.promptCardsContainer.style.display = 'none';
             elements.executionPanel.innerHTML = '';
           }
         } catch (error) {
@@ -1008,82 +983,112 @@
       // 카테고리 선택 처리
       function handleCategorySelect() {
         const selectedCategory = elements.categorySelectDropdown.value;
-        const promptDropdown = elements.promptSelectDropdown;
-        const currentPromptId = promptDropdown.value; // 현재 선택된 프롬프트 ID 저장
-
-        // 선택된 프롬프트 정보 및 실행 패널 초기화
-        elements.selectedPromptInfo.style.display = 'none';
+        
+        // 실행 패널 초기화
         elements.executionPanel.innerHTML = '';
 
         if (!selectedCategory) {
-          promptDropdown.disabled = true;
-          promptDropdown.innerHTML = '<option value="">먼저 카테고리를 선택해주세요</option>';
+          elements.promptCardsContainer.style.display = 'none';
           return;
         }
 
-        // 선택한 카테고리에 속한 프롬프트 필터링
-        const categoryPrompts = allPrompts.filter(p => (p.category || '기타') === selectedCategory);
+        // 선택한 카테고리에 속한 프롬프트 필터링 (생성일 기준 정렬)
+        const categoryPrompts = allPrompts
+          .filter(p => (p.category || '기타') === selectedCategory)
+          .sort((a, b) => {
+            // createdAt 기준으로 정렬 (오래된 것부터)
+            const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
+            const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
+            return aTime - bTime;
+          });
 
         if (categoryPrompts.length === 0) {
-          promptDropdown.disabled = true;
-          promptDropdown.innerHTML = '<option value="">선택한 카테고리에 프롬프트가 없습니다.</option>';
+          elements.promptCardsContainer.style.display = 'none';
+          elements.promptCardsGrid.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">선택한 카테고리에 프롬프트가 없습니다.</p>';
           return;
         }
 
-        // 프롬프트 드롭다운 활성화 및 옵션 업데이트
-        promptDropdown.disabled = false;
+        // 프롬프트 카드 그리드 표시
+        elements.promptCardsContainer.style.display = 'block';
         
-        // 기존 옵션 제거 (첫 번째 옵션 제외)
-        while (promptDropdown.options.length > 1) {
-          promptDropdown.remove(1);
-        }
-
-        // 프롬프트 옵션 추가
-        categoryPrompts.forEach((prompt) => {
-          const option = document.createElement('option');
-          option.value = prompt.id;
-          option.textContent = escapeHtml(prompt.title);
-          promptDropdown.appendChild(option);
+        // 카드 생성
+        let cardsHtml = '';
+        categoryPrompts.forEach((prompt, index) => {
+          const orderNumber = index + 1;
+          cardsHtml += `
+            <div 
+              class="prompt-card" 
+              data-prompt-id="${prompt.id}"
+              onclick="selectPromptForUse('${prompt.id}')"
+              style="
+                border: 2px solid #e1e5e9; 
+                border-radius: 12px; 
+                padding: 20px; 
+                background: #f8f9fa;
+                cursor: pointer;
+                transition: all 0.2s;
+                position: relative;
+              "
+              onmouseover="this.style.borderColor='#667eea'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.2)';"
+              onmouseout="this.style.borderColor='#e1e5e9'; this.style.transform='translateY(0)'; this.style.boxShadow='none';"
+            >
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="
+                    background: #667eea; 
+                    color: white; 
+                    width: 28px; 
+                    height: 28px; 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 12px; 
+                    font-weight: 600;
+                  ">${orderNumber}</span>
+                  <h3 style="font-size: 18px; color: #333; margin: 0;">${escapeHtml(prompt.title)}</h3>
+                </div>
+              </div>
+              <p style="color: #666; line-height: 1.6; margin: 0; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                ${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}
+              </p>
+            </div>
+          `;
         });
-
-        // 이전에 선택된 프롬프트가 현재 카테고리에 있으면 복원
-        if (currentPromptId && categoryPrompts.find(p => p.id === currentPromptId)) {
-          promptDropdown.value = currentPromptId;
-          handlePromptSelect();
-        } else {
-          // 선택 초기화
-          promptDropdown.value = '';
-        }
+        
+        elements.promptCardsGrid.innerHTML = cardsHtml;
       }
 
-      // 프롬프트 선택 처리
-      function handlePromptSelect() {
-        const selectedId = elements.promptSelectDropdown.value;
-        
-        if (!selectedId) {
-          elements.selectedPromptInfo.style.display = 'none';
-          elements.executionPanel.innerHTML = '';
-          return;
-        }
-
+      // 프롬프트 선택 처리 (카드 클릭 시)
+      window.selectPromptForUse = function (id) {
         // 선택된 프롬프트 찾기
-        const prompt = allPrompts.find(p => p.id === selectedId);
+        const prompt = allPrompts.find(p => p.id === id);
         
         if (!prompt) {
           showError('선택한 프롬프트를 찾을 수 없습니다.');
           return;
         }
 
-        // 선택된 프롬프트 정보 표시
-        elements.selectedPromptTitle.textContent = escapeHtml(prompt.title);
-        elements.selectedPromptCategory.textContent = escapeHtml(prompt.category);
-        elements.selectedPromptPreview.textContent = escapeHtml(prompt.content.substring(0, 200)) + (prompt.content.length > 200 ? '...' : '');
-        elements.selectedPromptInfo.style.display = 'block';
+        // 모든 카드의 선택 상태 제거
+        const allCards = document.querySelectorAll('.prompt-card');
+        allCards.forEach(card => {
+          card.style.borderColor = '#e1e5e9';
+          card.style.background = '#f8f9fa';
+        });
 
-        // 실행 패널에 프롬프트 표시
+        // 선택된 카드 강조
+        const selectedCard = document.querySelector(`.prompt-card[data-prompt-id="${id}"]`);
+        if (selectedCard) {
+          selectedCard.style.borderColor = '#667eea';
+          selectedCard.style.borderWidth = '3px';
+          selectedCard.style.background = 'linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%)';
+          selectedCard.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+        }
+
+        // 실행 패널에 프롬프트 즉시 표시 (로딩 없이)
         elements.executionPanel.innerHTML = `
           <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
-          <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
+          <div style="margin-top: 20px; border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa;">
             <div style="margin-bottom: 16px;">
               <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
             </div>
@@ -1101,6 +1106,9 @@
             </div>
           </div>
         `;
+        
+        // 실행 패널로 스크롤
+        elements.executionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       // 탭 3: 프롬프트 검색용 로드
@@ -1227,15 +1235,14 @@
           }
 
           // 해당 프롬프트의 카테고리를 찾아서 선택
-          if (prompt && elements.categorySelectDropdown && elements.promptSelectDropdown) {
+          if (prompt && elements.categorySelectDropdown) {
             const category = prompt.category || '기타';
             elements.categorySelectDropdown.value = category;
             handleCategorySelect();
             
             // 카테고리 로드 후 프롬프트 선택
             setTimeout(() => {
-              elements.promptSelectDropdown.value = id;
-              handlePromptSelect();
+              selectPromptForUse(id);
             }, 100);
           }
 
@@ -1448,8 +1455,9 @@
           await loadPromptsForAllTabs();
           
           // 사용 탭에 수정된 프롬프트가 표시되어 있다면 갱신
-          if (currentTab === 'use' && elements.promptSelectDropdown) {
-            if (elements.promptSelectDropdown.value === id) {
+          if (currentTab === 'use') {
+            const selectedCard = document.querySelector('.prompt-card[data-prompt-id="' + id + '"]');
+            if (selectedCard) {
               // 카테고리와 프롬프트 선택 상태 유지하면서 갱신
               const updatedPrompt = allPrompts.find(p => p.id === id);
               if (updatedPrompt) {
@@ -1459,11 +1467,10 @@
                   elements.categorySelectDropdown.value = category;
                   handleCategorySelect();
                   setTimeout(() => {
-                    elements.promptSelectDropdown.value = id;
-                    handlePromptSelect();
+                    selectPromptForUse(id);
                   }, 100);
                 } else {
-                  handlePromptSelect();
+                  selectPromptForUse(id);
                 }
               }
             }
