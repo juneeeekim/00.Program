@@ -1,1 +1,784 @@
-<!doctype html><html lang="ko"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="PromptHub - AI 프롬프트 관리 플랫폼" /><meta name="keywords" content="AI, 프롬프트, 관리, ChatGPT, Claude, Gemini" /><meta name="theme-color" content="#667eea" /><title>PromptHub - AI 프롬프트 관리 플랫폼</title><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script><link rel="stylesheet" href="css/error-toast.css" /><link rel="stylesheet" href="css/monitoring-dashboard.css" /><style> *{margin:0;padding:0;box-sizing:border-box;}body{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#333;min-height:100vh;display:flex;align-items:center;justify-content:center;}.container{max-width:1200px;width:100%;padding:20px;}/* 헤더 */ header{text-align:center;color:white;margin-bottom:40px;}h1{font-size:48px;margin-bottom:10px;text-shadow:2px 2px 4px rgba(0, 0, 0, 0.2);}.subtitle{font-size:18px;opacity:0.9;}/* 인증 섹션 */ #auth-section{background:white;padding:40px;border-radius:16px;box-shadow:0 10px 40px rgba(0, 0, 0, 0.2);max-width:450px;margin:0 auto;}#auth-section h2{font-size:24px;margin-bottom:24px;color:#333;text-align:center;}.auth-form{display:flex;flex-direction:column;gap:16px;}.input-group{display:flex;flex-direction:column;gap:8px;}label{font-size:14px;font-weight:600;color:#555;}input{padding:14px;border:2px solid #e1e5e9;border-radius:8px;font-size:15px;transition:all 0.3s;}input:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102, 126, 234, 0.1);}button{padding:14px 24px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}.btn-primary{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(102, 126, 234, 0.4);}.btn-secondary{background:#6c757d;color:white;}.btn-secondary:hover{background:#5a6268;}.btn-google{background:white;color:#333;border:2px solid #e1e5e9;display:flex;align-items:center;justify-content:center;}.btn-google:hover{background:#f8f9fa;border-color:#667eea;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0, 0, 0, 0.1);}.auth-divider{text-align:center;margin:20px 0;position:relative;}.auth-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#e1e5e9;}.auth-divider span{background:white;padding:0 16px;position:relative;color:#999;font-size:14px;}.auth-note{font-size:13px;color:#999;text-align:center;margin-top:8px;}/* 메인 콘텐츠 */ #main-content{display:none;background:white;border-radius:16px;box-shadow:0 10px 40px rgba(0, 0, 0, 0.2);overflow:hidden;}.user-header{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;padding:24px 32px;display:flex;justify-content:space-between;align-items:center;}.user-info{display:flex;align-items:center;gap:12px;}.user-avatar{width:48px;height:48px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:24px;}.section{padding:32px;}.section h2{font-size:24px;margin-bottom:20px;color:#333;}.section-divider{height:1px;background:#e1e5e9;margin:0;}/* 로딩 */ #loading{display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0, 0, 0, 0.7);justify-content:center;align-items:center;z-index:9999;}.spinner{width:60px;height:60px;border:6px solid rgba(255, 255, 255, 0.3);border-top:6px solid white;border-radius:50%;animation:spin 1s linear infinite;}@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}/* 스크린 리더 전용 텍스트 */ .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0, 0, 0, 0);white-space:nowrap;border-width:0;}/* 반응형 */ @media (max-width:768px){h1{font-size:36px;}#auth-section{padding:24px;}.section{padding:20px;}}</style></head><body><a href="#main-content" class="skip-link" style=" position:absolute;top:-40px;left:0;background:#667eea;color:white;padding:8px;text-decoration:none;z-index:100;" > 본문으로 건너뛰기 </a><div class="container"><header><h1>🚀 PromptHub</h1><p class="subtitle">AI 프롬프트를 효율적으로 관리하세요</p></header><section id="auth-section"><h2>시작하기</h2><form class="auth-form" onsubmit="return false;"><div class="input-group"><label for="email-input">이메일</label><input type="email" id="email-input" placeholder="your@email.com" aria-label="이메일" required /></div><div class="input-group"><label for="password-input">비밀번호</label><input type="password" id="password-input" placeholder="••••••••" aria-label="비밀번호" required /></div><button type="button" id="login-btn" class="btn-primary">로그인</button><div class="auth-divider"><span>또는</span></div><button type="button" id="google-login-btn" class="btn-google"><svg width="18" height="18" viewBox="0 0 18 18" style="margin-right:8px"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" /><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" /><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" /><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" /></svg> Google로 로그인 </button><button type="button" id="signup-btn" class="btn-secondary">회원가입</button></form><p class="auth-note">테스트:test@example.com / test123</p></section><main id="main-content"><div class="user-header"><div class="user-info"><div class="user-avatar">👤</div><div><div style="font-weight:600;font-size:16px" id="user-email"></div><div style="font-size:13px;opacity:0.9">PromptHub 사용자</div></div></div><button id="logout-btn" class="btn-secondary">로그아웃</button></div><section class="section" aria-labelledby="library-heading"><h2 id="library-heading">📚 프롬프트 라이브러리</h2><button id="create-prompt-btn" class="btn-primary">➕ 새 프롬프트 생성</button><div id="prompt-library" style="margin-top:20px"></div></section><hr class="section-divider" aria-hidden="true" /><section id="prompt-form" class="section" aria-labelledby="prompt-form-heading"><h2 id="prompt-form-heading" class="sr-only">프롬프트 폼</h2></section><hr class="section-divider" aria-hidden="true" /><section id="execution-panel" class="section" aria-labelledby="execution-panel-heading"><h2 id="execution-panel-heading" class="sr-only">실행 패널</h2></section></main></div><div id="loading"><div class="spinner"></div></div><script> // Firebase 설정 const firebaseConfig ={apiKey:'AIzaSyDudPHjfulRRa6wtOzC8nkPE8wnhya__DE', authDomain:'prompthub-production.firebaseapp.com', projectId:'prompthub-production', storageBucket:'prompthub-production.firebasestorage.app', messagingSenderId:'547082323866', appId:'1:547082323866:web:b44da017391ab6dd2cdc23', measurementId:'G-NRW0VKLWDK'};// Firebase 초기화 try{if (!firebase.apps.length){firebase.initializeApp(firebaseConfig);console.log('✅ Firebase 초기화 완료');}}catch (error){console.error('❌ Firebase 초기화 실패:', error);alert('Firebase 설정을 확인해주세요. firebase-config.js 파일을 참고하세요.');}// 전역 변수 let auth, db, currentUser = null;// DOM 요소 const elements ={loading:document.getElementById('loading'), authSection:document.getElementById('auth-section'), mainContent:document.getElementById('main-content'), emailInput:document.getElementById('email-input'), passwordInput:document.getElementById('password-input'), loginBtn:document.getElementById('login-btn'), signupBtn:document.getElementById('signup-btn'), logoutBtn:document.getElementById('logout-btn'), userEmail:document.getElementById('user-email'), createPromptBtn:document.getElementById('create-prompt-btn'), promptLibrary:document.getElementById('prompt-library'), promptForm:document.getElementById('prompt-form'), executionPanel:document.getElementById('execution-panel')};// 초기화 function init(){try{auth = firebase.auth();db = firebase.firestore();// 인증 상태 감지 auth.onAuthStateChanged(handleAuthStateChanged);// 이벤트 리스너 elements.loginBtn.addEventListener('click', handleLogin);elements.signupBtn.addEventListener('click', handleSignup);elements.logoutBtn.addEventListener('click', handleLogout);elements.createPromptBtn.addEventListener('click', handleCreatePrompt);// Enter 키 처리 elements.emailInput.addEventListener('keypress', (e) =>{if (e.key === 'Enter') elements.passwordInput.focus();});elements.passwordInput.addEventListener('keypress', (e) =>{if (e.key === 'Enter') handleLogin();});console.log('✅ 앱 초기화 완료');}catch (error){console.error('❌ 초기화 실패:', error);showError('앱 초기화에 실패했습니다.');}}// 인증 상태 변경 처리 function handleAuthStateChanged(user){hideLoading();if (user){currentUser = user;showMainContent();loadPrompts();}else{currentUser = null;showAuthSection();}}// 로그인 async function handleLogin(){const email = elements.emailInput.value.trim();const password = elements.passwordInput.value;if (!email || !password){showError('이메일과 비밀번호를 입력해주세요.');return;}showLoading();try{await auth.signInWithEmailAndPassword(email, password);showSuccess('로그인 성공!');}catch (error){console.error('로그인 실패:', error);showError(getErrorMessage(error.code));}finally{hideLoading();}}// 회원가입 async function handleSignup(){const email = elements.emailInput.value.trim();const password = elements.passwordInput.value;if (!email || !password){showError('이메일과 비밀번호를 입력해주세요.');return;}if (password.length < 6){showError('비밀번호는 6자 이상이어야 합니다.');return;}showLoading();try{await auth.createUserWithEmailAndPassword(email, password);showSuccess('회원가입 성공!');}catch (error){console.error('회원가입 실패:', error);showError(getErrorMessage(error.code));}finally{hideLoading();}}// 로그아웃 async function handleLogout(){showLoading();try{await auth.signOut();showSuccess('로그아웃되었습니다.');elements.emailInput.value = '';elements.passwordInput.value = '';}catch (error){console.error('로그아웃 실패:', error);showError('로그아웃에 실패했습니다.');}finally{hideLoading();}}// 프롬프트 생성 function handleCreatePrompt(){elements.promptForm.innerHTML = ` <h2>✨ 새 프롬프트 생성</h2><div style="display:flex;flex-direction:column;gap:16px;margin-top:20px;"><div><label style="display:block;margin-bottom:8px;font-weight:600;">제목</label><input type="text" id="prompt-title" placeholder="프롬프트 제목" style="width:100%;padding:12px;border:2px solid #e1e5e9;border-radius:8px;font-size:15px;"></div><div><label style="display:block;margin-bottom:8px;font-weight:600;">내용</label><textarea id="prompt-content" placeholder="프롬프트 내용을 입력하세요..." style="width:100%;min-height:150px;padding:12px;border:2px solid #e1e5e9;border-radius:8px;font-size:15px;resize:vertical;"></textarea></div><div><label style="display:block;margin-bottom:8px;font-weight:600;">카테고리</label><input type="text" id="prompt-category" placeholder="예:코딩, 글쓰기, 번역" style="width:100%;padding:12px;border:2px solid #e1e5e9;border-radius:8px;font-size:15px;"></div><div style="display:flex;gap:12px;"><button onclick="savePrompt()" class="btn-primary" style="flex:1;">💾 저장</button><button onclick="cancelPrompt()" class="btn-secondary" style="flex:1;">❌ 취소</button></div></div> `;elements.promptForm.scrollIntoView({behavior:'smooth'});}// 프롬프트 저장 window.savePrompt = async function (){const title = document.getElementById('prompt-title').value.trim();const content = document.getElementById('prompt-content').value.trim();const category = document.getElementById('prompt-category').value.trim();if (!title || !content){showError('제목과 내용을 입력해주세요.');return;}showLoading();try{await db.collection('prompts').add({title, content, category:category || '기타', userId:currentUser.uid, userEmail:currentUser.email, createdAt:firebase.firestore.FieldValue.serverTimestamp(), updatedAt:firebase.firestore.FieldValue.serverTimestamp()});showSuccess('프롬프트가 저장되었습니다!');elements.promptForm.innerHTML = '';loadPrompts();}catch (error){console.error('저장 실패:', error);showError('프롬프트 저장에 실패했습니다.');}finally{hideLoading();}};// 프롬프트 취소 window.cancelPrompt = function (){elements.promptForm.innerHTML = '';};// 프롬프트 로드 async function loadPrompts(){if (!currentUser) return;try{const snapshot = await db .collection('prompts') .where('userId', '==', currentUser.uid) .orderBy('createdAt', 'desc') .limit(10) .get();if (snapshot.empty){elements.promptLibrary.innerHTML = '<p style="color:#999;text-align:center;padding:40px;">아직 프롬프트가 없습니다. 새로 만들어보세요!</p>';return;}let html = '<div style="display:grid;gap:16px;">';snapshot.forEach((doc) =>{const data = doc.data();html += ` <div style="border:2px solid #e1e5e9;border-radius:12px;padding:20px;background:#f8f9fa;"><div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;"><h3 style="font-size:18px;color:#333;">${escapeHtml(data.title)}</h3><span style="background:#667eea;color:white;padding:4px 12px;border-radius:12px;font-size:12px;">${escapeHtml(data.category)}</span></div><p style="color:#666;line-height:1.6;margin-bottom:12px;">${escapeHtml(data.content.substring(0, 150))}${data.content.length > 150 ? '...':''}</p><div style="display:flex;gap:8px;"><button onclick="viewPrompt('${doc.id}')" class="btn-primary" style="padding:8px 16px;font-size:13px;">👁️ 보기</button><button onclick="deletePrompt('${doc.id}')" class="btn-secondary" style="padding:8px 16px;font-size:13px;">🗑️ 삭제</button></div></div> `;});html += '</div>';elements.promptLibrary.innerHTML = html;}catch (error){console.error('프롬프트 로드 실패:', error);elements.promptLibrary.innerHTML = '<p style="color:#dc3545;text-align:center;padding:40px;">프롬프트를 불러오는데 실패했습니다.</p>';}}// 프롬프트 보기 window.viewPrompt = async function (id){showLoading();try{const doc = await db.collection('prompts').doc(id).get();if (!doc.exists){showError('프롬프트를 찾을 수 없습니다.');return;}const data = doc.data();elements.executionPanel.innerHTML = ` <h2>📄 프롬프트 상세</h2><div style="margin-top:20px;border:2px solid #e1e5e9;border-radius:12px;padding:24px;background:#f8f9fa;"><div style="margin-bottom:16px;"><span style="background:#667eea;color:white;padding:6px 16px;border-radius:12px;font-size:13px;">${escapeHtml(data.category)}</span></div><h3 style="font-size:24px;margin-bottom:16px;color:#333;">${escapeHtml(data.title)}</h3><p style="color:#666;line-height:1.8;white-space:pre-wrap;">${escapeHtml(data.content)}</p><div style="margin-top:24px;padding-top:16px;border-top:1px solid #e1e5e9;color:#999;font-size:13px;"> 생성일:${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('ko-KR'):'알 수 없음'}</div></div> `;elements.executionPanel.scrollIntoView({behavior:'smooth'});}catch (error){console.error('프롬프트 조회 실패:', error);showError('프롬프트를 불러오는데 실패했습니다.');}finally{hideLoading();}};// 프롬프트 삭제 window.deletePrompt = async function (id){if (!confirm('정말 삭제하시겠습니까?')) return;showLoading();try{await db.collection('prompts').doc(id).delete();showSuccess('프롬프트가 삭제되었습니다.');loadPrompts();}catch (error){console.error('삭제 실패:', error);showError('프롬프트 삭제에 실패했습니다.');}finally{hideLoading();}};// UI 헬퍼 function showAuthSection(){elements.authSection.style.display = 'block';elements.mainContent.style.display = 'none';}function showMainContent(){elements.authSection.style.display = 'none';elements.mainContent.style.display = 'block';elements.userEmail.textContent = currentUser.email;}function showLoading(){elements.loading.style.display = 'flex';}function hideLoading(){elements.loading.style.display = 'none';}function showError(message){alert('❌ ' + message);}function showSuccess(message){alert('✅ ' + message);}function escapeHtml(text){const div = document.createElement('div');div.textContent = text;return div.innerHTML;}function getErrorMessage(code){const messages ={'auth/invalid-email':'올바른 이메일 주소를 입력해주세요.', 'auth/user-disabled':'비활성화된 계정입니다.', 'auth/user-not-found':'존재하지 않는 계정입니다.', 'auth/wrong-password':'비밀번호가 올바르지 않습니다.', 'auth/email-already-in-use':'이미 사용 중인 이메일입니다.', 'auth/weak-password':'비밀번호가 너무 약합니다. 6자 이상 입력해주세요.', 'auth/network-request-failed':'네트워크 연결을 확인해주세요.'};return messages[code] || '오류가 발생했습니다. 다시 시도해주세요.';}// 페이지 로드 시 초기화 window.addEventListener('DOMContentLoaded', init);</script></body></html>
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PromptHub - AI 프롬프트 관리 플랫폼" />
+    <meta name="keywords" content="AI, 프롬프트, 관리, ChatGPT, Claude, Gemini" />
+    <meta name="theme-color" content="#667eea" />
+    <title>PromptHub - AI 프롬프트 관리 플랫폼</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+
+    <!-- 스타일 -->
+    <link rel="stylesheet" href="css/error-toast.css" />
+    <link rel="stylesheet" href="css/monitoring-dashboard.css" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #333;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .container {
+        max-width: 1200px;
+        width: 100%;
+        padding: 20px;
+      }
+
+      /* 헤더 */
+      header {
+        text-align: center;
+        color: white;
+        margin-bottom: 40px;
+      }
+
+      h1 {
+        font-size: 48px;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .subtitle {
+        font-size: 18px;
+        opacity: 0.9;
+      }
+
+      /* 인증 섹션 */
+      #auth-section {
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 450px;
+        margin: 0 auto;
+      }
+
+      #auth-section h2 {
+        font-size: 24px;
+        margin-bottom: 24px;
+        color: #333;
+        text-align: center;
+      }
+
+      .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #555;
+      }
+
+      input {
+        padding: 14px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: all 0.3s;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      button {
+        padding: 14px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .btn-google {
+        background: white;
+        color: #333;
+        border: 2px solid #e1e5e9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-google:hover {
+        background: #f8f9fa;
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .auth-divider {
+        text-align: center;
+        margin: 20px 0;
+        position: relative;
+      }
+
+      .auth-divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #e1e5e9;
+      }
+
+      .auth-divider span {
+        background: white;
+        padding: 0 16px;
+        position: relative;
+        color: #999;
+        font-size: 14px;
+      }
+
+      .auth-note {
+        font-size: 13px;
+        color: #999;
+        text-align: center;
+        margin-top: 8px;
+      }
+
+      /* 메인 콘텐츠 */
+      #main-content {
+        display: none;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+
+      .user-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+      }
+
+      .section {
+        padding: 32px;
+      }
+
+      .section h2 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .section-divider {
+        height: 1px;
+        background: #e1e5e9;
+        margin: 0;
+      }
+
+      /* 로딩 */
+      #loading {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .spinner {
+        width: 60px;
+        height: 60px;
+        border: 6px solid rgba(255, 255, 255, 0.3);
+        border-top: 6px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* 스크린 리더 전용 텍스트 */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+
+      /* 반응형 */
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 36px;
+        }
+
+        #auth-section {
+          padding: 24px;
+        }
+
+        .section {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Skip to content (접근성) -->
+    <a
+      href="#main-content"
+      class="skip-link"
+      style="
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #667eea;
+        color: white;
+        padding: 8px;
+        text-decoration: none;
+        z-index: 100;
+      "
+    >
+      본문으로 건너뛰기
+    </a>
+
+    <div class="container">
+      <header>
+        <h1>🚀 PromptHub</h1>
+        <p class="subtitle">AI 프롬프트를 효율적으로 관리하세요</p>
+      </header>
+
+      <!-- 인증 섹션 -->
+      <section id="auth-section">
+        <h2>시작하기</h2>
+        <form class="auth-form" onsubmit="return false;">
+          <div class="input-group">
+            <label for="email-input">이메일</label>
+            <input type="email" id="email-input" placeholder="your@email.com" aria-label="이메일" required />
+          </div>
+          <div class="input-group">
+            <label for="password-input">비밀번호</label>
+            <input type="password" id="password-input" placeholder="••••••••" aria-label="비밀번호" required />
+          </div>
+          <button type="button" id="login-btn" class="btn-primary">로그인</button>
+
+          <div class="auth-divider">
+            <span>또는</span>
+          </div>
+
+          <button type="button" id="google-login-btn" class="btn-google">
+            <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right: 8px">
+              <path
+                fill="#4285F4"
+                d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+              />
+              <path
+                fill="#34A853"
+                d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"
+              />
+              <path
+                fill="#EA4335"
+                d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"
+              />
+            </svg>
+            Google로 로그인
+          </button>
+
+          <button type="button" id="signup-btn" class="btn-secondary">회원가입</button>
+        </form>
+        <p class="auth-note">테스트: test@example.com / test123</p>
+      </section>
+
+      <!-- 메인 콘텐츠 -->
+      <main id="main-content">
+        <!-- 사용자 헤더 -->
+        <div class="user-header">
+          <div class="user-info">
+            <div class="user-avatar">👤</div>
+            <div>
+              <div style="font-weight: 600; font-size: 16px" id="user-email"></div>
+              <div style="font-size: 13px; opacity: 0.9">PromptHub 사용자</div>
+            </div>
+          </div>
+          <button id="logout-btn" class="btn-secondary">로그아웃</button>
+        </div>
+
+        <!-- 프롬프트 라이브러리 -->
+        <section class="section" aria-labelledby="library-heading">
+          <h2 id="library-heading">📚 프롬프트 라이브러리</h2>
+          <button id="create-prompt-btn" class="btn-primary">➕ 새 프롬프트 생성</button>
+          <div id="prompt-library" style="margin-top: 20px"></div>
+        </section>
+
+        <hr class="section-divider" aria-hidden="true" />
+
+        <!-- 프롬프트 폼 -->
+        <section id="prompt-form" class="section" aria-labelledby="prompt-form-heading">
+          <h2 id="prompt-form-heading" class="sr-only">프롬프트 폼</h2>
+        </section>
+
+        <hr class="section-divider" aria-hidden="true" />
+
+        <!-- 실행 패널 -->
+        <section id="execution-panel" class="section" aria-labelledby="execution-panel-heading">
+          <h2 id="execution-panel-heading" class="sr-only">실행 패널</h2>
+        </section>
+      </main>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Firebase 초기화 및 메인 앱 -->
+    <script>
+      // Firebase 설정
+      const firebaseConfig = {
+        apiKey: 'AIzaSyDudPHjfulRRa6wtOzC8nkPE8wnhya__DE',
+        authDomain: 'prompthub-production.firebaseapp.com',
+        projectId: 'prompthub-production',
+        storageBucket: 'prompthub-production.firebasestorage.app',
+        messagingSenderId: '547082323866',
+        appId: '1:547082323866:web:b44da017391ab6dd2cdc23',
+        measurementId: 'G-NRW0VKLWDK'
+      };
+
+      // Firebase 초기화
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+          console.log('✅ Firebase 초기화 완료');
+        }
+      } catch (error) {
+        console.error('❌ Firebase 초기화 실패:', error);
+        alert('Firebase 설정을 확인해주세요. firebase-config.js 파일을 참고하세요.');
+      }
+
+      // 전역 변수
+      let auth,
+        db,
+        currentUser = null;
+
+      // DOM 요소
+      const elements = {
+        loading: document.getElementById('loading'),
+        authSection: document.getElementById('auth-section'),
+        mainContent: document.getElementById('main-content'),
+        emailInput: document.getElementById('email-input'),
+        passwordInput: document.getElementById('password-input'),
+        loginBtn: document.getElementById('login-btn'),
+        signupBtn: document.getElementById('signup-btn'),
+        logoutBtn: document.getElementById('logout-btn'),
+        userEmail: document.getElementById('user-email'),
+        createPromptBtn: document.getElementById('create-prompt-btn'),
+        promptLibrary: document.getElementById('prompt-library'),
+        promptForm: document.getElementById('prompt-form'),
+        executionPanel: document.getElementById('execution-panel')
+      };
+
+      // 초기화
+      function init() {
+        try {
+          auth = firebase.auth();
+          db = firebase.firestore();
+
+          // 인증 상태 감지
+          auth.onAuthStateChanged(handleAuthStateChanged);
+
+          // 이벤트 리스너
+          elements.loginBtn.addEventListener('click', handleLogin);
+          elements.signupBtn.addEventListener('click', handleSignup);
+          elements.logoutBtn.addEventListener('click', handleLogout);
+          elements.createPromptBtn.addEventListener('click', handleCreatePrompt);
+
+          // Enter 키 처리
+          elements.emailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') elements.passwordInput.focus();
+          });
+          elements.passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+          });
+
+          console.log('✅ 앱 초기화 완료');
+        } catch (error) {
+          console.error('❌ 초기화 실패:', error);
+          showError('앱 초기화에 실패했습니다.');
+        }
+      }
+
+      // 인증 상태 변경 처리
+      function handleAuthStateChanged(user) {
+        hideLoading();
+
+        if (user) {
+          currentUser = user;
+          showMainContent();
+          loadPrompts();
+        } else {
+          currentUser = null;
+          showAuthSection();
+        }
+      }
+
+      // 로그인
+      async function handleLogin() {
+        const email = elements.emailInput.value.trim();
+        const password = elements.passwordInput.value;
+
+        if (!email || !password) {
+          showError('이메일과 비밀번호를 입력해주세요.');
+          return;
+        }
+
+        showLoading();
+
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          showSuccess('로그인 성공!');
+        } catch (error) {
+          console.error('로그인 실패:', error);
+          showError(getErrorMessage(error.code));
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // 회원가입
+      async function handleSignup() {
+        const email = elements.emailInput.value.trim();
+        const password = elements.passwordInput.value;
+
+        if (!email || !password) {
+          showError('이메일과 비밀번호를 입력해주세요.');
+          return;
+        }
+
+        if (password.length < 6) {
+          showError('비밀번호는 6자 이상이어야 합니다.');
+          return;
+        }
+
+        showLoading();
+
+        try {
+          await auth.createUserWithEmailAndPassword(email, password);
+          showSuccess('회원가입 성공!');
+        } catch (error) {
+          console.error('회원가입 실패:', error);
+          showError(getErrorMessage(error.code));
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // 로그아웃
+      async function handleLogout() {
+        showLoading();
+
+        try {
+          await auth.signOut();
+          showSuccess('로그아웃되었습니다.');
+          elements.emailInput.value = '';
+          elements.passwordInput.value = '';
+        } catch (error) {
+          console.error('로그아웃 실패:', error);
+          showError('로그아웃에 실패했습니다.');
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // 프롬프트 생성
+      function handleCreatePrompt() {
+        elements.promptForm.innerHTML = `
+                <h2>✨ 새 프롬프트 생성</h2>
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">제목</label>
+                        <input type="text" id="prompt-title" placeholder="프롬프트 제목" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">내용</label>
+                        <textarea id="prompt-content" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
+                        <input type="text" id="prompt-category" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button onclick="savePrompt()" class="btn-primary" style="flex: 1;">💾 저장</button>
+                        <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
+                    </div>
+                </div>
+            `;
+        elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+      }
+
+      // 프롬프트 저장
+      window.savePrompt = async function () {
+        const title = document.getElementById('prompt-title').value.trim();
+        const content = document.getElementById('prompt-content').value.trim();
+        const category = document.getElementById('prompt-category').value.trim();
+
+        if (!title || !content) {
+          showError('제목과 내용을 입력해주세요.');
+          return;
+        }
+
+        showLoading();
+
+        try {
+          await db.collection('prompts').add({
+            title,
+            content,
+            category: category || '기타',
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          showSuccess('프롬프트가 저장되었습니다!');
+          elements.promptForm.innerHTML = '';
+          loadPrompts();
+        } catch (error) {
+          console.error('저장 실패:', error);
+          showError('프롬프트 저장에 실패했습니다.');
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // 프롬프트 취소
+      window.cancelPrompt = function () {
+        elements.promptForm.innerHTML = '';
+      };
+
+      // 프롬프트 로드
+      async function loadPrompts() {
+        if (!currentUser) return;
+
+        try {
+          const snapshot = await db
+            .collection('prompts')
+            .where('userId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .limit(10)
+            .get();
+
+          if (snapshot.empty) {
+            elements.promptLibrary.innerHTML =
+              '<p style="color: #999; text-align: center; padding: 40px;">아직 프롬프트가 없습니다. 새로 만들어보세요!</p>';
+            return;
+          }
+
+          let html = '<div style="display: grid; gap: 16px;">';
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            html += `
+                        <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <h3 style="font-size: 18px; color: #333;">${escapeHtml(data.title)}</h3>
+                                <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(data.category)}</span>
+                            </div>
+                            <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(data.content.substring(0, 150))}${data.content.length > 150 ? '...' : ''}</p>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="viewPrompt('${doc.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 보기</button>
+                                <button onclick="deletePrompt('${doc.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
+                            </div>
+                        </div>
+                    `;
+          });
+          html += '</div>';
+
+          elements.promptLibrary.innerHTML = html;
+        } catch (error) {
+          console.error('프롬프트 로드 실패:', error);
+          elements.promptLibrary.innerHTML =
+            '<p style="color: #dc3545; text-align: center; padding: 40px;">프롬프트를 불러오는데 실패했습니다.</p>';
+        }
+      }
+
+      // 프롬프트 보기
+      window.viewPrompt = async function (id) {
+        showLoading();
+
+        try {
+          const doc = await db.collection('prompts').doc(id).get();
+          if (!doc.exists) {
+            showError('프롬프트를 찾을 수 없습니다.');
+            return;
+          }
+
+          const data = doc.data();
+          elements.executionPanel.innerHTML = `
+                    <h2>📄 프롬프트 상세</h2>
+                    <div style="margin-top: 20px; border: 2px solid #e1e5e9; border-radius: 12px; padding: 24px; background: #f8f9fa;">
+                        <div style="margin-bottom: 16px;">
+                            <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(data.category)}</span>
+                        </div>
+                        <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(data.title)}</h3>
+                        <p style="color: #666; line-height: 1.8; white-space: pre-wrap;">${escapeHtml(data.content)}</p>
+                        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
+                            생성일: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString('ko-KR') : '알 수 없음'}
+                        </div>
+                    </div>
+                `;
+          elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+          console.error('프롬프트 조회 실패:', error);
+          showError('프롬프트를 불러오는데 실패했습니다.');
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // 프롬프트 삭제
+      window.deletePrompt = async function (id) {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+
+        showLoading();
+
+        try {
+          await db.collection('prompts').doc(id).delete();
+          showSuccess('프롬프트가 삭제되었습니다.');
+          loadPrompts();
+        } catch (error) {
+          console.error('삭제 실패:', error);
+          showError('프롬프트 삭제에 실패했습니다.');
+        } finally {
+          hideLoading();
+        }
+      };
+
+      // UI 헬퍼
+      function showAuthSection() {
+        elements.authSection.style.display = 'block';
+        elements.mainContent.style.display = 'none';
+      }
+
+      function showMainContent() {
+        elements.authSection.style.display = 'none';
+        elements.mainContent.style.display = 'block';
+        elements.userEmail.textContent = currentUser.email;
+      }
+
+      function showLoading() {
+        elements.loading.style.display = 'flex';
+      }
+
+      function hideLoading() {
+        elements.loading.style.display = 'none';
+      }
+
+      function showError(message) {
+        alert('❌ ' + message);
+      }
+
+      function showSuccess(message) {
+        alert('✅ ' + message);
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function getErrorMessage(code) {
+        const messages = {
+          'auth/invalid-email': '올바른 이메일 주소를 입력해주세요.',
+          'auth/user-disabled': '비활성화된 계정입니다.',
+          'auth/user-not-found': '존재하지 않는 계정입니다.',
+          'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
+          'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
+          'auth/weak-password': '비밀번호가 너무 약합니다. 6자 이상 입력해주세요.',
+          'auth/network-request-failed': '네트워크 연결을 확인해주세요.'
+        };
+        return messages[code] || '오류가 발생했습니다. 다시 시도해주세요.';
+      }
+
+      // 페이지 로드 시 초기화
+      window.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>
