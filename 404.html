@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - 페이지를 찾을 수 없습니다 | PromptHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .error-code {
+            font-size: 120px;
+            font-weight: 900;
+            color: #667eea;
+            line-height: 1;
+            margin-bottom: 20px;
+            text-shadow: 4px 4px 0 rgba(102, 126, 234, 0.1);
+        }
+        
+        .error-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+        
+        p {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+        
+        .btn-secondary:hover {
+            background: #d1d8dd;
+            transform: translateY(-2px);
+        }
+        
+        .suggestions {
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 2px solid #ecf0f1;
+        }
+        
+        .suggestions h2 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .suggestions ul {
+            list-style: none;
+            text-align: left;
+            display: inline-block;
+        }
+        
+        .suggestions li {
+            margin-bottom: 12px;
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        
+        .suggestions li::before {
+            content: "→ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .suggestions a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .suggestions a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 24px;
+            }
+            
+            .error-code {
+                font-size: 80px;
+            }
+            
+            .error-icon {
+                font-size: 60px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            p {
+                font-size: 16px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">🔍</div>
+        <div class="error-code">404</div>
+        <h1>페이지를 찾을 수 없습니다</h1>
+        <p>
+            죄송합니다. 요청하신 페이지가 존재하지 않거나 이동되었습니다.<br>
+            URL을 확인하시거나 아래 버튼을 통해 홈으로 돌아가주세요.
+        </p>
+        
+        <div class="buttons">
+            <a href="/" class="btn btn-primary">홈으로 돌아가기</a>
+            <button onclick="history.back()" class="btn btn-secondary">이전 페이지</button>
+        </div>
+        
+        <div class="suggestions">
+            <h2>도움이 필요하신가요?</h2>
+            <ul>
+                <li><a href="/">프롬프트 라이브러리</a>로 이동</li>
+                <li><a href="/docs/">문서</a> 확인하기</li>
+                <li><a href="https://github.com/username/prompthub/issues">문제 보고</a>하기</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // 자동 리다이렉트 (선택사항)
+        // setTimeout(() => {
+        //     window.location.href = '/';
+        // }, 5000);
+    </script>
+</body>
+</html>
