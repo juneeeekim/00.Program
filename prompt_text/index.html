@@ -851,12 +851,24 @@
             category: category || '기타',
             userId: userId,
             userEmail: currentUser.email,
-            currentVersion: 'v1.0.0', // 초기 버전
+            currentVersion: 1, // 초기 버전 (숫자로 저장)
             isDeleted: false,
             isPublic: false,
             displayOrder: displayOrder, // 카테고리별 순서
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // 초기 버전을 versions 서브컬렉션에 저장
+          const versionRef = promptRef.collection('versions').doc();
+          await versionRef.set({
+            id: versionRef.id,
+            version: 1,
+            title: title,
+            content: content,
+            category: category || '기타',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: userId
           });
 
           showSuccess('프롬프트가 저장되었습니다!');
@@ -1128,7 +1140,7 @@
       }
 
       // 프롬프트 선택 처리 (카드 클릭 시)
-      window.selectPromptForUse = function (id) {
+      window.selectPromptForUse = async function (id) {
         // 선택된 프롬프트 찾기
         const prompt = allPrompts.find(p => p.id === id);
         
@@ -1164,12 +1176,22 @@
           selectedCard.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
         }
 
+        // 버전 히스토리 로드
+        const versions = await loadVersionHistory(prompt.id);
+        
         // 실행 패널에 프롬프트 즉시 표시 (로딩 없이)
+        const currentVersion = prompt.currentVersion || 1;
+        const versionInfo = versions.find(v => v.version === currentVersion);
+        const versionDate = versionInfo?.createdAt ? 
+          new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
+          (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
+
         elements.executionPanel.innerHTML = `
           <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
           <div style="margin-top: 20px; border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa;">
-            <div style="margin-bottom: 16px;">
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
               <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+              <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersion}</span>
             </div>
             <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
             <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
@@ -1180,8 +1202,25 @@
               <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
               <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
             </div>
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
-              생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9;">
+              <div style="color: #999; font-size: 13px; margin-bottom: 12px;">
+                현재 버전 생성일: ${versionDate}
+              </div>
+              ${versions.length > 1 ? `
+                <div style="margin-top: 16px;">
+                  <button 
+                    onclick="toggleVersionHistory('${prompt.id}')" 
+                    class="btn-secondary" 
+                    style="padding: 8px 16px; font-size: 13px; width: 100%;"
+                    id="version-history-toggle-${prompt.id}"
+                  >
+                    📜 이전 버전 보기 (${versions.filter(v => v.version < currentVersion).length}개)
+                  </button>
+                  <div id="version-history-${prompt.id}" style="display: none; margin-top: 16px;">
+                    ${renderVersionHistory(prompt.id, versions.filter(v => v.version < currentVersion))}
+                  </div>
+                </div>
+              ` : ''}
             </div>
           </div>
         `;
@@ -1189,6 +1228,95 @@
         // 실행 패널로 스크롤
         elements.executionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+
+      // 버전 히스토리 로드
+      async function loadVersionHistory(promptId) {
+        try {
+          const userId = currentUser.uid;
+          const versionsSnapshot = await db
+            .collection('users')
+            .doc(userId)
+            .collection('prompts')
+            .doc(promptId)
+            .collection('versions')
+            .orderBy('version', 'desc')
+            .get();
+
+          const versions = [];
+          versionsSnapshot.forEach((doc) => {
+            versions.push({
+              id: doc.id,
+              ...doc.data()
+            });
+          });
+
+          return versions;
+        } catch (error) {
+          console.error('버전 히스토리 로드 실패:', error);
+          return [];
+        }
+      }
+
+      // 버전 히스토리 렌더링
+      function renderVersionHistory(promptId, versions) {
+        if (versions.length === 0) return '';
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        versions.forEach((version) => {
+          const versionDate = version.createdAt ? 
+            new Date(version.createdAt.toDate ? version.createdAt.toDate() : version.createdAt).toLocaleString('ko-KR') :
+            '알 수 없음';
+          
+          html += `
+            <div style="border: 1px solid #e1e5e9; border-radius: 8px; padding: 16px; background: white;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">버전 ${version.version}</span>
+                <span style="color: #999; font-size: 12px;">${versionDate}</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <strong style="color: #333; font-size: 14px;">${escapeHtml(version.title)}</strong>
+              </div>
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                <p style="color: #666; line-height: 1.6; white-space: pre-wrap; margin: 0; font-size: 13px;">${escapeHtml(version.content)}</p>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+        return html;
+      }
+
+      // 버전 히스토리 토글 (사용 탭)
+      window.toggleVersionHistory = function (promptId) {
+        const historyDiv = document.getElementById(`version-history-${promptId}`);
+        const toggleBtn = document.getElementById(`version-history-toggle-${promptId}`);
+        
+        if (historyDiv && toggleBtn) {
+          if (historyDiv.style.display === 'none') {
+            historyDiv.style.display = 'block';
+            toggleBtn.textContent = '📜 이전 버전 숨기기';
+          } else {
+            historyDiv.style.display = 'none';
+            toggleBtn.textContent = '📜 이전 버전 보기';
+          }
+        }
+      };
+
+      // 버전 히스토리 토글 (검색 탭)
+      window.toggleVersionHistoryInSearch = function (promptId) {
+        const historyDiv = document.getElementById(`version-history-search-${promptId}`);
+        const toggleBtn = document.getElementById(`version-history-toggle-search-${promptId}`);
+        
+        if (historyDiv && toggleBtn) {
+          if (historyDiv.style.display === 'none') {
+            historyDiv.style.display = 'block';
+            toggleBtn.textContent = '📜 이전 버전 숨기기';
+          } else {
+            historyDiv.style.display = 'none';
+            toggleBtn.textContent = '📜 이전 버전 보기';
+          }
+        }
+      };
 
       // 프롬프트 순서 변경
       window.movePromptOrder = async function (promptId, category, direction) {
@@ -1443,11 +1571,20 @@
             elements.searchInput.value = prompt.title;
           }
 
+          // 버전 히스토리 로드
+          const versions = await loadVersionHistory(prompt.id);
+          const currentVersion = prompt.currentVersion || 1;
+          const versionInfo = versions.find(v => v.version === currentVersion);
+          const versionDate = versionInfo?.createdAt ? 
+            new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
+            (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
+
           // 검색 결과 영역에 상세 정보 표시
           const detailHtml = `
             <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
-              <div style="margin-bottom: 16px;">
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
                 <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+                <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersion}</span>
               </div>
               <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
               <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
@@ -1459,8 +1596,25 @@
                 <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
                 <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🗑️ 삭제</button>
               </div>
-              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9; color: #999; font-size: 13px;">
-                생성일: ${prompt.createdAt ? new Date(prompt.createdAt.toDate ? prompt.createdAt.toDate() : prompt.createdAt).toLocaleString('ko-KR') : '알 수 없음'}
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9;">
+                <div style="color: #999; font-size: 13px; margin-bottom: 12px;">
+                  현재 버전 생성일: ${versionDate}
+                </div>
+                ${versions.length > 1 ? `
+                  <div style="margin-top: 16px;">
+                    <button 
+                      onclick="toggleVersionHistoryInSearch('${prompt.id}')" 
+                      class="btn-secondary" 
+                      style="padding: 8px 16px; font-size: 13px; width: 100%;"
+                      id="version-history-toggle-search-${prompt.id}"
+                    >
+                      📜 이전 버전 보기 (${versions.filter(v => v.version < currentVersion).length}개)
+                    </button>
+                    <div id="version-history-search-${prompt.id}" style="display: none; margin-top: 16px;">
+                      ${renderVersionHistory(prompt.id, versions.filter(v => v.version < currentVersion))}
+                    </div>
+                  </div>
+                ` : ''}
               </div>
             </div>
           `;
@@ -1584,19 +1738,61 @@
 
         try {
           const userId = currentUser.uid;
-          await db
-            .collection('users')
-            .doc(userId)
-            .collection('prompts')
-            .doc(id)
-            .update({
-              title,
-              content,
-              category: category || '기타',
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+          const promptRef = db.collection('users').doc(userId).collection('prompts').doc(id);
+          
+          // 현재 프롬프트 정보 가져오기
+          const currentPrompt = await promptRef.get();
+          if (!currentPrompt.exists) {
+            showError('프롬프트를 찾을 수 없습니다.');
+            return;
+          }
 
-          showSuccess('프롬프트가 수정되었습니다!');
+          const currentData = currentPrompt.data();
+          const currentVersion = currentData.currentVersion || 1;
+          const newVersion = currentVersion + 1;
+
+          // 현재 버전이 versions에 없으면 저장 (중복 방지)
+          const currentVersionSnapshot = await promptRef
+            .collection('versions')
+            .where('version', '==', currentVersion)
+            .get();
+          
+          if (currentVersionSnapshot.empty) {
+            // 현재 버전을 versions 서브컬렉션에 저장 (히스토리 보관)
+            const versionRef = promptRef.collection('versions').doc();
+            await versionRef.set({
+              id: versionRef.id,
+              version: currentVersion,
+              title: currentData.title,
+              content: currentData.content,
+              category: currentData.category || '기타',
+              createdAt: currentData.updatedAt || currentData.createdAt,
+              createdBy: userId
+            });
+          }
+
+          // 프롬프트 업데이트 (새 버전으로)
+          await promptRef.update({
+            title,
+            content,
+            category: category || '기타',
+            currentVersion: newVersion,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // 새 버전도 versions에 저장
+          const newVersionRef = promptRef.collection('versions').doc();
+          await newVersionRef.set({
+            id: newVersionRef.id,
+            version: newVersion,
+            title: title,
+            content: content,
+            category: category || '기타',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: userId
+          });
+
+          showSuccess(`프롬프트가 수정되었습니다! (버전 ${newVersion})`);
           elements.promptForm.innerHTML = '';
           
           // 모든 탭용 데이터 다시 로드
