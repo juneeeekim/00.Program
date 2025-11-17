@@ -555,6 +555,88 @@
       // 현재 활성 탭
       let currentTab = 'register';
 
+      // LLM 모델 옵션
+      const llmModelOptions = [
+        { value: 'gpt-4o-mini', label: 'OpenAI GPT-4o mini' },
+        { value: 'gpt-4.1', label: 'OpenAI GPT-4.1' },
+        { value: 'gpt-4o', label: 'OpenAI GPT-4o' },
+        { value: 'gpt-3.5-turbo', label: 'OpenAI GPT-3.5 Turbo' },
+        { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
+        { value: 'claude-3-opus', label: 'Claude 3 Opus' },
+        { value: 'gemini-1.5-pro', label: 'Google Gemini 1.5 Pro' },
+        { value: 'mistral-large', label: 'Mistral Large' },
+        { value: 'custom', label: '직접 입력' }
+      ];
+
+      function renderLlmModelField({ selectId, customInputId }) {
+        const optionsHtml = llmModelOptions
+          .map(({ value, label }) => `<option value="${value}">${label}</option>`)
+          .join('');
+
+        return `
+          <div>
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">LLM 모델</label>
+            <select id="${selectId}" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+              ${optionsHtml}
+            </select>
+            <input 
+              type="text" 
+              id="${customInputId}" 
+              placeholder="직접 모델명을 입력하세요 (예: gpt-4o, claude-3-haiku)" 
+              style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; margin-top: 10px; display: none;"
+            />
+            <p style="margin-top: 6px; color: #666; font-size: 13px;">사용할 LLM 모델을 선택하거나 직접 입력해주세요.</p>
+          </div>
+        `;
+      }
+
+      function setupLlmModelSelector({ selectId, customInputId, initialValue }) {
+        const selectEl = document.getElementById(selectId);
+        const customEl = document.getElementById(customInputId);
+        if (!selectEl || !customEl) return;
+
+        const applyInitialValue = () => {
+          if (!initialValue) {
+            selectEl.value = llmModelOptions[0].value;
+            customEl.style.display = 'none';
+            customEl.value = '';
+            return;
+          }
+
+          const exists = llmModelOptions.some(option => option.value === initialValue);
+          if (exists) {
+            selectEl.value = initialValue;
+            customEl.style.display = 'none';
+            customEl.value = '';
+          } else {
+            selectEl.value = 'custom';
+            customEl.style.display = 'block';
+            customEl.value = initialValue;
+          }
+        };
+
+        applyInitialValue();
+
+        selectEl.addEventListener('change', () => {
+          if (selectEl.value === 'custom') {
+            customEl.style.display = 'block';
+            customEl.focus();
+          } else {
+            customEl.style.display = 'none';
+          }
+        });
+      }
+
+      function getSelectedLlmModel(selectId, customInputId) {
+        const selectEl = document.getElementById(selectId);
+        const customEl = document.getElementById(customInputId);
+        if (!selectEl) return '미지정';
+        if (selectEl.value === 'custom') {
+          return (customEl?.value.trim() || '미지정');
+        }
+        return selectEl.value;
+      }
+
       // 초기화
       function init() {
         try {
@@ -804,6 +886,7 @@
                         <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
                         <input type="text" id="prompt-category" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
                     </div>
+                    ${renderLlmModelField({ selectId: 'llm-model-select', customInputId: 'llm-model-custom' })}
                     <div style="display: flex; gap: 12px;">
                         <button onclick="savePrompt()" class="btn-primary" style="flex: 1;">💾 저장</button>
                         <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
@@ -811,6 +894,11 @@
                 </div>
             `;
         elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+        setupLlmModelSelector({
+          selectId: 'llm-model-select',
+          customInputId: 'llm-model-custom',
+          initialValue: llmModelOptions[0].value
+        });
       }
 
       // 프롬프트 저장
@@ -818,6 +906,7 @@
         const title = document.getElementById('prompt-title').value.trim();
         const content = document.getElementById('prompt-content').value.trim();
         const category = document.getElementById('prompt-category').value.trim();
+        const llmModel = getSelectedLlmModel('llm-model-select', 'llm-model-custom');
 
         if (!title || !content) {
           showError('제목과 내용을 입력해주세요.');
@@ -849,6 +938,7 @@
             title,
             content,
             category: category || '기타',
+            llmModel: llmModel || '미지정',
             userId: userId,
             userEmail: currentUser.email,
             currentVersion: 1, // 초기 버전 (숫자로 저장, 하위 호환성 유지)
@@ -867,6 +957,7 @@
             title: title,
             content: content,
             category: category || '기타',
+            llmModel: llmModel || '미지정',
             changelog: '초기 버전 생성', // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: userId
@@ -1195,8 +1286,11 @@
         elements.executionPanel.innerHTML = `
           <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
           <div style="margin-top: 20px; border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa;">
-            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+            <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+                <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(prompt.llmModel || '미지정')}</span>
+              </div>
               <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
             </div>
             <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
@@ -1289,6 +1383,9 @@
               </div>
               <div style="margin-bottom: 8px;">
                 <strong style="color: #333; font-size: 14px;">${escapeHtml(version.title)}</strong>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="background: #f97316; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px;">LLM: ${escapeHtml(version.llmModel || '미지정')}</span>
               </div>
               <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
                 <p style="color: #666; line-height: 1.6; white-space: pre-wrap; margin: 0; font-size: 13px;">${escapeHtml(version.content)}</p>
@@ -1601,8 +1698,11 @@
           // 검색 결과 영역에 상세 정보 표시
           const detailHtml = `
             <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
-              <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
+                  <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(prompt.llmModel || '미지정')}</span>
+                </div>
                 <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
               </div>
               <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
@@ -1735,6 +1835,7 @@
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
                 <input type="text" id="prompt-category-edit" value="${escapeHtml(prompt.category || '')}" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
               </div>
+              ${renderLlmModelField({ selectId: 'llm-model-select-edit', customInputId: 'llm-model-custom-edit' })}
               <div style="display: flex; gap: 12px;">
                 <button onclick="updatePrompt('${prompt.id}')" class="btn-primary" style="flex: 1;">💾 수정 저장</button>
                 <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
@@ -1742,6 +1843,11 @@
             </div>
           `;
           elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+          setupLlmModelSelector({
+            selectId: 'llm-model-select-edit',
+            customInputId: 'llm-model-custom-edit',
+            initialValue: prompt.llmModel || llmModelOptions[0].value
+          });
         } catch (error) {
           console.error('프롬프트 수정 폼 로드 실패:', error);
           showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
@@ -1755,6 +1861,7 @@
         const title = document.getElementById('prompt-title-edit').value.trim();
         const content = document.getElementById('prompt-content-edit').value.trim();
         const category = document.getElementById('prompt-category-edit').value.trim();
+        const llmModel = getSelectedLlmModel('llm-model-select-edit', 'llm-model-custom-edit');
 
         if (!title || !content) {
           showError('제목과 내용을 입력해주세요.');
@@ -1803,6 +1910,7 @@
               title: currentData.title,
               content: currentData.content,
               category: currentData.category || '기타',
+              llmModel: currentData.llmModel || '미지정',
               changelog: '이전 버전 보관', // 필수 필드 추가
               createdAt: currentData.updatedAt || currentData.createdAt,
               createdBy: userId
@@ -1814,6 +1922,7 @@
             title,
             content,
             category: category || '기타',
+            llmModel: llmModel || '미지정',
             currentVersion: newVersionNum, // 숫자로 저장 (하위 호환성)
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -1826,6 +1935,7 @@
             title: title,
             content: content,
             category: category || '기타',
+            llmModel: llmModel || '미지정',
             changelog: '프롬프트 수정', // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: userId
