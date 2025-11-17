@@ -221,6 +221,14 @@
                             </div>
                         </div>
 
+                        <!-- SNS 플랫폼 선택 영역 -->
+                        <div class="sns-platform-group" id="edit-sns-platform-group" role="group" aria-labelledby="sns-platform-label">
+                            <label id="sns-platform-label" class="sns-platform-label">SNS 플랫폼 (선택사항)</label>
+                            <div class="sns-platform-tags" id="edit-sns-platform-tags" role="list" aria-label="SNS 플랫폼 선택">
+                                <!-- 동적으로 SNS 플랫폼 태그가 생성됨 -->
+                            </div>
+                        </div>
+
                         <textarea 
                             id="edit-text-input" 
                             placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
@@ -369,6 +377,19 @@
                                 <select id="topic-filter" class="topic-filter-select" aria-label="주제 필터" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
                                     <option value="all">전체 주제</option>
                                     <!-- 동적으로 주제 목록이 채워짐 -->
+                                </select>
+                            </div>
+                            <!-- SNS 플랫폼 필터 (작성 글용) -->
+                            <div class="sns-filter-group" id="sns-filter-group" style="display: none; align-items:center; gap:8px; margin-top: 12px;">
+                                <label for="sns-filter-mode" class="sns-filter-label" style="font-weight:600; color:#333; font-size:0.9rem; line-height: 1.5;">SNS 필터:</label>
+                                <select id="sns-filter-mode" class="sns-filter-mode-select" aria-label="SNS 필터 모드" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;">
+                                    <option value="all">전체</option>
+                                    <option value="has">특정 SNS에 올린 글</option>
+                                    <option value="not-has">특정 SNS에 올리지 않은 글</option>
+                                </select>
+                                <select id="sns-filter-platform" class="sns-filter-platform-select" aria-label="SNS 플랫폼 선택" style="padding:8px 10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem; display: none;">
+                                    <option value="">플랫폼 선택</option>
+                                    <!-- 동적으로 SNS 플랫폼 목록이 채워짐 -->
                                 </select>
                             </div>
                             <!-- 소스 필터 (레퍼런스 글용) -->

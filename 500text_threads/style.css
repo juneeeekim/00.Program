@@ -656,6 +656,81 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* SNS 플랫폼 선택 그룹 */
+.sns-platform-group {
+    margin: 12px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.sns-platform-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.sns-platform-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sns-platform-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 20px;
+    background: white;
+    color: #333;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.sns-platform-tag:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.sns-platform-tag:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.sns-platform-tag.selected {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+.sns-platform-tag.selected:hover {
+    background: #5568d3;
+    border-color: #5568d3;
+}
+
+.sns-platform-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.sns-platform-name {
+    line-height: 1.2;
+}
+
 /* 二쇱젣 ?꾪꽣 ?ㅽ???*/
 .topic-filter-group {
     display: flex;
@@ -1762,6 +1837,48 @@ body {
     margin-top: 8px;
     margin-bottom: 8px;
 }
+
+/* SNS 플랫폼 배지 영역 */
+.saved-item-platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+/* SNS 플랫폼 개별 배지 */
+.sns-platform-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: #e8f0fe;
+    border: 1px solid #c5d9f0;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #1a73e8;
+    white-space: nowrap;
+    line-height: 1.4;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.2s ease;
+}
+
+/* SNS 플랫폼 배지 호버 효과 */
+.sns-platform-badge:hover {
+    background: #d2e3fc;
+    border-color: #a8c8f0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(26, 115, 232, 0.15);
+}
+
+/* SNS 플랫폼 배지 포커스 상태 (접근성) */
+.sns-platform-badge:focus {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
     
 .saved-item-content {
     color: #333;
@@ -1854,6 +1971,16 @@ body {
     color: #666;
     margin-top: 8px;
     margin-bottom: 8px;
+}
+
+/* 트래킹 포스트 SNS 플랫폼 배지 영역 */
+.tracking-post-platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    align-items: center;
 }
 
 .tracking-post-content {
@@ -2942,12 +3069,52 @@ body {
         margin-bottom: 6px;
     }
     
+    /* SNS 플랫폼 배지 모바일 반응형 스타일 */
+    .saved-item-platforms {
+        gap: 4px;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .sns-platform-badge {
+        padding: 3px 6px;
+        font-size: 0.75rem;
+    }
+    
+    /* 트래킹 포스트 SNS 플랫폼 배지 모바일 반응형 스타일 */
+    .tracking-post-platforms {
+        gap: 4px;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    
     /* 트래킹 포스트 주제 모바일 반응형 스타일 */
     .tracking-post-topic {
         font-size: 0.8rem;
         padding: 3px 6px;
         margin-top: 6px;
         margin-bottom: 6px;
+    }
+    
+    /* SNS 플랫폼 선택 모바일 반응형 스타일 */
+    .sns-platform-group {
+        margin: 10px 0;
+        padding: 10px;
+    }
+    
+    .sns-platform-label {
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+    }
+    
+    .sns-platform-tag {
+        font-size: 0.8rem;
+        padding: 5px 10px;
+        min-height: 44px; /* 터치 영역 최소 크기 */
+    }
+    
+    .sns-platform-icon {
+        font-size: 0.9rem;
     }
     
     .tab-text {

@@ -18,6 +18,24 @@ class DualTextWriter {
         TEMP_SAVE_DELAY_MS: 2000,               // 임시 저장 딜레이 (ms)
     };
     
+    /**
+     * SNS 플랫폼 목록 상수
+     * 
+     * 각 플랫폼은 id, name, icon 속성을 가집니다.
+     * 새로운 SNS 플랫폼을 추가하거나 제거할 때 이 배열을 수정하세요.
+     */
+    static SNS_PLATFORMS = [
+        { id: 'threads', name: 'Threads', icon: '🧵' },
+        { id: 'instagram', name: 'Instagram', icon: '📷' },
+        { id: 'twitter', name: 'Twitter/X', icon: '🐦' },
+        { id: 'facebook', name: 'Facebook', icon: '👥' },
+        { id: 'linkedin', name: 'LinkedIn', icon: '💼' },
+        { id: 'tiktok', name: 'TikTok', icon: '🎵' },
+        { id: 'naver-blog', name: '네이버블로그', icon: '📝' },
+        { id: 'youtube', name: '유튜브 게시글', icon: '📺' },
+        { id: 'custom', name: '직접 입력', icon: '✏️' }
+    ];
+    
     constructor() {
         // Firebase 설정
         this.auth = null;
@@ -78,6 +96,9 @@ class DualTextWriter {
         // 수정/작성 글 관련 요소들
         this.editTextInput = document.getElementById('edit-text-input');
         this.editTopicInput = document.getElementById('edit-topic-input');
+        this.editSnsPlatformGroup = document.getElementById('edit-sns-platform-group');
+        this.editSnsPlatformTags = document.getElementById('edit-sns-platform-tags');
+        this.selectedSnsPlatforms = []; // 선택된 SNS 플랫폼 ID 배열
         this.editCurrentCount = document.getElementById('edit-current-count');
         this.editMaxCount = document.getElementById('edit-max-count');
         
@@ -105,6 +126,13 @@ class DualTextWriter {
         this.sourceFilterGroup = document.getElementById('source-filter-group');
         this.currentSourceFilter = 'all'; // 현재 선택된 소스 필터
         this.availableSources = []; // 사용 가능한 소스 목록
+        
+        // SNS 플랫폼 필터 관련 요소들 (작성 글용)
+        this.snsFilterGroup = document.getElementById('sns-filter-group');
+        this.snsFilterMode = document.getElementById('sns-filter-mode');
+        this.snsFilterPlatform = document.getElementById('sns-filter-platform');
+        this.currentSnsFilterMode = 'all'; // 현재 선택된 SNS 필터 모드 ('all', 'has', 'not-has')
+        this.currentSnsFilterPlatform = ''; // 현재 선택된 SNS 플랫폼 ID
 
         // 탭 관련 요소들
         this.tabButtons = document.querySelectorAll('.tab-button');
@@ -360,6 +388,112 @@ class DualTextWriter {
         `;
     }
 
+    /**
+     * SNS 플랫폼 선택 기능 초기화
+     * 
+     * - SNS 플랫폼 태그 렌더링
+     * - 이벤트 리스너 바인딩 (이벤트 위임 사용)
+     * - 선택 상태 관리
+     */
+    initSnsPlatformSelection() {
+        // 유효성 검사
+        if (!this.editSnsPlatformTags) {
+            console.warn('⚠️ SNS 플랫폼 선택 UI 요소를 찾을 수 없습니다.');
+            return;
+        }
+
+        // SNS 플랫폼 태그 렌더링
+        this.renderSnsPlatformTags();
+
+        // 이벤트 위임: 태그 클릭 이벤트 처리
+        if (!this._snsPlatformEventBound) {
+            this._snsPlatformEventBound = true;
+            this.editSnsPlatformTags.addEventListener('click', (e) => {
+                const tag = e.target.closest('.sns-platform-tag');
+                if (!tag) return;
+
+                const platformId = tag.getAttribute('data-platform-id');
+                if (!platformId) return;
+
+                e.preventDefault();
+                this.toggleSnsPlatform(platformId);
+            });
+
+            // 키보드 이벤트 처리 (접근성)
+            this.editSnsPlatformTags.addEventListener('keydown', (e) => {
+                const tag = e.target.closest('.sns-platform-tag');
+                if (!tag) return;
+
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const platformId = tag.getAttribute('data-platform-id');
+                    if (platformId) {
+                        this.toggleSnsPlatform(platformId);
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * SNS 플랫폼 태그 렌더링
+     */
+    renderSnsPlatformTags() {
+        if (!this.editSnsPlatformTags || !DualTextWriter.SNS_PLATFORMS) {
+            return;
+        }
+
+        const tagsHtml = DualTextWriter.SNS_PLATFORMS.map(platform => {
+            const isSelected = this.selectedSnsPlatforms.includes(platform.id);
+            const selectedClass = isSelected ? 'selected' : '';
+            const ariaChecked = isSelected ? 'true' : 'false';
+            
+            return `
+                <button 
+                    type="button"
+                    class="sns-platform-tag ${selectedClass}" 
+                    data-platform-id="${this.escapeHtml(platform.id)}"
+                    role="listitem"
+                    aria-label="${this.escapeHtml(platform.name)} ${isSelected ? '선택됨' : '선택 안됨'}"
+                    aria-checked="${ariaChecked}"
+                    tabindex="0"
+                >
+                    <span class="sns-platform-icon" aria-hidden="true">${platform.icon}</span>
+                    <span class="sns-platform-name">${this.escapeHtml(platform.name)}</span>
+                </button>
+            `;
+        }).join('');
+
+        this.editSnsPlatformTags.innerHTML = tagsHtml;
+    }
+
+    /**
+     * SNS 플랫폼 선택/해제 토글
+     * 
+     * @param {string} platformId - 플랫폼 ID
+     */
+    toggleSnsPlatform(platformId) {
+        // 유효성 검증: 플랫폼 ID가 유효한지 확인
+        const platform = DualTextWriter.SNS_PLATFORMS.find(p => p.id === platformId);
+        if (!platform) {
+            console.warn(`⚠️ 유효하지 않은 플랫폼 ID: ${platformId}`);
+            return;
+        }
+
+        // 선택 상태 토글
+        const index = this.selectedSnsPlatforms.indexOf(platformId);
+        if (index >= 0) {
+            // 이미 선택된 경우 제거
+            this.selectedSnsPlatforms.splice(index, 1);
+        } else {
+            // 선택되지 않은 경우 추가
+            this.selectedSnsPlatforms.push(platformId);
+        }
+
+        // UI 업데이트
+        this.renderSnsPlatformTags();
+    }
+
     async init() {
         this.bindEvents();
         await this.waitForFirebase();
@@ -371,6 +505,8 @@ class DualTextWriter {
         this.initLiveDuplicateCheck();
         // 레퍼런스 선택 기능 초기화
         this.initReferenceSelection();
+        // SNS 플랫폼 선택 기능 초기화
+        this.initSnsPlatformSelection();
     }
 
     // Firebase 초기화 대기
@@ -801,6 +937,48 @@ class DualTextWriter {
                 this.renderSavedTexts();
             };
         }
+        
+        // SNS 플랫폼 필터 이벤트 리스너 설정 (작성 글용)
+        if (this.snsFilterMode) {
+            this.currentSnsFilterMode = localStorage.getItem('dualTextWriter_snsFilterMode') || 'all';
+            this.snsFilterMode.value = this.currentSnsFilterMode;
+            this.snsFilterMode.onchange = () => {
+                this.currentSnsFilterMode = this.snsFilterMode.value;
+                localStorage.setItem('dualTextWriter_snsFilterMode', this.currentSnsFilterMode);
+                // 필터 모드가 'all'이 아니면 플랫폼 선택 드롭다운 표시
+                if (this.snsFilterPlatform) {
+                    if (this.currentSnsFilterMode === 'all') {
+                        this.snsFilterPlatform.style.display = 'none';
+                        this.currentSnsFilterPlatform = '';
+                        this.snsFilterPlatform.value = '';
+                    } else {
+                        this.snsFilterPlatform.style.display = 'block';
+                    }
+                }
+                this.renderSavedTextsCache = null; // 캐시 무효화
+                this.renderSavedTexts();
+            };
+        }
+        
+        if (this.snsFilterPlatform) {
+            this.currentSnsFilterPlatform = localStorage.getItem('dualTextWriter_snsFilterPlatform') || '';
+            this.snsFilterPlatform.value = this.currentSnsFilterPlatform;
+            // 초기 표시 상태 설정
+            if (this.currentSnsFilterMode === 'all') {
+                this.snsFilterPlatform.style.display = 'none';
+            } else {
+                this.snsFilterPlatform.style.display = 'block';
+            }
+            this.snsFilterPlatform.onchange = () => {
+                this.currentSnsFilterPlatform = this.snsFilterPlatform.value;
+                localStorage.setItem('dualTextWriter_snsFilterPlatform', this.currentSnsFilterPlatform);
+                this.renderSavedTextsCache = null; // 캐시 무효화
+                this.renderSavedTexts();
+            };
+        }
+        
+        // SNS 플랫폼 목록 초기화
+        this.updateSnsFilterOptions();
 
         // 활성 상태 복원
         buttons.forEach(btn => {
@@ -935,29 +1113,73 @@ class DualTextWriter {
         }
     }
     
+    updateSnsFilterOptions() {
+        if (!this.snsFilterPlatform) return;
+        
+        // 현재 선택값 저장
+        const currentValue = this.snsFilterPlatform.value;
+        
+        // SNS 플랫폼 목록 초기화
+        this.snsFilterPlatform.innerHTML = '<option value="">플랫폼 선택</option>';
+        
+        // DualTextWriter.SNS_PLATFORMS에서 플랫폼 목록 생성
+        DualTextWriter.SNS_PLATFORMS.forEach(platform => {
+            const option = document.createElement('option');
+            option.value = platform.id;
+            option.textContent = `${platform.icon} ${platform.name}`;
+            this.snsFilterPlatform.appendChild(option);
+        });
+        
+        // 이전 선택값 복원
+        if (currentValue && DualTextWriter.SNS_PLATFORMS.some(p => p.id === currentValue)) {
+            this.snsFilterPlatform.value = currentValue;
+        } else {
+            this.snsFilterPlatform.value = '';
+            this.currentSnsFilterPlatform = '';
+        }
+        
+        // 필터 모드에 따라 플랫폼 선택 드롭다운 표시/숨김
+        if (this.snsFilterMode && this.snsFilterPlatform) {
+            if (this.currentSnsFilterMode === 'all') {
+                this.snsFilterPlatform.style.display = 'none';
+            } else {
+                this.snsFilterPlatform.style.display = 'block';
+            }
+        }
+    }
+    
     updateTopicSourceFilterVisibility() {
-        // 작성 글 필터일 때: 주제 필터 표시, 소스 필터 숨김
+        // 작성 글 필터일 때: 주제 필터 및 SNS 필터 표시, 소스 필터 숨김
         if (this.savedFilter === 'edit') {
             if (this.topicFilterGroup) {
                 this.topicFilterGroup.style.display = 'flex';
+            }
+            if (this.snsFilterGroup) {
+                this.snsFilterGroup.style.display = 'flex';
             }
             if (this.sourceFilterGroup) {
                 this.sourceFilterGroup.style.display = 'none';
             }
         }
-        // 레퍼런스 글 필터일 때: 소스 필터 표시, 주제 필터 숨김
+        // 레퍼런스 글 필터일 때: 소스 필터 표시, 주제 필터 및 SNS 필터 숨김
         else if (this.savedFilter === 'reference' || this.savedFilter === 'reference-used') {
             if (this.topicFilterGroup) {
                 this.topicFilterGroup.style.display = 'none';
+            }
+            if (this.snsFilterGroup) {
+                this.snsFilterGroup.style.display = 'none';
             }
             if (this.sourceFilterGroup) {
                 this.sourceFilterGroup.style.display = 'flex';
             }
         }
-        // 전체 필터일 때: 둘 다 숨김
+        // 전체 필터일 때: 모두 숨김
         else {
             if (this.topicFilterGroup) {
                 this.topicFilterGroup.style.display = 'none';
+            }
+            if (this.snsFilterGroup) {
+                this.snsFilterGroup.style.display = 'none';
             }
             if (this.sourceFilterGroup) {
                 this.sourceFilterGroup.style.display = 'none';
@@ -1635,6 +1857,11 @@ class DualTextWriter {
             if (panel === 'ref' && this.refTopicInput) {
                 this.refTopicInput.value = '';
             }
+            // SNS 플랫폼 선택 초기화
+            if (panel === 'edit') {
+                this.selectedSnsPlatforms = [];
+                this.renderSnsPlatformTags();
+            }
             this.updateCharacterCount(panel);
             textInput.focus();
         }
@@ -1704,6 +1931,25 @@ class DualTextWriter {
                     // 빈 배열로 설정 (null이 아닌 빈 배열)
                     textData.linkedReferences = [];
                 }
+                
+                // ✅ SNS 플랫폼 저장 (유효성 검증 포함)
+                if (this.selectedSnsPlatforms && Array.isArray(this.selectedSnsPlatforms)) {
+                    // 유효한 플랫폼 ID만 필터링 (DualTextWriter.SNS_PLATFORMS에 정의된 ID만 허용)
+                    const validPlatformIds = DualTextWriter.SNS_PLATFORMS.map(p => p.id);
+                    const validPlatforms = this.selectedSnsPlatforms.filter(platformId =>
+                        validPlatformIds.includes(platformId)
+                    );
+                    
+                    // 빈 배열도 저장 (기존 데이터 호환성)
+                    textData.platforms = validPlatforms;
+                    
+                    if (validPlatforms.length > 0) {
+                        console.log(`📱 ${validPlatforms.length}개 SNS 플랫폼 저장됨:`, validPlatforms);
+                    }
+                } else {
+                    // selectedSnsPlatforms가 없거나 배열이 아닌 경우 빈 배열로 설정
+                    textData.platforms = [];
+                }
             }
             
             // 레퍼런스 글 저장 시 주제 추가 (선택사항)
@@ -1766,7 +2012,8 @@ class DualTextWriter {
             contentHash: panel === 'ref' ? textData.contentHash : undefined,
             hashVersion: panel === 'ref' ? textData.hashVersion : undefined,
             linkedReferences: panel === 'edit' ? textData.linkedReferences : undefined,
-            referenceMeta: panel === 'edit' ? textData.referenceMeta : undefined
+            referenceMeta: panel === 'edit' ? textData.referenceMeta : undefined,
+            platforms: panel === 'edit' ? (textData.platforms || []) : undefined
         };
 
         // Optimistic UI: 즉시 로컬 데이터 업데이트 및 UI 반영
@@ -1789,7 +2036,7 @@ class DualTextWriter {
             this.refTopicInput.value = '';
         }
         
-        // ✅ 작성글 저장 후 선택된 레퍼런스 초기화
+        // ✅ 작성글 저장 후 선택된 레퍼런스 및 SNS 플랫폼 초기화
         if (panel === 'edit') {
             this.selectedReferences = [];
             this.renderSelectedReferenceTags();
@@ -1797,6 +2044,11 @@ class DualTextWriter {
                 this.selectedRefCount.textContent = '(0개 선택됨)';
             }
             console.log('✅ 레퍼런스 선택 초기화 완료');
+            
+            // SNS 플랫폼 선택 초기화
+            this.selectedSnsPlatforms = [];
+            this.renderSnsPlatformTags();
+            console.log('✅ SNS 플랫폼 선택 초기화 완료');
         }
         
         this.updateCharacterCount(panel);
@@ -1866,10 +2118,13 @@ class DualTextWriter {
         const topicOrSourceFilter = this.savedFilter === 'edit' 
             ? (this.currentTopicFilter || 'all')
             : (this.currentSourceFilter || 'all');
+        const snsFilterKey = this.savedFilter === 'edit' && this.currentSnsFilterMode && this.currentSnsFilterMode !== 'all' && this.currentSnsFilterPlatform
+            ? `${this.currentSnsFilterMode}_${this.currentSnsFilterPlatform}`
+            : 'all';
         const searchKey = (this.savedSearch && this.savedSearch.trim()) 
             ? this.savedSearch.trim().toLowerCase() 
             : '';
-        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${topicOrSourceFilter}_${searchKey}`;
+        const cacheKey = `${this.savedFilter}_${this.referenceTypeFilter || 'all'}_${topicOrSourceFilter}_${snsFilterKey}_${searchKey}`;
         
         // 캐시 확인 (같은 필터 조건 + 검색어에서 재호출 방지)
         if (this.renderSavedTextsCache && this.renderSavedTextsCacheKey === cacheKey) {
@@ -1919,6 +2174,23 @@ class DualTextWriter {
                 return itemTopic === this.currentSourceFilter;
             });
         }
+        
+        // SNS 플랫폼 필터 적용 (작성 글용)
+        if (this.savedFilter === 'edit' && this.currentSnsFilterMode && this.currentSnsFilterMode !== 'all' && this.currentSnsFilterPlatform) {
+            list = list.filter(item => {
+                // platforms 필드가 없거나 배열이 아닌 경우 빈 배열로 처리
+                const platforms = Array.isArray(item.platforms) ? item.platforms : [];
+                
+                if (this.currentSnsFilterMode === 'has') {
+                    // 특정 SNS에 올린 글: platforms 배열에 해당 플랫폼 ID가 있는 경우
+                    return platforms.includes(this.currentSnsFilterPlatform);
+                } else if (this.currentSnsFilterMode === 'not-has') {
+                    // 특정 SNS에 올리지 않은 글: platforms 배열에 해당 플랫폼 ID가 없는 경우
+                    return !platforms.includes(this.currentSnsFilterPlatform);
+                }
+                return true;
+            });
+        }
 
         // ✅ 검색 필터 적용 (내용 + 주제에서 검색)
         if (this.savedSearch && this.savedSearch.trim()) {
@@ -1935,6 +2207,7 @@ class DualTextWriter {
         // 필터 옵션 업데이트
         if (this.savedFilter === 'edit') {
             this.updateTopicFilterOptions();
+            this.updateSnsFilterOptions();
         } else if (this.savedFilter === 'reference' || this.savedFilter === 'reference-used') {
             this.updateSourceFilterOptions();
         }
@@ -2262,6 +2535,31 @@ class DualTextWriter {
             }
         }
         
+        // ✅ SNS 플랫폼 배지 생성 (작성 글용)
+        let snsPlatformsHtml = '';
+        if (isEdit && Array.isArray(item.platforms) && item.platforms.length > 0) {
+            // 유효한 플랫폼 ID만 필터링
+            const validPlatformIds = DualTextWriter.SNS_PLATFORMS.map(p => p.id);
+            const validPlatforms = item.platforms
+                .filter(platformId => validPlatformIds.includes(platformId))
+                .map(platformId => {
+                    const platform = DualTextWriter.SNS_PLATFORMS.find(p => p.id === platformId);
+                    return platform ? { id: platformId, name: platform.name, icon: platform.icon } : null;
+                })
+                .filter(Boolean);
+            
+            if (validPlatforms.length > 0) {
+                const platformsList = validPlatforms.map(p => 
+                    `<span class="sns-platform-badge" role="listitem" aria-label="${this.escapeHtml(p.name)} 플랫폼">${p.icon} ${this.escapeHtml(p.name)}</span>`
+                ).join('');
+                snsPlatformsHtml = `
+                    <div class="saved-item-platforms" role="list" aria-label="SNS 플랫폼 목록">
+                        ${platformsList}
+                    </div>
+                `;
+            }
+        }
+        
         return `
         <div class="saved-item ${index === 0 ? 'new' : ''}" data-item-id="${item.id}" role="article" aria-labelledby="item-header-${item.id}">
             <div class="saved-item-header" id="item-header-${item.id}">
@@ -2277,6 +2575,7 @@ class DualTextWriter {
                 ${usedInEditsBadge ? `<span class="meta-separator">·</span>${usedInEditsBadge}` : ''}
             </div>
             ${item.topic ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(item.topic)}">🏷️ ${this.escapeHtml(item.topic)}</div>` : ''}
+            ${snsPlatformsHtml}
             <div class="saved-item-content ${expanded ? 'expanded' : ''}" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${item.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>
             ${timelineHtml ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>` : ''}
@@ -3388,6 +3687,13 @@ class DualTextWriter {
                 if (this.editTopicInput) {
                     this.editTopicInput.value = item.topic || '';
                 }
+                // SNS 플랫폼 로드 (수정/작성 글인 경우)
+                if (item.platforms && Array.isArray(item.platforms)) {
+                    this.selectedSnsPlatforms = [...item.platforms];
+                } else {
+                    this.selectedSnsPlatforms = [];
+                }
+                this.renderSnsPlatformTags();
                 this.updateCharacterCount('edit');
                 this.editTextInput.focus();
                 this.showMessage('수정 글을 편집 영역으로 불러왔습니다.', 'success');
@@ -4290,7 +4596,10 @@ class DualTextWriter {
                     
                     // ✅ 연결된 레퍼런스 (기존 데이터는 undefined이므로 빈 배열로 처리)
                     linkedReferences: Array.isArray(data.linkedReferences) ? data.linkedReferences : [],
-                    referenceMeta: data.referenceMeta || undefined
+                    referenceMeta: data.referenceMeta || undefined,
+                    
+                    // ✅ SNS 플랫폼 (기존 데이터는 undefined이므로 빈 배열로 처리)
+                    platforms: Array.isArray(data.platforms) ? data.platforms : []
                 });
             });
 
@@ -7909,6 +8218,34 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
             }
         }
         
+        // ✅ sourceTextId를 통해 원본 텍스트에서 SNS 플랫폼 정보 가져오기
+        let snsPlatformsHtml = '';
+        if (post.sourceTextId && this.savedTexts && Array.isArray(this.savedTexts)) {
+            const sourceText = this.savedTexts.find(text => text.id === post.sourceTextId);
+            if (sourceText && Array.isArray(sourceText.platforms) && sourceText.platforms.length > 0) {
+                // 유효한 플랫폼 ID만 필터링
+                const validPlatformIds = DualTextWriter.SNS_PLATFORMS.map(p => p.id);
+                const validPlatforms = sourceText.platforms
+                    .filter(platformId => validPlatformIds.includes(platformId))
+                    .map(platformId => {
+                        const platform = DualTextWriter.SNS_PLATFORMS.find(p => p.id === platformId);
+                        return platform ? { id: platformId, name: platform.name, icon: platform.icon } : null;
+                    })
+                    .filter(Boolean);
+                
+                if (validPlatforms.length > 0) {
+                    const platformsList = validPlatforms.map(p => 
+                        `<span class="sns-platform-badge" role="listitem" aria-label="${this.escapeHtml(p.name)} 플랫폼">${p.icon} ${this.escapeHtml(p.name)}</span>`
+                    ).join('');
+                    snsPlatformsHtml = `
+                        <div class="tracking-post-platforms" role="list" aria-label="SNS 플랫폼 목록">
+                            ${platformsList}
+                        </div>
+                    `;
+                }
+            }
+        }
+        
         // localStorage에서 확장 상태 복원 (통일된 스키마: card:{postId}:expanded)
         const expanded = (localStorage.getItem(`card:${post.id}:expanded`) === '1');
         const shouldShowToggle = post.content && post.content.length > 100;
@@ -7928,6 +8265,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                     </div>
                 </div>
                 ${topic ? `<div class="tracking-post-topic" aria-label="주제: ${this.escapeHtml(topic)}">🏷️ ${this.escapeHtml(topic)}</div>` : ''}
+                ${snsPlatformsHtml}
                 <div class="tracking-post-content ${expanded ? 'expanded' : ''}" aria-label="포스트 내용">${this.escapeHtml(post.content || '')}</div>
                 ${shouldShowToggle ? `<button class="tracking-post-toggle" data-action="toggle-content" data-post-id="${post.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>` : ''}
                 
