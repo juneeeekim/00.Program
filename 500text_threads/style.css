@@ -566,7 +566,8 @@ body {
     /* Panel textarea styles */
     .writing-panel textarea {
     width: 100%;
-    min-height: 450px;
+    min-height: 300px; /* 450px -> 300px (SNS 플랫폼 선택 영역이 보이도록 최소 높이 감소) */
+    max-height: 500px; /* 최대 높이 제한 추가 */
     padding: 20px;
     border: 2px solid #e1e5e9;
     border-radius: 10px;
@@ -575,9 +576,10 @@ body {
     resize: vertical;
     font-family: inherit;
     transition: border-color 0.3s ease;
-    flex: 1;
+    flex: 1 1 auto; /* flex-grow: 1, flex-shrink: 1, flex-basis: auto (필요시 축소 가능) */
     box-sizing: border-box;
     margin: 10px 0;
+    overflow-y: auto; /* 내용이 많을 경우 스크롤 가능 */
     /* ?쒓? 以꾨컮轅?理쒖쟻??*/
     word-break: keep-all;
     overflow-wrap: break-word;
@@ -664,6 +666,7 @@ body {
     overflow: hidden;
     border: 1px solid #dee2e6;
     background: #fff;
+    flex-shrink: 0; /* 공간이 부족해도 축소되지 않도록 설정 */
 }
 
 /* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
@@ -3099,6 +3102,7 @@ body {
     /* SNS 플랫폼 선택 모바일 반응형 스타일 */
     .sns-platform-collapsible {
         margin: 10px 0;
+        flex-shrink: 0; /* 모바일에서도 공간이 부족해도 축소되지 않도록 설정 */
     }
     
     .sns-platform-section {
@@ -3130,9 +3134,11 @@ body {
     }
     
     .writing-panel textarea {
-    min-height: 300px;
+    min-height: 200px; /* 모바일에서도 SNS 플랫폼 선택 영역이 보이도록 최소 높이 감소 */
+    max-height: 400px; /* 최대 높이 제한 추가 */
     padding: 16px;
     font-size: 16px; /* 紐⑤컮?쇱뿉???뺣? 諛⑹? */
+    overflow-y: auto; /* 내용이 많을 경우 스크롤 가능 */
     }
     
     .panel-header {
