@@ -7900,6 +7900,15 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
         // Orphan 포스트는 시각적으로 다르게 표시
         const orphanClass = post.isOrphan ? 'orphan-post' : '';
         
+        // sourceTextId를 통해 원본 텍스트에서 주제 정보 가져오기
+        let topic = null;
+        if (post.sourceTextId && this.savedTexts && Array.isArray(this.savedTexts)) {
+            const sourceText = this.savedTexts.find(text => text.id === post.sourceTextId);
+            if (sourceText && sourceText.topic) {
+                topic = sourceText.topic;
+            }
+        }
+        
         // localStorage에서 확장 상태 복원 (통일된 스키마: card:{postId}:expanded)
         const expanded = (localStorage.getItem(`card:${post.id}:expanded`) === '1');
         const shouldShowToggle = post.content && post.content.length > 100;
@@ -7918,7 +7927,7 @@ DualTextWriter.prototype.renderTrackingPosts = function() {
                         </div>
                     </div>
                 </div>
-                
+                ${topic ? `<div class="tracking-post-topic" aria-label="주제: ${this.escapeHtml(topic)}">🏷️ ${this.escapeHtml(topic)}</div>` : ''}
                 <div class="tracking-post-content ${expanded ? 'expanded' : ''}" aria-label="포스트 내용">${this.escapeHtml(post.content || '')}</div>
                 ${shouldShowToggle ? `<button class="tracking-post-toggle" data-action="toggle-content" data-post-id="${post.id}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '내용 접기' : '내용 더보기'}">${expanded ? '접기' : '더보기'}</button>` : ''}
                 

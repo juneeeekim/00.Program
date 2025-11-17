@@ -1845,6 +1845,17 @@ body {
 }
 
 /* ?몃옒???ъ뒪???붾낫湲?湲곕뒫 ?ㅽ???*/
+.tracking-post-topic {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
 .tracking-post-content {
     color: #333;
     line-height: 1.7;
@@ -2925,6 +2936,14 @@ body {
     
     /* ??λ맂 湲 ??ぉ 二쇱젣 ?쒖떆 紐⑤컮??諛섏쓳??*/
     .saved-item-topic {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    
+    /* 트래킹 포스트 주제 모바일 반응형 스타일 */
+    .tracking-post-topic {
         font-size: 0.8rem;
         padding: 3px 6px;
         margin-top: 6px;
