@@ -656,20 +656,19 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* SNS 플랫폼 선택 그룹 */
-.sns-platform-group {
+/* SNS 플랫폼 선택 그룹 (아코디언 방식) */
+.sns-platform-collapsible {
     margin: 12px 0;
-    padding: 12px;
-    background: #f8f9fa;
     border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    background: #fff;
 }
 
-.sns-platform-label {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
+/* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
+.sns-platform-section {
+    padding: 16px;
+    background: #f8f9fa;
 }
 
 .sns-platform-tags {
@@ -3097,14 +3096,12 @@ body {
     }
     
     /* SNS 플랫폼 선택 모바일 반응형 스타일 */
-    .sns-platform-group {
+    .sns-platform-collapsible {
         margin: 10px 0;
-        padding: 10px;
     }
     
-    .sns-platform-label {
-        font-size: 0.85rem;
-        margin-bottom: 6px;
+    .sns-platform-section {
+        padding: 12px;
     }
     
     .sns-platform-tag {

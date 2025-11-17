@@ -98,6 +98,9 @@ class DualTextWriter {
         this.editTopicInput = document.getElementById('edit-topic-input');
         this.editSnsPlatformGroup = document.getElementById('edit-sns-platform-group');
         this.editSnsPlatformTags = document.getElementById('edit-sns-platform-tags');
+        this.snsPlatformCollapseToggle = document.getElementById('sns-platform-collapse-toggle');
+        this.snsPlatformContent = document.getElementById('sns-platform-content');
+        this.snsPlatformCount = document.getElementById('sns-platform-count');
         this.selectedSnsPlatforms = []; // 선택된 SNS 플랫폼 ID 배열
         this.editCurrentCount = document.getElementById('edit-current-count');
         this.editMaxCount = document.getElementById('edit-max-count');
@@ -394,6 +397,7 @@ class DualTextWriter {
      * - SNS 플랫폼 태그 렌더링
      * - 이벤트 리스너 바인딩 (이벤트 위임 사용)
      * - 선택 상태 관리
+     * - 아코디언 토글 기능
      */
     initSnsPlatformSelection() {
         // 유효성 검사
@@ -404,6 +408,21 @@ class DualTextWriter {
 
         // SNS 플랫폼 태그 렌더링
         this.renderSnsPlatformTags();
+
+        // 아코디언 토글 버튼 이벤트 바인딩
+        if (this.snsPlatformCollapseToggle) {
+            this.snsPlatformCollapseToggle.addEventListener('click', () => {
+                this.toggleSnsPlatformCollapse();
+            });
+            
+            // 키보드 이벤트 처리 (접근성)
+            this.snsPlatformCollapseToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.toggleSnsPlatformCollapse();
+                }
+            });
+        }
 
         // 이벤트 위임: 태그 클릭 이벤트 처리
         if (!this._snsPlatformEventBound) {
@@ -432,6 +451,38 @@ class DualTextWriter {
                     }
                 }
             });
+        }
+    }
+    
+    /**
+     * SNS 플랫폼 선택 패널 토글
+     * 
+     * - 패널 펼치기/접기
+     * - 아이콘 회전 애니메이션
+     * - ARIA 속성 업데이트
+     */
+    toggleSnsPlatformCollapse() {
+        try {
+            if (!this.snsPlatformContent || !this.snsPlatformCollapseToggle) {
+                console.warn('⚠️ SNS 플랫폼 패널 요소를 찾을 수 없습니다.');
+                return;
+            }
+            
+            const isExpanded = this.snsPlatformCollapseToggle.getAttribute('aria-expanded') === 'true';
+            
+            if (isExpanded) {
+                // 패널 접기
+                this.snsPlatformContent.classList.remove('expanded');
+                this.snsPlatformCollapseToggle.setAttribute('aria-expanded', 'false');
+                this.snsPlatformContent.setAttribute('aria-hidden', 'true');
+            } else {
+                // 패널 펼치기
+                this.snsPlatformContent.classList.add('expanded');
+                this.snsPlatformCollapseToggle.setAttribute('aria-expanded', 'true');
+                this.snsPlatformContent.setAttribute('aria-hidden', 'false');
+            }
+        } catch (error) {
+            console.error('SNS 플랫폼 패널 토글 실패:', error);
         }
     }
 
@@ -465,6 +516,9 @@ class DualTextWriter {
         }).join('');
 
         this.editSnsPlatformTags.innerHTML = tagsHtml;
+        
+        // 선택 개수 업데이트
+        this.updateSnsPlatformCount();
     }
 
     /**
@@ -492,6 +546,17 @@ class DualTextWriter {
 
         // UI 업데이트
         this.renderSnsPlatformTags();
+        this.updateSnsPlatformCount();
+    }
+    
+    /**
+     * SNS 플랫폼 선택 개수 업데이트
+     */
+    updateSnsPlatformCount() {
+        if (this.snsPlatformCount) {
+            const count = this.selectedSnsPlatforms.length;
+            this.snsPlatformCount.textContent = `(${count}개 선택됨)`;
+        }
     }
 
     async init() {
@@ -1861,6 +1926,7 @@ class DualTextWriter {
             if (panel === 'edit') {
                 this.selectedSnsPlatforms = [];
                 this.renderSnsPlatformTags();
+                this.updateSnsPlatformCount();
             }
             this.updateCharacterCount(panel);
             textInput.focus();
@@ -2048,6 +2114,7 @@ class DualTextWriter {
             // SNS 플랫폼 선택 초기화
             this.selectedSnsPlatforms = [];
             this.renderSnsPlatformTags();
+            this.updateSnsPlatformCount();
             console.log('✅ SNS 플랫폼 선택 초기화 완료');
         }
         
@@ -3694,6 +3761,7 @@ class DualTextWriter {
                     this.selectedSnsPlatforms = [];
                 }
                 this.renderSnsPlatformTags();
+                this.updateSnsPlatformCount();
                 this.updateCharacterCount('edit');
                 this.editTextInput.focus();
                 this.showMessage('수정 글을 편집 영역으로 불러왔습니다.', 'success');

@@ -221,11 +221,29 @@
                             </div>
                         </div>
 
-                        <!-- SNS 플랫폼 선택 영역 -->
-                        <div class="sns-platform-group" id="edit-sns-platform-group" role="group" aria-labelledby="sns-platform-label">
-                            <label id="sns-platform-label" class="sns-platform-label">SNS 플랫폼 (선택사항)</label>
-                            <div class="sns-platform-tags" id="edit-sns-platform-tags" role="list" aria-label="SNS 플랫폼 선택">
-                                <!-- 동적으로 SNS 플랫폼 태그가 생성됨 -->
+                        <!-- SNS 플랫폼 선택 영역 (아코디언 방식) -->
+                        <div class="sns-platform-collapsible" id="edit-sns-platform-group">
+                            <button 
+                                id="sns-platform-collapse-toggle" 
+                                class="collapse-toggle"
+                                type="button"
+                                aria-expanded="false"
+                                aria-controls="sns-platform-content"
+                                aria-label="SNS 플랫폼 선택 영역 펼치기/접기">
+                                <span class="toggle-icon">▶</span>
+                                <span class="toggle-text">📱 SNS 플랫폼 선택 (선택사항)</span>
+                                <span class="toggle-count" id="sns-platform-count">(0개 선택됨)</span>
+                            </button>
+                            
+                            <div 
+                                id="sns-platform-content" 
+                                class="collapse-content"
+                                aria-hidden="true">
+                                <div class="sns-platform-section">
+                                    <div class="sns-platform-tags" id="edit-sns-platform-tags" role="list" aria-label="SNS 플랫폼 선택">
+                                        <!-- 동적으로 SNS 플랫폼 태그가 생성됨 -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
