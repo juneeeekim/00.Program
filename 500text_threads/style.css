@@ -440,11 +440,12 @@ body {
     background: white;
     border-radius: 15px;
     padding: 25px;
+    padding-bottom: 35px; /* 버튼 영역을 위한 추가 하단 패딩 */
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
-    min-height: 700px;
-    height: 80vh;
+    min-height: 800px; /* 700px -> 800px (버튼이 모두 보이도록 높이 증가) */
+    height: 85vh; /* 80vh -> 85vh (버튼이 모두 보이도록 높이 증가) */
     }
     
     .panel-header {
@@ -3121,6 +3122,7 @@ body {
     /* ?⑤꼸 紐⑤컮??理쒖쟻??*/
     .writing-panel {
     padding: 16px;
+    padding-bottom: 25px; /* 버튼 영역을 위한 추가 하단 패딩 */
     min-height: auto;
     height: auto;
     border-radius: 12px;
