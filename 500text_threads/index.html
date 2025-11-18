@@ -87,6 +87,33 @@
                             <button class="segment-btn" data-limit="1000" role="tab" aria-selected="false">1,000자</button>
                         </div>
                     </div>
+                    
+                    <!-- SNS 플랫폼 선택 영역 (글자 제한 툴바 위치로 이동: writing-container 최상단) -->
+                    <div class="sns-platform-collapsible" id="edit-sns-platform-group" style="grid-column: 1 / -1;">
+                        <button 
+                            id="sns-platform-collapse-toggle" 
+                            class="collapse-toggle"
+                            type="button"
+                            aria-expanded="false"
+                            aria-controls="sns-platform-content"
+                            aria-label="SNS 플랫폼 선택 영역 펼치기/접기">
+                            <span class="toggle-icon">▶</span>
+                            <span class="toggle-text">📱 SNS 플랫폼 선택 (선택사항)</span>
+                            <span class="toggle-count" id="sns-platform-count">(0개 선택됨)</span>
+                        </button>
+                        
+                        <div 
+                            id="sns-platform-content" 
+                            class="collapse-content"
+                            aria-hidden="true">
+                            <div class="sns-platform-section">
+                                <div class="sns-platform-tags" id="edit-sns-platform-tags" role="group" aria-label="SNS 플랫폼 선택 (여러 개 선택 가능)">
+                                    <!-- 동적으로 SNS 플랫폼 태그가 생성됨 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- 레퍼런스 글 패널 -->
                     <div class="writing-panel left-panel">
                         <div class="panel-header">
@@ -218,32 +245,6 @@
                                 <span class="separator">/</span>
                                 <span id="edit-max-count">500</span>
                                 <span class="unit">자</span>
-                            </div>
-                        </div>
-
-                        <!-- SNS 플랫폼 선택 영역 (최상단으로 이동: 헤더 바로 아래) -->
-                        <div class="sns-platform-collapsible" id="edit-sns-platform-group">
-                            <button 
-                                id="sns-platform-collapse-toggle" 
-                                class="collapse-toggle"
-                                type="button"
-                                aria-expanded="false"
-                                aria-controls="sns-platform-content"
-                                aria-label="SNS 플랫폼 선택 영역 펼치기/접기">
-                                <span class="toggle-icon">▶</span>
-                                <span class="toggle-text">📱 SNS 플랫폼 선택 (선택사항)</span>
-                                <span class="toggle-count" id="sns-platform-count">(0개 선택됨)</span>
-                            </button>
-                            
-                            <div 
-                                id="sns-platform-content" 
-                                class="collapse-content"
-                                aria-hidden="true">
-                                <div class="sns-platform-section">
-                                    <div class="sns-platform-tags" id="edit-sns-platform-tags" role="group" aria-label="SNS 플랫폼 선택 (여러 개 선택 가능)">
-                                        <!-- 동적으로 SNS 플랫폼 태그가 생성됨 -->
-                                    </div>
-                                </div>
                             </div>
                         </div>
 

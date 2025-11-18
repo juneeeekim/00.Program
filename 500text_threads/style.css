@@ -659,9 +659,9 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* SNS 플랫폼 선택 그룹 (아코디언 방식) - 최상단 배치 */
+/* SNS 플랫폼 선택 그룹 (아코디언 방식) - 글자 제한 툴바 위치로 이동 */
 .sns-platform-collapsible {
-    margin: 0 0 12px 0; /* 상단 마진 제거 (헤더 바로 아래), 하단 마진 유지 */
+    margin: 0 0 12px 0; /* 상단 마진 제거 (글자 제한 툴바 바로 아래), 하단 마진 유지 */
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #dee2e6;
