@@ -667,6 +667,9 @@ body {
     border: 1px solid #dee2e6;
     background: #fff;
     flex-shrink: 0; /* 공간이 부족해도 축소되지 않도록 설정 */
+    width: 50%; /* 너비를 50%로 제한하여 공간 효율성 향상 (회의록 합의안) */
+    max-width: 400px; /* 최대 너비 제한으로 대형 화면에서도 적절한 크기 유지 */
+    align-self: flex-start; /* 왼쪽 정렬로 자연스러운 흐름 유지 (한국어 UI 특성) */
 }
 
 /* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
@@ -3103,6 +3106,8 @@ body {
     .sns-platform-collapsible {
         margin: 10px 0;
         flex-shrink: 0; /* 모바일에서도 공간이 부족해도 축소되지 않도록 설정 */
+        width: 100%; /* 모바일에서는 전체 너비 유지 (반응형 대응) */
+        max-width: none; /* 모바일에서는 최대 너비 제한 해제 */
     }
     
     .sns-platform-section {

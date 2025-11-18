@@ -398,59 +398,79 @@ class DualTextWriter {
      * - 이벤트 리스너 바인딩 (이벤트 위임 사용)
      * - 선택 상태 관리
      * - 아코디언 토글 기능
+     * 
+     * @throws {Error} 필수 DOM 요소가 없을 경우 에러 로깅
      */
     initSnsPlatformSelection() {
-        // 유효성 검사
-        if (!this.editSnsPlatformTags) {
-            console.warn('⚠️ SNS 플랫폼 선택 UI 요소를 찾을 수 없습니다.');
-            return;
-        }
+        try {
+            // 유효성 검사: 필수 DOM 요소 확인
+            if (!this.editSnsPlatformTags) {
+                console.warn('⚠️ SNS 플랫폼 선택 UI 요소를 찾을 수 없습니다.');
+                return;
+            }
 
-        // SNS 플랫폼 태그 렌더링
-        this.renderSnsPlatformTags();
+            // SNS 플랫폼 태그 렌더링
+            this.renderSnsPlatformTags();
 
-        // 아코디언 토글 버튼 이벤트 바인딩
-        if (this.snsPlatformCollapseToggle) {
-            this.snsPlatformCollapseToggle.addEventListener('click', () => {
-                this.toggleSnsPlatformCollapse();
-            });
-            
-            // 키보드 이벤트 처리 (접근성)
-            this.snsPlatformCollapseToggle.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
+            // 아코디언 토글 버튼 이벤트 바인딩
+            if (this.snsPlatformCollapseToggle) {
+                // 클릭 이벤트: 마우스 및 터치 디바이스 지원
+                this.snsPlatformCollapseToggle.addEventListener('click', () => {
                     this.toggleSnsPlatformCollapse();
-                }
-            });
-        }
-
-        // 이벤트 위임: 태그 클릭 이벤트 처리
-        if (!this._snsPlatformEventBound) {
-            this._snsPlatformEventBound = true;
-            this.editSnsPlatformTags.addEventListener('click', (e) => {
-                const tag = e.target.closest('.sns-platform-tag');
-                if (!tag) return;
-
-                const platformId = tag.getAttribute('data-platform-id');
-                if (!platformId) return;
-
-                e.preventDefault();
-                this.toggleSnsPlatform(platformId);
-            });
-
-            // 키보드 이벤트 처리 (접근성)
-            this.editSnsPlatformTags.addEventListener('keydown', (e) => {
-                const tag = e.target.closest('.sns-platform-tag');
-                if (!tag) return;
-
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const platformId = tag.getAttribute('data-platform-id');
-                    if (platformId) {
-                        this.toggleSnsPlatform(platformId);
+                });
+                
+                // 키보드 이벤트 처리 (접근성): Enter 및 Space 키 지원
+                this.snsPlatformCollapseToggle.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.toggleSnsPlatformCollapse();
                     }
-                }
-            });
+                });
+            } else {
+                console.warn('⚠️ SNS 플랫폼 토글 버튼을 찾을 수 없습니다.');
+            }
+
+            // 이벤트 위임: 태그 클릭 이벤트 처리 (성능 최적화: 한 번만 바인딩)
+            if (!this._snsPlatformEventBound) {
+                this._snsPlatformEventBound = true;
+                
+                // 클릭 이벤트: 플랫폼 태그 선택/해제
+                this.editSnsPlatformTags.addEventListener('click', (e) => {
+                    const tag = e.target.closest('.sns-platform-tag');
+                    if (!tag) return;
+
+                    const platformId = tag.getAttribute('data-platform-id');
+                    if (!platformId) {
+                        console.warn('⚠️ 플랫폼 ID를 찾을 수 없습니다.');
+                        return;
+                    }
+
+                    e.preventDefault();
+                    this.toggleSnsPlatform(platformId);
+                });
+
+                // 키보드 이벤트 처리 (접근성): 키보드 네비게이션 지원
+                this.editSnsPlatformTags.addEventListener('keydown', (e) => {
+                    const tag = e.target.closest('.sns-platform-tag');
+                    if (!tag) return;
+
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const platformId = tag.getAttribute('data-platform-id');
+                        if (platformId) {
+                            this.toggleSnsPlatform(platformId);
+                        } else {
+                            console.warn('⚠️ 키보드 이벤트: 플랫폼 ID를 찾을 수 없습니다.');
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('❌ SNS 플랫폼 선택 기능 초기화 실패:', error);
+            // 사용자에게 친화적인 메시지 표시 (선택사항)
+            if (this.showMessage) {
+                this.showMessage('SNS 플랫폼 선택 기능을 초기화하는 중 오류가 발생했습니다.', 'error');
+            }
         }
     }
     
@@ -458,104 +478,187 @@ class DualTextWriter {
      * SNS 플랫폼 선택 패널 토글
      * 
      * - 패널 펼치기/접기
-     * - 아이콘 회전 애니메이션
-     * - ARIA 속성 업데이트
+     * - 아이콘 회전 애니메이션 (CSS transition으로 처리)
+     * - ARIA 속성 업데이트 (접근성 향상)
+     * 
+     * @throws {Error} DOM 요소가 없을 경우 에러 로깅
      */
     toggleSnsPlatformCollapse() {
         try {
+            // 유효성 검사: 필수 DOM 요소 확인
             if (!this.snsPlatformContent || !this.snsPlatformCollapseToggle) {
                 console.warn('⚠️ SNS 플랫폼 패널 요소를 찾을 수 없습니다.');
                 return;
             }
             
+            // 현재 확장 상태 확인 (ARIA 속성 기반)
             const isExpanded = this.snsPlatformCollapseToggle.getAttribute('aria-expanded') === 'true';
             
             if (isExpanded) {
-                // 패널 접기
+                // 패널 접기: 콘텐츠 숨김 및 ARIA 속성 업데이트
                 this.snsPlatformContent.classList.remove('expanded');
                 this.snsPlatformCollapseToggle.setAttribute('aria-expanded', 'false');
                 this.snsPlatformContent.setAttribute('aria-hidden', 'true');
             } else {
-                // 패널 펼치기
+                // 패널 펼치기: 콘텐츠 표시 및 ARIA 속성 업데이트
                 this.snsPlatformContent.classList.add('expanded');
                 this.snsPlatformCollapseToggle.setAttribute('aria-expanded', 'true');
                 this.snsPlatformContent.setAttribute('aria-hidden', 'false');
             }
         } catch (error) {
-            console.error('SNS 플랫폼 패널 토글 실패:', error);
+            console.error('❌ SNS 플랫폼 패널 토글 실패:', error);
+            // 사용자에게 친화적인 메시지 표시 (선택사항)
+            if (this.showMessage) {
+                this.showMessage('패널을 토글하는 중 오류가 발생했습니다.', 'error');
+            }
         }
     }
 
     /**
      * SNS 플랫폼 태그 렌더링
+     * 
+     * - 모든 SNS 플랫폼 태그를 동적으로 생성
+     * - 선택 상태에 따른 스타일 및 ARIA 속성 적용
+     * - XSS 방지를 위한 HTML 이스케이프 처리
+     * 
+     * @throws {Error} DOM 요소나 플랫폼 데이터가 없을 경우 조용히 반환
      */
     renderSnsPlatformTags() {
-        if (!this.editSnsPlatformTags || !DualTextWriter.SNS_PLATFORMS) {
-            return;
-        }
+        try {
+            // 유효성 검사: 필수 DOM 요소 및 데이터 확인
+            if (!this.editSnsPlatformTags) {
+                console.warn('⚠️ SNS 플랫폼 태그 컨테이너를 찾을 수 없습니다.');
+                return;
+            }
 
-        const tagsHtml = DualTextWriter.SNS_PLATFORMS.map(platform => {
-            const isSelected = this.selectedSnsPlatforms.includes(platform.id);
-            const selectedClass = isSelected ? 'selected' : '';
-            const ariaChecked = isSelected ? 'true' : 'false';
+            if (!DualTextWriter.SNS_PLATFORMS || !Array.isArray(DualTextWriter.SNS_PLATFORMS)) {
+                console.warn('⚠️ SNS 플랫폼 데이터가 유효하지 않습니다.');
+                return;
+            }
+
+            // 플랫폼 태그 HTML 생성 (XSS 방지: escapeHtml 사용)
+            const tagsHtml = DualTextWriter.SNS_PLATFORMS.map(platform => {
+                // 플랫폼 선택 상태 확인
+                const isSelected = this.selectedSnsPlatforms.includes(platform.id);
+                const selectedClass = isSelected ? 'selected' : '';
+                const ariaChecked = isSelected ? 'true' : 'false';
+                const ariaLabelText = `${this.escapeHtml(platform.name)} ${isSelected ? '선택됨' : '선택 안됨'}`;
+                
+                // 안전한 HTML 생성 (XSS 방지)
+                return `
+                    <button 
+                        type="button"
+                        class="sns-platform-tag ${selectedClass}" 
+                        data-platform-id="${this.escapeHtml(platform.id)}"
+                        role="checkbox"
+                        aria-label="${ariaLabelText}"
+                        aria-checked="${ariaChecked}"
+                        tabindex="0"
+                    >
+                        <span class="sns-platform-icon" aria-hidden="true">${platform.icon}</span>
+                        <span class="sns-platform-name">${this.escapeHtml(platform.name)}</span>
+                    </button>
+                `;
+            }).join('');
+
+            // DOM 업데이트 (성능: 한 번의 innerHTML 할당)
+            this.editSnsPlatformTags.innerHTML = tagsHtml;
             
-            return `
-                <button 
-                    type="button"
-                    class="sns-platform-tag ${selectedClass}" 
-                    data-platform-id="${this.escapeHtml(platform.id)}"
-                    role="listitem"
-                    aria-label="${this.escapeHtml(platform.name)} ${isSelected ? '선택됨' : '선택 안됨'}"
-                    aria-checked="${ariaChecked}"
-                    tabindex="0"
-                >
-                    <span class="sns-platform-icon" aria-hidden="true">${platform.icon}</span>
-                    <span class="sns-platform-name">${this.escapeHtml(platform.name)}</span>
-                </button>
-            `;
-        }).join('');
-
-        this.editSnsPlatformTags.innerHTML = tagsHtml;
-        
-        // 선택 개수 업데이트
-        this.updateSnsPlatformCount();
+            // 선택 개수 업데이트
+            this.updateSnsPlatformCount();
+        } catch (error) {
+            console.error('❌ SNS 플랫폼 태그 렌더링 실패:', error);
+            // 사용자에게 친화적인 메시지 표시 (선택사항)
+            if (this.showMessage) {
+                this.showMessage('SNS 플랫폼 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+            }
+        }
     }
 
     /**
      * SNS 플랫폼 선택/해제 토글
      * 
-     * @param {string} platformId - 플랫폼 ID
+     * - 플랫폼 선택 상태를 토글
+     * - 유효성 검증 후 상태 변경
+     * - UI 자동 업데이트
+     * 
+     * @param {string} platformId - 플랫폼 ID (예: 'threads', 'instagram')
+     * @throws {Error} 유효하지 않은 플랫폼 ID일 경우 경고 로깅
      */
     toggleSnsPlatform(platformId) {
-        // 유효성 검증: 플랫폼 ID가 유효한지 확인
-        const platform = DualTextWriter.SNS_PLATFORMS.find(p => p.id === platformId);
-        if (!platform) {
-            console.warn(`⚠️ 유효하지 않은 플랫폼 ID: ${platformId}`);
-            return;
-        }
+        try {
+            // 입력 유효성 검증
+            if (!platformId || typeof platformId !== 'string') {
+                console.warn('⚠️ 유효하지 않은 플랫폼 ID 형식:', platformId);
+                return;
+            }
 
-        // 선택 상태 토글
-        const index = this.selectedSnsPlatforms.indexOf(platformId);
-        if (index >= 0) {
-            // 이미 선택된 경우 제거
-            this.selectedSnsPlatforms.splice(index, 1);
-        } else {
-            // 선택되지 않은 경우 추가
-            this.selectedSnsPlatforms.push(platformId);
-        }
+            // 플랫폼 데이터 유효성 검증: 플랫폼 ID가 정의된 플랫폼 목록에 있는지 확인
+            if (!DualTextWriter.SNS_PLATFORMS || !Array.isArray(DualTextWriter.SNS_PLATFORMS)) {
+                console.warn('⚠️ SNS 플랫폼 데이터가 유효하지 않습니다.');
+                return;
+            }
 
-        // UI 업데이트
-        this.renderSnsPlatformTags();
-        this.updateSnsPlatformCount();
+            const platform = DualTextWriter.SNS_PLATFORMS.find(p => p.id === platformId);
+            if (!platform) {
+                console.warn(`⚠️ 유효하지 않은 플랫폼 ID: ${platformId}`);
+                return;
+            }
+
+            // 선택 상태 토글: 배열에서 추가 또는 제거
+            const currentIndex = this.selectedSnsPlatforms.indexOf(platformId);
+            if (currentIndex >= 0) {
+                // 이미 선택된 경우: 선택 해제
+                this.selectedSnsPlatforms.splice(currentIndex, 1);
+            } else {
+                // 선택되지 않은 경우: 선택 추가
+                this.selectedSnsPlatforms.push(platformId);
+            }
+
+            // UI 업데이트: 태그 재렌더링 및 개수 업데이트
+            this.renderSnsPlatformTags();
+            this.updateSnsPlatformCount();
+        } catch (error) {
+            console.error('❌ SNS 플랫폼 토글 실패:', error);
+            // 사용자에게 친화적인 메시지 표시 (선택사항)
+            if (this.showMessage) {
+                this.showMessage('플랫폼 선택을 변경하는 중 오류가 발생했습니다.', 'error');
+            }
+        }
     }
     
     /**
      * SNS 플랫폼 선택 개수 업데이트
+     * 
+     * - 선택된 플랫폼 개수를 UI에 표시
+     * - 접근성을 위한 ARIA 속성 업데이트 (선택사항)
+     * 
+     * @throws {Error} DOM 요소가 없을 경우 조용히 반환
      */
     updateSnsPlatformCount() {
-        if (this.snsPlatformCount) {
-            const count = this.selectedSnsPlatforms.length;
-            this.snsPlatformCount.textContent = `(${count}개 선택됨)`;
+        try {
+            // 유효성 검사: DOM 요소 확인
+            if (!this.snsPlatformCount) {
+                // DOM 요소가 없어도 에러를 발생시키지 않음 (선택적 UI 요소)
+                return;
+            }
+
+            // 선택된 플랫폼 개수 계산
+            const selectedCount = Array.isArray(this.selectedSnsPlatforms) 
+                ? this.selectedSnsPlatforms.length 
+                : 0;
+
+            // UI 업데이트: 텍스트 콘텐츠 변경
+            this.snsPlatformCount.textContent = `(${selectedCount}개 선택됨)`;
+            
+            // 접근성 향상: ARIA 속성 업데이트 (부모 요소에 aria-live 속성이 있다면 자동으로 알림)
+            if (this.snsPlatformCollapseToggle) {
+                const ariaLabel = `SNS 플랫폼 선택 (${selectedCount}개 선택됨)`;
+                this.snsPlatformCollapseToggle.setAttribute('aria-label', ariaLabel);
+            }
+        } catch (error) {
+            console.error('❌ SNS 플랫폼 선택 개수 업데이트 실패:', error);
+            // 에러가 발생해도 앱 전체 동작에 영향을 주지 않도록 조용히 처리
         }
     }
 
