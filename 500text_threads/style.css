@@ -435,6 +435,43 @@ body {
     }
     }
     
+    /* 툴바 행 (글자 제한 + SNS 플랫폼 선택 같은 행 배치) */
+    .toolbar-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+    }
+    
+    /* 글자 제한 툴바 스타일 (같은 행 배치용) */
+    .char-limit-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-shrink: 0; /* 축소 방지 */
+    }
+    
+    /* 모바일 반응형: 세로 배치 */
+    @media (max-width: 768px) {
+        .toolbar-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+        }
+        
+        .char-limit-toolbar {
+            justify-content: center; /* 모바일에서는 중앙 정렬 */
+        }
+        
+        .sns-platform-collapsible {
+            width: 100%;
+            max-width: none;
+            min-width: auto;
+        }
+    }
+    
     /* Writing Panel */
     .writing-panel {
     background: white;
@@ -659,17 +696,17 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* SNS 플랫폼 선택 그룹 (아코디언 방식) - 글자 제한 툴바 위치로 이동 */
+/* SNS 플랫폼 선택 그룹 (아코디언 방식) - 글자 제한과 같은 행 배치 */
 .sns-platform-collapsible {
-    margin: 0 0 12px 0; /* 상단 마진 제거 (글자 제한 툴바 바로 아래), 하단 마진 유지 */
+    margin: 0; /* 마진 제거 (toolbar-row에서 gap으로 간격 처리) */
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #dee2e6;
     background: #fff;
     flex-shrink: 0; /* 공간이 부족해도 축소되지 않도록 설정 */
-    width: 100%; /* 전체 너비 사용으로 공간 효율성 극대화 */
-    max-width: none; /* 최대 너비 제한 해제 */
-    align-self: stretch; /* 전체 너비 차지 */
+    flex: 1; /* 남은 공간 차지 */
+    max-width: 600px; /* 적절한 최대 너비 설정 */
+    min-width: 300px; /* 최소 너비 보장 */
 }
 
 /* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
@@ -3104,10 +3141,11 @@ body {
     
     /* SNS 플랫폼 선택 모바일 반응형 스타일 */
     .sns-platform-collapsible {
-        margin: 10px 0;
+        margin: 0; /* 마진 제거 (toolbar-row에서 gap으로 간격 처리) */
         flex-shrink: 0; /* 모바일에서도 공간이 부족해도 축소되지 않도록 설정 */
         width: 100%; /* 모바일에서는 전체 너비 유지 (반응형 대응) */
         max-width: none; /* 모바일에서는 최대 너비 제한 해제 */
+        min-width: auto; /* 모바일에서는 최소 너비 제한 해제 */
     }
     
     .sns-platform-section {
