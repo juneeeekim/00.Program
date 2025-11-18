@@ -667,9 +667,9 @@ body {
     border: 1px solid #dee2e6;
     background: #fff;
     flex-shrink: 0; /* 공간이 부족해도 축소되지 않도록 설정 */
-    width: 50%; /* 너비를 50%로 제한하여 공간 효율성 향상 (회의록 합의안) */
-    max-width: 400px; /* 최대 너비 제한으로 대형 화면에서도 적절한 크기 유지 */
-    align-self: flex-start; /* 왼쪽 정렬로 자연스러운 흐름 유지 (한국어 UI 특성) */
+    width: 100%; /* 전체 너비 사용으로 공간 효율성 극대화 */
+    max-width: none; /* 최대 너비 제한 해제 */
+    align-self: stretch; /* 전체 너비 차지 */
 }
 
 /* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
@@ -679,9 +679,9 @@ body {
 }
 
 .sns-platform-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3열 그리드로 9개 버튼을 3줄로 깔끔하게 배치 */
+    gap: 10px; /* 간격 조정 */
     list-style: none;
     padding: 0;
     margin: 0;
@@ -3114,6 +3114,12 @@ body {
         padding: 12px;
     }
     
+    /* 모바일에서는 2열 그리드 */
+    .sns-platform-tags {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
     .sns-platform-tag {
         font-size: 0.8rem;
         padding: 5px 10px;
@@ -5443,6 +5449,12 @@ body {
 }
 
 @media (max-width: 480px) {
+    /* 작은 모바일에서 SNS 플랫폼 태그 1열로 변경 */
+    .sns-platform-tags {
+        grid-template-columns: 1fr; /* 작은 모바일에서는 1열 */
+        gap: 8px;
+    }
+    
     /* ?묒쓣 ???덈뒗 ?⑤꼸 */
     .reference-link-collapsible {
         margin: 10px 0;
