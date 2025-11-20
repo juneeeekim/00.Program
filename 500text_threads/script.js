@@ -2989,18 +2989,24 @@ class DualTextWriter {
 
     bindEvents() {
         // 사용자 인증 이벤트
-        this.loginBtn.addEventListener('click', () => this.login());
-        this.logoutBtn.addEventListener('click', () => this.logout());
+        if (this.loginBtn) {
+            this.loginBtn.addEventListener('click', () => this.login());
+        }
+        if (this.logoutBtn) {
+            this.logoutBtn.addEventListener('click', () => this.logout());
+        }
         
         // 새로고침 버튼 이벤트 리스너 (PC 전용)
         if (this.refreshBtn) {
             this.refreshBtn.addEventListener('click', () => this.refreshAllData());
         }
-        this.usernameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.login();
-            }
-        });
+        if (this.usernameInput) {
+            this.usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.login();
+                }
+            });
+        }
 
         // Google 로그인 이벤트
         const googleLoginBtn = document.getElementById('google-login-btn');
@@ -3015,22 +3021,38 @@ class DualTextWriter {
         setTimeout(() => this.initSavedFilters(), 0);
 
         // 레퍼런스 글 이벤트
-        this.refTextInput.addEventListener('input', () => {
-            this.updateCharacterCount('ref');
-            this.scheduleTempSave();
-        });
-        this.refClearBtn.addEventListener('click', () => this.clearText('ref'));
-        this.refSaveBtn.addEventListener('click', () => this.saveText('ref'));
-        this.refDownloadBtn.addEventListener('click', () => this.downloadAsTxt('ref'));
+        if (this.refTextInput) {
+            this.refTextInput.addEventListener('input', () => {
+                this.updateCharacterCount('ref');
+                this.scheduleTempSave();
+            });
+        }
+        if (this.refClearBtn) {
+            this.refClearBtn.addEventListener('click', () => this.clearText('ref'));
+        }
+        if (this.refSaveBtn) {
+            this.refSaveBtn.addEventListener('click', () => this.saveText('ref'));
+        }
+        if (this.refDownloadBtn) {
+            this.refDownloadBtn.addEventListener('click', () => this.downloadAsTxt('ref'));
+        }
 
         // 수정/작성 글 이벤트
-        this.editTextInput.addEventListener('input', () => {
-            this.updateCharacterCount('edit');
-            this.scheduleTempSave();
-        });
-        this.editClearBtn.addEventListener('click', () => this.clearText('edit'));
-        this.editSaveBtn.addEventListener('click', () => this.saveText('edit'));
-        this.editDownloadBtn.addEventListener('click', () => this.downloadAsTxt('edit'));
+        if (this.editTextInput) {
+            this.editTextInput.addEventListener('input', () => {
+                this.updateCharacterCount('edit');
+                this.scheduleTempSave();
+            });
+        }
+        if (this.editClearBtn) {
+            this.editClearBtn.addEventListener('click', () => this.clearText('edit'));
+        }
+        if (this.editSaveBtn) {
+            this.editSaveBtn.addEventListener('click', () => this.saveText('edit'));
+        }
+        if (this.editDownloadBtn) {
+            this.editDownloadBtn.addEventListener('click', () => this.downloadAsTxt('edit'));
+        }
 
         // 반자동화 포스팅 이벤트
         const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
@@ -4114,7 +4136,7 @@ class DualTextWriter {
 
             this.showMessage(`${username}님, 환영합니다!`, 'success');
 
-                } catch (error) {
+        } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
