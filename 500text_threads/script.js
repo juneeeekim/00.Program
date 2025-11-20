@@ -7405,6 +7405,594 @@ class DualTextWriter {
         // 현재는 매번 계산하므로 별도 작업 불필요
         console.log('📚 레퍼런스 링크 캐시 무효화 (현재는 캐싱 미사용)');
     }
+    // Bottom sheet helpers
+    openBottomSheet(modalElement) {
+        if (!modalElement) return;
+        modalElement.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        const content = modalElement.querySelector('.modal-content');
+        
+        // backdrop click
+        modalElement._backdropHandler = (e) => {
+            if (e.target === modalElement) this.closeBottomSheet(modalElement);
+        };
+        modalElement.addEventListener('click', modalElement._backdropHandler);
+        // ESC close
+        modalElement._escHandler = (e) => { if (e.key === 'Escape') this.closeBottomSheet(modalElement); };
+        document.addEventListener('keydown', modalElement._escHandler);
+        // drag to close from handle or top area
+        let startY = null; let currentY = 0; let dragging = false;
+        const threshold = 100;
+        const handle = content.querySelector('.sheet-handle') || content;
+        const onStart = (y) => { dragging = true; startY = y; content.style.transition = 'none'; };
+        const onMove = (y) => {
+            if (!dragging) return; currentY = Math.max(0, y - startY); content.style.transform = `translateY(${currentY}px)`;
+        };
+        const onEnd = () => {
+            if (!dragging) return; content.style.transition = '';
+            if (currentY > threshold) { this.closeBottomSheet(modalElement); }
+            else { content.style.transform = 'translateY(0)'; }
+            dragging = false; startY = null; currentY = 0;
+        };
+        modalElement._touchStart = (e) => onStart(e.touches ? e.touches[0].clientY : e.clientY);
+        modalElement._touchMove = (e) => onMove(e.touches ? e.touches[0].clientY : e.clientY);
+        modalElement._touchEnd = () => onEnd();
+        
+        // Number stepper handlers
+        content.querySelectorAll('.number-stepper').forEach(stepper => {
+            stepper.onclick = (e) => {
+                e.preventDefault();
+                const targetId = stepper.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (!input) return;
+                const action = stepper.getAttribute('data-action');
+                const current = parseInt(input.value) || 0;
+                const min = parseInt(input.getAttribute('min')) || 0;
+                const max = parseInt(input.getAttribute('max')) || Infinity;
+                
+                let newValue = current;
+                if (action === 'increase') {
+                    newValue = Math.min(current + 1, max);
+                } else if (action === 'decrease') {
+                    newValue = Math.max(current - 1, min);
+                }
+                
+                // 유효성 검증: min/max 범위 내인지 확인
+                if (newValue >= min && newValue <= max) {
+                    input.value = newValue;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // 실시간 유효성 피드백: 범위를 벗어나면 스테퍼 비활성화
+                    const increaseBtn = input.parentElement.querySelector('.number-stepper[data-action="increase"]');
+                    const decreaseBtn = input.parentElement.querySelector('.number-stepper[data-action="decrease"]');
+                    if (increaseBtn) {
+                        increaseBtn.disabled = newValue >= max;
+                        increaseBtn.style.opacity = newValue >= max ? '0.5' : '1';
+                    }
+                    if (decreaseBtn) {
+                        decreaseBtn.disabled = newValue <= min;
+                        decreaseBtn.style.opacity = newValue <= min ? '0.5' : '1';
+                    }
+                }
+            };
+        });
+        
+        // Date tab handlers - 이벤트 위임 방식으로 안정적인 바인딩
+        // 기존 핸들러 제거 (중복 바인딩 방지)
+        if (content._dateTabHandler) {
+            content.removeEventListener('click', content._dateTabHandler);
+        }
+        
+        // 새로운 핸들러 생성 및 저장
+        content._dateTabHandler = (e) => {
+            const tab = e.target.closest('.date-tab');
+            if (!tab) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tabs = tab.closest('.date-selector-tabs');
+            if (!tabs) return;
+            
+            // 같은 폼 그룹 내의 날짜 입력 필드 찾기
+            const formGroup = tabs.closest('.form-group');
+            if (!formGroup) return;
+            
+            const dateInput = formGroup.querySelector('input[type="date"]');
+            if (!dateInput) {
+                console.warn('날짜 입력 필드를 찾을 수 없습니다:', formGroup);
+                return;
+            }
+            
+            // 모든 탭 비활성화 후 클릭한 탭 활성화
+            tabs.querySelectorAll('.date-tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            
+            const dateType = tab.getAttribute('data-date');
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (dateType === 'today') {
+                const todayStr = today.toISOString().split('T')[0];
+                dateInput.value = todayStr;
+                dateInput.style.display = 'none';
+                // input 이벤트 트리거하여 폼 검증 업데이트
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } else if (dateType === 'yesterday') {
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                dateInput.value = yesterdayStr;
+                dateInput.style.display = 'none';
+                // input 이벤트 트리거하여 폼 검증 업데이트
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } else if (dateType === 'custom') {
+                dateInput.style.display = 'block';
+                // 직접입력 필드가 보이도록 약간의 지연 후 포커스 (애니메이션 완료 후)
+                setTimeout(() => {
+                    dateInput.focus();
+                }, 50);
+                // 사용자 입력을 위해 현재 값을 유지하거나 오늘 날짜로 설정
+                if (!dateInput.value) {
+                    dateInput.value = today.toISOString().split('T')[0];
+                }
+                // input 이벤트 트리거
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        };
+        
+        // 이벤트 위임: 모달 컨텐츠에 한 번만 바인딩
+        content.addEventListener('click', content._dateTabHandler);
+        
+        // Focus scroll correction: 키패드가 가려지지 않도록 (안드로이드/아이폰 호환)
+        content.querySelectorAll('input, textarea').forEach(field => {
+            const handleFocus = (e) => {
+                // 여러 번 호출 방지
+                if (field._scrollHandled) return;
+                field._scrollHandled = true;
+                
+                setTimeout(() => {
+                    const rect = field.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+                    
+                    // 플랫폼별 키패드 높이 추정
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const isAndroid = /Android/.test(navigator.userAgent);
+                    const keyboardHeight = isIOS ? Math.max(300, viewportHeight * 0.35) :
+                                           isAndroid ? Math.max(250, viewportHeight * 0.4) :
+                                           Math.max(250, viewportHeight * 0.4);
+                    
+                    const fieldBottom = rect.bottom;
+                    const visibleArea = viewportHeight - keyboardHeight;
+                    
+                    if (fieldBottom > visibleArea) {
+                        const scrollOffset = fieldBottom - visibleArea + 30; // 여유 공간 증가
+                        
+                        // 모달 컨텐츠 스크롤
+                        if (content.scrollHeight > content.clientHeight) {
+                            content.scrollTop += scrollOffset;
+                        }
+                        
+                        // 전체 페이지 스크롤 (필요시)
+                        const modalRect = modalElement.getBoundingClientRect();
+                        if (modalRect.bottom > visibleArea) {
+                            // 부드러운 스크롤
+                            field.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'center', 
+                                inline: 'nearest' 
+                            });
+                        }
+                    }
+                    
+                    field._scrollHandled = false;
+                }, isIOS ? 500 : 300); // iOS는 키패드 애니메이션이 더 길 수 있음
+            };
+            
+            field.addEventListener('focus', handleFocus, { passive: true });
+            
+            // blur 시 플래그 리셋
+            field.addEventListener('blur', () => {
+                field._scrollHandled = false;
+            }, { passive: true });
+        });
+        handle.addEventListener('touchstart', modalElement._touchStart);
+        handle.addEventListener('touchmove', modalElement._touchMove);
+        handle.addEventListener('touchend', modalElement._touchEnd);
+        handle.addEventListener('mousedown', modalElement._touchStart);
+        window.addEventListener('mousemove', modalElement._touchMove);
+        window.addEventListener('mouseup', modalElement._touchEnd);
+    }
+
+    closeBottomSheet(modalElement) {
+        if (!modalElement) return;
+        
+        // 폼 값 초기화 전략: 바텀시트 닫을 때 모든 입력 필드 초기화
+        const content = modalElement.querySelector('.modal-content');
+        if (content) {
+            // 모든 input, textarea, select 초기화
+            const inputs = content.querySelectorAll('input:not([type="hidden"]), textarea, select');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else if (input.type === 'date') {
+                    input.value = '';
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            // 날짜 탭 초기화
+            const dateTabs = content.querySelectorAll('.date-tab');
+            dateTabs.forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+            const todayTab = content.querySelector('.date-tab[data-date="today"]');
+            if (todayTab) {
+                todayTab.classList.add('active');
+                todayTab.setAttribute('aria-selected', 'true');
+            }
+            
+            // 날짜 입력 필드 초기화
+            const dateInputs = content.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(input => {
+                input.style.display = 'none';
+            });
+            
+            // 스테퍼 버튼 상태 초기화
+            const steppers = content.querySelectorAll('.number-stepper');
+            steppers.forEach(stepper => {
+                stepper.disabled = false;
+                stepper.style.opacity = '1';
+            });
+            
+            // 폼 검증 메시지 제거
+            const errorMessages = content.querySelectorAll('.error-message, .validation-error');
+            errorMessages.forEach(msg => msg.remove());
+            
+            // 입력 필드의 에러 상태 제거
+            inputs.forEach(input => {
+                input.classList.remove('error', 'invalid');
+            });
+        }
+        
+        modalElement.style.display = 'none';
+        document.body.style.overflow = '';
+        
+        // cleanup listeners
+        if (modalElement._backdropHandler) modalElement.removeEventListener('click', modalElement._backdropHandler);
+        if (modalElement._escHandler) document.removeEventListener('keydown', modalElement._escHandler);
+        const handle = content ? (content.querySelector('.sheet-handle') || content) : null;
+        if (handle) {
+            if (modalElement._touchStart) handle.removeEventListener('touchstart', modalElement._touchStart);
+            if (modalElement._touchMove) handle.removeEventListener('touchmove', modalElement._touchMove);
+            if (modalElement._touchEnd) handle.removeEventListener('touchend', modalElement._touchEnd);
+            if (modalElement._touchStart) handle.removeEventListener('mousedown', modalElement._touchStart);
+            window.removeEventListener('mousemove', modalElement._touchMove || (()=>{}));
+            window.removeEventListener('mouseup', modalElement._touchEnd || (()=>{}));
+        }
+        
+        // 모달 상태 초기화
+        this.currentTrackingTextId = null;
+        this.editingMetricData = null;
+    }
+
+    // 일괄 선택 모드 이벤트 바인딩
+    bindBatchSelectEvents(postId, textId) {
+        const toggleBtn = document.getElementById('batch-select-toggle');
+        const selectInfo = document.getElementById('batch-select-info');
+        const selectAllBtn = document.getElementById('select-all-metrics');
+        const deselectAllBtn = document.getElementById('deselect-all-metrics');
+        const batchDeleteActions = document.getElementById('batch-delete-actions');
+        const batchDeleteBtn = document.getElementById('batch-delete-btn');
+        const content = document.getElementById('metrics-manage-content');
+        
+        if (!toggleBtn || !content) return;
+        
+        // 일괄 선택 모드 토글
+        toggleBtn.addEventListener('click', () => {
+            this.isBatchSelectMode = !this.isBatchSelectMode;
+            this.selectedMetricIndices = [];
+            
+            if (this.isBatchSelectMode) {
+                toggleBtn.textContent = '❌ 취소';
+                toggleBtn.style.background = '#dc3545';
+                if (selectInfo) selectInfo.style.display = 'block';
+                if (batchDeleteActions) batchDeleteActions.style.display = 'none';
+            } else {
+                toggleBtn.textContent = '📋 일괄 선택';
+                toggleBtn.style.background = '';
+                if (selectInfo) selectInfo.style.display = 'none';
+                if (batchDeleteActions) batchDeleteActions.style.display = 'none';
+            }
+            
+            // 메트릭 목록 다시 렌더링
+            this.refreshMetricsListForManage(postId, textId);
+        });
+        
+        // 전체 선택
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                const checkboxes = content.querySelectorAll('.metric-checkbox');
+                checkboxes.forEach(cb => {
+                    const index = parseInt(cb.getAttribute('data-metric-index'));
+                    if (!this.selectedMetricIndices.includes(index)) {
+                        this.selectedMetricIndices.push(index);
+                    }
+                    cb.checked = true;
+                });
+                this.updateBatchSelectUI();
+            });
+        }
+        
+        // 전체 해제
+        if (deselectAllBtn) {
+            deselectAllBtn.addEventListener('click', () => {
+                this.selectedMetricIndices = [];
+                const checkboxes = content.querySelectorAll('.metric-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+                this.updateBatchSelectUI();
+            });
+        }
+        
+        // 체크박스 클릭 이벤트
+        content.addEventListener('change', (e) => {
+            if (e.target.classList.contains('metric-checkbox')) {
+                const index = parseInt(e.target.getAttribute('data-metric-index'));
+                if (e.target.checked) {
+                    if (!this.selectedMetricIndices.includes(index)) {
+                        this.selectedMetricIndices.push(index);
+                    }
+                } else {
+                    this.selectedMetricIndices = this.selectedMetricIndices.filter(i => i !== index);
+                }
+                this.updateBatchSelectUI();
+            }
+        });
+        
+        // 일괄 삭제 버튼
+        if (batchDeleteBtn) {
+            batchDeleteBtn.addEventListener('click', () => {
+                if (this.selectedMetricIndices.length === 0) {
+                    this.showMessage('선택된 항목이 없습니다.', 'warning');
+                    return;
+                }
+                
+                if (confirm(`선택된 ${this.selectedMetricIndices.length}개의 메트릭을 삭제하시겠습니까?`)) {
+                    this.batchDeleteMetrics(postId, textId);
+                }
+            });
+        }
+    }
+
+    // Orphan 포스트 정리 (원본이 삭제된 포스트 일괄 삭제)
+    async cleanupOrphanPosts() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('❌ 로그인이 필요합니다.', 'error');
+            return;
+        }
+        
+        // Orphan 포스트 필터링
+        const orphanPosts = this.trackingPosts.filter(post => post.isOrphan);
+        
+        if (orphanPosts.length === 0) {
+            this.showMessage('✅ 정리할 orphan 포스트가 없습니다.', 'success');
+            return;
+        }
+        
+        // 삭제 전 확인
+        const metricsCount = orphanPosts.reduce((sum, post) => sum + (post.metrics?.length || 0), 0);
+        const confirmMessage = `원본이 삭제된 포스트 ${orphanPosts.length}개를 삭제하시겠습니까?\n\n` +
+            `⚠️ 삭제될 데이터:\n` +
+            `   - 트래킹 포스트: ${orphanPosts.length}개\n` +
+            `   - 트래킹 기록: ${metricsCount}개\n\n` +
+            `이 작업은 되돌릴 수 없습니다.`;
+        
+        if (!confirm(confirmMessage)) {
+            console.log('사용자가 orphan 포스트 정리 취소');
+            return;
+        }
+        
+        try {
+            // 진행 중 메시지
+            this.showMessage('🔄 Orphan 포스트를 정리하는 중...', 'info');
+            
+            // 모든 orphan 포스트 삭제 (병렬 처리)
+            const deletePromises = orphanPosts.map(post => {
+                const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', post.id);
+                return window.firebaseDeleteDoc(postRef);
+            });
+            
+            await Promise.all(deletePromises);
+            
+            // 로컬 배열에서도 제거
+            this.trackingPosts = this.trackingPosts.filter(post => !post.isOrphan);
+            
+            // UI 업데이트
+            this.refreshUI({
+                trackingPosts: true,
+                trackingSummary: true,
+                trackingChart: true,
+                force: true
+            });
+            
+            // 성공 메시지
+            this.showMessage(`✅ Orphan 포스트 ${orphanPosts.length}개가 정리되었습니다!`, 'success');
+            console.log('Orphan 포스트 정리 완료', { deletedCount: orphanPosts.length });
+            
+        } catch (error) {
+            console.error('Orphan 포스트 정리 실패:', error);
+            this.showMessage('❌ Orphan 포스트 정리에 실패했습니다: ' + error.message, 'error');
+        }
+    }
+
+    // 일괄 마이그레이션 확인 대화상자 표시
+    async showBatchMigrationConfirm() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('로그인이 필요합니다.', 'error');
+            return;
+        }
+        
+        // 미트래킹 글만 찾기
+        const untrackedTexts = [];
+        
+        for (const textItem of this.savedTexts) {
+            // 로컬에서 먼저 확인
+            let hasTracking = false;
+            if (this.trackingPosts) {
+                hasTracking = this.trackingPosts.some(p => p.sourceTextId === textItem.id);
+            }
+            
+            // 로컬에 없으면 Firebase에서 확인
+            if (!hasTracking) {
+                try {
+                    const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                    const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', textItem.id));
+                    const querySnapshot = await window.firebaseGetDocs(q);
+                    hasTracking = !querySnapshot.empty;
+                } catch (error) {
+                    console.error('트래킹 확인 실패:', error);
+                }
+            }
+            
+            if (!hasTracking) {
+                untrackedTexts.push(textItem);
+            }
+        }
+        
+        if (untrackedTexts.length === 0) {
+            this.showMessage('✅ 모든 저장된 글이 이미 트래킹 중입니다!', 'success');
+            // 버튼 상태 업데이트
+            this.updateBatchMigrationButton();
+            return;
+        }
+        
+        const confirmMessage = `트래킹이 시작되지 않은 저장된 글 ${untrackedTexts.length}개를 트래킹 포스트로 변환하시겠습니까?\n\n` +
+            `⚠️ 주의사항:\n` +
+            `- 이미 트래킹 중인 글은 제외됩니다\n` +
+            `- 중복 생성 방지를 위해 각 텍스트의 기존 포스트를 확인합니다\n` +
+            `- 마이그레이션 중에는 페이지를 닫지 마세요`;
+        
+        if (confirm(confirmMessage)) {
+            // 미트래킹 글만 마이그레이션 실행
+            this.executeBatchMigrationForUntracked(untrackedTexts);
+        }
+    }
+
+    // 미트래킹 글만 일괄 마이그레이션 실행
+    async executeBatchMigrationForUntracked(untrackedTexts) {
+        if (!this.currentUser || !this.isFirebaseReady || !untrackedTexts || untrackedTexts.length === 0) {
+            return;
+        }
+        
+        const button = this.batchMigrationBtn;
+        let successCount = 0;
+        let skipCount = 0;
+        let errorCount = 0;
+        
+        try {
+            // 버튼 비활성화
+            if (button) {
+                button.disabled = true;
+                button.textContent = '마이그레이션 진행 중...';
+            }
+            
+            this.showMessage(`🔄 미트래킹 글 ${untrackedTexts.length}개의 트래킹을 시작합니다...`, 'info');
+            
+            // 각 미트래킹 텍스트에 대해 포스트 생성
+            for (let i = 0; i < untrackedTexts.length; i++) {
+                const textItem = untrackedTexts[i];
+                
+                try {
+                    // 기존 포스트 확인 (안전장치)
+                    const existingPosts = await this.checkExistingPostForText(textItem.id);
+                    if (existingPosts.length > 0) {
+                        console.log(`텍스트 ${textItem.id}: 이미 ${existingPosts.length}개의 포스트 존재, 건너뜀`);
+                        skipCount++;
+                        continue;
+                    }
+                    
+                    // 포스트 생성 (트래킹 탭 전환 없이 백그라운드 처리)
+                    const textRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', textItem.id);
+                    const textDoc = await window.firebaseGetDoc(textRef);
+                    
+                    if (!textDoc.exists()) {
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    const textData = textDoc.data();
+                    
+                    const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                    const postData = {
+                        content: textData.content,
+                        type: textData.type || 'edit',
+                        postedAt: window.firebaseServerTimestamp(),
+                        trackingEnabled: true,
+                        metrics: [],
+                        analytics: {},
+                        sourceTextId: textItem.id,
+                        sourceType: textData.type || 'edit',
+                        createdAt: window.firebaseServerTimestamp(),
+                        updatedAt: window.firebaseServerTimestamp()
+                    };
+                    
+                    await window.firebaseAddDoc(postsRef, postData);
+                    successCount++;
+                    
+                    // 진행 상황 표시 (마지막 항목이 아닐 때만)
+                    if (i < untrackedTexts.length - 1) {
+                        const progress = Math.round((i + 1) / untrackedTexts.length * 100);
+                        if (button) {
+                            button.textContent = `마이그레이션 진행 중... (${progress}%)`;
+                        }
+                    }
+                    
+                    // 너무 빠른 요청 방지 (Firebase 할당량 고려)
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    console.error(`텍스트 ${textItem.id} 마이그레이션 실패:`, error);
+                    errorCount++;
+                }
+            }
+            
+            // 결과 메시지
+            const resultMessage = `✅ 미트래킹 글 마이그레이션 완료!\n` +
+                `- 성공: ${successCount}개\n` +
+                `- 건너뜀: ${skipCount}개 (이미 포스트 존재)\n` +
+                `- 실패: ${errorCount}개`;
+            
+            this.showMessage(resultMessage, 'success');
+            console.log('일괄 마이그레이션 결과:', { successCount, skipCount, errorCount });
+            
+            // 트래킹 포스트 목록 새로고침 (트래킹 탭이 활성화되어 있으면)
+            if (this.loadTrackingPosts) {
+                await this.loadTrackingPosts();
+            }
+            
+            // 저장된 글 목록도 새로고침 (버튼 상태 업데이트를 위해)
+            await this.renderSavedTexts();
+            
+        } catch (error) {
+            console.error('일괄 마이그레이션 중 오류:', error);
+            this.showMessage('❌ 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
+        } finally {
+            // 버튼 복원 및 상태 업데이트
+            if (button) {
+                button.disabled = false;
+            }
+            // 버튼 텍스트는 updateBatchMigrationButton에서 업데이트됨
+            await this.updateBatchMigrationButton();
+        }
+    }
 }
 
 // Initialize the application
