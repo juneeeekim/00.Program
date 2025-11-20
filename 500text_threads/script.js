@@ -692,11 +692,11 @@ class DualTextWriter {
         let attempts = 0;
 
         while (attempts < maxAttempts) {
-            if (window.firebaseAuth && window.firebaseDb) {
+            if (window.firebaseAuth && window.firebaseDb && window.firebaseGoogleAuthProvider && window.firebaseSignInWithPopup) {
                 this.auth = window.firebaseAuth;
                 this.db = window.firebaseDb;
                 this.isFirebaseReady = true;
-                console.log('Firebase 초기화 완료');
+                console.log('✅ Firebase 초기화 완료');
                 break;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -704,7 +704,13 @@ class DualTextWriter {
         }
 
         if (!this.isFirebaseReady) {
-            console.error('Firebase 초기화 실패');
+            console.error('❌ Firebase 초기화 실패');
+            console.error('확인된 항목:', {
+                firebaseAuth: !!window.firebaseAuth,
+                firebaseDb: !!window.firebaseDb,
+                firebaseGoogleAuthProvider: !!window.firebaseGoogleAuthProvider,
+                firebaseSignInWithPopup: !!window.firebaseSignInWithPopup
+            });
             this.showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
         }
     }
@@ -781,18 +787,24 @@ class DualTextWriter {
 
     bindEvents() {
         // 사용자 인증 이벤트
-        this.loginBtn.addEventListener('click', () => this.login());
-        this.logoutBtn.addEventListener('click', () => this.logout());
+        if (this.loginBtn) {
+            this.loginBtn.addEventListener('click', () => this.login());
+        }
+        if (this.logoutBtn) {
+            this.logoutBtn.addEventListener('click', () => this.logout());
+        }
         
         // 새로고침 버튼 이벤트 리스너 (PC 전용)
         if (this.refreshBtn) {
             this.refreshBtn.addEventListener('click', () => this.refreshAllData());
         }
-        this.usernameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.login();
-            }
-        });
+        if (this.usernameInput) {
+            this.usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.login();
+                }
+            });
+        }
 
         // Google 로그인 이벤트
         const googleLoginBtn = document.getElementById('google-login-btn');
@@ -1849,6 +1861,19 @@ class DualTextWriter {
             return;
         }
 
+        // Firebase Google Auth Provider 확인
+        if (!window.firebaseGoogleAuthProvider) {
+            this.showMessage('Google 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+            console.error('❌ window.firebaseGoogleAuthProvider가 정의되지 않았습니다.');
+            return;
+        }
+
+        if (!window.firebaseSignInWithPopup) {
+            this.showMessage('Google 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+            console.error('❌ window.firebaseSignInWithPopup이 정의되지 않았습니다.');
+            return;
+        }
+
         try {
             const provider = new window.firebaseGoogleAuthProvider();
             const result = await window.firebaseSignInWithPopup(this.auth, provider);
@@ -1864,9 +1889,9 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+            }
         }
-    }
     }
 
     // Firebase Auth 상태 리스너가 자동으로 처리함
@@ -1904,7 +1929,7 @@ class DualTextWriter {
 
             this.showMessage(`${username}님, 환영합니다!`, 'success');
 
-                } catch (error) {
+        } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
         }
