@@ -4078,7 +4078,6 @@ class DualTextWriter {
             }
         }
     }
-    }
 
     // Firebase Auth 상태 리스너가 자동으로 처리함
 
