@@ -646,6 +646,149 @@
                 <div class="article-management">
                     <h3>📋 스크립트 작성</h3>
                     
+                    <!-- 새 스크립트 생성 버튼 및 폼 -->
+                    <div class="script-create-section">
+                        <button 
+                            id="new-script-toggle-btn" 
+                            class="btn btn-primary btn-new-script"
+                            aria-expanded="false"
+                            aria-controls="script-create-form"
+                            aria-label="새 스크립트 작성 폼 열기/닫기">
+                            <span class="btn-icon">✨</span>
+                            <span class="btn-text">새 스크립트 생성</span>
+                            <span class="toggle-arrow">▼</span>
+                        </button>
+                        
+                        <div 
+                            id="script-create-form" 
+                            class="script-create-form"
+                            aria-hidden="true"
+                            style="display: none;">
+                            <div class="form-header">
+                                <h4>✨ 새 스크립트 생성</h4>
+                            </div>
+                            
+                            <div class="form-body">
+                                <!-- 제목 -->
+                                <div class="form-group">
+                                    <label for="script-title-input" class="form-label">
+                                        제목 <span class="required">*</span>
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="script-title-input" 
+                                        class="form-input"
+                                        placeholder="프롬프트 제목"
+                                        aria-label="스크립트 제목 입력"
+                                        aria-required="true"
+                                        maxlength="200">
+                                </div>
+                                
+                                <!-- 내용 -->
+                                <div class="form-group">
+                                    <label for="script-content-textarea" class="form-label">
+                                        내용 <span class="required">*</span>
+                                    </label>
+                                    <textarea 
+                                        id="script-content-textarea" 
+                                        class="form-textarea"
+                                        placeholder="프롬프트 내용을 입력하세요..."
+                                        aria-label="스크립트 내용 입력"
+                                        aria-required="true"
+                                        rows="8"></textarea>
+                                </div>
+                                
+                                <!-- 카테고리 -->
+                                <div class="form-group">
+                                    <label for="script-category-input" class="form-label">
+                                        카테고리
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="script-category-input" 
+                                        class="form-input"
+                                        placeholder="예: 코딩, 글쓰기, 번역"
+                                        aria-label="카테고리 입력"
+                                        list="category-suggestions"
+                                        maxlength="50">
+                                    <datalist id="category-suggestions">
+                                        <!-- 동적으로 카테고리 제안 추가됨 -->
+                                    </datalist>
+                                </div>
+                                
+                                <!-- LLM 모델 -->
+                                <div class="form-group">
+                                    <label for="script-llm-model-select" class="form-label">
+                                        LLM 모델
+                                    </label>
+                                    <div class="llm-model-wrapper">
+                                        <select 
+                                            id="script-llm-model-select" 
+                                            class="form-select"
+                                            aria-label="LLM 모델 선택">
+                                            <option value="">선택하세요</option>
+                                            <option value="OpenAI GPT-4">OpenAI GPT-4</option>
+                                            <option value="OpenAI GPT-4 Turbo">OpenAI GPT-4 Turbo</option>
+                                            <option value="OpenAI GPT-3.5">OpenAI GPT-3.5</option>
+                                            <option value="Claude 3 Opus">Claude 3 Opus</option>
+                                            <option value="Claude 3 Sonnet">Claude 3 Sonnet</option>
+                                            <option value="Claude 3 Haiku">Claude 3 Haiku</option>
+                                            <option value="Gemini Pro">Gemini Pro</option>
+                                            <option value="Gemini Ultra">Gemini Ultra</option>
+                                            <option value="custom">직접 입력</option>
+                                        </select>
+                                        <input 
+                                            type="text" 
+                                            id="script-llm-model-custom" 
+                                            class="form-input form-input-custom"
+                                            placeholder="LLM 모델명 직접 입력"
+                                            aria-label="LLM 모델 직접 입력"
+                                            style="display: none;"
+                                            maxlength="100">
+                                    </div>
+                                    <small class="form-help">
+                                        사용할 LLM 모델을 선택하거나 직접 입력해주세요.
+                                    </small>
+                                </div>
+                                
+                                <!-- LLM 모델 유형 -->
+                                <div class="form-group">
+                                    <label for="script-llm-type-input" class="form-label">
+                                        LLM 모델 유형
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        id="script-llm-type-input" 
+                                        class="form-input"
+                                        placeholder="일반"
+                                        aria-label="LLM 모델 유형 입력"
+                                        value="일반"
+                                        maxlength="50">
+                                    <small class="form-help">
+                                        싱킹 모델 / 일반 모델 / 기타 세부 모드를 자유롭게 입력해주세요.
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-footer">
+                                <button 
+                                    id="script-save-btn" 
+                                    class="btn btn-primary"
+                                    aria-label="스크립트 저장">
+                                    <span class="btn-icon">💾</span>
+                                    <span class="btn-text">저장</span>
+                                </button>
+                                <button 
+                                    id="script-cancel-btn" 
+                                    class="btn btn-secondary"
+                                    aria-label="작성 취소">
+                                    <span class="btn-icon">❌</span>
+                                    <span class="btn-text">취소</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- 카테고리 선택 드롭다운 -->
                     <div class="management-filters">
                         <label for="category-select" class="sr-only">카테고리 선택</label>

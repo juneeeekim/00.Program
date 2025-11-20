@@ -7394,6 +7394,19 @@ class DualTextWriter {
         this.editCategorySelect = document.getElementById('edit-category-select');
         this.editContentTextarea = document.getElementById('edit-content-textarea');
 
+        // 새 스크립트 작성 폼 관련 요소
+        this.newScriptToggleBtn = document.getElementById('new-script-toggle-btn');
+        this.scriptCreateForm = document.getElementById('script-create-form');
+        this.scriptTitleInput = document.getElementById('script-title-input');
+        this.scriptContentTextarea = document.getElementById('script-content-textarea');
+        this.scriptCategoryInput = document.getElementById('script-category-input');
+        this.scriptLlmModelSelect = document.getElementById('script-llm-model-select');
+        this.scriptLlmModelCustom = document.getElementById('script-llm-model-custom');
+        this.scriptLlmTypeInput = document.getElementById('script-llm-type-input');
+        this.scriptSaveBtn = document.getElementById('script-save-btn');
+        this.scriptCancelBtn = document.getElementById('script-cancel-btn');
+        this.categorySuggestions = document.getElementById('category-suggestions');
+
         // 현재 선택된 글 ID
         this.selectedArticleId = null;
         this.managementArticles = []; // 스크립트 작성용 글 목록
@@ -7441,9 +7454,41 @@ class DualTextWriter {
             });
         }
 
-        // 카테고리 드롭다운 업데이트
-        this.updateCategoryDropdown();
-    }
+        // 새 스크립트 작성 폼 이벤트
+        if (this.newScriptToggleBtn) {
+            this.newScriptToggleBtn.addEventListener('click', () => {
+                this.toggleScriptCreateForm();
+            });
+        }
+
+        if (this.scriptLlmModelSelect) {
+            this.scriptLlmModelSelect.addEventListener('change', (e) => {
+                this.handleLlmModelChange(e.target.value);
+            });
+        }
+
+        if (this.scriptSaveBtn) {
+            this.scriptSaveBtn.addEventListener('click', () => {
+                this.saveNewScript();
+            });
+        }
+
+        if (this.scriptCancelBtn) {
+            this.scriptCancelBtn.addEventListener('click', () => {
+                this.cancelScriptCreate();
+            });
+        }
+
+        // 카테고리 자동완성 업데이트
+        if (this.scriptCategoryInput) {
+            this.scriptCategoryInput.addEventListener('input', () => {
+                this.updateCategorySuggestions();
+            });
+        }
+
+            // 카테고리 드롭다운 업데이트
+            this.updateCategoryDropdown();
+        }
 
     /**
      * 스크립트 작성용 글 목록 로드
@@ -7481,9 +7526,12 @@ class DualTextWriter {
             // order 필드가 없는 경우 초기화
             await this.initializeArticleOrders();
 
-            // 카테고리별로 정렬 후 렌더링
-            this.renderArticleCards();
-            this.updateCategoryDropdown();
+        // 카테고리별로 정렬 후 렌더링
+        this.renderArticleCards();
+        this.updateCategoryDropdown();
+        
+        // 카테고리 제안 업데이트
+        this.updateCategorySuggestions();
 
         } catch (error) {
             console.error('스크립트 작성용 글 로드 실패:', error);
@@ -8085,6 +8133,160 @@ class DualTextWriter {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ===== 새 스크립트 작성 기능 =====
+
+    /**
+     * 스크립트 작성 폼 토글
+     */
+    toggleScriptCreateForm() {
+        if (!this.scriptCreateForm || !this.newScriptToggleBtn) return;
+
+        const isExpanded = this.newScriptToggleBtn.getAttribute('aria-expanded') === 'true';
+        const newState = !isExpanded;
+
+        this.newScriptToggleBtn.setAttribute('aria-expanded', newState.toString());
+        this.scriptCreateForm.setAttribute('aria-hidden', (!newState).toString());
+        this.scriptCreateForm.style.display = newState ? 'block' : 'none';
+
+        // 폼이 열릴 때 카테고리 제안 업데이트
+        if (newState) {
+            this.updateCategorySuggestions();
+        }
+    }
+
+    /**
+     * LLM 모델 선택 변경 처리
+     */
+    handleLlmModelChange(value) {
+        if (!this.scriptLlmModelCustom) return;
+
+        if (value === 'custom') {
+            this.scriptLlmModelCustom.style.display = 'block';
+            this.scriptLlmModelCustom.focus();
+        } else {
+            this.scriptLlmModelCustom.style.display = 'none';
+            this.scriptLlmModelCustom.value = '';
+        }
+    }
+
+    /**
+     * 카테고리 제안 업데이트
+     */
+    updateCategorySuggestions() {
+        if (!this.categorySuggestions) return;
+
+        // 기존 제안 제거
+        this.categorySuggestions.innerHTML = '';
+
+        // 고유한 카테고리 목록 추출
+        const categories = new Set();
+        this.managementArticles.forEach(article => {
+            if (article.category && article.category.trim()) {
+                categories.add(article.category.trim());
+            }
+        });
+
+        // 제안 추가
+        Array.from(categories).sort().forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            this.categorySuggestions.appendChild(option);
+        });
+    }
+
+    /**
+     * 새 스크립트 저장
+     */
+    async saveNewScript() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            this.showMessage('❌ 로그인이 필요합니다.', 'error');
+            return;
+        }
+
+        // 입력값 가져오기
+        const title = this.scriptTitleInput?.value.trim() || '';
+        const content = this.scriptContentTextarea?.value.trim() || '';
+        const category = this.scriptCategoryInput?.value.trim() || '미분류';
+        const llmModel = this.scriptLlmModelSelect?.value === 'custom' 
+            ? (this.scriptLlmModelCustom?.value.trim() || '')
+            : (this.scriptLlmModelSelect?.value || '');
+        const llmModelType = this.scriptLlmTypeInput?.value.trim() || '일반';
+
+        // 검증
+        if (!title && !content) {
+            this.showMessage('❌ 제목 또는 내용을 입력해주세요.', 'error');
+            return;
+        }
+
+        try {
+            // 제목이 없으면 내용의 첫 줄을 제목으로 사용
+            const finalTitle = title || this.extractTitleFromContent(content);
+
+            // Firebase에 저장
+            const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
+            const newScriptData = {
+                content: content,
+                topic: category, // 카테고리는 topic 필드에 저장
+                type: 'edit',
+                createdAt: window.firebaseServerTimestamp(),
+                updatedAt: window.firebaseServerTimestamp(),
+                order: 0, // 나중에 초기화됨
+                // LLM 관련 필드 (선택사항)
+                ...(llmModel && { llmModel: llmModel }),
+                ...(llmModelType && { llmModelType: llmModelType })
+            };
+
+            await window.firebaseAddDoc(textsRef, newScriptData);
+
+            // 성공 메시지
+            this.showMessage('✅ 스크립트가 저장되었습니다.', 'success');
+
+            // 폼 초기화
+            this.resetScriptCreateForm();
+
+            // 폼 닫기
+            this.toggleScriptCreateForm();
+
+            // 목록 새로고침
+            await this.loadArticlesForManagement();
+            
+            // 카테고리 제안 업데이트
+            this.updateCategorySuggestions();
+
+        } catch (error) {
+            console.error('스크립트 저장 실패:', error);
+            this.showMessage('❌ 스크립트 저장 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 스크립트 작성 취소
+     */
+    cancelScriptCreate() {
+        if (confirm('작성 중인 내용이 사라집니다. 정말 취소하시겠습니까?')) {
+            this.resetScriptCreateForm();
+            this.toggleScriptCreateForm();
+        }
+    }
+
+    /**
+     * 스크립트 작성 폼 초기화
+     */
+    resetScriptCreateForm() {
+        if (this.scriptTitleInput) this.scriptTitleInput.value = '';
+        if (this.scriptContentTextarea) this.scriptContentTextarea.value = '';
+        if (this.scriptCategoryInput) this.scriptCategoryInput.value = '';
+        if (this.scriptLlmModelSelect) {
+            this.scriptLlmModelSelect.value = '';
+            this.handleLlmModelChange('');
+        }
+        if (this.scriptLlmModelCustom) {
+            this.scriptLlmModelCustom.value = '';
+            this.scriptLlmModelCustom.style.display = 'none';
+        }
+        if (this.scriptLlmTypeInput) this.scriptLlmTypeInput.value = '일반';
     }
 }
 
