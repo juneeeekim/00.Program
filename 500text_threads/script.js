@@ -2830,11 +2830,11 @@ class DualTextWriter {
         let attempts = 0;
 
         while (attempts < maxAttempts) {
-            if (window.firebaseAuth && window.firebaseDb) {
+            if (window.firebaseAuth && window.firebaseDb && window.firebaseGoogleAuthProvider && window.firebaseSignInWithPopup) {
                 this.auth = window.firebaseAuth;
                 this.db = window.firebaseDb;
                 this.isFirebaseReady = true;
-                console.log('Firebase 초기화 완료');
+                console.log('✅ Firebase 초기화 완료');
                 break;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -2842,7 +2842,13 @@ class DualTextWriter {
         }
 
         if (!this.isFirebaseReady) {
-            console.error('Firebase 초기화 실패');
+            console.error('❌ Firebase 초기화 실패');
+            console.error('확인된 항목:', {
+                firebaseAuth: !!window.firebaseAuth,
+                firebaseDb: !!window.firebaseDb,
+                firebaseGoogleAuthProvider: !!window.firebaseGoogleAuthProvider,
+                firebaseSignInWithPopup: !!window.firebaseSignInWithPopup
+            });
             this.showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
         }
     }
@@ -4076,6 +4082,19 @@ class DualTextWriter {
     async googleLogin() {
         if (!this.isFirebaseReady) {
             this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
+            return;
+        }
+
+        // Firebase Google Auth Provider 확인
+        if (!window.firebaseGoogleAuthProvider) {
+            this.showMessage('Google 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+            console.error('❌ window.firebaseGoogleAuthProvider가 정의되지 않았습니다.');
+            return;
+        }
+
+        if (!window.firebaseSignInWithPopup) {
+            this.showMessage('Google 로그인 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+            console.error('❌ window.firebaseSignInWithPopup이 정의되지 않았습니다.');
             return;
         }
 
