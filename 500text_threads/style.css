@@ -5966,6 +5966,658 @@ body {
         padding: 10px 16px;
     }
 }
-    
 
+/* ============================================
+   스크립트 작성 탭 스타일
+   ============================================ */
+
+/* 스크립트 작성 컨테이너 */
+.script-writing-container {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* 스크립트 작성 헤더 */
+.script-writing-header {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.script-writing-header h3 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.script-subtitle {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 0;
+}
+
+/* 스크립트 제목 입력 영역 */
+.script-title-section {
+    margin-bottom: 24px;
+}
+
+.script-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.script-title-input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background: #fff;
+    color: #333;
+}
+
+.script-title-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.script-title-input::placeholder {
+    color: #999;
+}
+
+/* 스크립트 섹션 컨테이너 */
+.script-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+/* 개별 섹션 */
+.script-section {
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+    position: relative;
+    will-change: transform, opacity;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.script-section:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+/* 섹션 헤더 */
+.script-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.script-section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.script-section-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #667eea;
+    color: white;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.script-section-type {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* 섹션 컨트롤 버튼 */
+.script-section-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-icon {
+    background: white;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    /* 성능 최적화: transform 사용 */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.btn-icon:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.btn-icon:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8f9fa;
+    color: #999;
+}
+
+.btn-icon:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+/* 섹션 본문 */
+.script-section-body {
+    margin-bottom: 12px;
+}
+
+.script-section-content {
+    width: 100%;
+    min-height: 200px;
+    max-height: 500px;
+    padding: 20px; /* .writing-panel textarea와 일치 (16px -> 20px) */
+    border: 2px solid #e1e5e9;
+    border-radius: 10px; /* .writing-panel textarea와 일치 (8px -> 10px) */
+    font-size: 1rem;
+    line-height: 1.7; /* .writing-panel textarea와 일치 */
+    resize: vertical;
+    font-family: inherit;
+    background: white;
+    color: #333;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease; /* .writing-panel textarea와 일치 */
+    box-sizing: border-box;
+    margin: 10px 0; /* .writing-panel textarea와 일치 */
+    overflow-y: auto; /* 내용이 많을 경우 스크롤 가능 */
+    /* 텍스트 줄바꿈 최적화 (기존 textarea와 일치) */
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    hyphens: none;
+}
+
+.script-section-content:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); /* .writing-panel textarea와 일치 */
+}
+
+.script-section-content::placeholder {
+    color: #999;
+}
+
+/* 글자 수 제한 초과 시 스타일 */
+.script-section-content:invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* 섹션 푸터 */
+.script-section-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e1e5e9;
+}
+
+/* 섹션 글자 수 카운터 - 기존 .character-counter 스타일 재사용 */
+.script-section-char-count {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 1rem; /* .character-counter와 일치 */
+    font-weight: 600; /* .character-counter와 일치 */
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.script-section-char-count .char-count-current {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.script-section-char-count .separator {
+    margin: 0 5px; /* .character-counter .separator와 일치 */
+    color: #666; /* .character-counter .separator와 일치 */
+}
+
+.script-section-char-count .char-count-max {
+    color: #666;
+}
+
+.script-section-char-count .unit {
+    margin-left: 5px; /* .character-counter .unit과 일치 */
+    color: #666; /* .character-counter .unit과 일치 */
+}
+
+/* 스크린 리더 전용 텍스트 (접근성) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* 섹션 완료 체크박스 */
+.script-section-complete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #666;
+    user-select: none;
+}
+
+.script-section-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
+.script-section-checkbox:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* 스크립트 액션 버튼 영역 */
+.script-actions {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+/* 스크립트 미리보기 영역 */
+.script-preview-section {
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.script-preview-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.script-preview-header h4 {
+    font-size: 1.2rem;
+    color: #333;
+    font-weight: 600;
+    margin: 0;
+}
+
+.script-preview-content {
+    color: #333;
+    line-height: 1.8;
+}
+
+.preview-section {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.preview-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.preview-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 12px;
+}
+
+.preview-section-content {
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.preview-empty {
+    color: #999;
+    font-style: italic;
+}
+
+/* 완료율 표시 섹션 */
+.script-completion-section {
+    background: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.script-completion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.script-completion-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.script-completion-rate {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* 완료율 진행률 바 (기존 .progress-bar 스타일 재사용) */
+.script-completion-progress {
+    width: 100%;
+    height: 8px;
+    background: #e1e5e9;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.script-completion-progress .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.script-completion-detail {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* 스크립트 저장 액션 버튼 영역 */
+.script-save-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* 반응형 디자인 - 태블릿 (768px 이하) */
+@media (max-width: 768px) {
+    .script-writing-container {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .script-writing-header h3 {
+        font-size: 1.3rem;
+    }
+
+    .script-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .script-section {
+        padding: 16px;
+    }
+
+    .script-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .script-section-controls {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .script-section-content {
+        min-height: 150px;
+        max-height: 400px;
+        padding: 14px;
+        font-size: 16px; /* 모바일에서 자동 확대 방지 */
+    }
+
+    .script-section-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .script-save-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .script-save-actions .btn {
+        width: 100%;
+    }
+}
+
+/* 반응형 디자인 - 작은 모바일 (480px 이하) */
+@media (max-width: 480px) {
+    .script-writing-container {
+        padding: 16px;
+    }
+
+    .script-writing-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .script-section {
+        padding: 12px;
+    }
+
+    .script-section-number {
+        width: 28px;
+        height: 28px;
+        font-size: 0.85rem;
+    }
+
+    .script-section-type {
+        font-size: 1rem;
+    }
+
+    /* 터치 영역 최소 44px (접근성) */
+    .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    .script-section-content {
+        min-height: 120px;
+        padding: 12px;
+        font-size: 16px; /* 가상 키보드 대응: 자동 확대 방지 */
+    }
+
+    /* 모바일에서 완료율 섹션 최적화 */
+    .script-completion-section {
+        padding: 12px;
+    }
+
+    .script-completion-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    /* 모바일에서 미리보기 최적화 */
+    .script-preview-section {
+        padding: 16px;
+    }
+
+    .script-preview-header h4 {
+        font-size: 1.1rem;
+    }
+
+    .preview-section-title {
+        font-size: 1rem;
+    }
+}
+
+/* 모바일 가로 모드 (landscape) 최적화 */
+@media (max-width: 896px) and (orientation: landscape) {
+    .script-section-content {
+        min-height: 100px;
+        max-height: 200px;
+    }
+
+    .script-writing-container {
+        padding: 12px;
+    }
+}
+
+/* 태블릿 최적화 (768px ~ 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .script-writing-container {
+        padding: 24px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .script-section {
+        padding: 18px;
+    }
+
+    .script-section-content {
+        min-height: 180px;
+        max-height: 450px;
+    }
+
+    .script-save-actions {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .script-save-actions .btn {
+        flex: 1;
+        min-width: 150px;
+    }
+}
+
+/* 데스크톱 최적화 (1024px 이상) */
+@media (min-width: 1025px) {
+    .script-writing-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px;
+    }
+
+    .script-section {
+        padding: 24px;
+    }
+
+    .script-section-content {
+        min-height: 200px;
+        max-height: 500px;
+    }
+
+    .script-save-actions {
+        justify-content: center;
+        gap: 16px;
+    }
+
+    .script-save-actions .btn {
+        min-width: 120px;
+    }
+}
+
+/* 접근성: 포커스 스타일 강화 */
+.script-title-input:focus-visible,
+.script-section-content:focus-visible,
+.btn-icon:focus-visible,
+.script-section-checkbox:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* 접근성: 키보드 네비게이션 개선 */
+.tab-button:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+    z-index: 1;
+}
+
+/* 애니메이션 최적화 (성능) */
+.script-section,
+.btn-icon,
+.script-title-input,
+.script-section-content {
+    will-change: transform, border-color, box-shadow;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* 리플로우 최소화를 위한 contain 속성 */
+.script-section {
+    contain: layout style paint;
+    /* 순서 변경 애니메이션 최적화 */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.script-sections-container {
+    contain: layout;
+}
+
+/* 섹션 순서 변경 애니메이션 (성능 최적화) */
+.script-section[data-reordering] {
+    transition: transform 0.3s ease;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+}
 
