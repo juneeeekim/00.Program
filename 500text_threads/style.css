@@ -6207,8 +6207,6 @@ body {
     bottom: 0;
     width: 100%;
     max-width: 480px;
-    height: 100vh;
-    max-height: 100vh;
     background: white;
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
     transform: translateX(100%);
@@ -6476,8 +6474,6 @@ body {
 
     .reference-loader-content {
         max-width: 100%;
-        height: 100vh;
-        max-height: 100vh;
     }
 
     .reference-loader-body {
