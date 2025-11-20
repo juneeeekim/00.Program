@@ -1,0 +1,355 @@
+﻿/* 글 관리 탭 스타일 */
+.article-management-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.article-management-container h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: #333;
+}
+
+/* 카테고리 선택 드롭다운 */
+.category-select-wrapper {
+    margin-bottom: 24px;
+}
+
+.category-select {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 15px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.category-select:hover {
+    border-color: #667eea;
+}
+
+.category-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 글 카드 그리드 */
+.article-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+/* 글 카드 */
+.article-card {
+    background: white;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.article-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
+}
+
+.article-card.selected {
+    border: 3px solid #667eea;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+/* 카드 헤더 */
+.article-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.article-card-order {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #667eea;
+    color: white;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.article-card-title {
+    flex: 1;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.article-card-controls {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.order-button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f8f9fa;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    color: #666;
+}
+
+.order-button:hover:not(:disabled) {
+    background: #e9ecef;
+    color: #667eea;
+}
+
+.order-button:disabled {
+    background: #f0f0f0;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 카드 내용 */
+.article-card-content {
+    color: #666;
+    font-size: 15px;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 4.8em;
+}
+
+/* 카드 메타 정보 */
+.article-card-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #999;
+    margin-top: auto;
+}
+
+.article-card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 상세 패널 */
+.article-detail-panel {
+    background: white;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 32px;
+}
+
+.detail-panel-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.detail-panel-header h4 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.detail-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.detail-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.detail-meta-item {
+    font-size: 13px;
+    color: #999;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.detail-title-wrapper {
+    margin-bottom: 16px;
+}
+
+.detail-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.detail-content-wrapper {
+    margin-bottom: 20px;
+}
+
+.detail-content {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #666;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* 수정 패널 */
+.article-edit-panel {
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 32px;
+}
+
+.edit-panel-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.edit-panel-header h4 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.edit-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.edit-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.edit-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.edit-input,
+.edit-select,
+.edit-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.edit-input:focus,
+.edit-select:focus,
+.edit-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.edit-textarea {
+    resize: vertical;
+    min-height: 200px;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .article-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .article-card {
+        padding: 16px;
+    }
+
+    .order-button {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .article-management-container {
+        padding: 16px;
+    }
+
+    .detail-actions,
+    .edit-actions {
+        flex-direction: column;
+    }
+
+    .detail-actions .btn,
+    .edit-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .article-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1025px) {
+    .article-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
