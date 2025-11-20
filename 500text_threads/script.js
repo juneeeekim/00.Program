@@ -8400,12 +8400,27 @@ class DualTextWriter {
     openReferenceLoader() {
         if (!this.referenceLoaderPanel) return;
         
+        const content = this.referenceLoaderPanel.querySelector('.reference-loader-content');
+        
+        // 패널 표시
         this.referenceLoaderPanel.style.display = 'block';
-        // 약간의 지연 후 애니메이션 시작 (display 변경 후)
+        
+        // transform 초기화 (인라인 스타일 제거 후 CSS 적용)
+        if (content) {
+            // 인라인 스타일 제거하여 CSS 선택자가 작동하도록 함
+            content.style.transform = '';
+            
+            // 약간의 지연 후 transform 적용 (리플로우 보장)
+            setTimeout(() => {
+                content.style.transform = 'translateX(0)';
+            }, 10);
+        }
+        
+        // 약간의 지연 후 데이터 로드
         setTimeout(() => {
             this.loadReferenceList();
             this.loadRecentReferencesList();
-        }, 10);
+        }, 20);
     }
 
     /**
@@ -8421,8 +8436,19 @@ class DualTextWriter {
         
         setTimeout(() => {
             this.referenceLoaderPanel.style.display = 'none';
+            // 인라인 스타일 제거하여 다음 열 때 CSS가 정상 작동하도록 함
+            if (content) {
+                content.style.transform = '';
+            }
             if (this.referenceSearchInput) {
                 this.referenceSearchInput.value = '';
+            }
+            // 필터도 초기화
+            if (this.referenceCategoryFilter) {
+                this.referenceCategoryFilter.value = '';
+            }
+            if (this.referenceSortFilter) {
+                this.referenceSortFilter.value = 'recent';
             }
         }, 300);
     }
