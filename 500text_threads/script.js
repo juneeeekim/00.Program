@@ -4069,10 +4069,13 @@ class DualTextWriter {
 
         } catch (error) {
             console.error('Google 로그인 실패:', error);
-            if (error.code === 'auth/popup-closed-by-user') {
+            if (error.code === 'auth/operation-not-allowed') {
+                this.showMessage('로그인 실패: Firebase Console의 Authentication > 설정 > 승인된 도메인에 현재 페이지의 도메인(예: localhost)이 추가되었는지 확인해주세요.', 'error', 15000);
+            } else if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+                this.showMessage(`Google 로그인에 실패했습니다: ${error.message}`, 'error');
+            }
         }
     }
     }
