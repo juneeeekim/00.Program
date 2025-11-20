@@ -7407,6 +7407,27 @@ class DualTextWriter {
         this.scriptCancelBtn = document.getElementById('script-cancel-btn');
         this.categorySuggestions = document.getElementById('category-suggestions');
 
+        // 레퍼런스 불러오기 관련 요소
+        this.loadReferenceBtn = document.getElementById('load-reference-btn');
+        this.referenceLoaderPanel = document.getElementById('reference-loader-panel');
+        this.referenceLoaderClose = document.getElementById('reference-loader-close');
+        this.referenceTabs = document.querySelectorAll('.reference-tab');
+        this.referenceSearchInput = document.getElementById('reference-search-input');
+        this.referenceSavedContent = document.getElementById('reference-saved-content');
+        this.referenceTrackingContent = document.getElementById('reference-tracking-content');
+        this.referenceSavedList = document.getElementById('reference-saved-list');
+        this.referenceTrackingList = document.getElementById('reference-tracking-list');
+        this.referenceRecentList = document.getElementById('reference-recent-list');
+        this.referenceRecentSection = document.getElementById('reference-recent-section');
+        this.referenceCategoryFilter = document.getElementById('reference-category-filter');
+        this.referenceSortFilter = document.getElementById('reference-sort-filter');
+        this.referenceTrackingFilters = document.getElementById('reference-tracking-filters');
+        
+        // 레퍼런스 로더 상태
+        this.currentReferenceTab = 'saved';
+        this.referenceSearchDebounce = null;
+        this.recentReferences = this.loadRecentReferences(); // localStorage에서 최근 사용 글 로드
+
         // 현재 선택된 글 ID
         this.selectedArticleId = null;
         this.managementArticles = []; // 스크립트 작성용 글 목록
@@ -7486,9 +7507,58 @@ class DualTextWriter {
             });
         }
 
-            // 카테고리 드롭다운 업데이트
-            this.updateCategoryDropdown();
+        // 레퍼런스 불러오기 이벤트
+        if (this.loadReferenceBtn) {
+            this.loadReferenceBtn.addEventListener('click', () => {
+                this.openReferenceLoader();
+            });
         }
+
+        if (this.referenceLoaderClose) {
+            this.referenceLoaderClose.addEventListener('click', () => {
+                this.closeReferenceLoader();
+            });
+        }
+
+        if (this.referenceLoaderPanel) {
+            const overlay = this.referenceLoaderPanel.querySelector('.reference-loader-overlay');
+            if (overlay) {
+                overlay.addEventListener('click', () => {
+                    this.closeReferenceLoader();
+                });
+            }
+        }
+
+        // 레퍼런스 탭 전환
+        this.referenceTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.switchReferenceTab(tab.getAttribute('data-tab'));
+            });
+        });
+
+        // 레퍼런스 검색
+        if (this.referenceSearchInput) {
+            this.referenceSearchInput.addEventListener('input', (e) => {
+                this.handleReferenceSearch(e.target.value);
+            });
+        }
+
+        // 레퍼런스 필터
+        if (this.referenceCategoryFilter) {
+            this.referenceCategoryFilter.addEventListener('change', () => {
+                this.loadReferenceList();
+            });
+        }
+
+        if (this.referenceSortFilter) {
+            this.referenceSortFilter.addEventListener('change', () => {
+                this.loadReferenceList();
+            });
+        }
+
+        // 카테고리 드롭다운 업데이트
+        this.updateCategoryDropdown();
+    }
 
     /**
      * 스크립트 작성용 글 목록 로드
@@ -7532,6 +7602,9 @@ class DualTextWriter {
         
         // 카테고리 제안 업데이트
         this.updateCategorySuggestions();
+        
+        // 레퍼런스 로더 카테고리 필터 업데이트
+        this.updateReferenceCategoryFilter();
 
         } catch (error) {
             console.error('스크립트 작성용 글 로드 실패:', error);
@@ -7631,6 +7704,36 @@ class DualTextWriter {
             option.value = category;
             option.textContent = category;
             this.editCategorySelect.appendChild(option);
+        });
+    }
+
+    /**
+     * 레퍼런스 로더 카테고리 필터 업데이트
+     */
+    updateReferenceCategoryFilter() {
+        if (!this.referenceCategoryFilter) return;
+
+        // 고유한 카테고리 목록 추출
+        const categories = new Set(['미분류']);
+        
+        // 저장된 글에서 카테고리 추출
+        if (this.savedTexts) {
+            this.savedTexts.forEach(text => {
+                if (text.topic) {
+                    categories.add(text.topic);
+                }
+            });
+        }
+
+        const sortedCategories = Array.from(categories).sort();
+
+        // 필터 드롭다운 업데이트
+        this.referenceCategoryFilter.innerHTML = '<option value="">전체 카테고리</option>';
+        sortedCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            this.referenceCategoryFilter.appendChild(option);
         });
     }
 
@@ -8287,6 +8390,428 @@ class DualTextWriter {
             this.scriptLlmModelCustom.style.display = 'none';
         }
         if (this.scriptLlmTypeInput) this.scriptLlmTypeInput.value = '일반';
+    }
+
+    // ===== 레퍼런스 불러오기 기능 =====
+
+    /**
+     * 레퍼런스 로더 열기
+     */
+    openReferenceLoader() {
+        if (!this.referenceLoaderPanel) return;
+        
+        this.referenceLoaderPanel.style.display = 'block';
+        // 약간의 지연 후 애니메이션 시작 (display 변경 후)
+        setTimeout(() => {
+            this.loadReferenceList();
+            this.loadRecentReferencesList();
+        }, 10);
+    }
+
+    /**
+     * 레퍼런스 로더 닫기
+     */
+    closeReferenceLoader() {
+        if (!this.referenceLoaderPanel) return;
+        
+        const content = this.referenceLoaderPanel.querySelector('.reference-loader-content');
+        if (content) {
+            content.style.transform = 'translateX(100%)';
+        }
+        
+        setTimeout(() => {
+            this.referenceLoaderPanel.style.display = 'none';
+            if (this.referenceSearchInput) {
+                this.referenceSearchInput.value = '';
+            }
+        }, 300);
+    }
+
+    /**
+     * 레퍼런스 탭 전환
+     */
+    switchReferenceTab(tabName) {
+        this.currentReferenceTab = tabName;
+
+        // 탭 버튼 업데이트
+        this.referenceTabs.forEach(tab => {
+            const isActive = tab.getAttribute('data-tab') === tabName;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', isActive.toString());
+        });
+
+        // 콘텐츠 업데이트
+        if (this.referenceSavedContent) {
+            this.referenceSavedContent.classList.toggle('active', tabName === 'saved');
+            this.referenceSavedContent.style.display = tabName === 'saved' ? 'block' : 'none';
+        }
+
+        if (this.referenceTrackingContent) {
+            this.referenceTrackingContent.classList.toggle('active', tabName === 'tracking');
+            this.referenceTrackingContent.style.display = tabName === 'tracking' ? 'block' : 'none';
+        }
+
+        // 필터 표시/숨김
+        if (this.referenceTrackingFilters) {
+            this.referenceTrackingFilters.style.display = tabName === 'tracking' ? 'flex' : 'none';
+        }
+
+        // 목록 로드
+        this.loadReferenceList();
+    }
+
+    /**
+     * 레퍼런스 검색 처리
+     */
+    handleReferenceSearch(query) {
+        clearTimeout(this.referenceSearchDebounce);
+        this.referenceSearchDebounce = setTimeout(() => {
+            this.loadReferenceList();
+        }, 300);
+    }
+
+    /**
+     * 레퍼런스 목록 로드
+     */
+    async loadReferenceList() {
+        if (!this.currentUser || !this.isFirebaseReady) return;
+
+        const searchQuery = this.referenceSearchInput?.value.trim().toLowerCase() || '';
+        const categoryFilter = this.referenceCategoryFilter?.value || '';
+        const sortFilter = this.referenceSortFilter?.value || 'recent';
+
+        try {
+            if (this.currentReferenceTab === 'saved') {
+                await this.loadSavedReferences(searchQuery, categoryFilter);
+            } else {
+                await this.loadTrackingReferences(searchQuery, categoryFilter, sortFilter);
+            }
+        } catch (error) {
+            console.error('레퍼런스 목록 로드 실패:', error);
+        }
+    }
+
+    /**
+     * 저장된 글 레퍼런스 로드
+     */
+    async loadSavedReferences(searchQuery = '', categoryFilter = '') {
+        if (!this.referenceSavedList) return;
+
+        // 저장된 글 목록이 없으면 로드
+        if (!this.savedTexts || this.savedTexts.length === 0) {
+            await this.loadSavedTexts();
+        }
+
+        // 필터링
+        let filtered = this.savedTexts.filter(text => {
+            // type이 'edit'인 것만 (레퍼런스 제외)
+            if ((text.type || 'edit') !== 'edit') return false;
+
+            // 검색어 필터
+            if (searchQuery) {
+                const title = this.extractTitleFromContent(text.content || '').toLowerCase();
+                const content = (text.content || '').toLowerCase();
+                if (!title.includes(searchQuery) && !content.includes(searchQuery)) {
+                    return false;
+                }
+            }
+
+            // 카테고리 필터
+            if (categoryFilter) {
+                const category = text.topic || '미분류';
+                if (category !== categoryFilter) return false;
+            }
+
+            return true;
+        });
+
+        // 정렬 (최신순)
+        filtered.sort((a, b) => {
+            const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+            const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+            return dateB - dateA;
+        });
+
+        // 렌더링
+        this.renderReferenceList(filtered, this.referenceSavedList, 'saved');
+
+        // 빈 상태 처리
+        const emptyEl = document.getElementById('reference-saved-empty');
+        if (emptyEl) {
+            emptyEl.style.display = filtered.length === 0 ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * 트래킹 레퍼런스 로드
+     */
+    async loadTrackingReferences(searchQuery = '', categoryFilter = '', sortFilter = 'recent') {
+        if (!this.referenceTrackingList) return;
+
+        // 트래킹 포스트 목록이 없으면 로드
+        if (!this.trackingPosts || this.trackingPosts.length === 0) {
+            await this.loadTrackingPosts();
+        }
+
+        // 필터링
+        let filtered = this.trackingPosts.filter(post => {
+            // 검색어 필터
+            if (searchQuery) {
+                const content = (post.content || '').toLowerCase();
+                if (!content.includes(searchQuery)) return false;
+            }
+
+            // 카테고리 필터는 트래킹에는 적용 안 함 (나중에 확장 가능)
+            return true;
+        });
+
+        // 정렬
+        filtered.sort((a, b) => {
+            if (sortFilter === 'views') {
+                const viewsA = this.getLatestMetricValue(a, 'views') || 0;
+                const viewsB = this.getLatestMetricValue(b, 'views') || 0;
+                return viewsB - viewsA;
+            } else if (sortFilter === 'likes') {
+                const likesA = this.getLatestMetricValue(a, 'likes') || 0;
+                const likesB = this.getLatestMetricValue(b, 'likes') || 0;
+                return likesB - likesA;
+            } else {
+                // 최신순
+                const dateA = a.postedAt || new Date(0);
+                const dateB = b.postedAt || new Date(0);
+                return dateB - dateA;
+            }
+        });
+
+        // 렌더링
+        this.renderReferenceList(filtered, this.referenceTrackingList, 'tracking');
+
+        // 빈 상태 처리
+        const emptyEl = document.getElementById('reference-tracking-empty');
+        if (emptyEl) {
+            emptyEl.style.display = filtered.length === 0 ? 'block' : 'none';
+        }
+    }
+
+    /**
+     * 트래킹 포스트의 최신 메트릭 값 가져오기
+     */
+    getLatestMetricValue(post, metricType) {
+        if (!post.metrics || post.metrics.length === 0) return 0;
+        
+        const latest = post.metrics[post.metrics.length - 1];
+        return latest[metricType] || 0;
+    }
+
+    /**
+     * 레퍼런스 목록 렌더링
+     */
+    renderReferenceList(items, container, sourceType) {
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        items.forEach(item => {
+            const itemEl = this.createReferenceItem(item, sourceType);
+            container.appendChild(itemEl);
+        });
+    }
+
+    /**
+     * 레퍼런스 아이템 생성
+     */
+    createReferenceItem(item, sourceType) {
+        const div = document.createElement('div');
+        div.className = 'reference-item';
+        div.setAttribute('data-item-id', item.id);
+        div.setAttribute('data-source-type', sourceType);
+
+        const title = sourceType === 'saved' 
+            ? this.extractTitleFromContent(item.content || '')
+            : (item.content || '').substring(0, 50) + (item.content?.length > 50 ? '...' : '');
+        
+        const content = (item.content || '').substring(0, 150);
+        let date = '';
+        if (sourceType === 'saved') {
+            date = item.createdAt ? this.formatDateFromFirestore(item.createdAt) : (item.date || '');
+        } else {
+            // 트래킹 포스트의 경우 postedAt이 Date 객체일 수도 있음
+            if (item.postedAt) {
+                if (item.postedAt.toDate) {
+                    date = this.formatDateFromFirestore(item.postedAt);
+                } else if (item.postedAt instanceof Date) {
+                    date = item.postedAt.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                } else {
+                    date = new Date(item.postedAt).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                }
+            }
+        }
+
+        let metaHtml = `<span>📅 ${date}</span>`;
+        
+        if (sourceType === 'tracking') {
+            const views = this.getLatestMetricValue(item, 'views') || 0;
+            const likes = this.getLatestMetricValue(item, 'likes') || 0;
+            metaHtml += `<span>👀 ${views}</span>`;
+            metaHtml += `<span>❤️ ${likes}</span>`;
+        } else {
+            const category = item.topic || '미분류';
+            metaHtml += `<span>📁 ${this.escapeHtml(category)}</span>`;
+        }
+
+        div.innerHTML = `
+            <div class="reference-item-header">
+                <div class="reference-item-title">${this.escapeHtml(title)}</div>
+            </div>
+            <div class="reference-item-content">${this.escapeHtml(content)}</div>
+            <div class="reference-item-meta">
+                ${metaHtml}
+            </div>
+            <div class="reference-item-actions">
+                <button class="reference-item-btn" data-action="add">
+                    추가하기
+                </button>
+            </div>
+        `;
+
+        // 추가 버튼 이벤트
+        const addBtn = div.querySelector('[data-action="add"]');
+        if (addBtn) {
+            addBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addReferenceToContent(item, sourceType);
+            });
+        }
+
+        // 아이템 클릭 시에도 추가
+        div.addEventListener('click', () => {
+            this.addReferenceToContent(item, sourceType);
+        });
+
+        return div;
+    }
+
+    /**
+     * 레퍼런스를 내용 필드에 추가
+     */
+    addReferenceToContent(item, sourceType) {
+        if (!this.scriptContentTextarea) return;
+
+        const content = item.content || '';
+        if (!content.trim()) return;
+
+        const currentContent = this.scriptContentTextarea.value;
+        const separator = currentContent ? '\n\n---\n\n' : '';
+        const newContent = currentContent + separator + content;
+
+        this.scriptContentTextarea.value = newContent;
+        this.scriptContentTextarea.focus();
+        
+        // 커서를 추가된 내용 끝으로 이동
+        const length = newContent.length;
+        this.scriptContentTextarea.setSelectionRange(length, length);
+
+        // 최근 사용 목록에 추가
+        this.addToRecentReferences(item.id, sourceType);
+
+        // 사이드 패널 닫기
+        this.closeReferenceLoader();
+
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 추가되었습니다.', 'success');
+    }
+
+    /**
+     * 최근 사용 레퍼런스 로드 (localStorage)
+     */
+    loadRecentReferences() {
+        try {
+            const stored = localStorage.getItem('dtw_recent_references');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('최근 레퍼런스 로드 실패:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 최근 사용 레퍼런스 목록 렌더링
+     */
+    async loadRecentReferencesList() {
+        if (!this.referenceRecentList || !this.referenceRecentSection) return;
+
+        if (this.recentReferences.length === 0) {
+            this.referenceRecentSection.style.display = 'none';
+            return;
+        }
+
+        this.referenceRecentSection.style.display = 'block';
+        this.referenceRecentList.innerHTML = '';
+
+        // 최근 5개만 표시
+        const recent = this.recentReferences.slice(0, 5);
+
+        for (const ref of recent) {
+            try {
+                let item = null;
+                
+                if (ref.sourceType === 'saved') {
+                    // 저장된 글에서 찾기
+                    if (!this.savedTexts || this.savedTexts.length === 0) {
+                        await this.loadSavedTexts();
+                    }
+                    item = this.savedTexts.find(t => t.id === ref.id);
+                } else {
+                    // 트래킹에서 찾기
+                    if (!this.trackingPosts || this.trackingPosts.length === 0) {
+                        await this.loadTrackingPosts();
+                    }
+                    item = this.trackingPosts.find(p => p.id === ref.id);
+                }
+
+                if (item) {
+                    const itemEl = this.createReferenceItem(item, ref.sourceType);
+                    this.referenceRecentList.appendChild(itemEl);
+                }
+            } catch (error) {
+                console.error('최근 레퍼런스 로드 실패:', error);
+            }
+        }
+    }
+
+    /**
+     * 최근 사용 레퍼런스에 추가
+     */
+    addToRecentReferences(itemId, sourceType) {
+        // 기존 항목 제거 (중복 방지)
+        this.recentReferences = this.recentReferences.filter(
+            ref => !(ref.id === itemId && ref.sourceType === sourceType)
+        );
+
+        // 맨 앞에 추가
+        this.recentReferences.unshift({
+            id: itemId,
+            sourceType: sourceType,
+            timestamp: Date.now()
+        });
+
+        // 최대 10개만 유지
+        this.recentReferences = this.recentReferences.slice(0, 10);
+
+        // localStorage에 저장
+        try {
+            localStorage.setItem('dtw_recent_references', JSON.stringify(this.recentReferences));
+        } catch (error) {
+            console.error('최근 레퍼런스 저장 실패:', error);
+        }
     }
 }
 

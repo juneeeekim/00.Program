@@ -6131,6 +6131,306 @@ body {
     font-weight: 600;
 }
 
+/* 레퍼런스 불러오기 버튼 */
+.form-label-with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.btn-load-reference {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #f0f4ff;
+    color: #667eea;
+    border: 1px solid #667eea;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    min-height: 32px;
+}
+
+.btn-load-reference:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-load-reference .btn-icon {
+    font-size: 14px;
+}
+
+.btn-load-reference .btn-text {
+    font-size: 13px;
+}
+
+/* 레퍼런스 불러오기 사이드 패널 */
+.reference-loader-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.reference-loader-panel[style*="display: block"] {
+    pointer-events: auto;
+}
+
+.reference-loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.reference-loader-panel[style*="display: block"] .reference-loader-overlay {
+    opacity: 1;
+}
+
+.reference-loader-content {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.reference-loader-panel[style*="display: block"] .reference-loader-content {
+    transform: translateX(0);
+}
+
+.reference-loader-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 2px solid #f0f0f0;
+    flex-shrink: 0;
+}
+
+.reference-loader-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.reference-loader-tabs {
+    display: flex;
+    border-bottom: 2px solid #f0f0f0;
+    flex-shrink: 0;
+}
+
+.reference-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+}
+
+.reference-tab:hover {
+    background: #f8f9fa;
+    color: #333;
+}
+
+.reference-tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: #f8f9ff;
+}
+
+.reference-loader-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.reference-section {
+    margin-bottom: 24px;
+}
+
+.reference-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.reference-search-section {
+    margin-bottom: 20px;
+}
+
+.reference-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.reference-search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.reference-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.reference-filter-select {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 13px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.reference-content {
+    display: none;
+}
+
+.reference-content.active {
+    display: block;
+}
+
+.reference-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reference-item {
+    background: white;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reference-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+}
+
+.reference-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    gap: 12px;
+}
+
+.reference-item-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.reference-item-content {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.reference-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: #999;
+    flex-wrap: wrap;
+}
+
+.reference-item-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reference-item-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.reference-item-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 36px;
+}
+
+.reference-item-btn:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.reference-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: #999;
+    font-size: 14px;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     .article-management {
@@ -6147,6 +6447,19 @@ body {
     
     .form-footer .btn {
         width: 100%;
+    }
+
+    .reference-loader-content {
+        max-width: 100%;
+    }
+
+    .btn-load-reference .btn-text {
+        display: none;
+    }
+
+    .btn-load-reference {
+        min-width: 44px;
+        justify-content: center;
     }
 }
 

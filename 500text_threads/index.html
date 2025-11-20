@@ -686,9 +686,20 @@
                                 
                                 <!-- 내용 -->
                                 <div class="form-group">
-                                    <label for="script-content-textarea" class="form-label">
-                                        내용 <span class="required">*</span>
-                                    </label>
+                                    <div class="form-label-with-action">
+                                        <label for="script-content-textarea" class="form-label">
+                                            내용 <span class="required">*</span>
+                                        </label>
+                                        <button 
+                                            type="button"
+                                            id="load-reference-btn" 
+                                            class="btn-load-reference"
+                                            aria-label="레퍼런스 불러오기"
+                                            title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
+                                            <span class="btn-icon">📥</span>
+                                            <span class="btn-text">불러오기</span>
+                                        </button>
+                                    </div>
                                     <textarea 
                                         id="script-content-textarea" 
                                         class="form-textarea"
@@ -908,6 +919,92 @@
                                     aria-label="수정 취소">
                                     ❌ 취소
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 레퍼런스 불러오기 사이드 패널 -->
+            <div id="reference-loader-panel" class="reference-loader-panel" role="dialog" aria-modal="true" aria-labelledby="reference-loader-title" style="display: none;">
+                <div class="reference-loader-overlay"></div>
+                <div class="reference-loader-content">
+                    <div class="reference-loader-header">
+                        <h3 id="reference-loader-title">📚 레퍼런스 불러오기</h3>
+                        <button 
+                            id="reference-loader-close" 
+                            class="btn-icon"
+                            aria-label="사이드 패널 닫기"
+                            title="닫기">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div class="reference-loader-tabs">
+                        <button 
+                            class="reference-tab active" 
+                            data-tab="saved"
+                            aria-selected="true"
+                            aria-controls="reference-saved-content">
+                            저장된 글
+                        </button>
+                        <button 
+                            class="reference-tab" 
+                            data-tab="tracking"
+                            aria-selected="false"
+                            aria-controls="reference-tracking-content">
+                            트래킹
+                        </button>
+                    </div>
+
+                    <div class="reference-loader-body">
+                        <!-- 최근 사용 -->
+                        <div id="reference-recent-section" class="reference-section" style="display: none;">
+                            <h4 class="reference-section-title">⚡ 최근 사용</h4>
+                            <div id="reference-recent-list" class="reference-list">
+                                <!-- 동적으로 추가됨 -->
+                            </div>
+                        </div>
+
+                        <!-- 검색 -->
+                        <div class="reference-search-section">
+                            <input 
+                                type="text" 
+                                id="reference-search-input" 
+                                class="reference-search-input"
+                                placeholder="제목 또는 내용으로 검색..."
+                                aria-label="레퍼런스 검색">
+                        </div>
+
+                        <!-- 필터 (트래킹 탭일 때만 표시) -->
+                        <div id="reference-tracking-filters" class="reference-filters" style="display: none;">
+                            <select id="reference-category-filter" class="reference-filter-select">
+                                <option value="">전체 카테고리</option>
+                            </select>
+                            <select id="reference-sort-filter" class="reference-filter-select">
+                                <option value="recent">최신순</option>
+                                <option value="views">조회수 높은순</option>
+                                <option value="likes">좋아요 높은순</option>
+                            </select>
+                        </div>
+
+                        <!-- 저장된 글 목록 -->
+                        <div id="reference-saved-content" class="reference-content active" role="tabpanel">
+                            <div id="reference-saved-list" class="reference-list">
+                                <!-- 동적으로 추가됨 -->
+                            </div>
+                            <div id="reference-saved-empty" class="reference-empty" style="display: none;">
+                                <p>표시할 글이 없습니다.</p>
+                            </div>
+                        </div>
+
+                        <!-- 트래킹 목록 -->
+                        <div id="reference-tracking-content" class="reference-content" role="tabpanel" style="display: none;">
+                            <div id="reference-tracking-list" class="reference-list">
+                                <!-- 동적으로 추가됨 -->
+                            </div>
+                            <div id="reference-tracking-empty" class="reference-empty" style="display: none;">
+                                <p>표시할 트래킹 포스트가 없습니다.</p>
                             </div>
                         </div>
                     </div>
