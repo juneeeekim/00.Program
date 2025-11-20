@@ -74,6 +74,10 @@
                     <span class="tab-icon">📊</span>
                     <span class="tab-text">트래킹</span>
                 </button>
+                <button class="tab-button" data-tab="management">
+                    <span class="tab-icon">📋</span>
+                    <span class="tab-text">글 관리</span>
+                </button>
             </div>
 
             <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
@@ -633,6 +637,136 @@
                     </div>
                     <div class="tracking-posts-list" id="tracking-posts-list">
                         <!-- 트래킹 중인 포스트 목록 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 글 관리 탭 콘텐츠 -->
+            <div class="tab-content" id="management-tab">
+                <div class="article-management">
+                    <h3>📋 글 관리</h3>
+                    
+                    <!-- 카테고리 선택 드롭다운 -->
+                    <div class="management-filters">
+                        <label for="category-select" class="sr-only">카테고리 선택</label>
+                        <select 
+                            id="category-select" 
+                            class="category-select"
+                            aria-label="카테고리별 글 필터링"
+                            aria-describedby="category-select-description">
+                            <option value="">전체 글 보기</option>
+                            <!-- 동적으로 카테고리 추가됨 -->
+                        </select>
+                        <span id="category-select-description" class="sr-only">
+                            카테고리를 선택하면 해당 카테고리의 글만 표시됩니다.
+                        </span>
+                    </div>
+
+                    <!-- 글 카드 그리드 -->
+                    <div 
+                        id="article-cards-grid" 
+                        class="article-cards-grid"
+                        role="region"
+                        aria-label="글 목록"
+                        aria-live="polite">
+                        <!-- 동적으로 카드가 추가됨 -->
+                    </div>
+
+                    <!-- 빈 상태 메시지 -->
+                    <div id="management-empty-state" class="empty-state" style="display: none;">
+                        <p>표시할 글이 없습니다.</p>
+                    </div>
+
+                    <!-- 상세 패널 -->
+                    <div id="article-detail-panel" class="article-detail-panel" style="display: none;" role="region" aria-label="글 상세 정보">
+                        <div class="detail-panel-header">
+                            <h4 id="detail-panel-title">📄 글 상세 정보</h4>
+                            <button 
+                                id="detail-panel-close" 
+                                class="btn-icon"
+                                aria-label="상세 패널 닫기"
+                                title="닫기">
+                                ×
+                            </button>
+                        </div>
+                        
+                        <!-- 읽기 모드 -->
+                        <div id="detail-read-mode" class="detail-mode">
+                            <div class="detail-meta">
+                                <span id="detail-category" class="detail-badge"></span>
+                                <span id="detail-date" class="detail-date"></span>
+                                <span id="detail-view-count" class="detail-view-count" style="display: none;"></span>
+                            </div>
+                            <h5 id="detail-title" class="detail-title"></h5>
+                            <div id="detail-content" class="detail-content"></div>
+                            <div class="detail-actions">
+                                <button 
+                                    id="detail-edit-btn" 
+                                    class="btn btn-primary"
+                                    aria-label="글 수정하기">
+                                    ✏️ 수정하기
+                                </button>
+                                <button 
+                                    id="detail-delete-btn" 
+                                    class="btn btn-danger"
+                                    aria-label="글 삭제하기">
+                                    🗑️ 삭제하기
+                                </button>
+                                <button 
+                                    id="detail-copy-btn" 
+                                    class="btn btn-secondary"
+                                    aria-label="글 내용 복사하기">
+                                    📋 복사
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 수정 모드 -->
+                        <div id="detail-edit-mode" class="detail-mode" style="display: none;">
+                            <div class="edit-form-group">
+                                <label for="edit-title-input" class="edit-label">제목</label>
+                                <input 
+                                    type="text" 
+                                    id="edit-title-input" 
+                                    class="edit-input"
+                                    aria-label="글 제목 입력"
+                                    aria-required="true"
+                                    maxlength="200">
+                            </div>
+                            <div class="edit-form-group">
+                                <label for="edit-category-select" class="edit-label">카테고리</label>
+                                <select 
+                                    id="edit-category-select" 
+                                    class="edit-select"
+                                    aria-label="카테고리 선택"
+                                    aria-required="false">
+                                    <!-- 동적으로 카테고리 추가됨 -->
+                                </select>
+                            </div>
+                            <div class="edit-form-group">
+                                <label for="edit-content-textarea" class="edit-label">내용</label>
+                                <textarea 
+                                    id="edit-content-textarea" 
+                                    class="edit-textarea"
+                                    aria-label="글 내용 입력"
+                                    aria-required="true"
+                                    rows="10"></textarea>
+                            </div>
+                            <div class="edit-actions">
+                                <button 
+                                    id="edit-save-btn" 
+                                    class="btn btn-primary"
+                                    aria-label="수정 내용 저장">
+                                    💾 저장
+                                </button>
+                                <button 
+                                    id="edit-cancel-btn" 
+                                    class="btn btn-secondary"
+                                    aria-label="수정 취소">
+                                    ❌ 취소
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

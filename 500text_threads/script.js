@@ -763,6 +763,12 @@ class DualTextWriter {
         if (tabName === 'writing') {
             // 이미 writing-container에 두 패널이 모두 포함되어 있음
         }
+
+        // 글 관리 탭으로 전환 시 데이터 로드
+        if (tabName === 'management') {
+            this.loadArticlesForManagement();
+            this.initArticleManagement();
+        }
     }
 
     bindEvents() {
@@ -7365,6 +7371,720 @@ class DualTextWriter {
         }
         // 현재는 매번 계산하므로 별도 작업 불필요
         console.log('📚 레퍼런스 링크 캐시 무효화 (현재는 캐싱 미사용)');
+    }
+
+    // ===== 글 관리 기능 =====
+
+    /**
+     * 글 관리 기능 초기화
+     */
+    initArticleManagement() {
+        // DOM 요소 참조
+        this.categorySelect = document.getElementById('category-select');
+        this.articleCardsGrid = document.getElementById('article-cards-grid');
+        this.managementEmptyState = document.getElementById('management-empty-state');
+        this.articleDetailPanel = document.getElementById('article-detail-panel');
+        this.detailPanelClose = document.getElementById('detail-panel-close');
+        this.detailEditBtn = document.getElementById('detail-edit-btn');
+        this.detailDeleteBtn = document.getElementById('detail-delete-btn');
+        this.detailCopyBtn = document.getElementById('detail-copy-btn');
+        this.editSaveBtn = document.getElementById('edit-save-btn');
+        this.editCancelBtn = document.getElementById('edit-cancel-btn');
+        this.editTitleInput = document.getElementById('edit-title-input');
+        this.editCategorySelect = document.getElementById('edit-category-select');
+        this.editContentTextarea = document.getElementById('edit-content-textarea');
+
+        // 현재 선택된 글 ID
+        this.selectedArticleId = null;
+        this.managementArticles = []; // 글 관리용 글 목록
+
+        // 이벤트 리스너 바인딩
+        if (this.categorySelect) {
+            this.categorySelect.addEventListener('change', (e) => {
+                this.filterArticlesByCategory(e.target.value);
+            });
+        }
+
+        if (this.detailPanelClose) {
+            this.detailPanelClose.addEventListener('click', () => {
+                this.closeDetailPanel();
+            });
+        }
+
+        if (this.detailEditBtn) {
+            this.detailEditBtn.addEventListener('click', () => {
+                this.enterEditMode();
+            });
+        }
+
+        if (this.detailDeleteBtn) {
+            this.detailDeleteBtn.addEventListener('click', () => {
+                this.deleteArticle();
+            });
+        }
+
+        if (this.detailCopyBtn) {
+            this.detailCopyBtn.addEventListener('click', () => {
+                this.copyArticleContent();
+            });
+        }
+
+        if (this.editSaveBtn) {
+            this.editSaveBtn.addEventListener('click', () => {
+                this.saveArticleEdit();
+            });
+        }
+
+        if (this.editCancelBtn) {
+            this.editCancelBtn.addEventListener('click', () => {
+                this.cancelArticleEdit();
+            });
+        }
+
+        // 카테고리 드롭다운 업데이트
+        this.updateCategoryDropdown();
+    }
+
+    /**
+     * 글 관리용 글 목록 로드
+     */
+    async loadArticlesForManagement() {
+        if (!this.currentUser || !this.isFirebaseReady) {
+            console.warn('loadArticlesForManagement: Firebase가 준비되지 않았거나 로그인이 필요합니다.');
+            return;
+        }
+
+        try {
+            // 'edit' 타입 글만 로드 (레퍼런스 제외)
+            const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
+            const q = window.firebaseQuery(
+                textsRef,
+                window.firebaseWhere('type', '==', 'edit'),
+                window.firebaseOrderBy('createdAt', 'desc')
+            );
+            const querySnapshot = await window.firebaseGetDocs(q);
+
+            this.managementArticles = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                this.managementArticles.push({
+                    id: doc.id,
+                    title: this.extractTitleFromContent(data.content || ''),
+                    content: data.content || '',
+                    category: data.topic || '미분류', // topic을 category로 사용
+                    createdAt: data.createdAt,
+                    order: data.order || 0, // order 필드 (기본값 0)
+                    viewCount: data.viewCount || 0
+                });
+            });
+
+            // order 필드가 없는 경우 초기화
+            await this.initializeArticleOrders();
+
+            // 카테고리별로 정렬 후 렌더링
+            this.renderArticleCards();
+            this.updateCategoryDropdown();
+
+        } catch (error) {
+            console.error('글 관리용 글 로드 실패:', error);
+            this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
+            this.managementArticles = [];
+        }
+    }
+
+    /**
+     * order 필드 초기화 (없는 경우)
+     */
+    async initializeArticleOrders() {
+        if (!this.currentUser || !this.isFirebaseReady) return;
+
+        const needsUpdate = this.managementArticles.some(article => article.order === undefined || article.order === null);
+        if (!needsUpdate) return;
+
+        try {
+            // 카테고리별로 그룹화
+            const articlesByCategory = {};
+            this.managementArticles.forEach(article => {
+                const category = article.category || '미분류';
+                if (!articlesByCategory[category]) {
+                    articlesByCategory[category] = [];
+                }
+                articlesByCategory[category].push(article);
+            });
+
+            // 각 카테고리별로 order 할당
+            for (const [category, articles] of Object.entries(articlesByCategory)) {
+                // createdAt 기준 정렬
+                articles.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateA - dateB;
+                });
+
+                // order 값 할당 및 업데이트
+                for (let i = 0; i < articles.length; i++) {
+                    const article = articles[i];
+                    if (article.order === undefined || article.order === null) {
+                        article.order = i + 1;
+                        // Firebase 업데이트
+                        const articleRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', article.id);
+                        await window.firebaseUpdateDoc(articleRef, {
+                            order: i + 1
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('order 필드 초기화 실패:', error);
+        }
+    }
+
+    /**
+     * 내용에서 제목 추출 (첫 줄 또는 첫 30자)
+     */
+    extractTitleFromContent(content) {
+        if (!content) return '제목 없음';
+        const firstLine = content.split('\n')[0].trim();
+        if (firstLine.length > 0) {
+            return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+        }
+        return content.length > 50 ? content.substring(0, 50) + '...' : content;
+    }
+
+    /**
+     * 카테고리 드롭다운 업데이트
+     */
+    updateCategoryDropdown() {
+        if (!this.categorySelect || !this.editCategorySelect) return;
+
+        // 고유한 카테고리 목록 추출
+        const categories = new Set(['미분류']);
+        this.managementArticles.forEach(article => {
+            if (article.category) {
+                categories.add(article.category);
+            }
+        });
+
+        const sortedCategories = Array.from(categories).sort();
+
+        // 카테고리 선택 드롭다운 업데이트
+        this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
+        sortedCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            this.categorySelect.appendChild(option);
+        });
+
+        // 수정 모드 카테고리 드롭다운 업데이트
+        this.editCategorySelect.innerHTML = '';
+        sortedCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            this.editCategorySelect.appendChild(option);
+        });
+    }
+
+    /**
+     * 카테고리별 필터링
+     */
+    filterArticlesByCategory(category) {
+        this.renderArticleCards(category);
+    }
+
+    /**
+     * 글 카드 렌더링
+     */
+    renderArticleCards(filterCategory = '') {
+        if (!this.articleCardsGrid) return;
+
+        // 필터링
+        let filteredArticles = this.managementArticles;
+        if (filterCategory) {
+            filteredArticles = this.managementArticles.filter(article => 
+                (article.category || '미분류') === filterCategory
+            );
+        }
+
+        // 카테고리별로 그룹화 및 정렬
+        const articlesByCategory = {};
+        filteredArticles.forEach(article => {
+            const category = article.category || '미분류';
+            if (!articlesByCategory[category]) {
+                articlesByCategory[category] = [];
+            }
+            articlesByCategory[category].push(article);
+        });
+
+        // 각 카테고리별로 order 기준 정렬
+        Object.keys(articlesByCategory).forEach(category => {
+            articlesByCategory[category].sort((a, b) => {
+                return (a.order || 0) - (b.order || 0);
+            });
+        });
+
+        // 빈 상태 처리
+        if (filteredArticles.length === 0) {
+            this.articleCardsGrid.innerHTML = '';
+            if (this.managementEmptyState) {
+                this.managementEmptyState.style.display = 'block';
+                this.managementEmptyState.textContent = filterCategory 
+                    ? `${filterCategory} 카테고리에 글이 없습니다.`
+                    : '표시할 글이 없습니다.';
+            }
+            return;
+        }
+
+        if (this.managementEmptyState) {
+            this.managementEmptyState.style.display = 'none';
+        }
+
+        // 카드 렌더링
+        this.articleCardsGrid.innerHTML = '';
+        let globalOrder = 1;
+
+        Object.keys(articlesByCategory).forEach(category => {
+            articlesByCategory[category].forEach(article => {
+                const card = this.createArticleCard(article, globalOrder++, filterCategory);
+                this.articleCardsGrid.appendChild(card);
+            });
+        });
+    }
+
+    /**
+     * 글 카드 생성
+     */
+    createArticleCard(article, orderNumber, filterCategory = '') {
+        const card = document.createElement('div');
+        card.className = 'article-card';
+        card.setAttribute('data-article-id', article.id);
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `글 ${orderNumber}: ${article.title}`);
+        
+        // 키보드 접근성
+        card.addEventListener('click', () => {
+            this.selectArticle(article.id);
+        });
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.selectArticle(article.id);
+            }
+        });
+
+        // 내용 미리보기 (3줄)
+        const contentPreview = this.getContentPreview(article.content, 3);
+
+        // 날짜 포맷
+        const dateStr = article.createdAt 
+            ? this.formatDateFromFirestore(article.createdAt)
+            : '날짜 없음';
+
+        // 순서 조정 버튼 활성화 여부 확인
+        const canMoveUp = this.canMoveUp(article, filterCategory);
+        const canMoveDown = this.canMoveDown(article, filterCategory);
+
+        card.innerHTML = `
+            <div class="article-card-header">
+                <div class="article-card-order">
+                    <span class="article-order-badge" aria-label="순서 ${orderNumber}">${orderNumber}</span>
+                    <h4 class="article-card-title" title="${this.escapeHtml(article.title)}">${this.escapeHtml(article.title)}</h4>
+                </div>
+                <div class="article-card-actions">
+                    <button 
+                        class="order-button" 
+                        data-action="up" 
+                        data-article-id="${article.id}"
+                        aria-label="위로 이동"
+                        title="위로 이동"
+                        ${canMoveUp ? '' : 'disabled'}>
+                        ▲
+                    </button>
+                    <button 
+                        class="order-button" 
+                        data-action="down" 
+                        data-article-id="${article.id}"
+                        aria-label="아래로 이동"
+                        title="아래로 이동"
+                        ${canMoveDown ? '' : 'disabled'}>
+                        ▼
+                    </button>
+                </div>
+            </div>
+            <div class="article-card-content">${this.escapeHtml(contentPreview)}</div>
+            <div class="article-card-meta">
+                <span class="article-card-date">📅 ${dateStr}</span>
+                <span class="article-card-category">📁 ${this.escapeHtml(article.category || '미분류')}</span>
+            </div>
+        `;
+
+        // 순서 조정 버튼 이벤트
+        const upBtn = card.querySelector('[data-action="up"]');
+        const downBtn = card.querySelector('[data-action="down"]');
+        
+        if (upBtn) {
+            upBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.moveArticleOrder(article.id, 'up');
+            });
+        }
+        
+        if (downBtn) {
+            downBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.moveArticleOrder(article.id, 'down');
+            });
+        }
+
+        return card;
+    }
+
+    /**
+     * 내용 미리보기 생성
+     */
+    getContentPreview(content, maxLines = 3) {
+        if (!content) return '';
+        const lines = content.split('\n').filter(line => line.trim());
+        const preview = lines.slice(0, maxLines).join('\n');
+        if (lines.length > maxLines) {
+            return preview + '...';
+        }
+        return preview;
+    }
+
+    /**
+     * 위로 이동 가능 여부
+     */
+    canMoveUp(article, filterCategory = '') {
+        const filtered = filterCategory 
+            ? this.managementArticles.filter(a => (a.category || '미분류') === filterCategory)
+            : this.managementArticles;
+        
+        const sameCategory = filtered.filter(a => (a.category || '미분류') === (article.category || '미분류'));
+        sameCategory.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        return sameCategory[0]?.id !== article.id;
+    }
+
+    /**
+     * 아래로 이동 가능 여부
+     */
+    canMoveDown(article, filterCategory = '') {
+        const filtered = filterCategory 
+            ? this.managementArticles.filter(a => (a.category || '미분류') === filterCategory)
+            : this.managementArticles;
+        
+        const sameCategory = filtered.filter(a => (a.category || '미분류') === (article.category || '미분류'));
+        sameCategory.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        return sameCategory[sameCategory.length - 1]?.id !== article.id;
+    }
+
+    /**
+     * 글 선택
+     */
+    selectArticle(articleId) {
+        // 모든 카드 선택 해제
+        document.querySelectorAll('.article-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // 선택한 카드 하이라이트
+        const selectedCard = document.querySelector(`[data-article-id="${articleId}"]`);
+        if (selectedCard) {
+            selectedCard.classList.add('selected');
+        }
+
+        // 상세 패널 표시
+        const article = this.managementArticles.find(a => a.id === articleId);
+        if (article) {
+            this.selectedArticleId = articleId;
+            this.renderDetailPanel(article);
+            
+            // 상세 패널로 스크롤
+            if (this.articleDetailPanel) {
+                this.articleDetailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    }
+
+    /**
+     * 상세 패널 렌더링
+     */
+    renderDetailPanel(article) {
+        if (!this.articleDetailPanel) return;
+
+        // 읽기 모드 표시
+        const readMode = document.getElementById('detail-read-mode');
+        const editMode = document.getElementById('detail-edit-mode');
+        
+        if (readMode) readMode.style.display = 'block';
+        if (editMode) editMode.style.display = 'none';
+
+        // 데이터 채우기
+        const categoryEl = document.getElementById('detail-category');
+        const dateEl = document.getElementById('detail-date');
+        const titleEl = document.getElementById('detail-title');
+        const contentEl = document.getElementById('detail-content');
+
+        if (categoryEl) {
+            categoryEl.textContent = article.category || '미분류';
+        }
+        if (dateEl) {
+            dateEl.textContent = article.createdAt 
+                ? this.formatDateFromFirestore(article.createdAt)
+                : '날짜 없음';
+        }
+        if (titleEl) {
+            titleEl.textContent = article.title;
+        }
+        if (contentEl) {
+            contentEl.textContent = article.content;
+        }
+
+        // 상세 패널 표시
+        this.articleDetailPanel.style.display = 'block';
+    }
+
+    /**
+     * 수정 모드 진입
+     */
+    enterEditMode() {
+        if (!this.selectedArticleId) return;
+
+        const article = this.managementArticles.find(a => a.id === this.selectedArticleId);
+        if (!article) return;
+
+        // 읽기 모드 숨기기, 수정 모드 표시
+        const readMode = document.getElementById('detail-read-mode');
+        const editMode = document.getElementById('detail-edit-mode');
+        
+        if (readMode) readMode.style.display = 'none';
+        if (editMode) editMode.style.display = 'block';
+
+        // 입력 필드에 값 설정
+        if (this.editTitleInput) {
+            this.editTitleInput.value = article.title;
+        }
+        if (this.editContentTextarea) {
+            this.editContentTextarea.value = article.content;
+        }
+        if (this.editCategorySelect) {
+            this.editCategorySelect.value = article.category || '미분류';
+        }
+    }
+
+    /**
+     * 글 수정 저장
+     */
+    async saveArticleEdit() {
+        if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady) return;
+
+        const title = this.editTitleInput?.value.trim() || '';
+        const content = this.editContentTextarea?.value.trim() || '';
+        const category = this.editCategorySelect?.value || '미분류';
+
+        // 검증
+        if (!title && !content) {
+            this.showMessage('❌ 제목 또는 내용을 입력해주세요.', 'error');
+            return;
+        }
+
+        try {
+            const articleRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', this.selectedArticleId);
+            await window.firebaseUpdateDoc(articleRef, {
+                content: content,
+                topic: category, // topic 필드에 카테고리 저장
+                updatedAt: window.firebaseServerTimestamp()
+            });
+
+            // 로컬 데이터 업데이트
+            const article = this.managementArticles.find(a => a.id === this.selectedArticleId);
+            if (article) {
+                article.title = title || this.extractTitleFromContent(content);
+                article.content = content;
+                article.category = category;
+            }
+
+            // UI 업데이트
+            this.showMessage('✅ 글이 수정되었습니다.', 'success');
+            await this.loadArticlesForManagement();
+            this.selectArticle(this.selectedArticleId);
+            
+            // 읽기 모드로 전환
+            const readMode = document.getElementById('detail-read-mode');
+            const editMode = document.getElementById('detail-edit-mode');
+            if (readMode) readMode.style.display = 'block';
+            if (editMode) editMode.style.display = 'none';
+
+        } catch (error) {
+            console.error('글 수정 실패:', error);
+            this.showMessage('❌ 글 수정 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 수정 취소
+     */
+    cancelArticleEdit() {
+        if (!this.selectedArticleId) return;
+
+        if (confirm('수정을 취소하시겠습니까?')) {
+            // 읽기 모드로 전환
+            const readMode = document.getElementById('detail-read-mode');
+            const editMode = document.getElementById('detail-edit-mode');
+            
+            if (readMode) readMode.style.display = 'block';
+            if (editMode) editMode.style.display = 'none';
+
+            // 상세 패널 다시 렌더링
+            const article = this.managementArticles.find(a => a.id === this.selectedArticleId);
+            if (article) {
+                this.renderDetailPanel(article);
+            }
+        }
+    }
+
+    /**
+     * 글 삭제
+     */
+    async deleteArticle() {
+        if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady) return;
+
+        if (!confirm('정말 이 글을 삭제하시겠습니까?')) return;
+
+        try {
+            const articleRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', this.selectedArticleId);
+            await window.firebaseDeleteDoc(articleRef);
+
+            // 로컬 데이터에서 제거
+            this.managementArticles = this.managementArticles.filter(a => a.id !== this.selectedArticleId);
+
+            // UI 업데이트
+            this.showMessage('✅ 글이 삭제되었습니다.', 'success');
+            this.closeDetailPanel();
+            await this.loadArticlesForManagement();
+
+        } catch (error) {
+            console.error('글 삭제 실패:', error);
+            this.showMessage('❌ 글 삭제 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 글 내용 복사
+     */
+    async copyArticleContent() {
+        if (!this.selectedArticleId) return;
+
+        const article = this.managementArticles.find(a => a.id === this.selectedArticleId);
+        if (!article) return;
+
+        try {
+            await navigator.clipboard.writeText(article.content);
+            this.showMessage('✅ 클립보드에 복사되었습니다!', 'success');
+        } catch (error) {
+            console.error('복사 실패:', error);
+            this.showMessage('❌ 복사 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 상세 패널 닫기
+     */
+    closeDetailPanel() {
+        if (this.articleDetailPanel) {
+            this.articleDetailPanel.style.display = 'none';
+        }
+        
+        // 모든 카드 선택 해제
+        document.querySelectorAll('.article-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        this.selectedArticleId = null;
+    }
+
+    /**
+     * 순서 변경
+     */
+    async moveArticleOrder(articleId, direction) {
+        if (!this.currentUser || !this.isFirebaseReady) return;
+
+        try {
+            const article = this.managementArticles.find(a => a.id === articleId);
+            if (!article) return;
+
+            const category = article.category || '미분류';
+            const sameCategoryArticles = this.managementArticles
+                .filter(a => (a.category || '미분류') === category)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            const currentIndex = sameCategoryArticles.findIndex(a => a.id === articleId);
+            if (currentIndex === -1) return;
+
+            let targetIndex;
+            if (direction === 'up') {
+                if (currentIndex === 0) return; // 이미 첫 번째
+                targetIndex = currentIndex - 1;
+            } else {
+                if (currentIndex === sameCategoryArticles.length - 1) return; // 이미 마지막
+                targetIndex = currentIndex + 1;
+            }
+
+            const targetArticle = sameCategoryArticles[targetIndex];
+            const currentOrder = article.order || 0;
+            const targetOrder = targetArticle.order || 0;
+
+            // 순서 교환
+            const articleRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', articleId);
+            const targetRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', targetArticle.id);
+
+            await Promise.all([
+                window.firebaseUpdateDoc(articleRef, { order: targetOrder }),
+                window.firebaseUpdateDoc(targetRef, { order: currentOrder })
+            ]);
+
+            // 로컬 데이터 업데이트
+            article.order = targetOrder;
+            targetArticle.order = currentOrder;
+
+            // UI 리렌더링
+            const currentCategory = this.categorySelect?.value || '';
+            this.renderArticleCards(currentCategory);
+
+        } catch (error) {
+            console.error('순서 변경 실패:', error);
+            this.showMessage('❌ 순서 변경 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 날짜 포맷팅 (Firestore Timestamp)
+     */
+    formatDateFromFirestore(timestamp) {
+        if (!timestamp) return '날짜 없음';
+        try {
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } catch (error) {
+            return '날짜 없음';
+        }
+    }
+
+    /**
+     * HTML 이스케이프
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
