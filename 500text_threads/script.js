@@ -764,7 +764,7 @@ class DualTextWriter {
             // 이미 writing-container에 두 패널이 모두 포함되어 있음
         }
 
-        // 글 관리 탭으로 전환 시 데이터 로드
+        // 스크립트 작성 탭으로 전환 시 데이터 로드
         if (tabName === 'management') {
             this.loadArticlesForManagement();
             this.initArticleManagement();
@@ -7373,10 +7373,10 @@ class DualTextWriter {
         console.log('📚 레퍼런스 링크 캐시 무효화 (현재는 캐싱 미사용)');
     }
 
-    // ===== 글 관리 기능 =====
+    // ===== 스크립트 작성 기능 =====
 
     /**
-     * 글 관리 기능 초기화
+     * 스크립트 작성 기능 초기화
      */
     initArticleManagement() {
         // DOM 요소 참조
@@ -7396,7 +7396,7 @@ class DualTextWriter {
 
         // 현재 선택된 글 ID
         this.selectedArticleId = null;
-        this.managementArticles = []; // 글 관리용 글 목록
+        this.managementArticles = []; // 스크립트 작성용 글 목록
 
         // 이벤트 리스너 바인딩
         if (this.categorySelect) {
@@ -7446,7 +7446,7 @@ class DualTextWriter {
     }
 
     /**
-     * 글 관리용 글 목록 로드
+     * 스크립트 작성용 글 목록 로드
      */
     async loadArticlesForManagement() {
         if (!this.currentUser || !this.isFirebaseReady) {
@@ -7486,7 +7486,7 @@ class DualTextWriter {
             this.updateCategoryDropdown();
 
         } catch (error) {
-            console.error('글 관리용 글 로드 실패:', error);
+            console.error('스크립트 작성용 글 로드 실패:', error);
             this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
             this.managementArticles = [];
         }
