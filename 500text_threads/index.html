@@ -74,6 +74,10 @@
                     <span class="tab-icon">📊</span>
                     <span class="tab-text">트래킹</span>
                 </button>
+                <button class="tab-button" data-tab="manage">
+                    <span class="tab-icon">📋</span>
+                    <span class="tab-text">글 관리</span>
+                </button>
             </div>
 
             <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
@@ -791,6 +795,77 @@
                 ⚠️ <strong>마이그레이션 중에는 페이지를 닫지 마세요.</strong><br>
                 작업이 완료될 때까지 잠시만 기다려주세요.
             </p>
+        </div>
+    </div>
+
+    <!-- 글 관리 탭 콘텐츠 -->
+    <div class="tab-content" id="manage-tab">
+        <div class="article-management-container">
+            <h3>📋 글 관리</h3>
+            
+            <!-- 카테고리 선택 드롭다운 -->
+            <div class="category-select-wrapper">
+                <select id="category-select" class="category-select" aria-label="카테고리 선택">
+                    <option value="">전체 글 보기</option>
+                </select>
+            </div>
+
+            <!-- 글 카드 그리드 -->
+            <div id="article-cards-grid" class="article-cards-grid" role="region" aria-label="글 카드 목록">
+                <!-- 카드들이 동적으로 렌더링됩니다 -->
+            </div>
+
+            <!-- 상세 패널 -->
+            <div id="article-detail-panel" class="article-detail-panel" style="display: none;" role="region" aria-label="글 상세 정보">
+                <div class="detail-panel-header">
+                    <h4>📄 글 상세 정보</h4>
+                </div>
+                <div class="detail-panel-content">
+                    <div class="detail-meta">
+                        <span id="detail-category" class="detail-meta-item"></span>
+                        <span id="detail-date" class="detail-meta-item"></span>
+                        <span id="detail-views" class="detail-meta-item"></span>
+                    </div>
+                    <div class="detail-title-wrapper">
+                        <h5 id="detail-title" class="detail-title"></h5>
+                    </div>
+                    <div class="detail-content-wrapper">
+                        <div id="detail-content" class="detail-content"></div>
+                    </div>
+                    <div class="detail-actions">
+                        <button id="edit-article-btn" class="btn btn-primary">✏️ 수정하기</button>
+                        <button id="delete-article-btn" class="btn btn-danger">🗑️ 삭제하기</button>
+                        <button id="copy-article-btn" class="btn btn-secondary">📋 복사</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 수정 모드 패널 -->
+            <div id="article-edit-panel" class="article-edit-panel" style="display: none;" role="region" aria-label="글 수정">
+                <div class="edit-panel-header">
+                    <h4>✏️ 글 수정</h4>
+                </div>
+                <div class="edit-panel-content">
+                    <div class="edit-form-group">
+                        <label for="edit-article-title" class="edit-label">제목</label>
+                        <input type="text" id="edit-article-title" class="edit-input" maxlength="100" aria-required="true">
+                    </div>
+                    <div class="edit-form-group">
+                        <label for="edit-article-category" class="edit-label">카테고리</label>
+                        <select id="edit-article-category" class="edit-select" aria-required="true">
+                            <option value="">카테고리 선택</option>
+                        </select>
+                    </div>
+                    <div class="edit-form-group">
+                        <label for="edit-article-content" class="edit-label">내용</label>
+                        <textarea id="edit-article-content" class="edit-textarea" rows="10" aria-required="true"></textarea>
+                    </div>
+                    <div class="edit-actions">
+                        <button id="save-article-btn" class="btn btn-primary">💾 저장</button>
+                        <button id="cancel-edit-btn" class="btn btn-secondary">❌ 취소</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
