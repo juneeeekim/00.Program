@@ -6207,6 +6207,8 @@ body {
     bottom: 0;
     width: 100%;
     max-width: 480px;
+    height: 100vh;
+    max-height: 100vh;
     background: white;
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
     transform: translateX(100%);
@@ -6269,8 +6271,30 @@ body {
 
 .reference-loader-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 20px 24px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 레퍼런스 로더 스크롤바 스타일 */
+.reference-loader-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.reference-loader-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.reference-loader-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.reference-loader-body::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
 }
 
 .reference-section {
@@ -6334,6 +6358,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-height: 0;
 }
 
 .reference-item {
@@ -6451,6 +6476,12 @@ body {
 
     .reference-loader-content {
         max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+    }
+
+    .reference-loader-body {
+        padding: 16px;
     }
 
     .btn-load-reference .btn-text {
