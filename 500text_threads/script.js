@@ -9350,6 +9350,10 @@ class DualTextWriter {
                 const likesA = this.getLatestMetricValue(a, 'likes') || 0;
                 const likesB = this.getLatestMetricValue(b, 'likes') || 0;
                 return likesB - likesA;
+            } else if (sortFilter === 'follows') {
+                const followsA = this.getLatestMetricValue(a, 'follows') || 0;
+                const followsB = this.getLatestMetricValue(b, 'follows') || 0;
+                return followsB - followsA;
             } else {
                 // 최신순
                 const dateA = a.postedAt || new Date(0);
@@ -9435,8 +9439,10 @@ class DualTextWriter {
         if (sourceType === 'tracking') {
             const views = this.getLatestMetricValue(item, 'views') || 0;
             const likes = this.getLatestMetricValue(item, 'likes') || 0;
+            const follows = this.getLatestMetricValue(item, 'follows') || 0;
             metaHtml += `<span>👀 ${views}</span>`;
             metaHtml += `<span>❤️ ${likes}</span>`;
+            metaHtml += `<span>👥 ${follows}</span>`;
         } else {
             const category = item.topic || '미분류';
             metaHtml += `<span>📁 ${this.escapeHtml(category)}</span>`;
