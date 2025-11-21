@@ -16,6 +16,9 @@ class DualTextWriter {
         // 기타 설정
         TEMP_SAVE_INTERVAL_MS: 5000,            // 임시 저장 간격 (ms)
         TEMP_SAVE_DELAY_MS: 2000,               // 임시 저장 딜레이 (ms)
+        
+        // 확대 모드 애니메이션 설정
+        EXPAND_MODE_ANIMATION_DELAY: 150,        // 확대 모드 열림 후 레퍼런스 추가 지연 시간 (ms)
     };
     
     /**
@@ -4079,6 +4082,43 @@ class DualTextWriter {
                 }
             }, 300);
         }, type === 'error' ? 4000 : 2000);
+    }
+
+    /**
+     * 스크린 리더 사용자를 위한 알림
+     * aria-live 영역을 사용하여 스크린 리더에 메시지를 전달합니다.
+     * 
+     * @param {string} message - 스크린 리더에 전달할 메시지
+     */
+    announceToScreenReader(message) {
+        if (!message || typeof message !== 'string') {
+            return;
+        }
+
+        // aria-live 영역이 없으면 생성
+        let ariaLiveRegion = document.getElementById('screen-reader-announcements');
+        if (!ariaLiveRegion) {
+            ariaLiveRegion = document.createElement('div');
+            ariaLiveRegion.id = 'screen-reader-announcements';
+            ariaLiveRegion.setAttribute('aria-live', 'polite');
+            ariaLiveRegion.setAttribute('aria-atomic', 'true');
+            ariaLiveRegion.className = 'sr-only';
+            ariaLiveRegion.style.cssText = `
+                position: absolute;
+                left: -10000px;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+            `;
+            document.body.appendChild(ariaLiveRegion);
+        }
+
+        // 메시지 업데이트 (스크린 리더가 변경을 감지하도록)
+        ariaLiveRegion.textContent = '';
+        // 약간의 지연 후 메시지 설정 (스크린 리더가 변경을 확실히 감지하도록)
+        setTimeout(() => {
+            ariaLiveRegion.textContent = message;
+        }, 100);
     }
 
     // 보안 강화: 사용자 데이터 암호화
@@ -8545,6 +8585,7 @@ class DualTextWriter {
 
     /**
      * 확대 모드 열기
+     * 접근성: ARIA 속성 업데이트 및 스크린 리더 알림 포함
      */
     openExpandMode() {
         if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
@@ -8569,6 +8610,15 @@ class DualTextWriter {
         // 모달 표시
         this.contentExpandModal.style.display = 'block';
 
+        // 접근성: ARIA 속성 업데이트
+        this.contentExpandModal.setAttribute('aria-hidden', 'false');
+        if (this.expandContentBtn) {
+            this.expandContentBtn.setAttribute('aria-expanded', 'true');
+        }
+
+        // 스크린 리더 사용자를 위한 알림
+        this.announceToScreenReader('확대 모드가 열렸습니다.');
+
         // 약간의 지연 후 포커스 (애니메이션 완료 후)
         setTimeout(() => {
             this.expandContentTextarea.focus();
@@ -8580,6 +8630,7 @@ class DualTextWriter {
 
     /**
      * 확대 모드 닫기
+     * 접근성: ARIA 속성 업데이트 포함
      */
     closeExpandMode() {
         if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
@@ -8587,6 +8638,12 @@ class DualTextWriter {
         // 확대 모드의 내용을 원본 textarea에 동기화
         this.scriptContentTextarea.value = this.expandContentTextarea.value;
         this.updateContentCounter();
+
+        // 접근성: ARIA 속성 업데이트
+        this.contentExpandModal.setAttribute('aria-hidden', 'true');
+        if (this.expandContentBtn) {
+            this.expandContentBtn.setAttribute('aria-expanded', 'false');
+        }
 
         // 모달 숨기기
         this.contentExpandModal.style.display = 'none';
@@ -9186,53 +9243,119 @@ class DualTextWriter {
     }
 
     /**
-     * 레퍼런스를 내용 필드에 추가
+     * 레퍼런스를 확대 모드의 레퍼런스 영역에 추가
+     * 확대 모드가 닫혀있으면 자동으로 열고 레퍼런스를 추가합니다.
+     * 
+     * @param {Object} item - 레퍼런스 아이템 객체
+     * @param {string} sourceType - 레퍼런스 소스 타입 ('saved' 또는 'tracking')
      */
     addReferenceToContent(item, sourceType) {
-        if (!this.scriptContentTextarea) return;
+        // 필수 DOM 요소 존재 여부 확인
+        if (!this.scriptContentTextarea) {
+            console.error('addReferenceToContent: scriptContentTextarea가 없습니다.');
+            return;
+        }
+
+        // 파라미터 유효성 검사
+        if (!item || typeof item !== 'object') {
+            console.error('addReferenceToContent: item 파라미터가 유효하지 않습니다.');
+            this.showMessage('❌ 레퍼런스 정보가 올바르지 않습니다.', 'error');
+            return;
+        }
 
         const content = item.content || '';
-        if (!content.trim()) return;
+        if (!content.trim()) {
+            this.showMessage('❌ 레퍼런스 내용이 비어있습니다.', 'error');
+            return;
+        }
 
-        // 확대 모드가 열려있으면 레퍼런스 영역에만 추가 (내용에 추가하지 않음)
-        if (this.contentExpandModal && this.contentExpandModal.style.display === 'block') {
+        // 확대 모드 열림 상태 확인
+        const isExpandModeOpen = this.contentExpandModal && 
+                                 this.contentExpandModal.style.display === 'block';
+
+        // 확대 모드가 닫혀있으면 먼저 열기
+        if (!isExpandModeOpen) {
+            // 필수 DOM 요소 확인
+            if (!this.contentExpandModal || !this.expandContentTextarea) {
+                console.error('addReferenceToContent: 확대 모드 관련 DOM 요소가 없습니다.');
+                this.showMessage('❌ 확대 모드를 열 수 없습니다.', 'error');
+                return;
+            }
+
+            try {
+                // 확대 모드 열기
+                this.openExpandMode();
+
+                // 모달이 열린 후 레퍼런스 추가 (애니메이션 완료 대기)
+                const timeoutId = setTimeout(() => {
+                    try {
+                        // 레퍼런스 추가
+                        this.addReferenceToExpandMode(item, sourceType);
+                        
+                        // 최근 사용 목록에 추가
+                        if (item.id && sourceType) {
+                            this.addToRecentReferences(item.id, sourceType);
+                        }
+
+                        // 사이드 패널 닫기
+                        this.closeReferenceLoader();
+
+                        // 스크린 리더 사용자를 위한 알림
+                        this.announceToScreenReader('레퍼런스가 확대 모드의 레퍼런스 영역에 추가되었습니다.');
+
+                        // 성공 메시지
+                        this.showMessage('✅ 레퍼런스가 추가되었습니다. 왼쪽 레퍼런스 영역에서 확인하세요.', 'success');
+
+                        // 키보드 포커스 관리: 레퍼런스 영역의 첫 번째 항목에 포커스
+                        setTimeout(() => {
+                            const firstReference = this.expandReferenceList?.querySelector('.expand-reference-item');
+                            if (firstReference) {
+                                firstReference.setAttribute('tabindex', '0');
+                                firstReference.focus();
+                            }
+                        }, 50);
+                    } catch (error) {
+                        console.error('addReferenceToContent: 레퍼런스 추가 중 오류 발생:', error);
+                        this.showMessage('❌ 레퍼런스 추가 중 오류가 발생했습니다.', 'error');
+                    }
+                }, DualTextWriter.CONFIG.EXPAND_MODE_ANIMATION_DELAY);
+
+                // 메모리 누수 방지를 위한 timeout ID 저장 (필요시 클리어 가능)
+                if (!this._expandModeTimeouts) {
+                    this._expandModeTimeouts = [];
+                }
+                this._expandModeTimeouts.push(timeoutId);
+
+                return;
+            } catch (error) {
+                console.error('addReferenceToContent: 확대 모드 열기 중 오류 발생:', error);
+                this.showMessage('❌ 확대 모드를 열 수 없습니다.', 'error');
+                return;
+            }
+        }
+
+        // 확대 모드가 이미 열려있는 경우 (기존 로직)
+        try {
             // 확대 모드 레퍼런스 영역에만 추가
             this.addReferenceToExpandMode(item, sourceType);
             
             // 최근 사용 목록에 추가
-            this.addToRecentReferences(item.id, sourceType);
+            if (item.id && sourceType) {
+                this.addToRecentReferences(item.id, sourceType);
+            }
 
             // 사이드 패널 닫기
             this.closeReferenceLoader();
 
+            // 스크린 리더 사용자를 위한 알림
+            this.announceToScreenReader('레퍼런스가 레퍼런스 영역에 추가되었습니다.');
+
             // 성공 메시지
             this.showMessage('✅ 레퍼런스가 추가되었습니다. 왼쪽 레퍼런스 영역에서 확인하세요.', 'success');
-            return;
+        } catch (error) {
+            console.error('addReferenceToContent: 레퍼런스 추가 중 오류 발생:', error);
+            this.showMessage('❌ 레퍼런스 추가 중 오류가 발생했습니다.', 'error');
         }
-
-        // 일반 모드: 기존 동작 (내용 필드에 자동 추가)
-        const currentContent = this.scriptContentTextarea.value;
-        const separator = currentContent ? '\n\n---\n\n' : '';
-        const newContent = currentContent + separator + content;
-
-        this.scriptContentTextarea.value = newContent;
-        this.scriptContentTextarea.focus();
-        
-        // 커서를 추가된 내용 끝으로 이동
-        const length = newContent.length;
-        this.scriptContentTextarea.setSelectionRange(length, length);
-
-        // 글자 수 카운터 업데이트
-        this.updateContentCounter();
-
-        // 최근 사용 목록에 추가
-        this.addToRecentReferences(item.id, sourceType);
-
-        // 사이드 패널 닫기
-        this.closeReferenceLoader();
-
-        // 성공 메시지
-        this.showMessage('✅ 레퍼런스가 추가되었습니다.', 'success');
     }
 
     /**
