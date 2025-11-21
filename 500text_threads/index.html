@@ -739,38 +739,39 @@
                                     </datalist>
                                 </div>
                                 
-                                <!-- LLM 모델 -->
+                                <!-- 사용 SNS -->
                                 <div class="form-group">
                                     <label for="script-llm-model-select" class="form-label">
-                                        LLM 모델
+                                        사용 SNS
                                     </label>
                                     <div class="llm-model-wrapper">
                                         <select 
                                             id="script-llm-model-select" 
                                             class="form-select"
-                                            aria-label="LLM 모델 선택">
+                                            aria-label="사용 SNS 선택">
                                             <option value="">선택하세요</option>
-                                            <option value="OpenAI GPT-4">OpenAI GPT-4</option>
-                                            <option value="OpenAI GPT-4 Turbo">OpenAI GPT-4 Turbo</option>
-                                            <option value="OpenAI GPT-3.5">OpenAI GPT-3.5</option>
-                                            <option value="Claude 3 Opus">Claude 3 Opus</option>
-                                            <option value="Claude 3 Sonnet">Claude 3 Sonnet</option>
-                                            <option value="Claude 3 Haiku">Claude 3 Haiku</option>
-                                            <option value="Gemini Pro">Gemini Pro</option>
-                                            <option value="Gemini Ultra">Gemini Ultra</option>
+                                            <option value="유튜브 스크립트">유튜브 스크립트</option>
+                                            <option value="네이버 블로그 스크립트">네이버 블로그 스크립트</option>
+                                            <option value="전자책 스크립트">전자책 스크립트</option>
+                                            <option value="인스타그램 스크립트">인스타그램 스크립트</option>
+                                            <option value="페이스북 스크립트">페이스북 스크립트</option>
+                                            <option value="트위터(X) 스크립트">트위터(X) 스크립트</option>
+                                            <option value="틱톡 스크립트">틱톡 스크립트</option>
+                                            <option value="링크드인 스크립트">링크드인 스크립트</option>
+                                            <option value="카카오톡 채널 스크립트">카카오톡 채널 스크립트</option>
                                             <option value="custom">직접 입력</option>
                                         </select>
                                         <input 
                                             type="text" 
                                             id="script-llm-model-custom" 
                                             class="form-input form-input-custom"
-                                            placeholder="LLM 모델명 직접 입력"
-                                            aria-label="LLM 모델 직접 입력"
+                                            placeholder="SNS 플랫폼 직접 입력"
+                                            aria-label="사용 SNS 직접 입력"
                                             style="display: none;"
                                             maxlength="100">
                                     </div>
                                     <small class="form-help">
-                                        사용할 LLM 모델을 선택하거나 직접 입력해주세요.
+                                        사용할 SNS 플랫폼을 선택하거나 직접 입력해주세요.
                                     </small>
                                 </div>
                                 
