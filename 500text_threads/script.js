@@ -9271,13 +9271,23 @@ class DualTextWriter {
     addReferenceToContent(item, sourceType) {
         // 필수 DOM 요소 존재 여부 확인
         if (!this.scriptContentTextarea) {
-            console.error('addReferenceToContent: scriptContentTextarea가 없습니다.');
+            console.error('[addReferenceToContent] 필수 DOM 요소 없음:', {
+                function: 'addReferenceToContent',
+                missingElement: 'scriptContentTextarea',
+                timestamp: new Date().toISOString()
+            });
             return;
         }
 
         // 파라미터 유효성 검사
         if (!item || typeof item !== 'object') {
-            console.error('addReferenceToContent: item 파라미터가 유효하지 않습니다.');
+            console.error('[addReferenceToContent] 파라미터 유효성 검사 실패:', {
+                function: 'addReferenceToContent',
+                parameter: 'item',
+                receivedType: typeof item,
+                receivedValue: item,
+                timestamp: new Date().toISOString()
+            });
             this.showMessage('❌ 레퍼런스 정보가 올바르지 않습니다.', 'error');
             return;
         }
@@ -9290,14 +9300,26 @@ class DualTextWriter {
 
         // sourceType 파라미터 유효성 검사
         if (!sourceType || typeof sourceType !== 'string') {
-            console.error('addReferenceToContent: sourceType 파라미터가 유효하지 않습니다.');
+            console.error('[addReferenceToContent] sourceType 파라미터 유효성 검사 실패:', {
+                function: 'addReferenceToContent',
+                parameter: 'sourceType',
+                receivedType: typeof sourceType,
+                receivedValue: sourceType,
+                timestamp: new Date().toISOString()
+            });
             this.showMessage('❌ 레퍼런스 소스 타입이 올바르지 않습니다.', 'error');
             return;
         }
 
         const validSourceTypes = ['saved', 'tracking'];
         if (!validSourceTypes.includes(sourceType)) {
-            console.error(`addReferenceToContent: 유효하지 않은 sourceType: ${sourceType}`);
+            console.error('[addReferenceToContent] 유효하지 않은 sourceType:', {
+                function: 'addReferenceToContent',
+                parameter: 'sourceType',
+                receivedValue: sourceType,
+                validValues: validSourceTypes,
+                timestamp: new Date().toISOString()
+            });
             this.showMessage('❌ 지원하지 않는 레퍼런스 소스 타입입니다.', 'error');
             return;
         }
@@ -9310,17 +9332,42 @@ class DualTextWriter {
         if (!isExpandModeOpen) {
             // 필수 DOM 요소 확인
             if (!this.contentExpandModal || !this.expandContentTextarea) {
-                console.error('addReferenceToContent: 확대 모드 관련 DOM 요소가 없습니다.');
+                console.error('[addReferenceToContent] 확대 모드 관련 DOM 요소 없음:', {
+                    function: 'addReferenceToContent',
+                    missingElements: {
+                        contentExpandModal: !this.contentExpandModal,
+                        expandContentTextarea: !this.expandContentTextarea
+                    },
+                    timestamp: new Date().toISOString()
+                });
                 this.showMessage('❌ 확대 모드를 열 수 없습니다.', 'error');
                 return;
             }
 
             try {
+                // 성능 모니터링: 시작 시간 기록
+                const performanceStart = performance.now();
+
                 // 확대 모드 열기
                 this.openExpandMode();
 
                 // 모달이 열린 후 레퍼런스 추가 (애니메이션 완료 대기)
                 const timeoutId = setTimeout(() => {
+                    // 성능 모니터링: 완료 시간 기록
+                    const performanceEnd = performance.now();
+                    const performanceDuration = performanceEnd - performanceStart;
+                    
+                    // 성능이 느린 경우에만 로깅 (200ms 이상)
+                    if (performanceDuration > 200) {
+                        console.warn('[addReferenceToContent] 성능 경고:', {
+                            function: 'addReferenceToContent',
+                            action: 'expandModeOpenAndAddReference',
+                            duration: `${performanceDuration.toFixed(2)}ms`,
+                            threshold: '200ms',
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+
                     this._addReferenceToExpandModeAndNotify(item, sourceType, true);
                 }, DualTextWriter.CONFIG.EXPAND_MODE_ANIMATION_DELAY);
 
@@ -9332,7 +9379,20 @@ class DualTextWriter {
 
                 return;
             } catch (error) {
-                console.error('addReferenceToContent: 확대 모드 열기 중 오류 발생:', error);
+                // 구조화된 에러 로깅
+                const errorContext = {
+                    function: 'addReferenceToContent',
+                    action: 'openExpandMode',
+                    itemId: item?.id || 'unknown',
+                    sourceType: sourceType,
+                    timestamp: new Date().toISOString(),
+                    error: {
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name
+                    }
+                };
+                console.error('[addReferenceToContent] 확대 모드 열기 중 오류 발생:', errorContext);
                 this.showMessage('❌ 확대 모드를 열 수 없습니다.', 'error');
                 return;
             }
@@ -9384,7 +9444,22 @@ class DualTextWriter {
                 }, 50);
             }
         } catch (error) {
-            console.error('addReferenceToContent: 레퍼런스 추가 중 오류 발생:', error);
+            // 구조화된 에러 로깅
+            const errorContext = {
+                function: '_addReferenceToExpandModeAndNotify',
+                action: 'addReference',
+                itemId: item?.id || 'unknown',
+                sourceType: sourceType,
+                isNewlyOpened: isNewlyOpened,
+                expandReferencesCount: this.expandReferences?.length || 0,
+                timestamp: new Date().toISOString(),
+                error: {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                }
+            };
+            console.error('[addReferenceToContent] 레퍼런스 추가 중 오류 발생:', errorContext);
             this.showMessage('❌ 레퍼런스 추가 중 오류가 발생했습니다.', 'error');
         }
     }
