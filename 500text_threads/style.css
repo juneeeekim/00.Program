@@ -6367,16 +6367,16 @@ body {
 }
 
 .expand-reference-panel.collapsed {
-    /* width: 0 제거 - 헤더가 항상 보이도록 최소 너비 유지 */
-    min-width: 200px; /* 헤더 너비만큼 유지하여 토글 버튼 접근 가능 */
-    max-width: 200px; /* 접힌 상태에서는 고정 너비 */
+    /* 수동 드래그 최소 크기(300px)와 동일하게 설정하여 정보가 보이도록 */
+    min-width: 300px; /* 수동 드래그 최소 크기와 동일 */
+    max-width: 300px; /* 접힌 상태에서는 고정 너비 (정보가 보이도록) */
     border-right: none;
 }
 
-/* 접힌 상태에서 콘텐츠 영역만 숨김 (헤더는 표시) */
-.expand-reference-panel.collapsed .expand-reference-content {
+/* 접힌 상태에서도 콘텐츠는 표시 (정보가 보이도록) */
+/* .expand-reference-panel.collapsed .expand-reference-content {
     display: none;
-}
+} */
 
 .expand-reference-header {
     display: flex;
@@ -6839,15 +6839,15 @@ body {
     }
 
     .expand-reference-panel.collapsed {
-        /* 모바일에서는 세로 레이아웃이므로 height는 유지하고 콘텐츠만 숨김 */
+        /* 모바일에서는 세로 레이아웃이므로 height는 유지 */
         /* height: 0 제거 - 헤더가 항상 보이도록 */
-        /* 콘텐츠 영역만 숨김 */
+        /* 콘텐츠도 표시하여 정보가 보이도록 */
     }
     
-    /* 모바일에서도 콘텐츠만 숨김 */
-    .expand-reference-panel.collapsed .expand-reference-content {
+    /* 모바일에서도 콘텐츠는 표시 (정보가 보이도록) */
+    /* .expand-reference-panel.collapsed .expand-reference-content {
         display: none;
-    }
+    } */
 
     .expand-reference-header {
         padding: 12px 16px;
