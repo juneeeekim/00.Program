@@ -9288,6 +9288,20 @@ class DualTextWriter {
             return;
         }
 
+        // sourceType 파라미터 유효성 검사
+        if (!sourceType || typeof sourceType !== 'string') {
+            console.error('addReferenceToContent: sourceType 파라미터가 유효하지 않습니다.');
+            this.showMessage('❌ 레퍼런스 소스 타입이 올바르지 않습니다.', 'error');
+            return;
+        }
+
+        const validSourceTypes = ['saved', 'tracking'];
+        if (!validSourceTypes.includes(sourceType)) {
+            console.error(`addReferenceToContent: 유효하지 않은 sourceType: ${sourceType}`);
+            this.showMessage('❌ 지원하지 않는 레퍼런스 소스 타입입니다.', 'error');
+            return;
+        }
+
         // 확대 모드 열림 상태 확인
         const isExpandModeOpen = this.contentExpandModal && 
                                  this.contentExpandModal.style.display === 'block';
