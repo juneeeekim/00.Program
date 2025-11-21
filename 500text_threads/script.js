@@ -19,6 +19,17 @@ class DualTextWriter {
         
         // 확대 모드 애니메이션 설정
         EXPAND_MODE_ANIMATION_DELAY: 150,        // 확대 모드 열림 후 레퍼런스 추가 지연 시간 (ms)
+        REFERENCE_HIGHLIGHT_ANIMATION_DURATION_MS: 600,  // 레퍼런스 강조 애니메이션 지속 시간 (ms)
+        
+        // 레퍼런스 제한 설정
+        MAX_EXPAND_REFERENCES: 3,               // 확대 모드에서 최대 레퍼런스 개수
+        
+        // 성능 모니터링 설정
+        PERFORMANCE_WARNING_THRESHOLD_MS: 200,  // 성능 경고 임계값 (ms)
+        
+        // 포커스 관리 지연 시간
+        FOCUS_MANAGEMENT_DELAY_MS: 50,          // 포커스 관리 지연 시간 (ms)
+        SCREEN_READER_ANNOUNCE_DELAY_MS: 100,   // 스크린 리더 알림 지연 시간 (ms)
     };
     
     /**
@@ -4118,7 +4129,7 @@ class DualTextWriter {
         // 약간의 지연 후 메시지 설정 (스크린 리더가 변경을 확실히 감지하도록)
         setTimeout(() => {
             ariaLiveRegion.textContent = message;
-        }, 100);
+        }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
     }
 
     // 보안 강화: 사용자 데이터 암호화
@@ -8638,7 +8649,7 @@ class DualTextWriter {
             // 커서를 끝으로 이동
             const length = this.expandContentTextarea.value.length;
             this.expandContentTextarea.setSelectionRange(length, length);
-        }, 100);
+        }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
     }
 
     /**
@@ -8681,7 +8692,7 @@ class DualTextWriter {
         if (this.expandContentBtn) {
             setTimeout(() => {
                 this.expandContentBtn.focus();
-            }, 100);
+            }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
         }
     }
 
@@ -8834,9 +8845,9 @@ class DualTextWriter {
             return;
         }
 
-        // 최대 3개까지만 추가
-        if (this.expandReferences.length >= 3) {
-            this.showMessage('⚠️ 레퍼런스는 최대 3개까지 추가할 수 있습니다.', 'error');
+        // 최대 개수 제한 확인
+        if (this.expandReferences.length >= DualTextWriter.CONFIG.MAX_EXPAND_REFERENCES) {
+            this.showMessage(`⚠️ 레퍼런스는 최대 ${DualTextWriter.CONFIG.MAX_EXPAND_REFERENCES}개까지 추가할 수 있습니다.`, 'error');
             return;
         }
 
@@ -8952,7 +8963,7 @@ class DualTextWriter {
             if (isNewlyAdded) {
                 setTimeout(() => {
                     itemEl.classList.remove('reference-added');
-                }, 600);
+                }, DualTextWriter.CONFIG.REFERENCE_HIGHLIGHT_ANIMATION_DURATION_MS);
             }
         });
         
@@ -9489,13 +9500,13 @@ class DualTextWriter {
                     const performanceEnd = performance.now();
                     const performanceDuration = performanceEnd - performanceStart;
                     
-                    // 성능이 느린 경우에만 로깅 (200ms 이상)
-                    if (performanceDuration > 200) {
+                    // 성능이 느린 경우에만 로깅
+                    if (performanceDuration > DualTextWriter.CONFIG.PERFORMANCE_WARNING_THRESHOLD_MS) {
                         console.warn('[addReferenceToContent] 성능 경고:', {
                             function: 'addReferenceToContent',
                             action: 'expandModeOpenAndAddReference',
                             duration: `${performanceDuration.toFixed(2)}ms`,
-                            threshold: '200ms',
+                            threshold: `${DualTextWriter.CONFIG.PERFORMANCE_WARNING_THRESHOLD_MS}ms`,
                             timestamp: new Date().toISOString()
                         });
                     }
@@ -9573,7 +9584,7 @@ class DualTextWriter {
                         firstReference.setAttribute('tabindex', '0');
                         firstReference.focus();
                     }
-                }, 50);
+                }, DualTextWriter.CONFIG.FOCUS_MANAGEMENT_DELAY_MS);
             }
         } catch (error) {
             // 구조화된 에러 로깅
