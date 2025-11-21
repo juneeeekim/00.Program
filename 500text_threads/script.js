@@ -9101,6 +9101,16 @@ class DualTextWriter {
         // 패널 표시
         this.referenceLoaderPanel.style.display = 'block';
         
+        // 탭 상태 초기화 (활성 탭과 동기화)
+        const activeTab = this.referenceLoaderPanel.querySelector('.reference-tab.active');
+        if (activeTab) {
+            const tabName = activeTab.getAttribute('data-tab') || 'saved';
+            this.currentReferenceTab = tabName;
+        } else {
+            // 활성 탭이 없으면 기본값으로 설정
+            this.currentReferenceTab = 'saved';
+        }
+        
         // transform 초기화 (인라인 스타일 제거 후 CSS 적용)
         if (content) {
             // 인라인 스타일 제거하여 CSS 선택자가 작동하도록 함
@@ -9114,8 +9124,21 @@ class DualTextWriter {
         
         // 약간의 지연 후 데이터 로드
         setTimeout(() => {
-            this.loadReferenceList();
-            this.loadRecentReferencesList();
+            try {
+                this.loadReferenceList();
+                this.loadRecentReferencesList();
+            } catch (error) {
+                console.error('[openReferenceLoader] 데이터 로드 중 오류 발생:', {
+                    function: 'openReferenceLoader',
+                    error: {
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name
+                    },
+                    timestamp: new Date().toISOString()
+                });
+                this.showMessage('❌ 레퍼런스 목록을 불러오는 중 오류가 발생했습니다.', 'error');
+            }
         }, 20);
     }
 
@@ -9196,7 +9219,18 @@ class DualTextWriter {
      * 레퍼런스 목록 로드
      */
     async loadReferenceList() {
-        if (!this.currentUser || !this.isFirebaseReady) return;
+        if (!this.currentUser || !this.isFirebaseReady) {
+            console.warn('[loadReferenceList] 사용자 또는 Firebase 준비 상태 확인:', {
+                hasUser: !!this.currentUser,
+                isFirebaseReady: this.isFirebaseReady
+            });
+            return;
+        }
+
+        // currentReferenceTab이 없으면 기본값 설정
+        if (!this.currentReferenceTab) {
+            this.currentReferenceTab = 'saved';
+        }
 
         const searchQuery = this.referenceSearchInput?.value.trim().toLowerCase() || '';
         const categoryFilter = this.referenceCategoryFilter?.value || '';
@@ -9205,11 +9239,26 @@ class DualTextWriter {
         try {
             if (this.currentReferenceTab === 'saved') {
                 await this.loadSavedReferences(searchQuery, categoryFilter);
-            } else {
+            } else if (this.currentReferenceTab === 'tracking') {
                 await this.loadTrackingReferences(searchQuery, categoryFilter, sortFilter);
+            } else {
+                console.warn('[loadReferenceList] 알 수 없는 탭:', this.currentReferenceTab);
+                // 기본값으로 저장된 글 로드
+                this.currentReferenceTab = 'saved';
+                await this.loadSavedReferences(searchQuery, categoryFilter);
             }
         } catch (error) {
-            console.error('레퍼런스 목록 로드 실패:', error);
+            console.error('[loadReferenceList] 레퍼런스 목록 로드 실패:', {
+                function: 'loadReferenceList',
+                currentTab: this.currentReferenceTab,
+                error: {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                },
+                timestamp: new Date().toISOString()
+            });
+            this.showMessage('❌ 레퍼런스 목록을 불러오는 중 오류가 발생했습니다.', 'error');
         }
     }
 
