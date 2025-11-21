@@ -7634,7 +7634,17 @@ class DualTextWriter {
      */
     async loadArticlesForManagement() {
         if (!this.currentUser || !this.isFirebaseReady) {
+            // Firebase가 준비되지 않았거나 로그인이 필요한 경우 조용히 반환
+            // 에러 메시지를 표시하지 않음 (정상적인 상황)
             console.warn('loadArticlesForManagement: Firebase가 준비되지 않았거나 로그인이 필요합니다.');
+            this.managementArticles = [];
+            // 빈 상태 표시
+            if (this.articleCardsGrid) {
+                this.articleCardsGrid.innerHTML = '';
+            }
+            if (this.managementEmptyState) {
+                this.managementEmptyState.style.display = 'block';
+            }
             return;
         }
 
@@ -7665,20 +7675,36 @@ class DualTextWriter {
             // order 필드가 없는 경우 초기화
             await this.initializeArticleOrders();
 
-        // 카테고리별로 정렬 후 렌더링
-        this.renderArticleCards();
-        this.updateCategoryDropdown();
-        
-        // 카테고리 제안 업데이트
-        this.updateCategorySuggestions();
-        
-        // 레퍼런스 로더 카테고리 필터 업데이트
-        this.updateReferenceCategoryFilter();
+            // 카테고리별로 정렬 후 렌더링
+            this.renderArticleCards();
+            this.updateCategoryDropdown();
+            
+            // 카테고리 제안 업데이트
+            this.updateCategorySuggestions();
+            
+            // 레퍼런스 로더 카테고리 필터 업데이트
+            this.updateReferenceCategoryFilter();
 
         } catch (error) {
             console.error('스크립트 작성용 글 로드 실패:', error);
-            this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
+            
+            // 네트워크 오류나 인증 오류가 아닌 경우에만 에러 메시지 표시
+            // Firebase 권한 오류나 네트워크 오류는 사용자에게 알림
+            if (error.code === 'permission-denied' || error.code === 'unavailable') {
+                this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', 'error');
+            } else if (error.message && !error.message.includes('permission')) {
+                // 권한 오류가 아닌 다른 에러만 표시
+                this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
+            }
+            
             this.managementArticles = [];
+            // 빈 상태 표시
+            if (this.articleCardsGrid) {
+                this.articleCardsGrid.innerHTML = '';
+            }
+            if (this.managementEmptyState) {
+                this.managementEmptyState.style.display = 'block';
+            }
         }
     }
 
