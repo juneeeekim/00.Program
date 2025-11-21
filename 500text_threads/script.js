@@ -7413,6 +7413,17 @@ class DualTextWriter {
         this.expandPreviewTitle = document.getElementById('expand-preview-title');
         this.expandPreviewCategory = document.getElementById('expand-preview-category');
         this.expandLoadReferenceBtn = document.getElementById('expand-load-reference-btn');
+        
+        // 확대 모드 레퍼런스 영역 관련 요소
+        this.expandReferencePanel = document.getElementById('expand-reference-panel');
+        this.expandReferenceContent = document.getElementById('expand-reference-content');
+        this.expandReferenceList = document.getElementById('expand-reference-list');
+        this.expandReferenceEmpty = document.querySelector('.expand-reference-empty');
+        this.expandToggleReferenceBtn = document.getElementById('expand-toggle-reference-btn');
+        this.expandSplitDivider = document.getElementById('expand-split-divider');
+        
+        // 확대 모드 레퍼런스 상태
+        this.expandReferences = []; // 확대 모드에서 선택한 레퍼런스 목록
         this.scriptLlmModelSelect = document.getElementById('script-llm-model-select');
         this.scriptLlmModelCustom = document.getElementById('script-llm-model-custom');
         this.scriptLlmTypeInput = document.getElementById('script-llm-type-input');
@@ -7574,6 +7585,18 @@ class DualTextWriter {
                 // 확대 모드에서 레퍼런스 로더 열기
                 this.openReferenceLoader();
             });
+        }
+
+        // 확대 모드 레퍼런스 영역 접기/펼치기
+        if (this.expandToggleReferenceBtn) {
+            this.expandToggleReferenceBtn.addEventListener('click', () => {
+                this.toggleExpandReferencePanel();
+            });
+        }
+
+        // 확대 모드 분할선 드래그 기능
+        if (this.expandSplitDivider) {
+            this.initExpandSplitResize();
         }
 
         // 레퍼런스 불러오기 이벤트
@@ -8610,6 +8633,175 @@ class DualTextWriter {
         }
     }
 
+    /**
+     * 확대 모드에 레퍼런스 추가
+     */
+    addReferenceToExpandMode(item, sourceType) {
+        if (!item || !item.content) return;
+
+        // 중복 체크
+        const exists = this.expandReferences.some(ref => 
+            ref.id === item.id && ref.sourceType === sourceType
+        );
+
+        if (exists) {
+            this.showMessage('ℹ️ 이미 추가된 레퍼런스입니다.', 'info');
+            return;
+        }
+
+        // 최대 3개까지만 추가
+        if (this.expandReferences.length >= 3) {
+            this.showMessage('⚠️ 레퍼런스는 최대 3개까지 추가할 수 있습니다.', 'error');
+            return;
+        }
+
+        // 레퍼런스 추가
+        this.expandReferences.push({
+            id: item.id,
+            sourceType: sourceType,
+            content: item.content,
+            title: sourceType === 'saved' 
+                ? this.extractTitleFromContent(item.content || '')
+                : (item.content || '').substring(0, 50),
+            date: sourceType === 'saved'
+                ? (item.createdAt ? this.formatDateFromFirestore(item.createdAt) : item.date || '')
+                : (item.postedAt ? new Date(item.postedAt).toLocaleDateString('ko-KR') : ''),
+            category: item.topic || '미분류'
+        });
+
+        // 렌더링
+        this.renderExpandReferences();
+
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 추가되었습니다.', 'success');
+    }
+
+    /**
+     * 확대 모드에서 레퍼런스 제거
+     */
+    removeExpandReference(index) {
+        if (index < 0 || index >= this.expandReferences.length) return;
+
+        this.expandReferences.splice(index, 1);
+        this.renderExpandReferences();
+    }
+
+    /**
+     * 확대 모드 레퍼런스 렌더링
+     */
+    renderExpandReferences() {
+        if (!this.expandReferenceList || !this.expandReferenceEmpty) return;
+
+        if (this.expandReferences.length === 0) {
+            this.expandReferenceList.style.display = 'none';
+            this.expandReferenceEmpty.style.display = 'flex';
+            return;
+        }
+
+        this.expandReferenceList.style.display = 'block';
+        this.expandReferenceEmpty.style.display = 'none';
+
+        this.expandReferenceList.innerHTML = '';
+
+        this.expandReferences.forEach((ref, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'expand-reference-item';
+            
+            const contentPreview = (ref.content || '').substring(0, 500);
+            
+            itemEl.innerHTML = `
+                <div class="expand-reference-item-header">
+                    <div class="expand-reference-item-title">${this.escapeHtml(ref.title)}</div>
+                    <button 
+                        class="expand-reference-item-remove"
+                        aria-label="레퍼런스 제거"
+                        title="제거">
+                        ×
+                    </button>
+                </div>
+                <div class="expand-reference-item-content">${this.escapeHtml(contentPreview)}${ref.content.length > 500 ? '...' : ''}</div>
+                <div class="expand-reference-item-meta">
+                    <span>📅 ${ref.date}</span>
+                    <span>📁 ${this.escapeHtml(ref.category)}</span>
+                </div>
+            `;
+
+            // 제거 버튼 이벤트
+            const removeBtn = itemEl.querySelector('.expand-reference-item-remove');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    this.removeExpandReference(index);
+                });
+            }
+
+            this.expandReferenceList.appendChild(itemEl);
+        });
+    }
+
+    /**
+     * 확대 모드 레퍼런스 영역 접기/펼치기
+     */
+    toggleExpandReferencePanel() {
+        if (!this.expandReferencePanel) return;
+
+        this.expandReferencePanel.classList.toggle('collapsed');
+    }
+
+    /**
+     * 확대 모드 분할선 드래그 초기화
+     */
+    initExpandSplitResize() {
+        if (!this.expandSplitDivider || !this.expandReferencePanel) return;
+
+        let isDragging = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        const handleMouseDown = (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startWidth = this.expandReferencePanel.offsetWidth;
+            
+            this.expandSplitDivider.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+
+            e.preventDefault();
+        };
+
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+
+            const diff = e.clientX - startX;
+            const newWidth = startWidth + diff;
+            const container = this.expandReferencePanel.parentElement;
+            const containerWidth = container.offsetWidth;
+
+            // 최소/최대 너비 제한
+            const minWidth = 300;
+            const maxWidth = containerWidth * 0.7;
+
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                this.expandReferencePanel.style.width = `${newWidth}px`;
+            }
+
+            e.preventDefault();
+        };
+
+        const handleMouseUp = () => {
+            if (isDragging) {
+                isDragging = false;
+                this.expandSplitDivider.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        };
+
+        this.expandSplitDivider.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+
     // ===== 레퍼런스 불러오기 기능 =====
 
     /**
@@ -8974,6 +9166,9 @@ class DualTextWriter {
                 this.expandContentTextarea.setSelectionRange(length, length);
                 this.updateExpandContentCounter();
             }
+            
+            // 확대 모드에 레퍼런스로 추가 (내용에 추가하지 않고 레퍼런스 영역에만 표시)
+            this.addReferenceToExpandMode(item, sourceType);
         }
 
         // 최근 사용 목록에 추가

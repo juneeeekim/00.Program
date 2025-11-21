@@ -1049,28 +1049,62 @@
                     </div>
                     
                     <div class="expand-modal-body">
-                        <div class="expand-content-wrapper">
-                            <label for="expand-content-textarea" class="expand-content-label">
-                                내용 <span class="required">*</span>
-                                <span id="expand-content-counter" class="char-counter">(0 / 500자는 약 1분)</span>
-                            </label>
-                            <div class="expand-content-actions">
-                                <button 
-                                    type="button"
-                                    id="expand-load-reference-btn" 
-                                    class="btn-load-reference"
-                                    aria-label="레퍼런스 불러오기"
-                                    title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
-                                    <span class="btn-icon">📥</span>
-                                    <span class="btn-text">불러오기</span>
-                                </button>
+                        <div class="expand-split-container">
+                            <!-- 왼쪽: 레퍼런스 영역 -->
+                            <div class="expand-reference-panel" id="expand-reference-panel">
+                                <div class="expand-reference-header">
+                                    <h4 class="expand-reference-title">📚 레퍼런스</h4>
+                                    <div class="expand-reference-actions">
+                                        <button 
+                                            type="button"
+                                            id="expand-load-reference-btn" 
+                                            class="btn-load-reference btn-small"
+                                            aria-label="레퍼런스 불러오기"
+                                            title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
+                                            <span class="btn-icon">📥</span>
+                                            <span class="btn-text">불러오기</span>
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            id="expand-toggle-reference-btn" 
+                                            class="btn-icon btn-toggle"
+                                            aria-label="레퍼런스 영역 접기/펼치기"
+                                            title="접기/펼치기">
+                                            ◀
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="expand-reference-content" id="expand-reference-content">
+                                    <div class="expand-reference-empty">
+                                        <p>레퍼런스를 불러오면 여기에 표시됩니다.</p>
+                                        <p class="expand-reference-hint">📥 버튼을 클릭하여 레퍼런스를 추가하세요.</p>
+                                    </div>
+                                    <div id="expand-reference-list" class="expand-reference-list" style="display: none;">
+                                        <!-- 동적으로 레퍼런스 추가됨 -->
+                                    </div>
+                                </div>
                             </div>
-                            <textarea 
-                                id="expand-content-textarea" 
-                                class="expand-content-textarea"
-                                placeholder="스크립트 내용을 입력하세요..."
-                                aria-label="스크립트 내용 입력 (확대 모드)"
-                                aria-required="true"></textarea>
+
+                            <!-- 드래그 가능한 구분선 -->
+                            <div class="expand-split-divider" id="expand-split-divider" role="separator" aria-label="영역 크기 조절">
+                                <div class="expand-divider-handle"></div>
+                            </div>
+
+                            <!-- 오른쪽: 내용 작성 영역 -->
+                            <div class="expand-content-panel">
+                                <div class="expand-content-wrapper">
+                                    <label for="expand-content-textarea" class="expand-content-label">
+                                        내용 <span class="required">*</span>
+                                        <span id="expand-content-counter" class="char-counter">(0 / 500자는 약 1분)</span>
+                                    </label>
+                                    <textarea 
+                                        id="expand-content-textarea" 
+                                        class="expand-content-textarea"
+                                        placeholder="이곳에는 내용 글씨 작성"
+                                        aria-label="스크립트 내용 입력 (확대 모드)"
+                                        aria-required="true"></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
