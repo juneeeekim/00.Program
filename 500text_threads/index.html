@@ -691,15 +691,26 @@
                                             내용 <span class="required">*</span>
                                             <span id="script-content-counter" class="char-counter">(0 / 500자는 약 1분)</span>
                                         </label>
-                                        <button 
-                                            type="button"
-                                            id="load-reference-btn" 
-                                            class="btn-load-reference"
-                                            aria-label="레퍼런스 불러오기"
-                                            title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
-                                            <span class="btn-icon">📥</span>
-                                            <span class="btn-text">불러오기</span>
-                                        </button>
+                                        <div class="content-actions">
+                                            <button 
+                                                type="button"
+                                                id="expand-content-btn" 
+                                                class="btn-expand-content"
+                                                aria-label="내용 확대 모드"
+                                                title="전체 화면 확대 모드 (ESC로 닫기)">
+                                                <span class="btn-icon">🔍</span>
+                                                <span class="btn-text">확대</span>
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                id="load-reference-btn" 
+                                                class="btn-load-reference"
+                                                aria-label="레퍼런스 불러오기"
+                                                title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
+                                                <span class="btn-icon">📥</span>
+                                                <span class="btn-text">불러오기</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <textarea 
                                         id="script-content-textarea" 
@@ -707,7 +718,7 @@
                                         placeholder="스크립트 내용을 입력하세요..."
                                         aria-label="스크립트 내용 입력"
                                         aria-required="true"
-                                        rows="8"></textarea>
+                                        rows="12"></textarea>
                                 </div>
                                 
                                 <!-- 카테고리 -->
@@ -1007,6 +1018,79 @@
                             <div id="reference-tracking-empty" class="reference-empty" style="display: none;">
                                 <p>표시할 트래킹 포스트가 없습니다.</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내용 확대 모드 모달 -->
+            <div id="content-expand-modal" class="content-expand-modal" role="dialog" aria-modal="true" aria-labelledby="expand-modal-title" style="display: none;">
+                <div class="expand-modal-overlay"></div>
+                <div class="expand-modal-content">
+                    <div class="expand-modal-header">
+                        <div class="expand-modal-preview">
+                            <div class="expand-preview-item">
+                                <span class="expand-preview-label">제목:</span>
+                                <span id="expand-preview-title" class="expand-preview-value">-</span>
+                            </div>
+                            <div class="expand-preview-item">
+                                <span class="expand-preview-label">카테고리:</span>
+                                <span id="expand-preview-category" class="expand-preview-value">-</span>
+                            </div>
+                        </div>
+                        <button 
+                            id="expand-modal-close" 
+                            class="btn-icon expand-close-btn"
+                            aria-label="확대 모드 닫기"
+                            title="ESC 키로도 닫을 수 있습니다">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div class="expand-modal-body">
+                        <div class="expand-content-wrapper">
+                            <label for="expand-content-textarea" class="expand-content-label">
+                                내용 <span class="required">*</span>
+                                <span id="expand-content-counter" class="char-counter">(0 / 500자는 약 1분)</span>
+                            </label>
+                            <div class="expand-content-actions">
+                                <button 
+                                    type="button"
+                                    id="expand-load-reference-btn" 
+                                    class="btn-load-reference"
+                                    aria-label="레퍼런스 불러오기"
+                                    title="저장된 글 또는 트래킹에서 레퍼런스 불러오기">
+                                    <span class="btn-icon">📥</span>
+                                    <span class="btn-text">불러오기</span>
+                                </button>
+                            </div>
+                            <textarea 
+                                id="expand-content-textarea" 
+                                class="expand-content-textarea"
+                                placeholder="스크립트 내용을 입력하세요..."
+                                aria-label="스크립트 내용 입력 (확대 모드)"
+                                aria-required="true"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="expand-modal-footer">
+                        <div class="expand-footer-info">
+                            <span class="expand-footer-hint">💡 ESC 키를 눌러 닫을 수 있습니다</span>
+                        </div>
+                        <div class="expand-footer-actions">
+                            <button 
+                                id="expand-save-btn" 
+                                class="btn btn-primary"
+                                aria-label="저장하고 닫기">
+                                <span class="btn-icon">💾</span>
+                                <span class="btn-text">저장하고 닫기</span>
+                            </button>
+                            <button 
+                                id="expand-close-btn" 
+                                class="btn btn-secondary"
+                                aria-label="닫기">
+                                <span class="btn-text">닫기</span>
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -7401,6 +7401,18 @@ class DualTextWriter {
         this.scriptContentTextarea = document.getElementById('script-content-textarea');
         this.scriptContentCounter = document.getElementById('script-content-counter');
         this.scriptCategoryInput = document.getElementById('script-category-input');
+        
+        // 확대 모드 관련 요소
+        this.expandContentBtn = document.getElementById('expand-content-btn');
+        this.contentExpandModal = document.getElementById('content-expand-modal');
+        this.expandModalClose = document.getElementById('expand-modal-close');
+        this.expandCloseBtn = document.getElementById('expand-close-btn');
+        this.expandSaveBtn = document.getElementById('expand-save-btn');
+        this.expandContentTextarea = document.getElementById('expand-content-textarea');
+        this.expandContentCounter = document.getElementById('expand-content-counter');
+        this.expandPreviewTitle = document.getElementById('expand-preview-title');
+        this.expandPreviewCategory = document.getElementById('expand-preview-category');
+        this.expandLoadReferenceBtn = document.getElementById('expand-load-reference-btn');
         this.scriptLlmModelSelect = document.getElementById('script-llm-model-select');
         this.scriptLlmModelCustom = document.getElementById('script-llm-model-custom');
         this.scriptLlmTypeInput = document.getElementById('script-llm-type-input');
@@ -7515,6 +7527,53 @@ class DualTextWriter {
             });
             // 초기 카운트 표시
             this.updateContentCounter();
+        }
+
+        // 확대 모드 이벤트
+        if (this.expandContentBtn) {
+            this.expandContentBtn.addEventListener('click', () => {
+                this.openExpandMode();
+            });
+        }
+
+        if (this.expandModalClose) {
+            this.expandModalClose.addEventListener('click', () => {
+                this.closeExpandMode();
+            });
+        }
+
+        if (this.expandCloseBtn) {
+            this.expandCloseBtn.addEventListener('click', () => {
+                this.closeExpandMode();
+            });
+        }
+
+        if (this.expandSaveBtn) {
+            this.expandSaveBtn.addEventListener('click', () => {
+                this.saveAndCloseExpandMode();
+            });
+        }
+
+        // 확대 모드 textarea 이벤트
+        if (this.expandContentTextarea) {
+            this.expandContentTextarea.addEventListener('input', () => {
+                this.updateExpandContentCounter();
+            });
+        }
+
+        // ESC 키로 확대 모드 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.contentExpandModal && this.contentExpandModal.style.display === 'block') {
+                this.closeExpandMode();
+            }
+        });
+
+        // 확대 모드에서 레퍼런스 불러오기
+        if (this.expandLoadReferenceBtn) {
+            this.expandLoadReferenceBtn.addEventListener('click', () => {
+                // 확대 모드에서 레퍼런스 로더 열기
+                this.openReferenceLoader();
+            });
         }
 
         // 레퍼런스 불러오기 이벤트
@@ -8433,6 +8492,98 @@ class DualTextWriter {
         }
     }
 
+    // ===== 확대 모드 기능 =====
+
+    /**
+     * 확대 모드 열기
+     */
+    openExpandMode() {
+        if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
+
+        // 현재 내용을 확대 모드 textarea에 복사
+        this.expandContentTextarea.value = this.scriptContentTextarea.value;
+
+        // 미리보기 업데이트
+        if (this.expandPreviewTitle) {
+            const title = this.scriptTitleInput?.value.trim() || '-';
+            this.expandPreviewTitle.textContent = title || '-';
+        }
+
+        if (this.expandPreviewCategory) {
+            const category = this.scriptCategoryInput?.value.trim() || '-';
+            this.expandPreviewCategory.textContent = category || '-';
+        }
+
+        // 카운터 업데이트
+        this.updateExpandContentCounter();
+
+        // 모달 표시
+        this.contentExpandModal.style.display = 'block';
+
+        // 약간의 지연 후 포커스 (애니메이션 완료 후)
+        setTimeout(() => {
+            this.expandContentTextarea.focus();
+            // 커서를 끝으로 이동
+            const length = this.expandContentTextarea.value.length;
+            this.expandContentTextarea.setSelectionRange(length, length);
+        }, 100);
+    }
+
+    /**
+     * 확대 모드 닫기
+     */
+    closeExpandMode() {
+        if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
+
+        // 확대 모드의 내용을 원본 textarea에 동기화
+        this.scriptContentTextarea.value = this.expandContentTextarea.value;
+        this.updateContentCounter();
+
+        // 모달 숨기기
+        this.contentExpandModal.style.display = 'none';
+    }
+
+    /**
+     * 저장하고 확대 모드 닫기
+     */
+    saveAndCloseExpandMode() {
+        // 내용 동기화
+        this.closeExpandMode();
+        
+        // 저장 버튼 클릭 (기존 저장 로직 사용)
+        if (this.scriptSaveBtn) {
+            this.scriptSaveBtn.click();
+        }
+    }
+
+    /**
+     * 확대 모드 글자 수 카운터 업데이트
+     */
+    updateExpandContentCounter() {
+        if (!this.expandContentTextarea || !this.expandContentCounter) return;
+
+        const content = this.expandContentTextarea.value || '';
+        const charCount = content.length;
+        const maxChars = 500;
+
+        // 글자 수 표시 업데이트
+        this.expandContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분)`;
+
+        // 500자 초과 시 경고 스타일 적용
+        if (charCount > maxChars) {
+            this.expandContentCounter.style.color = '#e74c3c';
+            this.expandContentCounter.style.fontWeight = '600';
+        } else if (charCount > maxChars * 0.9) {
+            // 90% 이상일 때 주의 색상
+            this.expandContentCounter.style.color = '#f39c12';
+            this.expandContentCounter.style.fontWeight = '500';
+        } else {
+            // 정상 범위
+            this.expandContentCounter.style.color = '#666';
+            this.expandContentCounter.style.fontWeight = '400';
+        }
+    }
+
     // ===== 레퍼런스 불러오기 기능 =====
 
     /**
@@ -8788,6 +8939,16 @@ class DualTextWriter {
 
         // 글자 수 카운터 업데이트
         this.updateContentCounter();
+        
+        // 확대 모드가 열려있으면 확대 모드 textarea도 동기화
+        if (this.contentExpandModal && this.contentExpandModal.style.display === 'block') {
+            if (this.expandContentTextarea) {
+                this.expandContentTextarea.value = newContent;
+                this.expandContentTextarea.focus();
+                this.expandContentTextarea.setSelectionRange(length, length);
+                this.updateExpandContentCounter();
+            }
+        }
 
         // 최근 사용 목록에 추가
         this.addToRecentReferences(item.id, sourceType);
