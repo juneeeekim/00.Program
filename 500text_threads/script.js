@@ -8389,7 +8389,10 @@ class DualTextWriter {
      */
     resetScriptCreateForm() {
         if (this.scriptTitleInput) this.scriptTitleInput.value = '';
-        if (this.scriptContentTextarea) this.scriptContentTextarea.value = '';
+        if (this.scriptContentTextarea) {
+            this.scriptContentTextarea.value = '';
+            this.updateContentCounter();
+        }
         if (this.scriptCategoryInput) this.scriptCategoryInput.value = '';
         if (this.scriptLlmModelSelect) {
             this.scriptLlmModelSelect.value = '';
@@ -8400,6 +8403,34 @@ class DualTextWriter {
             this.scriptLlmModelCustom.style.display = 'none';
         }
         if (this.scriptLlmTypeInput) this.scriptLlmTypeInput.value = '일반';
+    }
+
+    /**
+     * 내용 글자 수 카운터 업데이트
+     */
+    updateContentCounter() {
+        if (!this.scriptContentTextarea || !this.scriptContentCounter) return;
+
+        const content = this.scriptContentTextarea.value || '';
+        const charCount = content.length;
+        const maxChars = 500;
+
+        // 글자 수 표시 업데이트
+        this.scriptContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분)`;
+
+        // 500자 초과 시 경고 스타일 적용
+        if (charCount > maxChars) {
+            this.scriptContentCounter.style.color = '#e74c3c';
+            this.scriptContentCounter.style.fontWeight = '600';
+        } else if (charCount > maxChars * 0.9) {
+            // 90% 이상일 때 주의 색상
+            this.scriptContentCounter.style.color = '#f39c12';
+            this.scriptContentCounter.style.fontWeight = '500';
+        } else {
+            // 정상 범위
+            this.scriptContentCounter.style.color = '#666';
+            this.scriptContentCounter.style.fontWeight = '400';
+        }
     }
 
     // ===== 레퍼런스 불러오기 기능 =====
