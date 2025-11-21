@@ -6509,6 +6509,44 @@ body {
     border-top: 1px solid #ffe5e5;
 }
 
+.expand-reference-item-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ffe5e5;
+}
+
+.expand-reference-add-btn {
+    width: 100%;
+    padding: 10px 16px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    min-height: 36px;
+}
+
+.expand-reference-add-btn:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.expand-reference-add-btn .btn-icon {
+    font-size: 14px;
+}
+
+.expand-reference-add-btn .btn-text {
+    font-size: 13px;
+}
+
 /* 드래그 가능한 구분선 */
 .expand-split-divider {
     width: 8px;

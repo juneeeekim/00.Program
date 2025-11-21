@@ -8724,6 +8724,15 @@ class DualTextWriter {
                     <span>📅 ${ref.date}</span>
                     <span>📁 ${this.escapeHtml(ref.category)}</span>
                 </div>
+                <div class="expand-reference-item-actions">
+                    <button 
+                        class="expand-reference-add-btn"
+                        aria-label="내용에 추가"
+                        title="이 레퍼런스를 오른쪽 내용 필드에 추가">
+                        <span class="btn-icon">➕</span>
+                        <span class="btn-text">내용에 추가</span>
+                    </button>
+                </div>
             `;
 
             // 제거 버튼 이벤트
@@ -8734,8 +8743,49 @@ class DualTextWriter {
                 });
             }
 
+            // 내용에 추가 버튼 이벤트
+            const addBtn = itemEl.querySelector('.expand-reference-add-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => {
+                    this.addExpandReferenceToContent(ref, index);
+                });
+            }
+
             this.expandReferenceList.appendChild(itemEl);
         });
+    }
+
+    /**
+     * 확대 모드 레퍼런스를 내용 필드에 추가
+     */
+    addExpandReferenceToContent(ref, index) {
+        if (!this.expandContentTextarea || !ref || !ref.content) return;
+
+        const content = ref.content || '';
+        if (!content.trim()) return;
+
+        const currentContent = this.expandContentTextarea.value;
+        const separator = currentContent ? '\n\n---\n\n' : '';
+        const newContent = currentContent + separator + content;
+
+        this.expandContentTextarea.value = newContent;
+        this.expandContentTextarea.focus();
+        
+        // 커서를 추가된 내용 끝으로 이동
+        const length = newContent.length;
+        this.expandContentTextarea.setSelectionRange(length, length);
+
+        // 글자 수 카운터 업데이트
+        this.updateExpandContentCounter();
+
+        // 원본 textarea도 동기화
+        if (this.scriptContentTextarea) {
+            this.scriptContentTextarea.value = newContent;
+            this.updateContentCounter();
+        }
+
+        // 성공 메시지
+        this.showMessage('✅ 레퍼런스가 내용에 추가되었습니다.', 'success');
     }
 
     /**
@@ -9144,6 +9194,23 @@ class DualTextWriter {
         const content = item.content || '';
         if (!content.trim()) return;
 
+        // 확대 모드가 열려있으면 레퍼런스 영역에만 추가 (내용에 추가하지 않음)
+        if (this.contentExpandModal && this.contentExpandModal.style.display === 'block') {
+            // 확대 모드 레퍼런스 영역에만 추가
+            this.addReferenceToExpandMode(item, sourceType);
+            
+            // 최근 사용 목록에 추가
+            this.addToRecentReferences(item.id, sourceType);
+
+            // 사이드 패널 닫기
+            this.closeReferenceLoader();
+
+            // 성공 메시지
+            this.showMessage('✅ 레퍼런스가 추가되었습니다. 왼쪽 레퍼런스 영역에서 확인하세요.', 'success');
+            return;
+        }
+
+        // 일반 모드: 기존 동작 (내용 필드에 자동 추가)
         const currentContent = this.scriptContentTextarea.value;
         const separator = currentContent ? '\n\n---\n\n' : '';
         const newContent = currentContent + separator + content;
@@ -9157,19 +9224,6 @@ class DualTextWriter {
 
         // 글자 수 카운터 업데이트
         this.updateContentCounter();
-        
-        // 확대 모드가 열려있으면 확대 모드 textarea도 동기화
-        if (this.contentExpandModal && this.contentExpandModal.style.display === 'block') {
-            if (this.expandContentTextarea) {
-                this.expandContentTextarea.value = newContent;
-                this.expandContentTextarea.focus();
-                this.expandContentTextarea.setSelectionRange(length, length);
-                this.updateExpandContentCounter();
-            }
-            
-            // 확대 모드에 레퍼런스로 추가 (내용에 추가하지 않고 레퍼런스 영역에만 표시)
-            this.addReferenceToExpandMode(item, sourceType);
-        }
 
         // 최근 사용 목록에 추가
         this.addToRecentReferences(item.id, sourceType);
