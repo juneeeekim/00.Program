@@ -9010,10 +9010,27 @@ class DualTextWriter {
     /**
      * 확대 모드 레퍼런스 영역 접기/펼치기
      */
+    /**
+     * 확대 모드 레퍼런스 패널 토글
+     * 접근성: ARIA 속성 업데이트 및 스크린 리더 알림 포함
+     */
     toggleExpandReferencePanel() {
-        if (!this.expandReferencePanel) return;
+        if (!this.expandReferencePanel || !this.expandToggleReferenceBtn) return;
 
+        const isCollapsed = this.expandReferencePanel.classList.contains('collapsed');
+        
+        // collapsed 클래스 토글
         this.expandReferencePanel.classList.toggle('collapsed');
+        
+        // 접근성: ARIA 속성 업데이트
+        const newState = !isCollapsed; // 토글 후 상태 (true = 접힘, false = 펼침)
+        this.expandToggleReferenceBtn.setAttribute('aria-expanded', newState ? 'false' : 'true');
+        
+        // 스크린 리더 사용자를 위한 알림
+        const message = newState 
+            ? '레퍼런스 영역이 접혔습니다.'
+            : '레퍼런스 영역이 펼쳐졌습니다.';
+        this.announceToScreenReader(message);
     }
 
     /**
