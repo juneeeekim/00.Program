@@ -4855,6 +4855,13 @@ class DualTextWriter {
         if (this.tempSaveTimeout) {
             clearTimeout(this.tempSaveTimeout);
         }
+        // 확대 모드 관련 timeout 정리
+        if (this._expandModeTimeouts && this._expandModeTimeouts.length > 0) {
+            this._expandModeTimeouts.forEach(timeoutId => {
+                clearTimeout(timeoutId);
+            });
+            this._expandModeTimeouts = [];
+        }
     }
 
     // ===== 반자동화 포스팅 시스템 =====
@@ -8631,9 +8638,18 @@ class DualTextWriter {
     /**
      * 확대 모드 닫기
      * 접근성: ARIA 속성 업데이트 포함
+     * 성능: 대기 중인 timeout 정리
      */
     closeExpandMode() {
         if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
+
+        // 대기 중인 timeout 정리 (메모리 누수 방지)
+        if (this._expandModeTimeouts && this._expandModeTimeouts.length > 0) {
+            this._expandModeTimeouts.forEach(timeoutId => {
+                clearTimeout(timeoutId);
+            });
+            this._expandModeTimeouts = [];
+        }
 
         // 확대 모드의 내용을 원본 textarea에 동기화
         this.scriptContentTextarea.value = this.expandContentTextarea.value;
@@ -8644,6 +8660,9 @@ class DualTextWriter {
         if (this.expandContentBtn) {
             this.expandContentBtn.setAttribute('aria-expanded', 'false');
         }
+
+        // 스크린 리더 사용자를 위한 알림
+        this.announceToScreenReader('확대 모드가 닫혔습니다.');
 
         // 모달 숨기기
         this.contentExpandModal.style.display = 'none';
@@ -9288,36 +9307,7 @@ class DualTextWriter {
 
                 // 모달이 열린 후 레퍼런스 추가 (애니메이션 완료 대기)
                 const timeoutId = setTimeout(() => {
-                    try {
-                        // 레퍼런스 추가
-                        this.addReferenceToExpandMode(item, sourceType);
-                        
-                        // 최근 사용 목록에 추가
-                        if (item.id && sourceType) {
-                            this.addToRecentReferences(item.id, sourceType);
-                        }
-
-                        // 사이드 패널 닫기
-                        this.closeReferenceLoader();
-
-                        // 스크린 리더 사용자를 위한 알림
-                        this.announceToScreenReader('레퍼런스가 확대 모드의 레퍼런스 영역에 추가되었습니다.');
-
-                        // 성공 메시지
-                        this.showMessage('✅ 레퍼런스가 추가되었습니다. 왼쪽 레퍼런스 영역에서 확인하세요.', 'success');
-
-                        // 키보드 포커스 관리: 레퍼런스 영역의 첫 번째 항목에 포커스
-                        setTimeout(() => {
-                            const firstReference = this.expandReferenceList?.querySelector('.expand-reference-item');
-                            if (firstReference) {
-                                firstReference.setAttribute('tabindex', '0');
-                                firstReference.focus();
-                            }
-                        }, 50);
-                    } catch (error) {
-                        console.error('addReferenceToContent: 레퍼런스 추가 중 오류 발생:', error);
-                        this.showMessage('❌ 레퍼런스 추가 중 오류가 발생했습니다.', 'error');
-                    }
+                    this._addReferenceToExpandModeAndNotify(item, sourceType, true);
                 }, DualTextWriter.CONFIG.EXPAND_MODE_ANIMATION_DELAY);
 
                 // 메모리 누수 방지를 위한 timeout ID 저장 (필요시 클리어 가능)
@@ -9334,9 +9324,22 @@ class DualTextWriter {
             }
         }
 
-        // 확대 모드가 이미 열려있는 경우 (기존 로직)
+        // 확대 모드가 이미 열려있는 경우
+        this._addReferenceToExpandModeAndNotify(item, sourceType, false);
+    }
+
+    /**
+     * 레퍼런스를 확대 모드에 추가하고 사용자에게 알림
+     * 중복 코드 제거를 위한 헬퍼 함수
+     * 
+     * @param {Object} item - 레퍼런스 아이템 객체
+     * @param {string} sourceType - 레퍼런스 소스 타입
+     * @param {boolean} isNewlyOpened - 확대 모드가 방금 열렸는지 여부
+     * @private
+     */
+    _addReferenceToExpandModeAndNotify(item, sourceType, isNewlyOpened) {
         try {
-            // 확대 모드 레퍼런스 영역에만 추가
+            // 레퍼런스 추가
             this.addReferenceToExpandMode(item, sourceType);
             
             // 최근 사용 목록에 추가
@@ -9348,10 +9351,24 @@ class DualTextWriter {
             this.closeReferenceLoader();
 
             // 스크린 리더 사용자를 위한 알림
-            this.announceToScreenReader('레퍼런스가 레퍼런스 영역에 추가되었습니다.');
+            const screenReaderMessage = isNewlyOpened 
+                ? '레퍼런스가 확대 모드의 레퍼런스 영역에 추가되었습니다.'
+                : '레퍼런스가 레퍼런스 영역에 추가되었습니다.';
+            this.announceToScreenReader(screenReaderMessage);
 
             // 성공 메시지
             this.showMessage('✅ 레퍼런스가 추가되었습니다. 왼쪽 레퍼런스 영역에서 확인하세요.', 'success');
+
+            // 확대 모드가 방금 열린 경우에만 포커스 관리
+            if (isNewlyOpened) {
+                setTimeout(() => {
+                    const firstReference = this.expandReferenceList?.querySelector('.expand-reference-item');
+                    if (firstReference) {
+                        firstReference.setAttribute('tabindex', '0');
+                        firstReference.focus();
+                    }
+                }, 50);
+            }
         } catch (error) {
             console.error('addReferenceToContent: 레퍼런스 추가 중 오류 발생:', error);
             this.showMessage('❌ 레퍼런스 추가 중 오류가 발생했습니다.', 'error');
