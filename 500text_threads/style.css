@@ -6321,11 +6321,21 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    /* 접근성: 포커스 인디케이터 */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
 }
 
 .expand-close-btn:hover {
     background: #e9ecef;
     color: #333;
+}
+
+/* 접근성: 키보드 포커스 시 명확한 인디케이터 */
+.expand-close-btn:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+    background: #e9ecef;
 }
 
 .expand-modal-body {
@@ -6453,6 +6463,49 @@ body {
     border-radius: 8px;
     padding: 16px;
     position: relative;
+    animation: referenceItemFadeIn 0.4s ease;
+    transition: all 0.2s ease;
+}
+
+/* 레퍼런스 아이템 추가 시 애니메이션 */
+@keyframes referenceItemFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 레퍼런스 아이템 강조 효과 (새로 추가된 경우) */
+.expand-reference-item.reference-added {
+    animation: referenceItemHighlight 0.6s ease;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+@keyframes referenceItemHighlight {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+}
+
+/* 레퍼런스 아이템 호버 효과 */
+.expand-reference-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
 }
 
 .expand-reference-item-header {
@@ -6482,9 +6535,24 @@ body {
     border-radius: 4px;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    /* 접근성: 포커스 인디케이터 */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .expand-reference-item-remove:hover {
+    background: #ffcccc;
+}
+
+/* 접근성: 키보드 포커스 시 명확한 인디케이터 */
+.expand-reference-item-remove:focus-visible {
+    outline: 3px solid #cc0000;
+    outline-offset: 2px;
     background: #ffcccc;
 }
 
@@ -6531,12 +6599,22 @@ body {
     gap: 6px;
     transition: all 0.2s ease;
     min-height: 36px;
+    /* 접근성: 포커스 인디케이터 명확성 */
+    outline: 2px solid transparent;
+    outline-offset: 2px;
 }
 
 .expand-reference-add-btn:hover {
     background: #5568d3;
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* 접근성: 키보드 포커스 시 명확한 인디케이터 */
+.expand-reference-add-btn:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+    background: #5568d3;
 }
 
 .expand-reference-add-btn .btn-icon {

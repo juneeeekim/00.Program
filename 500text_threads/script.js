@@ -8732,7 +8732,7 @@ class DualTextWriter {
         }
 
         // 레퍼런스 추가
-        this.expandReferences.push({
+        const newReference = {
             id: item.id,
             sourceType: sourceType,
             content: item.content,
@@ -8743,10 +8743,12 @@ class DualTextWriter {
                 ? (item.createdAt ? this.formatDateFromFirestore(item.createdAt) : item.date || '')
                 : (item.postedAt ? new Date(item.postedAt).toLocaleDateString('ko-KR') : ''),
             category: item.topic || '미분류'
-        });
+        };
+        
+        this.expandReferences.push(newReference);
 
-        // 렌더링
-        this.renderExpandReferences();
+        // 렌더링 (새로 추가된 레퍼런스 ID 전달하여 시각적 피드백 제공)
+        this.renderExpandReferences(newReference.id);
 
         // 성공 메시지
         this.showMessage('✅ 레퍼런스가 추가되었습니다.', 'success');
@@ -8765,7 +8767,7 @@ class DualTextWriter {
     /**
      * 확대 모드 레퍼런스 렌더링
      */
-    renderExpandReferences() {
+    renderExpandReferences(newlyAddedId = null) {
         if (!this.expandReferenceList || !this.expandReferenceEmpty) return;
 
         if (this.expandReferences.length === 0) {
@@ -8782,6 +8784,12 @@ class DualTextWriter {
         this.expandReferences.forEach((ref, index) => {
             const itemEl = document.createElement('div');
             itemEl.className = 'expand-reference-item';
+            
+            // 새로 추가된 레퍼런스인지 확인하여 시각적 피드백 추가
+            const isNewlyAdded = newlyAddedId && ref.id === newlyAddedId;
+            if (isNewlyAdded) {
+                itemEl.classList.add('reference-added');
+            }
             
             const contentPreview = (ref.content || '').substring(0, 500);
             
@@ -8828,6 +8836,13 @@ class DualTextWriter {
             }
 
             this.expandReferenceList.appendChild(itemEl);
+            
+            // 새로 추가된 레퍼런스인 경우 애니메이션 완료 후 클래스 제거
+            if (isNewlyAdded) {
+                setTimeout(() => {
+                    itemEl.classList.remove('reference-added');
+                }, 600);
+            }
         });
     }
 
