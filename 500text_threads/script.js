@@ -11104,38 +11104,19 @@ DualTextWriter.prototype.openTrackingModal = async function(textId = null) {
         const followsInput = document.getElementById('tracking-follows');
         const notesInput = document.getElementById('tracking-notes');
         
+        // 날짜는 항상 "오늘"로 설정 (기존 데이터 유무와 관계없이)
+        const today = new Date().toISOString().split('T')[0];
+        if (dateInput) {
+            dateInput.value = today;
+        }
+        // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
+        modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+        const todayTab = modal.querySelector('.date-tab[data-date="today"]');
+        if (todayTab) todayTab.classList.add('active');
+        if (dateInput) dateInput.style.display = 'none';
+        
         if (latestMetric) {
-            // 기존 데이터가 있으면 폼에 채우기
-            const metricDate = latestMetric.timestamp?.toDate ? latestMetric.timestamp.toDate() : null;
-            const today = new Date().toISOString().split('T')[0];
-            const metricDateStr = metricDate ? metricDate.toISOString().split('T')[0] : today;
-            
-            // 날짜 설정
-            if (dateInput) {
-                dateInput.value = metricDateStr;
-                // 날짜 탭 설정: 오늘/어제/직접입력 확인
-                const todayDate = new Date().toISOString().split('T')[0];
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
-                
-                modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
-                if (metricDateStr === todayDate) {
-                    const todayTab = modal.querySelector('.date-tab[data-date="today"]');
-                    if (todayTab) todayTab.classList.add('active');
-                    if (dateInput) dateInput.style.display = 'none';
-                } else if (metricDateStr === yesterdayStr) {
-                    const yesterdayTab = modal.querySelector('.date-tab[data-date="yesterday"]');
-                    if (yesterdayTab) yesterdayTab.classList.add('active');
-                    if (dateInput) dateInput.style.display = 'none';
-                } else {
-                    const customTab = modal.querySelector('.date-tab[data-date="custom"]');
-                    if (customTab) customTab.classList.add('active');
-                    if (dateInput) dateInput.style.display = 'block';
-                }
-            }
-            
-            // 메트릭 값 설정
+            // 기존 데이터가 있으면 메트릭 값만 채우기 (날짜 제외)
             if (viewsInput) viewsInput.value = latestMetric.views || '';
             if (likesInput) likesInput.value = latestMetric.likes || '';
             if (commentsInput) commentsInput.value = latestMetric.comments || '';
@@ -11143,19 +11124,9 @@ DualTextWriter.prototype.openTrackingModal = async function(textId = null) {
             if (followsInput) followsInput.value = latestMetric.follows || '';
             if (notesInput) notesInput.value = latestMetric.notes || '';
             
-            console.log('기존 데이터로 폼 채우기 완료:', latestMetric);
+            console.log('기존 데이터로 폼 채우기 완료 (날짜는 오늘로 설정):', latestMetric);
         } else {
-            // 기존 데이터가 없으면 기본값으로 초기화
-            const today = new Date().toISOString().split('T')[0];
-            if (dateInput) {
-                dateInput.value = today;
-            }
-            // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
-            modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
-            const todayTab = modal.querySelector('.date-tab[data-date="today"]');
-            if (todayTab) todayTab.classList.add('active');
-            if (dateInput) dateInput.style.display = 'none';
-            
+            // 기존 데이터가 없으면 모든 필드 초기화
             if (viewsInput) viewsInput.value = '';
             if (likesInput) likesInput.value = '';
             if (commentsInput) commentsInput.value = '';
@@ -11163,7 +11134,7 @@ DualTextWriter.prototype.openTrackingModal = async function(textId = null) {
             if (followsInput) followsInput.value = '';
             if (notesInput) notesInput.value = '';
             
-            console.log('기존 데이터 없음, 폼 초기화 완료');
+            console.log('기존 데이터 없음, 폼 초기화 완료 (날짜는 오늘로 설정)');
         }
         
         console.log('트래킹 모달 열기:', { 
