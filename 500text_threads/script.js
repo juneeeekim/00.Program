@@ -7399,6 +7399,7 @@ class DualTextWriter {
         this.scriptCreateForm = document.getElementById('script-create-form');
         this.scriptTitleInput = document.getElementById('script-title-input');
         this.scriptContentTextarea = document.getElementById('script-content-textarea');
+        this.scriptContentCounter = document.getElementById('script-content-counter');
         this.scriptCategoryInput = document.getElementById('script-category-input');
         this.scriptLlmModelSelect = document.getElementById('script-llm-model-select');
         this.scriptLlmModelCustom = document.getElementById('script-llm-model-custom');
@@ -7505,6 +7506,15 @@ class DualTextWriter {
             this.scriptCategoryInput.addEventListener('input', () => {
                 this.updateCategorySuggestions();
             });
+        }
+
+        // 내용 글자 수 카운팅
+        if (this.scriptContentTextarea) {
+            this.scriptContentTextarea.addEventListener('input', () => {
+                this.updateContentCounter();
+            });
+            // 초기 카운트 표시
+            this.updateContentCounter();
         }
 
         // 레퍼런스 불러오기 이벤트
@@ -8744,6 +8754,9 @@ class DualTextWriter {
         // 커서를 추가된 내용 끝으로 이동
         const length = newContent.length;
         this.scriptContentTextarea.setSelectionRange(length, length);
+
+        // 글자 수 카운터 업데이트
+        this.updateContentCounter();
 
         // 최근 사용 목록에 추가
         this.addToRecentReferences(item.id, sourceType);
