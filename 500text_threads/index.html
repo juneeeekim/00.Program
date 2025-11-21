@@ -1025,10 +1025,12 @@
             </div>
 
             <!-- 내용 확대 모드 모달 -->
-            <div id="content-expand-modal" class="content-expand-modal" role="dialog" aria-modal="true" aria-labelledby="expand-modal-title" style="display: none;">
+            <div id="content-expand-modal" class="content-expand-modal" role="dialog" aria-modal="true" aria-labelledby="expand-modal-title" aria-describedby="expand-modal-description" style="display: none;">
                 <div class="expand-modal-overlay"></div>
                 <div class="expand-modal-content">
                     <div class="expand-modal-header">
+                        <h2 id="expand-modal-title" class="sr-only">내용 확대 모드</h2>
+                        <p id="expand-modal-description" class="sr-only">내용을 확대하여 작성하고 레퍼런스를 추가할 수 있는 모드입니다. ESC 키를 눌러 닫을 수 있습니다.</p>
                         <div class="expand-modal-preview">
                             <div class="expand-preview-item">
                                 <span class="expand-preview-label">제목:</span>
@@ -1074,12 +1076,12 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div class="expand-reference-content" id="expand-reference-content">
-                                    <div class="expand-reference-empty">
+                                <div class="expand-reference-content" id="expand-reference-content" role="region" aria-label="레퍼런스 목록">
+                                    <div class="expand-reference-empty" role="status" aria-live="polite">
                                         <p>레퍼런스를 불러오면 여기에 표시됩니다.</p>
                                         <p class="expand-reference-hint">📥 버튼을 클릭하여 레퍼런스를 추가하세요.</p>
                                     </div>
-                                    <div id="expand-reference-list" class="expand-reference-list" style="display: none;">
+                                    <div id="expand-reference-list" class="expand-reference-list" role="list" aria-label="추가된 레퍼런스 목록" style="display: none;">
                                         <!-- 동적으로 레퍼런스 추가됨 -->
                                     </div>
                                 </div>

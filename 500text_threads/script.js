@@ -8592,7 +8592,7 @@ class DualTextWriter {
 
     /**
      * 확대 모드 열기
-     * 접근성: ARIA 속성 업데이트 및 스크린 리더 알림 포함
+     * 접근성: ARIA 속성 업데이트, 스크린 리더 알림, 포커스 트랩, ESC 키 처리 포함
      */
     openExpandMode() {
         if (!this.contentExpandModal || !this.expandContentTextarea || !this.scriptContentTextarea) return;
@@ -8625,6 +8625,12 @@ class DualTextWriter {
 
         // 스크린 리더 사용자를 위한 알림
         this.announceToScreenReader('확대 모드가 열렸습니다.');
+
+        // 접근성: 포커스 트랩 설정 (Tab 키 순환 제한)
+        this._setupExpandModeFocusTrap();
+
+        // 접근성: ESC 키로 모달 닫기
+        this._setupExpandModeEscapeHandler();
 
         // 약간의 지연 후 포커스 (애니메이션 완료 후)
         setTimeout(() => {
@@ -8664,8 +8670,111 @@ class DualTextWriter {
         // 스크린 리더 사용자를 위한 알림
         this.announceToScreenReader('확대 모드가 닫혔습니다.');
 
+        // 접근성: 포커스 트랩 및 ESC 핸들러 제거
+        this._removeExpandModeFocusTrap();
+        this._removeExpandModeEscapeHandler();
+
         // 모달 숨기기
         this.contentExpandModal.style.display = 'none';
+
+        // 접근성: 원래 포커스 위치로 복귀 (확대 모드 열기 버튼)
+        if (this.expandContentBtn) {
+            setTimeout(() => {
+                this.expandContentBtn.focus();
+            }, 100);
+        }
+    }
+
+    /**
+     * 확대 모드 포커스 트랩 설정
+     * Tab 키로 모달 내부에서만 포커스 순환
+     * @private
+     */
+    _setupExpandModeFocusTrap() {
+        if (!this.contentExpandModal) return;
+
+        // 포커스 가능한 요소 찾기
+        const focusableSelectors = [
+            'button:not([disabled])',
+            'textarea:not([disabled])',
+            'input:not([disabled])',
+            'a[href]',
+            '[tabindex]:not([tabindex="-1"])'
+        ].join(', ');
+
+        const focusableElements = Array.from(
+            this.contentExpandModal.querySelectorAll(focusableSelectors)
+        ).filter(el => {
+            // 화면에 보이는 요소만 포함
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        // Tab 키 핸들러
+        this._expandModeTabHandler = (e) => {
+            if (e.key !== 'Tab') return;
+
+            if (e.shiftKey) {
+                // Shift + Tab: 역방향
+                if (document.activeElement === firstElement) {
+                    e.preventDefault();
+                    lastElement.focus();
+                }
+            } else {
+                // Tab: 정방향
+                if (document.activeElement === lastElement) {
+                    e.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        };
+
+        this.contentExpandModal.addEventListener('keydown', this._expandModeTabHandler);
+    }
+
+    /**
+     * 확대 모드 포커스 트랩 제거
+     * @private
+     */
+    _removeExpandModeFocusTrap() {
+        if (this._expandModeTabHandler && this.contentExpandModal) {
+            this.contentExpandModal.removeEventListener('keydown', this._expandModeTabHandler);
+            this._expandModeTabHandler = null;
+        }
+    }
+
+    /**
+     * 확대 모드 ESC 키 핸들러 설정
+     * @private
+     */
+    _setupExpandModeEscapeHandler() {
+        this._expandModeEscapeHandler = (e) => {
+            if (e.key === 'Escape' && 
+                this.contentExpandModal && 
+                this.contentExpandModal.style.display === 'block') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeExpandMode();
+            }
+        };
+
+        document.addEventListener('keydown', this._expandModeEscapeHandler);
+    }
+
+    /**
+     * 확대 모드 ESC 키 핸들러 제거
+     * @private
+     */
+    _removeExpandModeEscapeHandler() {
+        if (this._expandModeEscapeHandler) {
+            document.removeEventListener('keydown', this._expandModeEscapeHandler);
+            this._expandModeEscapeHandler = null;
+        }
     }
 
     /**
@@ -8784,6 +8893,8 @@ class DualTextWriter {
         this.expandReferences.forEach((ref, index) => {
             const itemEl = document.createElement('div');
             itemEl.className = 'expand-reference-item';
+            itemEl.setAttribute('role', 'listitem');
+            itemEl.setAttribute('aria-label', `레퍼런스 ${index + 1}: ${this.escapeHtml(ref.title)}`);
             
             // 새로 추가된 레퍼런스인지 확인하여 시각적 피드백 추가
             const isNewlyAdded = newlyAddedId && ref.id === newlyAddedId;
@@ -8844,6 +8955,12 @@ class DualTextWriter {
                 }, 600);
             }
         });
+        
+        // 접근성: 레퍼런스 목록 표시 및 ARIA 속성 업데이트
+        if (this.expandReferenceList && this.expandReferences.length > 0) {
+            this.expandReferenceList.style.display = 'block';
+            this.expandReferenceList.setAttribute('aria-label', `추가된 레퍼런스 목록 (${this.expandReferences.length}개)`);
+        }
     }
 
     /**
