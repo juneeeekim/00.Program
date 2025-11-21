@@ -11024,7 +11024,7 @@ DualTextWriter.prototype.addTrackingData = function(postId) {
 };
 
 // 트래킹 모달 열기
-DualTextWriter.prototype.openTrackingModal = function(textId = null) {
+DualTextWriter.prototype.openTrackingModal = async function(textId = null) {
     const modal = document.getElementById('tracking-modal');
     if (!modal) {
         console.error('트래킹 모달을 찾을 수 없습니다.');
@@ -11034,18 +11034,69 @@ DualTextWriter.prototype.openTrackingModal = function(textId = null) {
     
     try {
         this.openBottomSheet(modal);
-        // 폼 초기화
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('tracking-date');
-        if (dateInput) {
-            dateInput.value = today;
-        }
-        // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
-        modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
-        const todayTab = modal.querySelector('.date-tab[data-date="today"]');
-        if (todayTab) todayTab.classList.add('active');
-        if (dateInput) dateInput.style.display = 'none';
         
+        // 저장된 글에서 호출한 경우 textId 저장
+        if (textId) {
+            this.currentTrackingTextId = textId;
+        }
+        
+        // 기존 데이터 불러오기
+        let latestMetric = null;
+        
+        // 1. currentTrackingPost가 있으면 해당 포스트의 최신 메트릭 데이터 불러오기
+        if (this.currentTrackingPost) {
+            const post = this.trackingPosts?.find(p => p.id === this.currentTrackingPost);
+            if (post && post.metrics && post.metrics.length > 0) {
+                // 최신 메트릭 (마지막 항목)
+                latestMetric = post.metrics[post.metrics.length - 1];
+                console.log('트래킹 포스트에서 최신 메트릭 불러오기:', latestMetric);
+            } else if (this.currentUser && this.isFirebaseReady) {
+                // 로컬에 없으면 Firebase에서 조회
+                try {
+                    const postRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'posts', this.currentTrackingPost);
+                    const postDoc = await window.firebaseGetDoc(postRef);
+                    if (postDoc.exists()) {
+                        const postData = postDoc.data();
+                        if (postData.metrics && postData.metrics.length > 0) {
+                            latestMetric = postData.metrics[postData.metrics.length - 1];
+                            console.log('Firebase에서 최신 메트릭 불러오기:', latestMetric);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Firebase에서 메트릭 조회 실패:', error);
+                }
+            }
+        }
+        // 2. currentTrackingTextId만 있고 currentTrackingPost가 없으면, 연결된 포스트 찾기
+        else if (this.currentTrackingTextId && !this.currentTrackingPost) {
+            // 로컬 데이터에서 먼저 찾기
+            const post = this.trackingPosts?.find(p => p.sourceTextId === this.currentTrackingTextId);
+            if (post && post.metrics && post.metrics.length > 0) {
+                latestMetric = post.metrics[post.metrics.length - 1];
+                console.log('저장된 글에서 연결된 포스트의 최신 메트릭 불러오기:', latestMetric);
+            } else if (this.currentUser && this.isFirebaseReady) {
+                // 로컬에 없으면 Firebase에서 조회
+                try {
+                    const postsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'posts');
+                    const q = window.firebaseQuery(postsRef, window.firebaseWhere('sourceTextId', '==', this.currentTrackingTextId));
+                    const querySnapshot = await window.firebaseGetDocs(q);
+                    
+                    if (!querySnapshot.empty) {
+                        const postDoc = querySnapshot.docs[0];
+                        const postData = postDoc.data();
+                        if (postData.metrics && postData.metrics.length > 0) {
+                            latestMetric = postData.metrics[postData.metrics.length - 1];
+                            console.log('Firebase에서 저장된 글의 연결된 포스트 최신 메트릭 불러오기:', latestMetric);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Firebase에서 메트릭 조회 실패:', error);
+                }
+            }
+        }
+        
+        // 폼 초기화 또는 기존 데이터로 채우기
+        const dateInput = document.getElementById('tracking-date');
         const viewsInput = document.getElementById('tracking-views');
         const likesInput = document.getElementById('tracking-likes');
         const commentsInput = document.getElementById('tracking-comments');
@@ -11053,16 +11104,74 @@ DualTextWriter.prototype.openTrackingModal = function(textId = null) {
         const followsInput = document.getElementById('tracking-follows');
         const notesInput = document.getElementById('tracking-notes');
         
-        if (viewsInput) viewsInput.value = '';
-        if (likesInput) likesInput.value = '';
-        if (commentsInput) commentsInput.value = '';
-        if (sharesInput) sharesInput.value = '';
-        if (followsInput) followsInput.value = '';
-        if (notesInput) notesInput.value = '';
+        if (latestMetric) {
+            // 기존 데이터가 있으면 폼에 채우기
+            const metricDate = latestMetric.timestamp?.toDate ? latestMetric.timestamp.toDate() : null;
+            const today = new Date().toISOString().split('T')[0];
+            const metricDateStr = metricDate ? metricDate.toISOString().split('T')[0] : today;
+            
+            // 날짜 설정
+            if (dateInput) {
+                dateInput.value = metricDateStr;
+                // 날짜 탭 설정: 오늘/어제/직접입력 확인
+                const todayDate = new Date().toISOString().split('T')[0];
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+                if (metricDateStr === todayDate) {
+                    const todayTab = modal.querySelector('.date-tab[data-date="today"]');
+                    if (todayTab) todayTab.classList.add('active');
+                    if (dateInput) dateInput.style.display = 'none';
+                } else if (metricDateStr === yesterdayStr) {
+                    const yesterdayTab = modal.querySelector('.date-tab[data-date="yesterday"]');
+                    if (yesterdayTab) yesterdayTab.classList.add('active');
+                    if (dateInput) dateInput.style.display = 'none';
+                } else {
+                    const customTab = modal.querySelector('.date-tab[data-date="custom"]');
+                    if (customTab) customTab.classList.add('active');
+                    if (dateInput) dateInput.style.display = 'block';
+                }
+            }
+            
+            // 메트릭 값 설정
+            if (viewsInput) viewsInput.value = latestMetric.views || '';
+            if (likesInput) likesInput.value = latestMetric.likes || '';
+            if (commentsInput) commentsInput.value = latestMetric.comments || '';
+            if (sharesInput) sharesInput.value = latestMetric.shares || '';
+            if (followsInput) followsInput.value = latestMetric.follows || '';
+            if (notesInput) notesInput.value = latestMetric.notes || '';
+            
+            console.log('기존 데이터로 폼 채우기 완료:', latestMetric);
+        } else {
+            // 기존 데이터가 없으면 기본값으로 초기화
+            const today = new Date().toISOString().split('T')[0];
+            if (dateInput) {
+                dateInput.value = today;
+            }
+            // 날짜 탭 초기화: 오늘 탭 활성화, 직접입력 숨김
+            modal.querySelectorAll('.date-tab').forEach(tab => tab.classList.remove('active'));
+            const todayTab = modal.querySelector('.date-tab[data-date="today"]');
+            if (todayTab) todayTab.classList.add('active');
+            if (dateInput) dateInput.style.display = 'none';
+            
+            if (viewsInput) viewsInput.value = '';
+            if (likesInput) likesInput.value = '';
+            if (commentsInput) commentsInput.value = '';
+            if (sharesInput) sharesInput.value = '';
+            if (followsInput) followsInput.value = '';
+            if (notesInput) notesInput.value = '';
+            
+            console.log('기존 데이터 없음, 폼 초기화 완료');
+        }
         
-        // 저장된 글에서 호출한 경우 textId 저장
-        this.currentTrackingTextId = textId;
-        console.log('트래킹 모달 열기:', { textId, currentTrackingTextId: this.currentTrackingTextId });
+        console.log('트래킹 모달 열기:', { 
+            textId, 
+            currentTrackingTextId: this.currentTrackingTextId,
+            currentTrackingPost: this.currentTrackingPost,
+            hasLatestMetric: !!latestMetric
+        });
     } catch (error) {
         console.error('트래킹 모달 열기 실패:', error);
         this.showMessage('❌ 트래킹 모달을 열 수 없습니다.', 'error');
