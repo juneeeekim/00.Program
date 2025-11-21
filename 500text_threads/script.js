@@ -7639,10 +7639,20 @@ class DualTextWriter {
 
         // 확대 모드에서 레퍼런스 불러오기
         if (this.expandLoadReferenceBtn) {
-            this.expandLoadReferenceBtn.addEventListener('click', () => {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            const newBtn = this.expandLoadReferenceBtn.cloneNode(true);
+            this.expandLoadReferenceBtn.parentNode.replaceChild(newBtn, this.expandLoadReferenceBtn);
+            this.expandLoadReferenceBtn = newBtn;
+            
+            this.expandLoadReferenceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[expand-load-reference-btn] 버튼 클릭됨');
                 // 확대 모드에서 레퍼런스 로더 열기
                 this.openReferenceLoader();
             });
+        } else {
+            console.warn('[initArticleManagement] expand-load-reference-btn을 찾을 수 없습니다.');
         }
 
         // 확대 모드 레퍼런스 영역 접기/펼치기
@@ -8628,6 +8638,24 @@ class DualTextWriter {
         // 모달 표시
         this.contentExpandModal.style.display = 'block';
 
+        // 확대 모드 내부의 레퍼런스 불러오기 버튼 이벤트 리스너 재등록 (확대 모드가 열릴 때마다)
+        const expandLoadReferenceBtn = document.getElementById('expand-load-reference-btn');
+        if (expandLoadReferenceBtn) {
+            // 기존 이벤트 리스너 제거를 위해 새 요소로 교체
+            const newBtn = expandLoadReferenceBtn.cloneNode(true);
+            expandLoadReferenceBtn.parentNode.replaceChild(newBtn, expandLoadReferenceBtn);
+            this.expandLoadReferenceBtn = newBtn;
+            
+            this.expandLoadReferenceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[openExpandMode] expand-load-reference-btn 클릭됨');
+                this.openReferenceLoader();
+            });
+        } else {
+            console.warn('[openExpandMode] expand-load-reference-btn을 찾을 수 없습니다.');
+        }
+
         // 접근성: ARIA 속성 업데이트
         this.contentExpandModal.setAttribute('aria-hidden', 'false');
         if (this.expandContentBtn) {
@@ -9094,7 +9122,11 @@ class DualTextWriter {
      * 레퍼런스 로더 열기
      */
     openReferenceLoader() {
-        if (!this.referenceLoaderPanel) return;
+        console.log('[openReferenceLoader] 함수 호출됨');
+        if (!this.referenceLoaderPanel) {
+            console.error('[openReferenceLoader] referenceLoaderPanel을 찾을 수 없습니다.');
+            return;
+        }
         
         const content = this.referenceLoaderPanel.querySelector('.reference-loader-content');
         
