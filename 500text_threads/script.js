@@ -1,3 +1,18 @@
+import { extractTitleFromContent, escapeHtml, debounce, formatDate } from './js/utils.js';
+import { AuthManager } from './js/auth.js';
+import { Constants } from './js/constants.js';
+import { DataManager } from './js/data.js';
+import { UIManager } from './js/ui.js';
+
+/**
+ * 500 Text Threads - Main Script
+ * 
+ * [Refactoring Note]
+ * This file is being refactored into modules.
+ * - js/utils.js: Utility functions
+ * - js/auth.js: Authentication logic
+ */
+
 class DualTextWriter {
     /**
      * 성능 및 동작 관련 설정 상수
@@ -180,12 +195,12 @@ class DualTextWriter {
         this.minFollowsInput = document.getElementById('min-follows');
         this.maxFollowsInput = document.getElementById('max-follows');
         this.exportCsvBtn = document.getElementById('export-csv');
-        this.trackingSort = localStorage.getItem('dtw_tracking_sort') || 'updatedDesc';
-        this.trackingStatusFilter = localStorage.getItem('dtw_tracking_status') || 'all';
-        this.trackingSearch = localStorage.getItem('dtw_tracking_search') || '';
-        this.trackingUpdatedFrom = localStorage.getItem('dtw_tracking_from') || '';
-        this.trackingUpdatedTo = localStorage.getItem('dtw_tracking_to') || '';
-        this.rangeFilters = JSON.parse(localStorage.getItem('dtw_tracking_ranges') || '{}');
+        this.trackingSort = localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_SORT) || 'updatedDesc';
+        this.trackingStatusFilter = localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_STATUS) || 'all';
+        this.trackingSearch = localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_SEARCH) || '';
+        this.trackingUpdatedFrom = localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_FROM) || '';
+        this.trackingUpdatedTo = localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_TO) || '';
+        this.rangeFilters = JSON.parse(localStorage.getItem(Constants.STORAGE_KEYS.TRACKING_RANGES) || '{}');
         
         // 성능 최적화: 디바운싱 타이머 및 업데이트 큐
         this.debounceTimers = {};
@@ -197,12 +212,12 @@ class DualTextWriter {
         };
         
         // 글자 제한 (500/1000) - 기본 500, 사용자 선택을 로컬에 저장
-        this.maxLength = parseInt(localStorage.getItem('dualTextWriter_charLimit') || '500', 10);
+        this.maxLength = parseInt(localStorage.getItem(Constants.STORAGE_KEYS.CHAR_LIMIT) || '500', 10);
         this.currentUser = null;
         this.savedTexts = [];
-        this.savedFilter = localStorage.getItem('dualTextWriter_savedFilter') || 'all';
+        this.savedFilter = localStorage.getItem(Constants.STORAGE_KEYS.SAVED_FILTER) || 'all';
         this.savedSearchInput = document.getElementById('saved-search');
-        this.savedSearch = localStorage.getItem('dtw_saved_search') || '';
+        this.savedSearch = localStorage.getItem(Constants.STORAGE_KEYS.SAVED_SEARCH) || '';
         this.savedSearchDebounce = null;
         this.tempSaveInterval = null;
         this.lastTempSave = null;
@@ -211,6 +226,28 @@ class DualTextWriter {
 
         // LLM 검증 시스템 초기화
         this.initializeLLMValidation();
+
+        // [Refactoring] Manager 인스턴스 생성
+        // UIManager: UI 업데이트 및 메시지 표시
+        this.uiManager = new UIManager();
+        
+        // AuthManager: 인증 처리
+        this.authManager = new AuthManager({
+            onLogin: (user) => {
+                this.currentUser = user;
+                this.showUserInterface();
+                this.loadUserData();
+            },
+            onLogout: () => {
+                this.currentUser = null;
+                this.showLoginInterface();
+                this.clearAllData();
+            },
+            showMessage: (msg, type) => this.showMessage(msg, type)
+        });
+        
+        // DataManager: 데이터 영속성 처리
+        this.dataManager = new DataManager(this.authManager);
 
         this.init();
     }
@@ -691,46 +728,17 @@ class DualTextWriter {
         this.initSnsPlatformSelection();
     }
 
-    // Firebase 초기화 대기
+    // [Refactoring] AuthManager로 위임
     async waitForFirebase() {
-        const maxAttempts = 50;
-        let attempts = 0;
-
-        while (attempts < maxAttempts) {
-            if (window.firebaseAuth && window.firebaseDb) {
-                this.auth = window.firebaseAuth;
-                this.db = window.firebaseDb;
-                this.isFirebaseReady = true;
-                console.log('Firebase 초기화 완료');
-                break;
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-
-        if (!this.isFirebaseReady) {
-            console.error('Firebase 초기화 실패');
-            this.showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
-        }
+        await this.authManager.waitForFirebase();
+        this.auth = this.authManager.auth;
+        this.db = this.authManager.db;
+        this.isFirebaseReady = this.authManager.isFirebaseReady;
     }
 
-    // Firebase Auth 상태 리스너 설정
+    // [Refactoring] AuthManager에서 처리하므로 제거 또는 래핑
     setupAuthStateListener() {
-        if (!this.isFirebaseReady) return;
-
-        window.firebaseOnAuthStateChanged(this.auth, (user) => {
-            if (user) {
-                this.currentUser = user;
-                this.showUserInterface();
-                this.loadUserData();
-                console.log('사용자 로그인:', user.displayName || user.uid);
-            } else {
-                this.currentUser = null;
-                this.showLoginInterface();
-                this.clearAllData();
-                console.log('사용자 로그아웃');
-            }
-        });
+        // AuthManager 내부에서 처리됨
     }
 
     // 탭 기능 초기화
@@ -743,7 +751,10 @@ class DualTextWriter {
         });
     }
 
-    // 탭 전환
+    /**
+     * 탭 전환 처리
+     * @param {string} tabName - 전환할 탭 이름 ('writing', 'saved', 'tracking', 'management')
+     */
     switchTab(tabName) {
         // 모든 탭 버튼과 콘텐츠에서 active 클래스 제거
         this.tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -757,7 +768,7 @@ class DualTextWriter {
         if (activeContent) activeContent.classList.add('active');
 
         // 저장된 글 탭으로 전환할 때 목록 새로고침
-        if (tabName === 'saved') {
+        if (tabName === Constants.TABS.SAVED) {
             this.loadSavedTexts();
             this.initSavedFilters();
             // 미트래킹 글 버튼 상태 업데이트
@@ -767,19 +778,19 @@ class DualTextWriter {
         }
 
         // 트래킹 탭으로 전환 시 데이터 로드
-        if (tabName === 'tracking') {
+        if (tabName === Constants.TABS.TRACKING) {
             this.loadTrackingPosts();
             this.updateTrackingSummary();
             this.initTrackingChart();
         }
         
         // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
-        if (tabName === 'writing') {
+        if (tabName === Constants.TABS.WRITING) {
             // 이미 writing-container에 두 패널이 모두 포함되어 있음
         }
 
         // 스크립트 작성 탭으로 전환 시 데이터 로드
-        if (tabName === 'management') {
+        if (tabName === Constants.TABS.MANAGEMENT) {
             this.loadArticlesForManagement();
             this.initArticleManagement();
         }
@@ -1849,6 +1860,7 @@ class DualTextWriter {
 
     // Firebase 기반 인증으로 대체됨
     // Firebase Google 로그인 처리
+    // Firebase Google 로그인 처리
     async googleLogin() {
         if (!this.isFirebaseReady) {
             this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
@@ -1870,56 +1882,19 @@ class DualTextWriter {
             if (error.code === 'auth/popup-closed-by-user') {
                 this.showMessage('로그인이 취소되었습니다.', 'info');
             } else {
-            this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
-        }
-    }
-    }
-
-    // Firebase Auth 상태 리스너가 자동으로 처리함
-
-    // Firebase 사용자명 로그인 (Anonymous Auth 사용)
-    async login() {
-        const username = this.usernameInput.value.trim();
-        if (!username) {
-            alert('사용자명을 입력해주세요.');
-            this.usernameInput.focus();
-            return;
-        }
-
-        if (username.length < 2) {
-            alert('사용자명은 2자 이상이어야 합니다.');
-            this.usernameInput.focus();
-            return;
-        }
-
-        if (!this.isFirebaseReady) {
-            this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
-            return;
-        }
-
-        try {
-            // 익명 로그인으로 사용자 생성
-            const result = await window.firebaseSignInAnonymously(this.auth);
-            const user = result.user;
-
-            // 사용자명을 Firestore에 저장
-            await this.saveUsernameToFirestore(user.uid, username);
-
-            // 기존 로컬 데이터 마이그레이션
-            await this.checkAndMigrateLocalData(user.uid);
-
-            this.showMessage(`${username}님, 환영합니다!`, 'success');
-
-                } catch (error) {
-            console.error('사용자명 로그인 실패:', error);
-            this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
+                this.showMessage('Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.', 'error');
+            }
         }
     }
 
-    // 사용자명을 Firestore에 저장
+    /**
+     * 사용자명을 Firestore에 저장
+     * @param {string} uid - 사용자 UID
+     * @param {string} username - 사용자명
+     */
     async saveUsernameToFirestore(uid, username) {
         try {
-            await window.firebaseAddDoc(window.firebaseCollection(this.db, 'users', uid, 'profile'), {
+            await window.firebaseAddDoc(window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.PROFILE), {
                 username: username,
                 createdAt: window.firebaseServerTimestamp(),
                 loginMethod: 'username'
@@ -1929,18 +1904,11 @@ class DualTextWriter {
         }
     }
 
-    // Firebase 로그아웃 처리
+    // [Refactoring] AuthManager로 위임
     async logout() {
         if (confirm('로그아웃하시겠습니까? 현재 작성 중인 내용은 임시 저장됩니다.')) {
             this.performTempSave(); // 로그아웃 전 임시 저장
-
-            try {
-                await window.firebaseSignOut(this.auth);
-                this.showMessage('로그아웃되었습니다.', 'info');
-            } catch (error) {
-                console.error('로그아웃 실패:', error);
-                this.showMessage('로그아웃 중 오류가 발생했습니다.', 'error');
-            }
+            await this.authManager.logout();
         }
     }
 
@@ -1954,7 +1922,7 @@ class DualTextWriter {
 
     // 기존 로컬 스토리지 데이터를 Firestore로 마이그레이션
     async checkAndMigrateLocalData(userId) {
-        const localData = localStorage.getItem('dualTextWriter_savedTexts');
+        const localData = localStorage.getItem(Constants.STORAGE_KEYS.SAVED_TEXTS);
         if (!localData) return;
 
         try {
@@ -1972,8 +1940,8 @@ class DualTextWriter {
                 this.showMessage('기존 데이터가 성공적으로 이전되었습니다!', 'success');
 
                 // 로컬 스토리지 정리
-                localStorage.removeItem('dualTextWriter_savedTexts');
-                localStorage.removeItem('dualTextWriter_tempSave');
+                localStorage.removeItem(Constants.STORAGE_KEYS.SAVED_TEXTS);
+                localStorage.removeItem(Constants.STORAGE_KEYS.TEMP_SAVE);
             }
 
         } catch (error) {
@@ -1996,7 +1964,7 @@ class DualTextWriter {
                 };
 
                 await window.firebaseAddDoc(
-                    window.firebaseCollection(this.db, 'users', userId, 'texts'),
+                    window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, userId, Constants.COLLECTIONS.TEXTS),
                     textData
                 );
 
@@ -2075,7 +2043,7 @@ class DualTextWriter {
         try {
             const textData = {
                 content: text,
-                type: panel === 'ref' ? 'reference' : 'edit',
+                type: panel === 'ref' ? Constants.DATA_TYPES.REFERENCE : Constants.DATA_TYPES.EDIT,
                 characterCount: this.getKoreanCharacterCount(text),
                 createdAt: window.firebaseServerTimestamp(),
                 updatedAt: window.firebaseServerTimestamp()
@@ -2083,10 +2051,10 @@ class DualTextWriter {
 
             // 레퍼런스 저장 시 referenceType 필수
             if (panel === 'ref') {
-                let refType = 'unspecified';
-                if (this.refTypeStructure && this.refTypeStructure.checked) refType = 'structure';
-                if (this.refTypeIdea && this.refTypeIdea.checked) refType = 'idea';
-                if (refType === 'unspecified') {
+                let refType = Constants.REF_TYPES.UNSPECIFIED;
+                if (this.refTypeStructure && this.refTypeStructure.checked) refType = Constants.REF_TYPES.STRUCTURE;
+                if (this.refTypeIdea && this.refTypeIdea.checked) refType = Constants.REF_TYPES.IDEA;
+                if (refType === Constants.REF_TYPES.UNSPECIFIED) {
                     this.showMessage('레퍼런스 유형(구조/아이디어)을 선택해주세요.', 'error');
                     return;
                 }
@@ -2105,7 +2073,7 @@ class DualTextWriter {
             if (panel === 'edit') {
                 // ✅ 유효한 레퍼런스 ID만 필터링 (존재 여부 확인)
                 const validReferences = this.selectedReferences.filter(refId =>
-                    this.savedTexts.some(item => item.id === refId && (item.type || 'edit') === 'reference')
+                    this.savedTexts.some(item => item.id === refId && (item.type || Constants.DATA_TYPES.EDIT) === Constants.DATA_TYPES.REFERENCE)
                 );
                 
                 if (validReferences.length > 0) {
@@ -4047,13 +4015,9 @@ class DualTextWriter {
             this.showMessage('삭제에 실패했습니다. 다시 시도해주세요.', 'error');
         }
     }
-    // HTML 이스케이프 함수 (줄바꿈 보존)
+    // [Refactoring] Utils 모듈 사용
     escapeHtml(text) {
-        if (!text) return '';
-
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML.replace(/\n/g, '<br>'); // 줄바꿈을 <br> 태그로 변환
+        return escapeHtml(text);
     }
 
     // 텍스트만 이스케이프 (줄바꿈 없이)
@@ -4065,39 +4029,51 @@ class DualTextWriter {
         return div.innerHTML;
     }
 
+    /**
+     * 사용자에게 메시지 표시
+     * [Refactoring] UIManager로 위임
+     * @param {string} message - 메시지 내용
+     * @param {string} type - 메시지 타입 ('success', 'error', 'info', 'warning')
+     */
     showMessage(message, type = 'info') {
-        const messageEl = document.createElement('div');
-        const bgColor = type === 'success' ? '#28a745' : 
-                       type === 'error' ? '#dc3545' : 
-                       type === 'warning' ? '#ffc107' : '#17a2b8';
+        if (this.uiManager) {
+            this.uiManager.showMessage(message, type);
+        } else {
+            // Fallback: UIManager가 초기화되지 않은 경우
+            console.warn('UIManager not initialized, using fallback');
+            const messageEl = document.createElement('div');
+            const bgColor = type === 'success' ? '#28a745' : 
+                           type === 'error' ? '#dc3545' : 
+                           type === 'warning' ? '#ffc107' : '#17a2b8';
 
-        messageEl.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${bgColor};
-            color: ${type === 'warning' ? '#000' : 'white'};
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 1000;
-            font-weight: 600;
-            animation: slideIn 0.3s ease;
-            max-width: 300px;
-            word-wrap: break-word;
-        `;
-        messageEl.textContent = message;
+            messageEl.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${bgColor};
+                color: ${type === 'warning' ? '#000' : 'white'};
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 1000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+                max-width: 300px;
+                word-wrap: break-word;
+            `;
+            messageEl.textContent = message;
 
-        document.body.appendChild(messageEl);
+            document.body.appendChild(messageEl);
 
-        setTimeout(() => {
-            messageEl.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => {
-                if (messageEl.parentNode) {
-                    messageEl.parentNode.removeChild(messageEl);
-                }
-            }, 300);
-        }, type === 'error' ? 4000 : 2000);
+                messageEl.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.parentNode.removeChild(messageEl);
+                    }
+                }, 300);
+            }, type === 'error' ? 4000 : 2000);
+        }
     }
 
     /**
@@ -7893,16 +7869,9 @@ class DualTextWriter {
         }
     }
 
-    /**
-     * 내용에서 제목 추출 (첫 줄 또는 첫 30자)
-     */
+    // [Refactoring] Utils 모듈 사용
     extractTitleFromContent(content) {
-        if (!content) return '제목 없음';
-        const firstLine = content.split('\n')[0].trim();
-        if (firstLine.length > 0) {
-            return firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
-        }
-        return content.length > 50 ? content.substring(0, 50) + '...' : content;
+        return extractTitleFromContent(content);
     }
 
     /**
@@ -9825,7 +9794,7 @@ class DualTextWriter {
 
         // localStorage에 저장
         try {
-            localStorage.setItem('dtw_recent_references', JSON.stringify(this.recentReferences));
+            localStorage.setItem(Constants.STORAGE_KEYS.RECENT_REFERENCES, JSON.stringify(this.recentReferences));
         } catch (error) {
             console.error('최근 레퍼런스 저장 실패:', error);
         }
@@ -9837,6 +9806,8 @@ let dualTextWriter;
 
 document.addEventListener('DOMContentLoaded', () => {
     dualTextWriter = new DualTextWriter();
+    window.dualTextWriter = dualTextWriter;
+    window.app = dualTextWriter;
 
     // 메인 콘텐츠 강제 표시 (로그인 상태와 관계없이)
     const mainContent = document.getElementById('main-content');
@@ -14180,34 +14151,45 @@ DualTextWriter.prototype.executeBatchMigrationForUntracked = async function(untr
     }
 };
 
-// 전역 함수들
+// [Refactoring] 전역 인스턴스 생성 및 노출 제거 (DOMContentLoaded에서 처리됨)
+// const dualTextWriter = new DualTextWriter(); // Removed to avoid duplicate and premature instantiation
+// window.dualTextWriter = dualTextWriter; // Handled in DOMContentLoaded
+// window.app = dualTextWriter; // Handled in DOMContentLoaded
+
+// 전역 함수들 (인라인 핸들러 호환성 유지)
 window.saveTrackingData = function() {
-    if (dualTextWriter) {
-        dualTextWriter.saveTrackingData();
+    if (window.dualTextWriter) {
+        window.dualTextWriter.saveTrackingData();
     }
 };
 
 window.closeModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('active'); // classList 사용 권장
+        // 하위 호환성: style.display도 체크
+        if (modal.style.display === 'block' || modal.style.display === 'flex') {
+             modal.style.display = 'none';
+        }
     }
-    if (modalId === 'tracking-modal' && dualTextWriter) {
-        dualTextWriter.closeTrackingModal();
+    if (modalId === 'tracking-modal' && window.dualTextWriter) {
+        window.dualTextWriter.closeTrackingModal();
     }
-    if (modalId === 'tracking-edit-modal' && dualTextWriter) {
-        dualTextWriter.editingMetricData = null;
+    if (modalId === 'tracking-edit-modal' && window.dualTextWriter) {
+        window.dualTextWriter.editingMetricData = null;
     }
 };
 
 window.updateTrackingDataItem = function() {
-    if (dualTextWriter) {
-        dualTextWriter.updateTrackingDataItem();
+    if (window.dualTextWriter) {
+        window.dualTextWriter.updateTrackingDataItem();
     }
 };
 
 window.deleteTrackingDataItem = function() {
-    if (dualTextWriter) {
-        dualTextWriter.deleteTrackingDataItem();
+    if (window.dualTextWriter) {
+        window.dualTextWriter.deleteTrackingDataItem();
     }
 };
+
+console.log('DualTextWriter initialized (Module Mode)');
