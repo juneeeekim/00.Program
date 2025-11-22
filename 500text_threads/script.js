@@ -2326,6 +2326,11 @@ class DualTextWriter {
 
         // 필터 적용
         let list = this.savedTexts;
+
+        // [Tab Separation] 'script' 타입은 저장된 글 탭에서 제외 (스크립트 작성 탭에서만 관리)
+        // 주니어 개발자 체크: 데이터 분리 로직 적용
+        list = list.filter(item => (item.type || 'edit') !== 'script');
+
         if (this.savedFilter === 'edit') {
             list = list.filter(item => item.type === 'edit');
         } else if (this.savedFilter === 'reference') {
@@ -4806,7 +4811,9 @@ class DualTextWriter {
                 let normalizedType = (data.type || '').toString().toLowerCase();
                 if (normalizedType === 'writing') normalizedType = 'edit';
                 if (normalizedType === 'ref') normalizedType = 'reference';
-                if (normalizedType !== 'edit' && normalizedType !== 'reference') {
+                
+                // [Tab Separation] 'script' 타입 보존 (기존에는 알 수 없는 타입은 무조건 edit로 처리했음)
+                if (normalizedType !== 'edit' && normalizedType !== 'reference' && normalizedType !== 'script') {
                     // 알 수 없는 타입은 편의상 'edit'로 처리
                     normalizedType = 'edit';
                 }
@@ -7736,9 +7743,10 @@ class DualTextWriter {
             // 인덱스 오류를 대비하여 orderBy 없이 먼저 시도
             let querySnapshot;
             try {
+                // [Tab Separation] 'script' 타입 글만 로드 (글 작성 탭의 'edit' 타입 제외)
                 const q = window.firebaseQuery(
                     textsRef,
-                    window.firebaseWhere('type', '==', 'edit'),
+                    window.firebaseWhere('type', '==', 'script'),
                     window.firebaseOrderBy('createdAt', 'desc')
                 );
                 querySnapshot = await window.firebaseGetDocs(q);
@@ -7746,9 +7754,10 @@ class DualTextWriter {
                 // 인덱스 오류인 경우 orderBy 없이 쿼리
                 if (indexError.code === 'failed-precondition') {
                     console.warn('Firebase 인덱스가 없어 orderBy 없이 쿼리합니다. 클라이언트 사이드에서 정렬합니다.');
+                    // [Tab Separation] 인덱스 오류 시에도 'script' 타입 필터링 유지
                     const q = window.firebaseQuery(
                         textsRef,
-                        window.firebaseWhere('type', '==', 'edit')
+                        window.firebaseWhere('type', '==', 'script')
                     );
                     querySnapshot = await window.firebaseGetDocs(q);
                 } else {
@@ -8556,7 +8565,7 @@ class DualTextWriter {
             const newScriptData = {
                 content: content,
                 topic: category, // 카테고리는 topic 필드에 저장
-                type: 'edit',
+                type: 'script', // [Tab Separation] 스크립트 작성 탭 전용 타입 (기존 'edit'와 분리)
                 createdAt: window.firebaseServerTimestamp(),
                 updatedAt: window.firebaseServerTimestamp(),
                 order: 0, // 나중에 초기화됨
@@ -9332,8 +9341,9 @@ class DualTextWriter {
 
         // 필터링
         let filtered = this.savedTexts.filter(text => {
-            // type이 'edit'인 것만 (레퍼런스 제외)
-            if ((text.type || 'edit') !== 'edit') return false;
+            // [Tab Separation] 레퍼런스는 'edit'(글 작성)와 'script'(스크립트) 모두 허용
+            const type = text.type || 'edit';
+            if (type !== 'edit' && type !== 'script') return false;
 
             // 검색어 필터
             if (searchQuery) {
