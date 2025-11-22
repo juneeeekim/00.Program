@@ -7531,6 +7531,91 @@ body {
     margin: 0;
 }
 
+/* 상세 패널 헤더 액션 버튼 그룹 */
+.detail-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 확대 버튼 스타일 */
+.btn-expand {
+    font-size: 1.2rem;
+    padding: 4px 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-expand:hover {
+    transform: scale(1.1);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.btn-expand:active {
+    transform: scale(1.05);
+}
+
+/* 확대 모드 스타일 */
+.article-detail-panel.expanded {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    z-index: 9999;
+    margin: 0;
+    border-radius: 0;
+    padding: 32px;
+    overflow-y: auto;
+    animation: expandPanel 0.3s ease-out;
+}
+
+@keyframes expandPanel {
+    from {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 확대 모드에서 textarea 높이 조정 */
+.article-detail-panel.expanded .edit-textarea {
+    min-height: calc(100vh - 450px);
+    max-height: calc(100vh - 450px);
+}
+
+/* 확대 모드 배경 오버레이 */
+.detail-panel-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.detail-panel-overlay.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .btn-icon {
     background: transparent;
     border: none;

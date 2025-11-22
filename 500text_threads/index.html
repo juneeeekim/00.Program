@@ -1941,14 +1941,26 @@
             >
               <div class="detail-panel-header">
                 <h4 id="detail-panel-title">📄 글 상세 정보</h4>
-                <button
-                  id="detail-panel-close"
-                  class="btn-icon"
-                  aria-label="상세 패널 닫기"
-                  title="닫기"
-                >
-                  ×
-                </button>
+                <div class="detail-panel-actions">
+                  <button
+                    type="button"
+                    id="detail-expand-btn"
+                    class="btn-icon btn-expand"
+                    aria-label="전체 화면 확대 모드"
+                    title="전체 화면 확대 (ESC로 닫기)"
+                    aria-expanded="false"
+                  >
+                    🔍
+                  </button>
+                  <button
+                    id="detail-panel-close"
+                    class="btn-icon"
+                    aria-label="상세 패널 닫기"
+                    title="닫기"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               <!-- 읽기 모드 -->

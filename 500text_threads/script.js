@@ -14213,3 +14213,98 @@ window.deleteTrackingDataItem = function() {
 };
 
 console.log('DualTextWriter initialized (Module Mode)');
+
+// ========================================
+// 글 상세 패널 확대 모드 기능
+// ========================================
+
+/**
+ * 글 상세 패널 확대 모드 초기화
+ * - 확대 버튼 클릭 이벤트
+ * - ESC 키로 닫기
+ * - 오버레이 클릭으로 닫기
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    const detailExpandBtn = document.getElementById('detail-expand-btn');
+    const articleDetailPanel = document.getElementById('article-detail-panel');
+    const detailPanelClose = document.getElementById('detail-panel-close');
+    
+    if (!detailExpandBtn || !articleDetailPanel) {
+        console.warn('글 상세 패널 확대 모드: 필수 요소를 찾을 수 없습니다.');
+        return;
+    }
+    
+    /**
+     * 확대 모드 토글 함수
+     */
+    function toggleDetailPanelExpand() {
+        const isExpanded = articleDetailPanel.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // 축소
+            articleDetailPanel.classList.remove('expanded');
+            detailExpandBtn.setAttribute('aria-expanded', 'false');
+            detailExpandBtn.title = '전체 화면 확대 (ESC로 닫기)';
+            document.body.style.overflow = '';
+            removeDetailPanelOverlay();
+        } else {
+            // 확대
+            articleDetailPanel.classList.add('expanded');
+            detailExpandBtn.setAttribute('aria-expanded', 'true');
+            detailExpandBtn.title = '확대 모드 닫기 (ESC)';
+            document.body.style.overflow = 'hidden';
+            addDetailPanelOverlay();
+        }
+    }
+    
+    /**
+     * 오버레이 추가 함수
+     */
+    function addDetailPanelOverlay() {
+        let overlay = document.querySelector('.detail-panel-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'detail-panel-overlay';
+            document.body.appendChild(overlay);
+            
+            // 오버레이 클릭 시 축소
+            overlay.addEventListener('click', toggleDetailPanelExpand);
+        }
+        overlay.classList.add('active');
+    }
+    
+    /**
+     * 오버레이 제거 함수
+     */
+    function removeDetailPanelOverlay() {
+        const overlay = document.querySelector('.detail-panel-overlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    }
+    
+    // 확대 버튼 클릭 이벤트
+    detailExpandBtn.addEventListener('click', toggleDetailPanelExpand);
+    
+    // ESC 키로 확대 모드 닫기
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (articleDetailPanel && articleDetailPanel.classList.contains('expanded')) {
+                toggleDetailPanelExpand();
+            }
+        }
+    });
+    
+    // 패널 닫기 버튼 클릭 시 확대 모드도 해제
+    if (detailPanelClose) {
+        const originalCloseHandler = detailPanelClose.onclick;
+        detailPanelClose.addEventListener('click', () => {
+            // 확대 모드가 활성화되어 있으면 먼저 해제
+            if (articleDetailPanel.classList.contains('expanded')) {
+                toggleDetailPanelExpand();
+            }
+        });
+    }
+    
+    console.log('✅ 글 상세 패널 확대 모드 초기화 완료');
+});
