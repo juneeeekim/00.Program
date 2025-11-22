@@ -848,10 +848,24 @@ class DualTextWriter {
         if (detailCategory) document.getElementById('expand-preview-category').textContent = detailCategory.textContent;
 
         // 내용 동기화 (수정 모드 내용 우선)
-        if (editContentTextarea && this.expandContentTextarea) {
-            this.expandContentTextarea.value = editContentTextarea.value;
-        } else if (detailContent && this.expandContentTextarea) {
-            this.expandContentTextarea.value = detailContent.innerText; // 또는 textContent
+        const detailEditMode = document.getElementById('detail-edit-mode');
+        let sourceContent = '';
+
+        // 1. 수정 모드가 활성화되어 있다면 에디터 내용 사용
+        if (detailEditMode && detailEditMode.style.display !== 'none' && editContentTextarea) {
+            sourceContent = editContentTextarea.value;
+        }
+        // 2. 읽기 모드라면 읽기 모드 내용 사용 (innerText로 텍스트만 추출)
+        else if (detailContent) {
+            sourceContent = detailContent.innerText;
+        }
+        // 3. fallback: 에디터가 있다면 에디터 값 사용
+        else if (editContentTextarea) {
+            sourceContent = editContentTextarea.value;
+        }
+
+        if (this.expandContentTextarea) {
+            this.expandContentTextarea.value = sourceContent;
         }
 
         this.expandModal.style.display = 'block';
