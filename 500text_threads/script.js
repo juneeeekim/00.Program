@@ -7746,7 +7746,8 @@ class DualTextWriter {
                 const data = doc.data();
                 this.managementArticles.push({
                     id: doc.id,
-                    title: this.extractTitleFromContent(data.content || ''),
+                    // Firestore에 저장된 title 사용 (없으면 "제목 없음")
+                    title: data.title || '제목 없음',
                     content: data.content || '',
                     category: data.topic || '미분류', // topic을 category로 사용
                     createdAt: data.createdAt,
@@ -8907,7 +8908,7 @@ class DualTextWriter {
             sourceType: sourceType,
             content: item.content,
             title: sourceType === 'saved' 
-                ? this.extractTitleFromContent(item.content || '')
+                ? (item.title || '제목 없음')  // Firestore에 저장된 title 사용
                 : (item.content || '').substring(0, 50),
             date: sourceType === 'saved'
                 ? (item.createdAt ? this.formatDateFromFirestore(item.createdAt) : item.date || '')
@@ -9457,7 +9458,7 @@ class DualTextWriter {
         div.setAttribute('data-source-type', sourceType);
 
         const title = sourceType === 'saved' 
-            ? this.extractTitleFromContent(item.content || '')
+            ? (item.title || '제목 없음')  // Firestore에 저장된 title 사용
             : (item.content || '').substring(0, 50) + (item.content?.length > 50 ? '...' : '');
         
         const content = (item.content || '').substring(0, 150);
