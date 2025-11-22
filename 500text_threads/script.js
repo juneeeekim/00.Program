@@ -8247,7 +8247,17 @@ class DualTextWriter {
 
         try {
             const articleRef = window.firebaseDoc(this.db, 'users', this.currentUser.uid, 'texts', this.selectedArticleId);
+            // 제목 검증: 제목이 비어있으면 저장 불가
+            if (!title || title.trim() === '') {
+                this.showMessage('❌ 제목을 입력해주세요.', 'error');
+                if (this.editTitleInput) {
+                    this.editTitleInput.focus();
+                }
+                return;
+            }
+
             await window.firebaseUpdateDoc(articleRef, {
+                title: title.trim(),
                 content: content,
                 topic: category, // topic 필드에 카테고리 저장
                 updatedAt: window.firebaseServerTimestamp()
@@ -8256,7 +8266,7 @@ class DualTextWriter {
             // 로컬 데이터 업데이트
             const article = this.managementArticles.find(a => a.id === this.selectedArticleId);
             if (article) {
-                article.title = title || this.extractTitleFromContent(content);
+                article.title = title.trim();
                 article.content = content;
                 article.category = category;
             }
@@ -8519,19 +8529,28 @@ class DualTextWriter {
             : (this.scriptLlmModelSelect?.value || '');
         const llmModelType = this.scriptLlmTypeInput?.value.trim() || '일반';
 
-        // 검증
-        if (!title && !content) {
-            this.showMessage('❌ 제목 또는 내용을 입력해주세요.', 'error');
+        // 검증: 제목 필수
+        if (!title || title.trim() === '') {
+            this.showMessage('❌ 제목을 입력해주세요.', 'error');
+            if (this.scriptTitleInput) {
+                this.scriptTitleInput.focus();
+            }
+            return;
+        }
+
+        if (!content || content.trim() === '') {
+            this.showMessage('❌ 내용을 입력해주세요.', 'error');
+            if (this.scriptContentTextarea) {
+                this.scriptContentTextarea.focus();
+            }
             return;
         }
 
         try {
-            // 제목이 없으면 내용의 첫 줄을 제목으로 사용
-            const finalTitle = title || this.extractTitleFromContent(content);
-
-            // Firebase에 저장
+            // Firebase에 저장 (제목은 사용자가 입력한 값 사용)
             const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
             const newScriptData = {
+                title: title.trim(),  // 사용자가 직접 입력한 제목
                 content: content,
                 topic: category, // 카테고리는 topic 필드에 저장
                 type: 'script', // [Tab Separation] 스크립트 작성 탭 전용 타입 (기존 'edit'와 분리)
