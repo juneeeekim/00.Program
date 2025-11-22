@@ -309,8 +309,8 @@ class DualTextWriter {
     showInlineDuplicateHint(duplicate) {
         const hint = document.getElementById('ref-duplicate-hint');
         if (!hint) return;
-        const createdAtStr = this.formatDateFromFirestore?.(duplicate?.createdAt) || '';
-        const topicStr = duplicate?.topic ? ` · 주제: ${this.escapeHtml(duplicate.topic)}` : '';
+        const createdAtStr = formatDate(duplicate?.createdAt) || '';
+        const topicStr = duplicate?.topic ? ` · 주제: ${escapeHtml(duplicate.topic)}` : '';
         hint.innerHTML = `⚠️ 동일한 레퍼런스가 이미 있습니다${createdAtStr ? ` · 저장일: ${createdAtStr}` : ''}${topicStr}. 저장 시 중복으로 저장될 수 있습니다.`;
         hint.style.display = 'block';
     }
@@ -713,6 +713,285 @@ class DualTextWriter {
         }
     }
 
+    /**
+     * 레퍼런스 불러오기 패널 초기화
+     */
+    initReferenceLoader() {
+        // DOM 요소 참조
+        this.detailLoadReferenceBtn = document.getElementById('detail-load-reference-btn');
+        this.referenceLoaderPanel = document.getElementById('reference-loader-panel');
+        this.referenceLoaderCloseBtn = document.getElementById('reference-loader-close');
+        this.referenceLoaderTabs = document.querySelectorAll('.reference-tab');
+        this.referenceSavedContent = document.getElementById('reference-saved-content');
+        this.referenceTrackingContent = document.getElementById('reference-tracking-content');
+        this.referenceSavedList = document.getElementById('reference-saved-list');
+        this.referenceTrackingList = document.getElementById('reference-tracking-list');
+        this.detailReferenceList = document.getElementById('detail-reference-list');
+        this.detailReferenceEmpty = document.querySelector('.detail-reference-empty');
+        this.referenceSearchInput = document.getElementById('reference-search-input');
+
+        // 이벤트 리스너: 패널 열기
+        if (this.detailLoadReferenceBtn) {
+            this.detailLoadReferenceBtn.addEventListener('click', () => {
+                this.openReferenceLoader();
+            });
+        }
+
+        // 이벤트 리스너: 패널 닫기
+        if (this.referenceLoaderCloseBtn) {
+            this.referenceLoaderCloseBtn.addEventListener('click', () => {
+                this.closeReferenceLoader();
+            });
+        }
+
+        // 이벤트 리스너: 탭 전환
+        this.referenceLoaderTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.getAttribute('data-tab');
+                this.switchReferenceLoaderTab(tabName);
+            });
+        });
+
+        // 이벤트 리스너: 외부 클릭 시 닫기
+        if (this.referenceLoaderPanel) {
+            this.referenceLoaderPanel.addEventListener('click', (e) => {
+                if (e.target === this.referenceLoaderPanel || e.target.classList.contains('reference-loader-overlay')) {
+                    this.closeReferenceLoader();
+                }
+            });
+        }
+
+        // 이벤트 리스너: 레퍼런스 추가 (이벤트 위임)
+        if (this.referenceSavedList) {
+            this.referenceSavedList.addEventListener('click', (e) => this.handleReferenceItemClick(e));
+        }
+        if (this.referenceTrackingList) {
+            this.referenceTrackingList.addEventListener('click', (e) => this.handleReferenceItemClick(e));
+        }
+        
+        // 이벤트 리스너: 검색
+        if (this.referenceSearchInput) {
+            this.referenceSearchInput.addEventListener('input', debounce(() => {
+                this.filterReferenceLoaderList();
+            }, 300));
+        }
+    }
+
+    /**
+     * 레퍼런스 불러오기 패널 열기
+     */
+    openReferenceLoader() {
+        if (this.referenceLoaderPanel) {
+            this.referenceLoaderPanel.style.display = 'block';
+            // 데이터 로드 (처음 열 때 또는 필요 시)
+            this.loadReferenceLoaderData();
+        }
+    }
+
+    /**
+     * 레퍼런스 불러오기 패널 닫기
+     */
+    closeReferenceLoader() {
+        if (this.referenceLoaderPanel) {
+            this.referenceLoaderPanel.style.display = 'none';
+        }
+    }
+
+    /**
+     * 레퍼런스 로더 탭 전환
+     */
+    switchReferenceLoaderTab(tabName) {
+        // 탭 활성화 상태 변경
+        this.referenceLoaderTabs.forEach(tab => {
+            if (tab.getAttribute('data-tab') === tabName) {
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+            } else {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            }
+        });
+
+        // 콘텐츠 표시 상태 변경
+        if (tabName === 'saved') {
+            this.referenceSavedContent.style.display = 'block';
+            this.referenceTrackingContent.style.display = 'none';
+            document.getElementById('reference-tracking-filters').style.display = 'none';
+        } else {
+            this.referenceSavedContent.style.display = 'none';
+            this.referenceTrackingContent.style.display = 'block';
+            document.getElementById('reference-tracking-filters').style.display = 'flex';
+        }
+    }
+
+    /**
+     * 레퍼런스 로더 데이터 로드
+     */
+    async loadReferenceLoaderData() {
+        // 저장된 글 로드
+        await this.loadSavedReferencesForLoader();
+        // 트래킹 데이터 로드 (필요 시 구현)
+        // await this.loadTrackingReferencesForLoader();
+    }
+
+    /**
+     * 저장된 글을 레퍼런스 로더용으로 로드
+     */
+    async loadSavedReferencesForLoader() {
+        if (!this.currentUser) return;
+
+        try {
+            // 기존 savedTexts 활용하거나 새로 fetch
+            // 여기서는 기존 savedTexts가 있다고 가정하고 렌더링
+            // 만약 savedTexts가 비어있다면 fetch 필요
+            if (this.savedTexts.length === 0) {
+                await this.loadSavedTexts();
+            }
+            
+            this.renderReferenceLoaderList(this.savedTexts, this.referenceSavedList, 'saved');
+        } catch (error) {
+            console.error('레퍼런스 데이터 로드 실패:', error);
+        }
+    }
+
+    /**
+     * 레퍼런스 목록 렌더링
+     */
+    renderReferenceLoaderList(items, container, sourceType) {
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (items.length === 0) {
+            const emptyMsg = document.getElementById(`reference-${sourceType}-empty`);
+            if (emptyMsg) emptyMsg.style.display = 'block';
+            return;
+        }
+
+        const emptyMsg = document.getElementById(`reference-${sourceType}-empty`);
+        if (emptyMsg) emptyMsg.style.display = 'none';
+
+        items.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'reference-item';
+            el.setAttribute('data-item-id', item.id);
+            el.setAttribute('data-source-type', sourceType);
+            
+            // 날짜 포맷팅
+            const dateStr = item.createdAt ? formatDate(item.createdAt) : '';
+            
+            // 내용 미리보기 (HTML 태그 제거 및 길이 제한)
+            const contentPreview = item.content ? item.content.replace(/<[^>]*>/g, '').substring(0, 100) + (item.content.length > 100 ? '...' : '') : '';
+            
+            el.innerHTML = `
+                <div class="reference-item-header">
+                    <div class="reference-item-title">${escapeHtml(item.topic || '제목 없음')}</div>
+                </div>
+                <div class="reference-item-content">${escapeHtml(contentPreview)}</div>
+                <div class="reference-item-meta">
+                    <span>📅 ${dateStr}</span>
+                    ${item.category ? `<span>📁 ${escapeHtml(item.category)}</span>` : ''}
+                </div>
+                <div class="reference-item-actions">
+                    <button class="reference-item-btn" data-action="add">
+                        추가하기
+                    </button>
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    /**
+     * 레퍼런스 아이템 클릭 핸들러 (추가하기 버튼)
+     */
+    handleReferenceItemClick(e) {
+        const btn = e.target.closest('.reference-item-btn');
+        if (!btn) return;
+
+        const itemEl = btn.closest('.reference-item');
+        const itemId = itemEl.getAttribute('data-item-id');
+        const sourceType = itemEl.getAttribute('data-source-type');
+        
+        // 데이터 찾기
+        let itemData = null;
+        if (sourceType === 'saved') {
+            itemData = this.savedTexts.find(i => i.id === itemId);
+        } else {
+            // 트래킹 데이터에서 찾기 (구현 필요)
+        }
+
+        if (itemData) {
+            this.addReferenceToDetail(itemData);
+            // 선택 후 패널 닫기 (선택사항)
+            this.closeReferenceLoader();
+        }
+    }
+
+    /**
+     * 상세 뷰에 레퍼런스 추가
+     */
+    addReferenceToDetail(item) {
+        if (!this.detailReferenceList) return;
+
+        // 빈 상태 메시지 숨김
+        if (this.detailReferenceEmpty) {
+            this.detailReferenceEmpty.style.display = 'none';
+        }
+        this.detailReferenceList.style.display = 'block';
+
+        // 중복 체크
+        const existing = this.detailReferenceList.querySelector(`[data-ref-id="${item.id}"]`);
+        if (existing) {
+            alert('이미 추가된 레퍼런스입니다.');
+            return;
+        }
+
+        const el = document.createElement('div');
+        el.className = 'detail-reference-item';
+        el.setAttribute('data-ref-id', item.id);
+        
+        const contentPreview = item.content ? item.content.replace(/<[^>]*>/g, '').substring(0, 150) + (item.content.length > 150 ? '...' : '') : '';
+
+        el.innerHTML = `
+            <div class="detail-ref-header">
+                <span class="detail-ref-title">${escapeHtml(item.topic || '제목 없음')}</span>
+                <button class="detail-ref-remove" aria-label="삭제">×</button>
+            </div>
+            <div class="detail-ref-content">${escapeHtml(contentPreview)}</div>
+        `;
+
+        // 삭제 버튼 이벤트
+        el.querySelector('.detail-ref-remove').addEventListener('click', () => {
+            el.remove();
+            if (this.detailReferenceList.children.length === 0) {
+                if (this.detailReferenceEmpty) this.detailReferenceEmpty.style.display = 'block';
+                this.detailReferenceList.style.display = 'none';
+            }
+        });
+
+        this.detailReferenceList.appendChild(el);
+    }
+
+    /**
+     * 레퍼런스 목록 필터링 (검색)
+     */
+    filterReferenceLoaderList() {
+        const keyword = this.referenceSearchInput.value.toLowerCase();
+        const items = document.querySelectorAll('.reference-item');
+        
+        items.forEach(item => {
+            const title = item.querySelector('.reference-item-title').textContent.toLowerCase();
+            const content = item.querySelector('.reference-item-content').textContent.toLowerCase();
+            
+            if (title.includes(keyword) || content.includes(keyword)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
     async init() {
         this.bindEvents();
         await this.waitForFirebase();
@@ -726,6 +1005,8 @@ class DualTextWriter {
         this.initReferenceSelection();
         // SNS 플랫폼 선택 기능 초기화
         this.initSnsPlatformSelection();
+        // 레퍼런스 불러오기 패널 초기화
+        this.initReferenceLoader();
     }
 
     // [Refactoring] AuthManager로 위임
