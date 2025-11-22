@@ -2010,7 +2010,10 @@
                 <!-- 확대 모드 전용: 2열 레이아웃 컨테이너 -->
                 <div class="detail-edit-container">
                   <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
-                  <div class="detail-reference-panel" id="detail-reference-panel">
+                  <div
+                    class="detail-reference-panel"
+                    id="detail-reference-panel"
+                  >
                     <div class="detail-reference-header">
                       <h5>📚 참고 레퍼런스</h5>
                       <button
@@ -2023,12 +2026,21 @@
                         📥 추가
                       </button>
                     </div>
-                    <div class="detail-reference-content" id="detail-reference-content">
+                    <div
+                      class="detail-reference-content"
+                      id="detail-reference-content"
+                    >
                       <div class="detail-reference-empty">
                         <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
-                        <p class="detail-reference-hint">확대 모드에서 레퍼런스를 참고하며 수정하세요.</p>
+                        <p class="detail-reference-hint">
+                          확대 모드에서 레퍼런스를 참고하며 수정하세요.
+                        </p>
                       </div>
-                      <div id="detail-reference-list" class="detail-reference-list" style="display: none">
+                      <div
+                        id="detail-reference-list"
+                        class="detail-reference-list"
+                        style="display: none"
+                      >
                         <!-- 동적으로 레퍼런스 추가됨 -->
                       </div>
                     </div>
@@ -2042,7 +2054,9 @@
                   <!-- 오른쪽: 수정 폼 -->
                   <div class="detail-edit-form">
                     <div class="edit-form-group">
-                      <label for="edit-title-input" class="edit-label">제목</label>
+                      <label for="edit-title-input" class="edit-label"
+                        >제목</label
+                      >
                       <input
                         type="text"
                         id="edit-title-input"
@@ -2159,7 +2173,7 @@
               <div class="reference-search-section">
                 <input
                   type="text"
-                  id="reference-search-input"
+                  id="reference-loader-search-input"
                   class="reference-search-input"
                   placeholder="제목 또는 내용으로 검색..."
                   aria-label="레퍼런스 검색"
