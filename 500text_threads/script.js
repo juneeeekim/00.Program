@@ -8228,6 +8228,11 @@ class DualTextWriter {
         if (this.editCategorySelect) {
             this.editCategorySelect.value = article.category || '미분류';
         }
+        
+        // 현재 편집 중인 글 ID 설정 (레퍼런스 로드용)
+        if (window.setCurrentEditingArticle) {
+            window.setCurrentEditingArticle(this.selectedArticleId);
+        }
     }
 
     /**
@@ -14308,3 +14313,219 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('✅ 글 상세 패널 확대 모드 초기화 완료');
 });
+
+// ========================================
+// 글 상세 패널 레퍼런스 기능
+// ========================================
+
+/**
+ * 글 상세 패널에서 레퍼런스를 로드하고 관리하는 기능
+ * - 확대 모드 활성화 시 연결된 레퍼런스 자동 로드
+ * - 레퍼런스 목록 렌더링
+ * - 레퍼런스 클릭으로 내용 복사
+ * - 드래그로 패널 크기 조절
+ */
+
+let currentArticleReferences = [];
+let currentEditingArticleId = null;
+
+/**
+ * 글의 연결된 레퍼런스 로드
+ */
+function loadArticleReferences(articleId) {
+    currentEditingArticleId = articleId;
+    currentArticleReferences = [];
+    
+    // DualTextWriter 인스턴스 확인
+    if (!window.dualTextWriter || !window.dualTextWriter.currentUser) {
+        console.warn('DualTextWriter 인스턴스가 없거나 로그인하지 않았습니다.');
+        renderDetailReferences();
+        return;
+    }
+    
+    // 현재 편집 중인 글 찾기
+    const article = window.dualTextWriter.savedTexts.find(t => t.id === articleId);
+    if (!article) {
+        console.warn('글을 찾을 수 없습니다:', articleId);
+        renderDetailReferences();
+        return;
+    }
+    
+    // 연결된 레퍼런스가 있는지 확인
+    if (article.linkedReferences && article.linkedReferences.length > 0) {
+        // 레퍼런스 ID로 실제 레퍼런스 데이터 가져오기
+        const references = article.linkedReferences.map(refId => {
+            return window.dualTextWriter.savedTexts.find(t => t.id === refId);
+        }).filter(ref => ref); // null 제거
+        
+        currentArticleReferences = references;
+        console.log(`✅ 레퍼런스 ${references.length}개 로드 완료`);
+    }
+    
+    renderDetailReferences();
+}
+
+/**
+ * 레퍼런스 목록 렌더링
+ */
+function renderDetailReferences() {
+    const listEl = document.getElementById('detail-reference-list');
+    const emptyEl = document.querySelector('.detail-reference-empty');
+    
+    if (!listEl || !emptyEl) {
+        console.warn('레퍼런스 UI 요소를 찾을 수 없습니다.');
+        return;
+    }
+    
+    // 레퍼런스가 없는 경우
+    if (currentArticleReferences.length === 0) {
+        listEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        return;
+    }
+    
+    // 레퍼런스 목록 표시
+    listEl.style.display = 'block';
+    emptyEl.style.display = 'none';
+    
+    // HTML 이스케이프 함수
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 레퍼런스 항목 렌더링
+    listEl.innerHTML = currentArticleReferences.map(ref => {
+        const title = ref.topic || ref.source || '제목 없음';
+        const content = ref.content || '내용 없음';
+        
+        return `
+            <div class="detail-reference-item" data-ref-id="${ref.id}" role="button" tabindex="0">
+                <div class="detail-reference-item-title">${escapeHtml(title)}</div>
+                <div class="detail-reference-item-content">${escapeHtml(content)}</div>
+            </div>
+        `;
+    }).join('');
+    
+    // 클릭 이벤트: 내용 복사
+    listEl.querySelectorAll('.detail-reference-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const refId = item.dataset.refId;
+            const ref = currentArticleReferences.find(r => r.id === refId);
+            if (ref && ref.content) {
+                navigator.clipboard.writeText(ref.content).then(() => {
+                    // 복사 성공 피드백
+                    const originalBg = item.style.background;
+                    item.style.background = '#e7f3ff';
+                    setTimeout(() => {
+                        item.style.background = originalBg;
+                    }, 300);
+                    
+                    console.log('✅ 레퍼런스 내용 복사 완료');
+                }).catch(err => {
+                    console.error('복사 실패:', err);
+                    alert('복사에 실패했습니다.');
+                });
+            }
+        });
+        
+        // 키보드 접근성
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
+            }
+        });
+    });
+}
+
+/**
+ * 드래그 가능한 구분선 초기화
+ */
+function initDetailDividerDrag() {
+    const divider = document.getElementById('detail-split-divider');
+    const container = document.querySelector('.detail-edit-container');
+    
+    if (!divider || !container) {
+        console.warn('구분선 요소를 찾을 수 없습니다.');
+        return;
+    }
+    
+    let isDragging = false;
+    
+    divider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        divider.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const newWidth = e.clientX - containerRect.left;
+        
+        // 최소/최대 너비 제한 (300px ~ 전체 너비 - 400px)
+        const minWidth = 300;
+        const maxWidth = containerRect.width - 400;
+        
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+            container.style.gridTemplateColumns = `${newWidth}px 4px 1fr`;
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            divider.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+    
+    console.log('✅ 구분선 드래그 기능 초기화 완료');
+}
+
+/**
+ * 확대 버튼 클릭 시 레퍼런스 로드 및 구분선 초기화
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    const expandBtn = document.getElementById('detail-expand-btn');
+    const articleDetailPanel = document.getElementById('article-detail-panel');
+    
+    if (expandBtn && articleDetailPanel) {
+        // 기존 확대 버튼 클릭 이벤트에 추가 로직 삽입
+        expandBtn.addEventListener('click', () => {
+            // 약간의 지연 후 확대 모드 상태 확인
+            setTimeout(() => {
+                const isExpanded = articleDetailPanel.classList.contains('expanded');
+                const isEditMode = document.getElementById('detail-edit-mode').style.display !== 'none';
+                
+                // 확대 모드 활성화 && 수정 모드일 때만 실행
+                if (isExpanded && isEditMode && currentEditingArticleId) {
+                    loadArticleReferences(currentEditingArticleId);
+                    initDetailDividerDrag();
+                    console.log('✅ 확대 모드에서 레퍼런스 패널 활성화');
+                }
+            }, 100);
+        });
+    }
+    
+    console.log('✅ 레퍼런스 패널 기능 초기화 완료');
+});
+
+/**
+ * 수정 모드 진입 시 현재 글 ID 저장
+ * (기존 코드에서 수정 버튼 클릭 시 호출되는 부분에 추가 필요)
+ */
+function setCurrentEditingArticle(articleId) {
+    currentEditingArticleId = articleId;
+    console.log('현재 편집 중인 글 ID 설정:', articleId);
+}
+
+// 전역 함수로 노출 (기존 코드에서 호출 가능하도록)
+window.setCurrentEditingArticle = setCurrentEditingArticle;
+window.loadArticleReferences = loadArticleReferences;

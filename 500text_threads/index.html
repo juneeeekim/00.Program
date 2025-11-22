@@ -2007,57 +2007,93 @@
                 class="detail-mode"
                 style="display: none"
               >
-                <div class="edit-form-group">
-                  <label for="edit-title-input" class="edit-label">제목</label>
-                  <input
-                    type="text"
-                    id="edit-title-input"
-                    class="edit-input"
-                    aria-label="글 제목 입력"
-                    aria-required="true"
-                    maxlength="200"
-                  />
-                </div>
-                <div class="edit-form-group">
-                  <label for="edit-category-select" class="edit-label"
-                    >카테고리</label
-                  >
-                  <select
-                    id="edit-category-select"
-                    class="edit-select"
-                    aria-label="카테고리 선택"
-                    aria-required="false"
-                  >
-                    <!-- 동적으로 카테고리 추가됨 -->
-                  </select>
-                </div>
-                <div class="edit-form-group">
-                  <label for="edit-content-textarea" class="edit-label"
-                    >내용</label
-                  >
-                  <textarea
-                    id="edit-content-textarea"
-                    class="edit-textarea"
-                    aria-label="글 내용 입력"
-                    aria-required="true"
-                    rows="10"
-                  ></textarea>
-                </div>
-                <div class="edit-actions">
-                  <button
-                    id="edit-article-save-btn"
-                    class="btn btn-primary"
-                    aria-label="수정 내용 저장"
-                  >
-                    💾 저장
-                  </button>
-                  <button
-                    id="edit-article-cancel-btn"
-                    class="btn btn-secondary"
-                    aria-label="수정 취소"
-                  >
-                    ❌ 취소
-                  </button>
+                <!-- 확대 모드 전용: 2열 레이아웃 컨테이너 -->
+                <div class="detail-edit-container">
+                  <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
+                  <div class="detail-reference-panel" id="detail-reference-panel">
+                    <div class="detail-reference-header">
+                      <h5>📚 참고 레퍼런스</h5>
+                      <button
+                        type="button"
+                        id="detail-load-reference-btn"
+                        class="btn btn-small"
+                        aria-label="레퍼런스 추가"
+                        title="레퍼런스 추가"
+                      >
+                        📥 추가
+                      </button>
+                    </div>
+                    <div class="detail-reference-content" id="detail-reference-content">
+                      <div class="detail-reference-empty">
+                        <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
+                        <p class="detail-reference-hint">확대 모드에서 레퍼런스를 참고하며 수정하세요.</p>
+                      </div>
+                      <div id="detail-reference-list" class="detail-reference-list" style="display: none">
+                        <!-- 동적으로 레퍼런스 추가됨 -->
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 드래그 가능한 구분선 -->
+                  <div class="detail-split-divider" id="detail-split-divider">
+                    <div class="detail-divider-handle"></div>
+                  </div>
+
+                  <!-- 오른쪽: 수정 폼 -->
+                  <div class="detail-edit-form">
+                    <div class="edit-form-group">
+                      <label for="edit-title-input" class="edit-label">제목</label>
+                      <input
+                        type="text"
+                        id="edit-title-input"
+                        class="edit-input"
+                        aria-label="글 제목 입력"
+                        aria-required="true"
+                        maxlength="200"
+                      />
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-category-select" class="edit-label"
+                        >카테고리</label
+                      >
+                      <select
+                        id="edit-category-select"
+                        class="edit-select"
+                        aria-label="카테고리 선택"
+                        aria-required="false"
+                      >
+                        <!-- 동적으로 카테고리 추가됨 -->
+                      </select>
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-content-textarea" class="edit-label"
+                        >내용</label
+                      >
+                      <textarea
+                        id="edit-content-textarea"
+                        class="edit-textarea"
+                        aria-label="글 내용 입력"
+                        aria-required="true"
+                        rows="10"
+                      ></textarea>
+                    </div>
+                    <div class="edit-actions">
+                      <button
+                        id="edit-article-save-btn"
+                        class="btn btn-primary"
+                        aria-label="수정 내용 저장"
+                      >
+                        💾 저장
+                      </button>
+                      <button
+                        id="edit-article-cancel-btn"
+                        class="btn btn-secondary"
+                        aria-label="수정 취소"
+                      >
+                        ❌ 취소
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
