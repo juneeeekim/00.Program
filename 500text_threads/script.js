@@ -785,6 +785,95 @@ class DualTextWriter {
                 this.filterReferenceLoaderList();
             }, 300));
         }
+
+        // ESC 키로 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.referenceLoaderPanel.style.display === 'block') {
+                // 확대 모드 모달이 열려있고, 레퍼런스 로더도 열려있다면 레퍼런스 로더만 닫기
+                // z-index가 더 높으므로 우선순위 처리
+                this.closeReferenceLoader();
+            }
+        });
+    }
+
+    /**
+     * 내용 확대 모드 초기화
+     */
+    initExpandModal() {
+        this.expandModal = document.getElementById('content-expand-modal');
+        this.detailExpandBtn = document.getElementById('detail-expand-btn');
+        this.expandModalCloseBtn = document.getElementById('expand-modal-close');
+        this.expandContentTextarea = document.getElementById('expand-content-textarea');
+        
+        // 열기 버튼 이벤트
+        if (this.detailExpandBtn) {
+            this.detailExpandBtn.addEventListener('click', () => {
+                this.openExpandModal();
+            });
+        }
+
+        // 닫기 버튼 이벤트
+        if (this.expandModalCloseBtn) {
+            this.expandModalCloseBtn.addEventListener('click', () => {
+                this.closeExpandModal();
+            });
+        }
+
+        // ESC 키로 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.expandModal && this.expandModal.style.display === 'block') {
+                // 레퍼런스 로더가 열려있으면 레퍼런스 로더가 먼저 닫힘 (z-index 확인)
+                if (this.referenceLoaderPanel && this.referenceLoaderPanel.style.display === 'block') {
+                    return; // 레퍼런스 로더의 ESC 핸들러가 처리하도록 함
+                }
+                this.closeExpandModal();
+            }
+        });
+    }
+
+    /**
+     * 확대 모드 열기
+     */
+    openExpandModal() {
+        if (!this.expandModal) return;
+        
+        // 현재 상세 패널의 내용을 가져와서 확대 모드에 동기화
+        const detailTitle = document.getElementById('detail-title');
+        const detailCategory = document.getElementById('detail-category');
+        const detailContent = document.getElementById('detail-content'); // 읽기 모드 내용
+        const editContentTextarea = document.getElementById('edit-content-textarea'); // 수정 모드 내용
+
+        // 프리뷰 정보 업데이트
+        if (detailTitle) document.getElementById('expand-preview-title').textContent = detailTitle.textContent;
+        if (detailCategory) document.getElementById('expand-preview-category').textContent = detailCategory.textContent;
+
+        // 내용 동기화 (수정 모드 내용 우선)
+        if (editContentTextarea && this.expandContentTextarea) {
+            this.expandContentTextarea.value = editContentTextarea.value;
+        } else if (detailContent && this.expandContentTextarea) {
+            this.expandContentTextarea.value = detailContent.innerText; // 또는 textContent
+        }
+
+        this.expandModal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // 배경 스크롤 방지
+    }
+
+    /**
+     * 확대 모드 닫기
+     */
+    closeExpandModal() {
+        if (!this.expandModal) return;
+        
+        // 변경된 내용을 상세 패널(수정 모드)에 반영
+        const editContentTextarea = document.getElementById('edit-content-textarea');
+        if (editContentTextarea && this.expandContentTextarea) {
+            editContentTextarea.value = this.expandContentTextarea.value;
+            // input 이벤트 트리거하여 글자수 등 업데이트
+            editContentTextarea.dispatchEvent(new Event('input'));
+        }
+
+        this.expandModal.style.display = 'none';
+        document.body.style.overflow = ''; // 배경 스크롤 복원
     }
 
     /**
@@ -1119,6 +1208,8 @@ class DualTextWriter {
         this.initSnsPlatformSelection();
         // 레퍼런스 불러오기 패널 초기화
         this.initReferenceLoader();
+        // 확대 모드 초기화
+        this.initExpandModal();
     }
 
     // [Refactoring] AuthManager로 위임
