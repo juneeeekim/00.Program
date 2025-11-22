@@ -7732,12 +7732,29 @@ class DualTextWriter {
         try {
             // 'edit' 타입 글만 로드 (레퍼런스 제외)
             const textsRef = window.firebaseCollection(this.db, 'users', this.currentUser.uid, 'texts');
-            const q = window.firebaseQuery(
-                textsRef,
-                window.firebaseWhere('type', '==', 'edit'),
-                window.firebaseOrderBy('createdAt', 'desc')
-            );
-            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            // 인덱스 오류를 대비하여 orderBy 없이 먼저 시도
+            let querySnapshot;
+            try {
+                const q = window.firebaseQuery(
+                    textsRef,
+                    window.firebaseWhere('type', '==', 'edit'),
+                    window.firebaseOrderBy('createdAt', 'desc')
+                );
+                querySnapshot = await window.firebaseGetDocs(q);
+            } catch (indexError) {
+                // 인덱스 오류인 경우 orderBy 없이 쿼리
+                if (indexError.code === 'failed-precondition') {
+                    console.warn('Firebase 인덱스가 없어 orderBy 없이 쿼리합니다. 클라이언트 사이드에서 정렬합니다.');
+                    const q = window.firebaseQuery(
+                        textsRef,
+                        window.firebaseWhere('type', '==', 'edit')
+                    );
+                    querySnapshot = await window.firebaseGetDocs(q);
+                } else {
+                    throw indexError; // 다른 에러는 다시 throw
+                }
+            }
 
             this.managementArticles = [];
             querySnapshot.forEach((doc) => {
@@ -7752,6 +7769,15 @@ class DualTextWriter {
                     viewCount: data.viewCount || 0
                 });
             });
+            
+            // orderBy 없이 로드한 경우 클라이언트 사이드에서 정렬
+            if (this.managementArticles.length > 0 && this.managementArticles[0].createdAt) {
+                this.managementArticles.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                    const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                    return dateB - dateA; // 내림차순 (최신순)
+                });
+            }
 
             // order 필드가 없는 경우 초기화
             await this.initializeArticleOrders();
@@ -7774,13 +7800,30 @@ class DualTextWriter {
         } catch (error) {
             console.error('스크립트 작성용 글 로드 실패:', error);
             
-            // 네트워크 오류나 인증 오류가 아닌 경우에만 에러 메시지 표시
-            // Firebase 권한 오류나 네트워크 오류는 사용자에게 알림
+            // Firebase 인덱스 오류는 조용히 처리 (이미 위에서 처리됨)
+            if (error.code === 'failed-precondition') {
+                console.warn('Firebase 인덱스 오류: 인덱스가 생성될 때까지 클라이언트 사이드 정렬을 사용합니다.');
+                // 에러 메시지 표시하지 않음 (정상 동작)
+                this.managementArticles = [];
+                if (this.articleCardsGrid) {
+                    this.articleCardsGrid.innerHTML = '';
+                }
+                if (this.managementEmptyState) {
+                    this.managementEmptyState.style.display = 'block';
+                }
+                return;
+            }
+            
+            // 네트워크 오류나 인증 오류인 경우에만 에러 메시지 표시
             if (error.code === 'permission-denied' || error.code === 'unavailable') {
                 this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', 'error');
-            } else if (error.message && !error.message.includes('permission')) {
-                // 권한 오류가 아닌 다른 에러만 표시
-                this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
+            } else if (error.code && error.code !== 'failed-precondition') {
+                // 인덱스 오류가 아닌 다른 에러만 표시
+                console.error('예상치 못한 에러:', error);
+                // 개발 환경에서만 상세 에러 표시
+                if (error.message && !error.message.includes('permission')) {
+                    this.showMessage('❌ 글을 불러오는 중 오류가 발생했습니다.', 'error');
+                }
             }
             
             this.managementArticles = [];
