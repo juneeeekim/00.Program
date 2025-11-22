@@ -7487,6 +7487,19 @@ class DualTextWriter {
         this.referenceCategoryFilter = document.getElementById('reference-category-filter');
         this.referenceSortFilter = document.getElementById('reference-sort-filter');
         this.referenceTrackingFilters = document.getElementById('reference-tracking-filters');
+        // 상세 모드 레퍼런스 로드 버튼
+        this.detailLoadReferenceBtn = document.getElementById('detail-load-reference-btn');
+        // 이벤트 리스너 연결
+        if (this.detailLoadReferenceBtn) {
+            this.detailLoadReferenceBtn.addEventListener('click', () => {
+                this.openReferenceLoader();
+            });
+        }
+        if (this.referenceLoaderClose) {
+            this.referenceLoaderClose.addEventListener('click', () => {
+                this.closeReferenceLoader();
+            });
+        }
         
         // 레퍼런스 로더 상태
         this.currentReferenceTab = 'saved';
