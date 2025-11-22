@@ -7429,8 +7429,8 @@ class DualTextWriter {
         this.detailEditBtn = document.getElementById('detail-edit-btn');
         this.detailDeleteBtn = document.getElementById('detail-delete-btn');
         this.detailCopyBtn = document.getElementById('detail-copy-btn');
-        this.editSaveBtn = document.getElementById('edit-save-btn');
-        this.editCancelBtn = document.getElementById('edit-cancel-btn');
+        this.editSaveBtn = document.getElementById('edit-article-save-btn');
+        this.editCancelBtn = document.getElementById('edit-article-cancel-btn');
         this.editTitleInput = document.getElementById('edit-title-input');
         this.editCategorySelect = document.getElementById('edit-category-select');
         this.editContentTextarea = document.getElementById('edit-content-textarea');
