@@ -730,9 +730,19 @@ class DualTextWriter {
         this.detailReferenceEmpty = document.querySelector('.detail-reference-empty');
         this.referenceSearchInput = document.getElementById('reference-search-input');
 
-        // 이벤트 리스너: 패널 열기
+        // 이벤트 리스너: 패널 열기 (상세 모드)
         if (this.detailLoadReferenceBtn) {
             this.detailLoadReferenceBtn.addEventListener('click', () => {
+                this.referenceLoaderMode = 'detail'; // 모드 설정
+                this.openReferenceLoader();
+            });
+        }
+
+        // 이벤트 리스너: 패널 열기 (확대 모드)
+        this.expandLoadReferenceBtn = document.getElementById('expand-load-reference-btn');
+        if (this.expandLoadReferenceBtn) {
+            this.expandLoadReferenceBtn.addEventListener('click', () => {
+                this.referenceLoaderMode = 'expand'; // 모드 설정
                 this.openReferenceLoader();
             });
         }
@@ -922,10 +932,112 @@ class DualTextWriter {
         }
 
         if (itemData) {
-            this.addReferenceToDetail(itemData);
+            if (this.referenceLoaderMode === 'expand') {
+                this.addReferenceToExpand(itemData);
+            } else {
+                this.addReferenceToDetail(itemData);
+            }
             // 선택 후 패널 닫기 (선택사항)
             this.closeReferenceLoader();
         }
+    }
+
+    /**
+     * 확대 모드에 레퍼런스 추가
+     */
+    addReferenceToExpand(item) {
+        const expandReferenceList = document.getElementById('expand-reference-list');
+        const expandReferenceEmpty = document.querySelector('.expand-reference-empty');
+        
+        if (!expandReferenceList) return;
+
+        // 빈 상태 메시지 숨김
+        if (expandReferenceEmpty) {
+            expandReferenceEmpty.style.display = 'none';
+        }
+        expandReferenceList.style.display = 'block';
+
+        // 중복 체크
+        const existing = expandReferenceList.querySelector(`[data-ref-id="${item.id}"]`);
+        if (existing) {
+            alert('이미 추가된 레퍼런스입니다.');
+            return;
+        }
+
+        const el = document.createElement('div');
+        el.className = 'expand-reference-item'; // CSS 클래스 필요 (또는 인라인 스타일)
+        el.setAttribute('data-ref-id', item.id);
+        
+        // 스타일 적용 (초록색 테두리 등)
+        el.style.border = '2px solid #28a745';
+        el.style.borderRadius = '8px';
+        el.style.padding = '15px';
+        el.style.marginBottom = '15px';
+        el.style.backgroundColor = '#fff';
+        el.style.position = 'relative';
+
+        const contentPreview = item.content ? item.content.replace(/<[^>]*>/g, '').substring(0, 200) + (item.content.length > 200 ? '...' : '') : '';
+        const dateStr = item.createdAt ? formatDate(item.createdAt) : '';
+
+        el.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                <h4 style="margin: 0; font-size: 1rem; color: #333;">${escapeHtml(item.topic || '제목 없음')}</h4>
+                <button class="expand-ref-remove" aria-label="삭제" style="background: none; border: none; color: #999; cursor: pointer; font-size: 1.2rem;">×</button>
+            </div>
+            <div style="font-size: 0.9rem; color: #666; margin-bottom: 15px; line-height: 1.5;">
+                ${escapeHtml(contentPreview)}
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: #999; margin-bottom: 15px;">
+                <span>📅 ${dateStr}</span>
+                ${item.category ? `<span>📁 ${escapeHtml(item.category)}</span>` : ''}
+            </div>
+            <button class="btn btn-primary btn-block btn-add-content" style="width: 100%; background-color: #667eea; border: none; padding: 10px; border-radius: 6px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                <span>➕</span> 내용에 추가
+            </button>
+        `;
+
+        // 삭제 버튼 이벤트
+        el.querySelector('.expand-ref-remove').addEventListener('click', () => {
+            el.remove();
+            if (expandReferenceList.children.length === 0) {
+                if (expandReferenceEmpty) expandReferenceEmpty.style.display = 'block';
+                expandReferenceList.style.display = 'none';
+            }
+        });
+
+        // 내용에 추가 버튼 이벤트
+        el.querySelector('.btn-add-content').addEventListener('click', () => {
+            this.addContentToExpandEditor(item.content);
+        });
+
+        expandReferenceList.appendChild(el);
+    }
+
+    /**
+     * 확대 모드 에디터에 내용 추가
+     */
+    addContentToExpandEditor(content) {
+        const textarea = document.getElementById('expand-content-textarea');
+        if (!textarea) return;
+
+        // HTML 태그 제거 (선택사항, 기획에 따라 다름)
+        const plainText = content.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n/g, '\n\n').trim();
+
+        // 현재 커서 위치에 삽입 또는 맨 뒤에 추가
+        const startPos = textarea.selectionStart;
+        const endPos = textarea.selectionEnd;
+        const textBefore = textarea.value.substring(0, startPos);
+        const textAfter = textarea.value.substring(endPos, textarea.value.length);
+
+        textarea.value = textBefore + plainText + textAfter;
+        
+        // 커서 위치 조정
+        const newCursorPos = startPos + plainText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+
+        // 글자수 업데이트 트리거
+        textarea.dispatchEvent(new Event('input'));
     }
 
     /**
