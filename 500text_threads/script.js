@@ -7756,9 +7756,14 @@ class DualTextWriter {
             // order 필드가 없는 경우 초기화
             await this.initializeArticleOrders();
 
-            // 카테고리별로 정렬 후 렌더링
-            this.renderArticleCards();
+            // 카테고리 드롭다운 업데이트 (렌더링 전에 업데이트)
             this.updateCategoryDropdown();
+            
+            // 현재 선택된 카테고리 필터 값 가져오기
+            const currentCategory = this.categorySelect ? this.categorySelect.value : '';
+            
+            // 카테고리별로 정렬 후 렌더링 (현재 선택된 필터 값 전달)
+            this.renderArticleCards(currentCategory);
             
             // 카테고리 제안 업데이트
             this.updateCategorySuggestions();
@@ -8527,6 +8532,11 @@ class DualTextWriter {
 
             // 폼 닫기
             this.toggleScriptCreateForm();
+
+            // 카테고리 필터를 "전체 글 보기"로 리셋 (새로 저장된 글이 보이도록)
+            if (this.categorySelect) {
+                this.categorySelect.value = '';
+            }
 
             // 목록 새로고침
             await this.loadArticlesForManagement();
