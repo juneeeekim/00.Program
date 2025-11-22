@@ -1,4 +1,28 @@
-﻿/* Reset and Base Styles */
+﻿/* ========================================
+   1. CSS 변수 정의 (디자인 시스템)
+   ======================================== */
+:root {
+    /* Typography */
+    --font-size-xs: 0.75rem; /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem; /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+
+    /* Line-height */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+
+    /* Spacing */
+    --spacing-1: 8px;
+    --spacing-2: 16px;
+    --spacing-3: 24px;
+
+    /* Accessibility */
+    --min-touch-target: 44px;
+}
+
+/* Reset and Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -485,27 +509,29 @@ body {
     height: auto; /* 내용에 따라 자동으로 높이 조정 (토글이 펼쳐질 때 패널도 커짐) */
     }
     
+    /* Panel Header Styles */
     .panel-header {
-    display: grid;
-    grid-template-columns: auto minmax(180px, 260px) auto;
-    column-gap: 16px;
-    row-gap: 8px;
-    align-items: end;
-    margin-bottom: 9px; /* 10px -> 9px (10% 축소) */
-    padding-bottom: 7px; /* 8px -> 7px (10% 축소) */
-    border-bottom: 2px solid #f8f9fa;
-    flex-shrink: 0;
+        display: grid;
+        grid-template-columns: auto minmax(180px, 260px) auto;
+        column-gap: var(--spacing-2); /* 16px */
+        row-gap: var(--spacing-1); /* 8px */
+        align-items: center; /* ✅ 수정: end -> center */
+        margin-bottom: var(--spacing-1);
+        padding-bottom: var(--spacing-1);
+        border-bottom: 2px solid #f8f9fa;
+        flex-shrink: 0;
+        min-height: var(--min-touch-target); /* ✅ 추가: 접근성 */
     }
-}
     
     .panel-header h3 {
-    margin: 0;
-    color: #333;
-    font-size: 1.1rem; /* 1.2rem ??1.08rem (10% 異뺤냼) */
-    font-weight: 600;
-    flex-shrink: 0; /* 異뺤냼 諛⑹? */
-    white-space: nowrap;
-    white-space: nowrap;
+        margin: 0;
+        color: #333;
+        font-size: var(--font-size-lg); /* 18px */
+        font-weight: 600;
+        line-height: var(--line-height-tight); /* 1.25 */
+        flex-shrink: 0;
+        white-space: nowrap;
+        align-self: center; /* ✅ 추가 */
     }
     
     .panel-controls {
@@ -543,15 +569,21 @@ body {
     }
     
     .character-counter {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    font-size: 1rem; /* 1.1rem ??0.99rem (10% 異뺤냼) */
-    font-weight: 600;
-    flex-shrink: 0; /* 異뺤냼 諛⑹? */
-    margin-bottom: 0; /* 遺덊븘?뷀븳 留덉쭊 ?쒓굅 */
-    white-space: nowrap;
-    justify-self: end;
+        display: flex;
+        align-items: center; /* ✅ 추가 */
+        justify-content: flex-end;
+        font-size: var(--font-size-base); /* 16px */
+        font-weight: 600;
+        line-height: var(--line-height-normal); /* 1.5 */
+        flex-shrink: 0;
+        margin-bottom: 0;
+        white-space: nowrap;
+        justify-self: end;
+        align-self: center; /* ✅ 추가 */
+    }
+
+    .character-counter span {
+        line-height: var(--line-height-normal); /* ✅ 통일 */
     }
     
     .character-counter .separator {
@@ -567,11 +599,40 @@ body {
 @media (max-width: 1024px) {
     .panel-header {
         grid-template-columns: auto 1fr;
+        grid-template-areas:
+            "title input"
+            "counter counter";
+        row-gap: 12px;
+    }
+
+    .panel-header h3 {
+        grid-area: title;
+    }
+
+    .topic-input-group--header {
+        grid-area: input;
     }
 
     .panel-header .character-counter {
+        grid-area: counter;
         grid-column: 1 / -1;
         justify-self: end;
+    }
+}
+
+@media (max-width: 768px) {
+    .panel-header {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "title"
+            "input"
+            "counter";
+        row-gap: 12px;
+        min-height: auto; /* ✅ 모바일에서는 자동 높이 */
+    }
+
+    .topic-input--header {
+        max-width: 100%; /* ✅ 전체 너비 */
     }
 }
     
@@ -642,33 +703,48 @@ body {
 
 /* ?ㅻ뜑 ?대? 二쇱젣 ?낅젰 ?꾨뱶 ?ㅽ???*/
 .topic-input-group--header {
-    flex-grow: 1; /* ?뺤옣 */
-    flex-shrink: 1; /* 異뺤냼 */
-    min-width: 150px; /* 理쒖냼 ?덈퉬 蹂댁옣 */
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 150px;
     max-width: 100%;
     width: 100%;
-    margin: 0; /* auto 留덉쭊 ?쒓굅 */
-    display: flex; /* ?쇰꺼怨??낅젰 ?꾨뱶瑜?媛濡쒕줈 諛곗튂 */
-    align-items: center; /* ?섏쭅 以묒븰 ?뺣젹 */
-    gap: 8px; /* ?쇰꺼怨??낅젰 ?꾨뱶 ?ъ씠 媛꾧꺽 */
+    margin: 0; /* ✅ 명시적 추가 */
+    display: flex;
+    align-items: center; /* ✅ 추가 */
+    gap: 8px;
+    align-self: center; /* ✅ 추가 */
 }
 
 .topic-label--header {
-    display: inline-block; /* ?쇰꺼 ?쒖떆 */
-    font-size: 0.77rem; /* ?낅젰 ?꾨뱶? ?숈씪???ш린 */
+    display: inline-block;
+    font-size: var(--font-size-sm); /* 14px */
     font-weight: 600;
     color: #333;
-    white-space: nowrap; /* ?쇰꺼 ?띿뒪??以꾨컮轅?諛⑹? */
-    flex-shrink: 0; /* ?쇰꺼 ?ш린 怨좎젙 */
+    line-height: var(--line-height-normal); /* 1.5 */
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin: 0; /* ✅ 추가 */
 }
 
 .topic-input--header {
-    padding: 5px 9px; /* 6px 10px ??5px 9px (10% 異뺤냼) */
-    font-size: 0.77rem; /* 0.85rem ??0.77rem (10% 異뺤냼) */
-    min-height: 29px; /* 32px ??29px (10% 異뺤냼) */
-    flex: 1; /* ?⑥? 怨듦컙??紐⑤몢 李⑥? */
-    min-width: 120px; /* 理쒖냼 媛濡?湲몄씠 ?ㅼ젙 */
-    max-width: 200px; /* 理쒕? 媛濡?湲몄씠 ?ㅼ젙 */
+    padding: 10px 12px; /* ✅ 터치 영역 확보 */
+    font-size: var(--font-size-sm); /* 14px */
+    line-height: var(--line-height-normal); /* 1.5 */
+    min-height: var(--min-touch-target); /* 44px ✅ */
+    flex: 1;
+    min-width: 120px;
+    max-width: 200px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    box-sizing: border-box;
+    display: flex; /* ✅ 추가 */
+    align-items: center; /* ✅ 추가 */
+}
+
+.topic-input--header:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .topic-label {
