@@ -462,277 +462,6 @@ class DualTextWriter {
   }
 
   /**
-   * 휴지통 기능 초기화
-   */
-  initTrashFeature() {
-    this.trashBinBtn = document.getElementById("trash-bin-btn");
-    this.trashModal = document.getElementById("trash-modal");
-    this.trashModalClose = document.getElementById("trash-modal-close");
-    this.trashList = document.getElementById("trash-list");
-    this.trashEmptyState = document.getElementById("trash-empty-state");
-    this.trashEmptyBtn = document.getElementById("trash-empty-btn");
-
-    if (this.trashBinBtn) {
-      this.trashBinBtn.addEventListener("click", () => {
-        this.openTrashModal();
-      });
-    }
-
-    if (this.trashModalClose) {
-      this.trashModalClose.addEventListener("click", () => {
-        this.closeTrashModal();
-      });
-    }
-
-    if (this.trashEmptyBtn) {
-      this.trashEmptyBtn.addEventListener("click", () => {
-        this.emptyTrash();
-      });
-    }
-
-    // 모달 외부 클릭 시 닫기
-    if (this.trashModal) {
-      this.trashModal.addEventListener("click", (e) => {
-        if (e.target === this.trashModal) {
-          this.closeTrashModal();
-        }
-      });
-    }
-
-    // ESC 키로 닫기
-    document.addEventListener("keydown", (e) => {
-      if (
-        e.key === "Escape" &&
-        this.trashModal &&
-        this.trashModal.style.display === "flex"
-      ) {
-        this.closeTrashModal();
-      }
-    });
-  }
-
-  /**
-   * 휴지통 모달 열기
-   */
-  async openTrashModal() {
-    if (!this.currentUser || !this.trashModal) return;
-
-    this.trashModal.style.display = "flex";
-    this.trashModal.setAttribute("aria-hidden", "false");
-    
-    // 접근성: 버튼 상태 업데이트
-    if (this.trashBinBtn) {
-      this.trashBinBtn.setAttribute("aria-expanded", "true");
-    }
-
-    // 접근성: 포커스 트랩 설정
-    this._setupTrashModalFocusTrap();
-
-    // 로딩 표시
-    this.trashList.innerHTML = '<div style="text-align:center; padding:20px;">로딩 중...</div>';
-
-    try {
-      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
-      this.renderTrashList(trashItems);
-      
-      // 접근성: 모달 내부 첫 번째 포커스 가능 요소로 이동 (닫기 버튼 등)
-      if (this.trashModalClose) {
-        this.trashModalClose.focus();
-      }
-    } catch (error) {
-      console.error("휴지통 목록 로드 실패:", error);
-      this.trashList.innerHTML = '<div style="text-align:center; padding:20px; color:red;">목록을 불러오지 못했습니다.</div>';
-    }
-  }
-
-  /**
-   * 휴지통 모달 닫기
-   */
-  closeTrashModal() {
-    if (!this.trashModal) return;
-    this.trashModal.style.display = "none";
-    this.trashModal.setAttribute("aria-hidden", "true");
-
-    // 접근성: 버튼 상태 업데이트
-    if (this.trashBinBtn) {
-      this.trashBinBtn.setAttribute("aria-expanded", "false");
-      // 접근성: 포커스 복귀
-      this.trashBinBtn.focus();
-    }
-
-    // 접근성: 포커스 트랩 제거
-    this._removeTrashModalFocusTrap();
-  }
-
-  /**
-   * 휴지통 포커스 트랩 설정
-   */
-  _setupTrashModalFocusTrap() {
-    if (!this.trashModal) return;
-
-    const focusableElements = this.trashModal.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    
-    if (focusableElements.length === 0) return;
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    this._trashModalKeyHandler = (e) => {
-      if (e.key === "Tab") {
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    this.trashModal.addEventListener("keydown", this._trashModalKeyHandler);
-  }
-
-  /**
-   * 휴지통 포커스 트랩 제거
-   */
-  _removeTrashModalFocusTrap() {
-    if (this.trashModal && this._trashModalKeyHandler) {
-      this.trashModal.removeEventListener("keydown", this._trashModalKeyHandler);
-      this._trashModalKeyHandler = null;
-    }
-  }
-
-  /**
-   * 휴지통 목록 렌더링
-   */
-  renderTrashList(items) {
-    if (!this.trashList || !this.trashEmptyState) return;
-
-    this.trashList.innerHTML = "";
-
-    if (items.length === 0) {
-      this.trashList.style.display = "none";
-      this.trashEmptyState.style.display = "block";
-      if (this.trashEmptyBtn) this.trashEmptyBtn.style.display = "none";
-      return;
-    }
-
-    this.trashList.style.display = "flex";
-    this.trashEmptyState.style.display = "none";
-    if (this.trashEmptyBtn) this.trashEmptyBtn.style.display = "block";
-
-    items.forEach((item) => {
-      const el = document.createElement("div");
-      el.className = "trash-item";
-      
-      const dateStr = item.deletedAt 
-        ? this.formatDateFromFirestore(item.deletedAt) 
-        : "날짜 없음";
-
-      el.innerHTML = `
-        <div class="trash-item-info">
-          <div class="trash-item-title">${this.escapeHtml(item.title || "제목 없음")}</div>
-          <div class="trash-item-meta">
-            <span>삭제일: ${dateStr}</span>
-            <span>•</span>
-            <span>${this.escapeHtml(item.topic || "미분류")}</span>
-          </div>
-        </div>
-        <div class="trash-item-actions">
-          <button class="trash-item-btn btn-restore" data-id="${item.id}" title="복구" aria-label="${this.escapeHtml(item.title || "글")} 복구">
-            ♻️ 복구
-          </button>
-          <button class="trash-item-btn btn-permanent-delete" data-id="${item.id}" title="영구 삭제" aria-label="${this.escapeHtml(item.title || "글")} 영구 삭제">
-            🗑️ 삭제
-          </button>
-        </div>
-      `;
-
-      // 이벤트 리스너
-      el.querySelector(".btn-restore").addEventListener("click", () => {
-        this.restoreArticle(item.id);
-      });
-
-      el.querySelector(".btn-permanent-delete").addEventListener("click", () => {
-        this.permanentlyDeleteArticle(item.id);
-      });
-
-      this.trashList.appendChild(el);
-    });
-  }
-
-  /**
-   * 글 복구
-   */
-  async restoreArticle(articleId) {
-    if (!confirm("이 글을 복구하시겠습니까?")) return;
-
-    try {
-      await this.dataManager.restoreText(this.currentUser.uid, articleId);
-      this.showMessage("✅ 글이 복구되었습니다.", "success");
-      
-      // 휴지통 목록 새로고침
-      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
-      this.renderTrashList(trashItems);
-
-      // 메인 목록 새로고침 (백그라운드)
-      this.loadArticlesForManagement();
-    } catch (error) {
-      console.error("글 복구 실패:", error);
-      this.showMessage("❌ 글 복구 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
-   * 글 영구 삭제
-   */
-  async permanentlyDeleteArticle(articleId) {
-    if (!confirm("정말 영구 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
-
-    try {
-      await this.dataManager.permanentlyDeleteText(this.currentUser.uid, articleId);
-      this.showMessage("✅ 글이 영구 삭제되었습니다.", "success");
-      
-      // 휴지통 목록 새로고침
-      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
-      this.renderTrashList(trashItems);
-    } catch (error) {
-      console.error("영구 삭제 실패:", error);
-      this.showMessage("❌ 영구 삭제 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
-   * 휴지통 비우기
-   */
-  async emptyTrash() {
-    if (!confirm("휴지통을 비우시겠습니까? 모든 글이 영구 삭제됩니다.")) return;
-
-    try {
-      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
-      
-      // 병렬 처리로 모든 항목 삭제
-      const deletePromises = trashItems.map(item => 
-        this.dataManager.permanentlyDeleteText(this.currentUser.uid, item.id)
-      );
-      
-      await Promise.all(deletePromises);
-      
-      this.showMessage("✅ 휴지통을 비웠습니다.", "success");
-      this.renderTrashList([]);
-    } catch (error) {
-      console.error("휴지통 비우기 실패:", error);
-      this.showMessage("❌ 휴지통 비우기 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
    * 참고 레퍼런스 패널 토글
    *
    * - 패널 펼치기/접기
@@ -1634,8 +1363,6 @@ class DualTextWriter {
     this.initReferenceLoader();
     // 확대 모드 초기화
     this.initExpandModal();
-    // 휴지통 기능 초기화
-    this.initTrashFeature();
   }
 
   // [Refactoring] AuthManager로 위임
@@ -3067,6 +2794,7 @@ class DualTextWriter {
         characterCount: this.getKoreanCharacterCount(text),
         createdAt: window.firebaseServerTimestamp(),
         updatedAt: window.firebaseServerTimestamp(),
+        isDeleted: false, // [Soft Delete] 초기화
       };
 
       // 레퍼런스 저장 시 referenceType 필수
@@ -3333,6 +3061,92 @@ class DualTextWriter {
     });
   }
 
+  // 휴지통 목록 렌더링
+  renderTrashBinList() {
+    const container = document.getElementById("trash-bin-list");
+    if (!container) return;
+
+    const deletedItems = this.savedTexts
+      .filter((item) => item.isDeleted)
+      .sort((a, b) => {
+        // 삭제된 날짜 내림차순 (없으면 생성일)
+        const dateA = a.deletedAt ? new Date(a.deletedAt) : new Date(a.createdAt);
+        const dateB = b.deletedAt ? new Date(b.deletedAt) : new Date(b.createdAt);
+        return dateB - dateA;
+      });
+
+    if (deletedItems.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🗑️</div>
+          <p>휴지통이 비었습니다.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = deletedItems
+      .map((item) => {
+        const date = item.deletedAt
+          ? new Date(item.deletedAt).toLocaleString("ko-KR")
+          : "날짜 없음";
+        const typeLabel =
+          (item.type || "edit") === "reference" ? "📖 레퍼런스" : "✏️ 작성글";
+        
+        // 내용 미리보기 (HTML 태그 제거 및 길이 제한)
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = item.content;
+        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+        const preview =
+          textContent.length > 100
+            ? textContent.substring(0, 100) + "..."
+            : textContent;
+
+        return `
+        <div class="saved-item deleted-item" data-id="${item.id}">
+          <div class="saved-item-header">
+            <span class="saved-item-type">${typeLabel}</span>
+            <span class="saved-item-date">삭제일: ${date}</span>
+          </div>
+          <div class="saved-item-content">${this.escapeHtml(preview)}</div>
+          <div class="saved-item-actions">
+            <button class="btn-restore" onclick="window.dualTextWriter.restoreText('${
+              item.id
+            }')" aria-label="글 복원">
+              ♻️ 복원
+            </button>
+            <button class="btn-delete-permanent" onclick="window.dualTextWriter.permanentlyDeleteText('${
+              item.id
+            }')" aria-label="영구 삭제">
+              🔥 영구 삭제
+            </button>
+          </div>
+        </div>
+      `;
+      })
+      .join("");
+  }
+
+  // 휴지통 열기
+  openTrashBin() {
+    const modal = document.getElementById("trash-bin-modal");
+    if (modal) {
+      modal.style.display = "flex";
+      this.renderTrashBinList();
+      // 접근성: 모달에 포커스 이동
+      const closeBtn = modal.querySelector(".close-btn");
+      if (closeBtn) closeBtn.focus();
+    }
+  }
+
+  // 휴지통 닫기
+  closeTrashBin() {
+    const modal = document.getElementById("trash-bin-modal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+  }
+
   async _renderSavedTextsImpl() {
     // 메모이제이션: 캐시 키 생성 (필터 조건 + 검색어 기반)
     const topicOrSourceFilter =
@@ -3367,6 +3181,9 @@ class DualTextWriter {
 
     // 필터 적용
     let list = this.savedTexts;
+
+    // [Soft Delete] 삭제된 항목 제외
+    list = list.filter((item) => !item.isDeleted);
 
     // [Tab Separation] 'script' 타입은 저장된 글 탭에서 제외 (스크립트 작성 탭에서만 관리)
     // 주니어 개발자 체크: 데이터 분리 로직 적용
@@ -5239,9 +5056,9 @@ class DualTextWriter {
       this.showMessage("편집할 글을 찾을 수 없습니다.", "error");
     }
   }
-  // Firestore에서 텍스트 삭제 (연결된 트래킹 포스트도 함께 삭제)
+  // Firestore에서 텍스트 삭제 (Soft Delete)
   async deleteText(id) {
-    console.log("삭제 버튼 클릭:", { id });
+    console.log("삭제 버튼 클릭 (Soft Delete):", { id });
 
     if (!this.currentUser || !this.isFirebaseReady) {
       this.showMessage("로그인이 필요합니다.", "error");
@@ -5250,12 +5067,14 @@ class DualTextWriter {
 
     try {
       // 삭제할 아이템 찾기
-      const itemToDelete = this.savedTexts.find((saved) => saved.id === id);
-      if (!itemToDelete) {
-        console.error("삭제할 아이템을 찾을 수 없습니다:", id);
+      const targetIndex = this.savedTexts.findIndex((saved) => saved.id === id);
+      if (targetIndex === -1) {
+        console.warn("삭제할 아이템을 찾을 수 없습니다:", id);
         this.showMessage("삭제할 글을 찾을 수 없습니다.", "error");
         return;
       }
+
+      const itemToDelete = this.savedTexts[targetIndex];
 
       // Phase 1.7.1: 레퍼런스 삭제 시 연결된 작성글 확인
       if ((itemToDelete.type || "edit") === "reference") {
@@ -5263,7 +5082,7 @@ class DualTextWriter {
         if (usedEdits.length > 0) {
           const confirmed = confirm(
             `⚠️ 이 레퍼런스는 ${usedEdits.length}개의 작성글에서 참고되고 있습니다.\n\n` +
-              `삭제하시겠습니까?\n\n` +
+              `휴지통으로 이동하시겠습니까?\n\n` +
               `(작성글의 연결 정보는 유지되지만, 레퍼런스 내용은 볼 수 없게 됩니다.)`
           );
           if (!confirmed) {
@@ -5273,7 +5092,161 @@ class DualTextWriter {
         }
       }
 
-      // 연결된 트래킹 포스트 찾기
+      if (!confirm("이 글을 휴지통으로 이동하시겠습니까?")) {
+        return;
+      }
+
+      // 낙관적 업데이트를 위한 백업
+      const itemBackup = { ...itemToDelete };
+
+      // Soft Delete 처리
+      itemToDelete.isDeleted = true;
+      itemToDelete.deletedAt = new Date().toISOString();
+
+      // UI 업데이트 (메인 목록에서 제거)
+      // this.savedTexts는 참조를 유지해야 하므로 배열 자체를 교체하지 않고 상태만 변경
+      // renderSavedTexts에서 isDeleted 필터링 처리
+
+      // 캐시 무효화
+      this.renderSavedTextsCache = null;
+      this.renderSavedTextsCacheKey = null;
+
+      // UI 갱신
+      this.refreshUI({
+        savedTexts: true,
+        trackingPosts: true, // 트래킹 포스트는 유지되지만 소스가 삭제됨 표시 필요할 수 있음
+        trackingSummary: true,
+        trackingChart: true,
+        force: true,
+      });
+
+      console.log("Firestore Soft Delete 시작:", { id });
+
+      try {
+        // Firestore 업데이트
+        const docRef = window.firebaseDoc(
+          this.db,
+          "users",
+          this.currentUser.uid,
+          "texts",
+          id
+        );
+
+        await window.firebaseUpdateDoc(docRef, {
+          isDeleted: true,
+          deletedAt: window.firebaseServerTimestamp(), // 서버 시간 사용
+        });
+
+        this.showMessage("휴지통으로 이동되었습니다.", "success");
+        console.log("Soft Delete 완료", { id });
+      } catch (error) {
+        console.error("텍스트 삭제 실패:", error);
+
+        // 실패 복구
+        itemToDelete.isDeleted = false;
+        delete itemToDelete.deletedAt;
+
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
+        this.renderSavedTexts();
+
+        this.showMessage(
+          "휴지통 이동에 실패했습니다. 다시 시도해주세요.",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("텍스트 삭제 실패:", error);
+      this.showMessage(
+        "휴지통 이동에 실패했습니다. 다시 시도해주세요.",
+        "error"
+      );
+    }
+  }
+
+  // 글 복원 (Restore)
+  async restoreText(id) {
+    console.log("복원 버튼 클릭:", { id });
+
+    if (!this.currentUser || !this.isFirebaseReady) return;
+
+    try {
+      const targetIndex = this.savedTexts.findIndex((saved) => saved.id === id);
+      if (targetIndex === -1) {
+        console.warn("복원할 아이템을 찾을 수 없습니다:", id);
+        return;
+      }
+
+      const itemToRestore = this.savedTexts[targetIndex];
+
+      // 낙관적 업데이트
+      itemToRestore.isDeleted = false;
+      itemToRestore.deletedAt = null;
+
+      this.renderSavedTextsCache = null;
+      this.renderSavedTextsCacheKey = null;
+
+      // 휴지통 UI 갱신 (호출자가 처리하거나 여기서 처리)
+      if (document.getElementById("trash-bin-modal")) {
+        this.renderTrashBinList();
+      }
+      // 메인 목록 갱신
+      this.renderSavedTexts();
+
+      try {
+        const docRef = window.firebaseDoc(
+          this.db,
+          "users",
+          this.currentUser.uid,
+          "texts",
+          id
+        );
+
+        await window.firebaseUpdateDoc(docRef, {
+          isDeleted: false,
+          deletedAt: window.firebaseDeleteField(),
+        });
+
+        this.showMessage("글이 복원되었습니다.", "success");
+      } catch (error) {
+        console.error("복원 실패:", error);
+        // 롤백
+        itemToRestore.isDeleted = true;
+        itemToRestore.deletedAt = new Date().toISOString();
+        if (document.getElementById("trash-bin-modal")) {
+          this.renderTrashBinList();
+        }
+        this.showMessage("복원에 실패했습니다.", "error");
+      }
+    } catch (error) {
+      console.error("복원 오류:", error);
+    }
+  }
+
+  // 영구 삭제 (Permanently Delete)
+  async permanentlyDeleteText(id) {
+    console.log("영구 삭제 버튼 클릭:", { id });
+
+    if (!this.currentUser || !this.isFirebaseReady) return;
+
+    try {
+      const targetIndex = this.savedTexts.findIndex((saved) => saved.id === id);
+      if (targetIndex === -1) {
+        console.warn("삭제할 아이템을 찾을 수 없습니다:", id);
+        return;
+      }
+
+      if (
+        !confirm(
+          "정말로 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 연결된 트래킹 데이터도 모두 삭제됩니다."
+        )
+      ) {
+        return;
+      }
+
+      const itemToDelete = this.savedTexts[targetIndex];
+
+      // 연결된 트래킹 포스트 찾기 (기존 로직 재사용)
       const postsRef = window.firebaseCollection(
         this.db,
         "users",
@@ -5294,56 +5267,14 @@ class DualTextWriter {
         });
       });
 
-      const postCount = connectedPosts.length;
-      const metricsCount = connectedPosts.reduce(
-        (sum, post) => sum + (post.metrics?.length || 0),
-        0
-      );
-
-      // 경고 메시지 구성
-      let confirmMessage = "이 글을 삭제하시겠습니까?";
-      if (postCount > 0) {
-        confirmMessage =
-          `이 글을 삭제하시겠습니까?\n\n` +
-          `⚠️ 연결된 트래킹 데이터:\n` +
-          `   - 트래킹 포스트: ${postCount}개\n` +
-          `   - 트래킹 기록: ${metricsCount}개\n\n` +
-          `이 모든 데이터가 함께 삭제됩니다.`;
-      }
-
-      if (!confirm(confirmMessage)) {
-        console.log("사용자가 삭제 취소");
-        return;
-      }
-
-      // 낙관적 업데이트를 위한 백업 데이터
-      const itemBackup = { ...itemToDelete };
-      const connectedPostsBackup = connectedPosts.map((post) => ({ ...post }));
-
-      // 낙관적 업데이트: UI 먼저 업데이트
-      this.savedTexts = this.savedTexts.filter((saved) => saved.id !== id);
-      // 캐시 무효화 (데이터 변경 시)
+      // 낙관적 업데이트: 배열에서 제거
+      this.savedTexts.splice(targetIndex, 1);
       this.renderSavedTextsCache = null;
       this.renderSavedTextsCacheKey = null;
-      if (this.trackingPosts) {
-        this.trackingPosts = this.trackingPosts.filter(
-          (post) => post.sourceTextId !== id
-        );
+
+      if (document.getElementById("trash-bin-modal")) {
+        this.renderTrashBinList();
       }
-
-      // Optimistic UI: 즉시 UI 업데이트
-      this.refreshUI({
-        savedTexts: true,
-        trackingPosts: true,
-        trackingSummary: true,
-        trackingChart: true,
-        force: true,
-      });
-
-      console.log("Firestore에서 삭제 시작:", {
-        id,
-        connectedPostsCount: postCount,
-      });
 
       try {
         // 실제 Firestore 삭제
@@ -5358,7 +5289,6 @@ class DualTextWriter {
           return window.firebaseDeleteDoc(postRef);
         });
 
-        // 포스트 삭제와 텍스트 삭제를 병렬로 처리
         await Promise.all([
           ...deletePromises,
           window.firebaseDeleteDoc(
@@ -5372,48 +5302,18 @@ class DualTextWriter {
           ),
         ]);
 
-        // 성공 메시지 (스낵바 형태 - 되돌리기 포함)
-        let successMessage = "글이 삭제되었습니다.";
-        if (postCount > 0) {
-          successMessage = `글과 연결된 트래킹 데이터 ${postCount}개가 모두 삭제되었습니다.`;
-        }
-
-        // 성공 메시지 표시 (showSnackbar 대신 showMessage 사용)
-        this.showMessage(successMessage, "success");
-
-        console.log("삭제 완료", { id, deletedPosts: postCount });
+        this.showMessage("영구 삭제되었습니다.", "success");
       } catch (error) {
-        console.error("텍스트 삭제 실패:", error);
-
-        // 실패 복구: 백업 데이터로 복원
-        this.savedTexts.push(itemBackup);
-        // 캐시 무효화 (데이터 변경 시)
-        this.renderSavedTextsCache = null;
-        this.renderSavedTextsCacheKey = null;
-        if (this.trackingPosts) {
-          connectedPostsBackup.forEach((post) => {
-            if (!this.trackingPosts.find((p) => p.id === post.id)) {
-              this.trackingPosts.push(post);
-            }
-          });
-        }
-
-        // UI 복원
-        this.renderSavedTexts();
-        if (trackingTab && trackingTab.classList.contains("active")) {
-          this.refreshUI({
-            trackingPosts: true,
-            trackingSummary: true,
-            trackingChart: true,
-            force: true,
-          });
-        }
-
-        this.showMessage("삭제에 실패했습니다. 다시 시도해주세요.", "error");
+        console.error("영구 삭제 실패:", error);
+        // 롤백 (복잡하므로 새로고침 권장 메시지 또는 단순 에러 표시)
+        this.showMessage(
+          "영구 삭제 중 오류가 발생했습니다. 새로고침 해주세요.",
+          "error"
+        );
+        this.loadSavedTexts(true); // 데이터 재로드
       }
     } catch (error) {
-      console.error("텍스트 삭제 실패:", error);
-      this.showMessage("삭제에 실패했습니다. 다시 시도해주세요.", "error");
+      console.error("영구 삭제 오류:", error);
     }
   }
   // [Refactoring] Utils 모듈 사용
@@ -10252,20 +10152,25 @@ class DualTextWriter {
     if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady)
       return;
 
-  /**
-   * 글 삭제 (Soft Delete)
-   */
-  async deleteArticle() {
-    if (!this.selectedArticleId || !this.currentUser) return;
-
-    if (!confirm("이 글을 휴지통으로 이동하시겠습니까?")) return;
+    if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
 
     try {
-      await this.dataManager.deleteText(
+      const articleRef = window.firebaseDoc(
+        this.db,
+        "users",
         this.currentUser.uid,
+        "texts",
         this.selectedArticleId
       );
-      this.showMessage("✅ 글이 휴지통으로 이동되었습니다.", "success");
+      await window.firebaseDeleteDoc(articleRef);
+
+      // 로컬 데이터에서 제거
+      this.managementArticles = this.managementArticles.filter(
+        (a) => a.id !== this.selectedArticleId
+      );
+
+      // UI 업데이트
+      this.showMessage("✅ 글이 삭제되었습니다.", "success");
       this.closeDetailPanel();
       await this.loadArticlesForManagement();
     } catch (error) {

@@ -609,6 +609,17 @@
                   ✅ 사용됨
                 </button>
               </div>
+              <!-- 휴지통 버튼 -->
+              <button
+                id="trash-bin-btn"
+                class="btn btn-secondary btn-sm"
+                onclick="window.dualTextWriter.openTrashBin()"
+                aria-label="휴지통 열기"
+                style="margin-left: auto; display: inline-flex; align-items: center; gap: 4px;"
+              >
+                🗑️ 휴지통
+              </button>
+              
               <!-- 검색 입력 필드 -->
               <div
                 class="saved-search"
@@ -1712,17 +1723,6 @@
                 <span class="btn-icon">✨</span>
                 <span class="btn-text">새 스크립트 생성</span>
                 <span class="toggle-arrow">▼</span>
-              </button>
-
-              <button
-                id="trash-bin-btn"
-                class="btn btn-secondary btn-trash-bin"
-                aria-label="휴지통 열기"
-                title="삭제된 글 보기"
-                style="margin-left: 10px"
-              >
-                <span class="btn-icon">🗑️</span>
-                <span class="btn-text">휴지통</span>
               </button>
 
               <div
@@ -3095,6 +3095,26 @@
       </div>
     </div>
 
+    <!-- 휴지통 모달 -->
+    <div id="trash-bin-modal" class="modal">
+      <div class="modal-content trash-bin-content">
+        <div class="modal-header">
+          <h3>🗑️ 휴지통</h3>
+          <button class="close-btn" onclick="window.dualTextWriter.closeTrashBin()" aria-label="닫기">
+            &times;
+          </button>
+        </div>
+        <div id="trash-bin-list" class="trash-bin-list" role="list">
+          <!-- 삭제된 항목이 여기에 표시됩니다 -->
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="window.dualTextWriter.closeTrashBin()">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -3103,46 +3123,5 @@
     <!-- Main Script -->
     <script type="module" src="script.js"></script>
     <script src="test-firebase.js"></script>
-    <!-- 휴지통 모달 -->
-    <div
-      id="trash-modal"
-      class="trash-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="trash-modal-title"
-      style="display: none"
-    >
-      <div class="trash-modal-overlay"></div>
-      <div class="trash-modal-content">
-        <div class="trash-modal-header">
-          <h3 id="trash-modal-title">🗑️ 휴지통 (복구 가능)</h3>
-          <button
-            id="trash-modal-close"
-            class="btn-icon"
-            aria-label="휴지통 닫기"
-            title="닫기"
-          >
-            ×
-          </button>
-        </div>
-        <div class="trash-modal-body">
-          <div id="trash-list" class="trash-list">
-            <!-- 삭제된 글 목록이 여기에 동적으로 추가됨 -->
-          </div>
-          <div
-            id="trash-empty-state"
-            class="trash-empty-state"
-            style="display: none"
-          >
-            <p>휴지통이 비었습니다.</p>
-          </div>
-        </div>
-        <div class="trash-modal-footer">
-          <button id="trash-empty-btn" class="btn btn-danger btn-small">
-            🗑️ 휴지통 비우기
-          </button>
-        </div>
-      </div>
-    </div>
   </body>
 </html>
