@@ -9414,53 +9414,75 @@ class DualTextWriter {
   }
 
   /**
-   * order 필드 초기화 (없는 경우)
+   * order 필드 초기화 및 중복 정리
+   * - order가 없거나, 중복된 order가 있는 경우 실행
+   * - createdAt 기준으로 재정렬하여 타임스탬프 기반 order 할당
    */
   async initializeArticleOrders() {
     if (!this.currentUser || !this.isFirebaseReady) return;
 
-    const needsUpdate = this.managementArticles.some(
-      (article) => article.order === undefined || article.order === null
-    );
-    if (!needsUpdate) return;
+    // 카테고리별로 그룹화
+    const articlesByCategory = {};
+    this.managementArticles.forEach((article) => {
+      const category = article.category || "미분류";
+      if (!articlesByCategory[category]) {
+        articlesByCategory[category] = [];
+      }
+      articlesByCategory[category].push(article);
+    });
 
     try {
-      // 카테고리별로 그룹화
-      const articlesByCategory = {};
-      this.managementArticles.forEach((article) => {
-        const category = article.category || "미분류";
-        if (!articlesByCategory[category]) {
-          articlesByCategory[category] = [];
-        }
-        articlesByCategory[category].push(article);
-      });
-
-      // 각 카테고리별로 order 할당
       for (const [category, articles] of Object.entries(articlesByCategory)) {
-        // createdAt 기준 정렬
-        articles.sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.() || new Date(0);
-          const dateB = b.createdAt?.toDate?.() || new Date(0);
-          return dateA - dateB;
-        });
+        // 중복 체크
+        const orders = articles.map((a) => a.order);
+        const hasDuplicates = new Set(orders).size !== orders.length;
+        const hasMissing = articles.some(
+          (a) => a.order === undefined || a.order === null
+        );
 
-        // order 값 할당 및 업데이트
-        for (let i = 0; i < articles.length; i++) {
-          const article = articles[i];
-          if (article.order === undefined || article.order === null) {
-            article.order = i + 1;
-            // Firebase 업데이트
-            const articleRef = window.firebaseDoc(
-              this.db,
-              "users",
-              this.currentUser.uid,
-              "texts",
-              article.id
-            );
-            await window.firebaseUpdateDoc(articleRef, {
-              order: i + 1,
-            });
+        if (hasDuplicates || hasMissing) {
+          console.log(
+            `[Order Fix] ${category}: 중복/누락 발견. 재정렬을 시작합니다.`
+          );
+
+          // createdAt 오름차순 정렬 (과거 -> 최신)
+          articles.sort((a, b) => {
+            const dateA = a.createdAt?.toDate?.() || new Date(0);
+            const dateB = b.createdAt?.toDate?.() || new Date(0);
+            return dateA - dateB;
+          });
+
+          // order 재할당 (타임스탬프 기반)
+          // 순차적으로 1ms씩 증가시켜 고유성 보장
+          for (let i = 0; i < articles.length; i++) {
+            const article = articles[i];
+            const date = article.createdAt?.toDate?.() || new Date();
+            let newOrder = date.getTime();
+
+            // 이전 글보다 작거나 같으면 1ms 증가 (정렬 순서 유지)
+            if (i > 0) {
+              const prevOrder = articles[i - 1].order;
+              if (newOrder <= prevOrder) {
+                newOrder = prevOrder + 1;
+              }
+            }
+
+            // 변경이 필요한 경우만 업데이트
+            if (article.order !== newOrder) {
+              article.order = newOrder;
+              const articleRef = window.firebaseDoc(
+                this.db,
+                "users",
+                this.currentUser.uid,
+                "texts",
+                article.id
+              );
+              await window.firebaseUpdateDoc(articleRef, {
+                order: newOrder,
+              });
+            }
           }
+          console.log(`[Order Fix] ${category}: 재정렬 완료`);
         }
       }
     } catch (error) {
@@ -9570,10 +9592,10 @@ class DualTextWriter {
       articlesByCategory[category].push(article);
     });
 
-    // 각 카테고리별로 order 기준 정렬
+    // 각 카테고리별로 order 기준 정렬 (내림차순: 큰 값이 위로)
     Object.keys(articlesByCategory).forEach((category) => {
       articlesByCategory[category].sort((a, b) => {
-        return (a.order || 0) - (b.order || 0);
+        return (b.order || 0) - (a.order || 0);
       });
     });
 
@@ -9730,7 +9752,7 @@ class DualTextWriter {
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
     );
-    sameCategory.sort((a, b) => (a.order || 0) - (b.order || 0));
+    sameCategory.sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
 
     return sameCategory[0]?.id !== article.id;
   }
@@ -9748,7 +9770,7 @@ class DualTextWriter {
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
     );
-    sameCategory.sort((a, b) => (a.order || 0) - (b.order || 0));
+    sameCategory.sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
 
     return sameCategory[sameCategory.length - 1]?.id !== article.id;
   }
@@ -10033,7 +10055,7 @@ class DualTextWriter {
       const category = article.category || "미분류";
       const sameCategoryArticles = this.managementArticles
         .filter((a) => (a.category || "미분류") === category)
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
+        .sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
 
       const currentIndex = sameCategoryArticles.findIndex(
         (a) => a.id === articleId
@@ -10228,7 +10250,7 @@ class DualTextWriter {
         type: "script", // [Tab Separation] 스크립트 작성 탭 전용 타입 (기존 'edit'와 분리)
         createdAt: window.firebaseServerTimestamp(),
         updatedAt: window.firebaseServerTimestamp(),
-        order: 0, // 나중에 초기화됨
+        order: Date.now(), // 타임스탬프 기반 정렬 (최신 글이 큰 값)
         // LLM 관련 필드 (선택사항)
         ...(llmModel && { llmModel: llmModel }),
         ...(llmModelType && { llmModelType: llmModelType }),
