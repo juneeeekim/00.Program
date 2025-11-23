@@ -520,12 +520,25 @@ class DualTextWriter {
     this.trashModal.style.display = "flex";
     this.trashModal.setAttribute("aria-hidden", "false");
     
-    // 로딩 표시 (선택사항)
+    // 접근성: 버튼 상태 업데이트
+    if (this.trashBinBtn) {
+      this.trashBinBtn.setAttribute("aria-expanded", "true");
+    }
+
+    // 접근성: 포커스 트랩 설정
+    this._setupTrashModalFocusTrap();
+
+    // 로딩 표시
     this.trashList.innerHTML = '<div style="text-align:center; padding:20px;">로딩 중...</div>';
 
     try {
       const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
       this.renderTrashList(trashItems);
+      
+      // 접근성: 모달 내부 첫 번째 포커스 가능 요소로 이동 (닫기 버튼 등)
+      if (this.trashModalClose) {
+        this.trashModalClose.focus();
+      }
     } catch (error) {
       console.error("휴지통 목록 로드 실패:", error);
       this.trashList.innerHTML = '<div style="text-align:center; padding:20px; color:red;">목록을 불러오지 못했습니다.</div>';
@@ -539,6 +552,60 @@ class DualTextWriter {
     if (!this.trashModal) return;
     this.trashModal.style.display = "none";
     this.trashModal.setAttribute("aria-hidden", "true");
+
+    // 접근성: 버튼 상태 업데이트
+    if (this.trashBinBtn) {
+      this.trashBinBtn.setAttribute("aria-expanded", "false");
+      // 접근성: 포커스 복귀
+      this.trashBinBtn.focus();
+    }
+
+    // 접근성: 포커스 트랩 제거
+    this._removeTrashModalFocusTrap();
+  }
+
+  /**
+   * 휴지통 포커스 트랩 설정
+   */
+  _setupTrashModalFocusTrap() {
+    if (!this.trashModal) return;
+
+    const focusableElements = this.trashModal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    this._trashModalKeyHandler = (e) => {
+      if (e.key === "Tab") {
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    this.trashModal.addEventListener("keydown", this._trashModalKeyHandler);
+  }
+
+  /**
+   * 휴지통 포커스 트랩 제거
+   */
+  _removeTrashModalFocusTrap() {
+    if (this.trashModal && this._trashModalKeyHandler) {
+      this.trashModal.removeEventListener("keydown", this._trashModalKeyHandler);
+      this._trashModalKeyHandler = null;
+    }
   }
 
   /**
@@ -578,10 +645,10 @@ class DualTextWriter {
           </div>
         </div>
         <div class="trash-item-actions">
-          <button class="trash-item-btn btn-restore" data-id="${item.id}" title="복구">
+          <button class="trash-item-btn btn-restore" data-id="${item.id}" title="복구" aria-label="${this.escapeHtml(item.title || "글")} 복구">
             ♻️ 복구
           </button>
-          <button class="trash-item-btn btn-permanent-delete" data-id="${item.id}" title="영구 삭제">
+          <button class="trash-item-btn btn-permanent-delete" data-id="${item.id}" title="영구 삭제" aria-label="${this.escapeHtml(item.title || "글")} 영구 삭제">
             🗑️ 삭제
           </button>
         </div>
@@ -10185,8 +10252,25 @@ class DualTextWriter {
     if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady)
       return;
 
-    if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
+  /**
+   * 글 삭제 (Soft Delete)
+   */
+  async deleteArticle() {
+    if (!this.selectedArticleId || !this.currentUser) return;
 
+    if (!confirm("이 글을 휴지통으로 이동하시겠습니까?")) return;
+
+    try {
+      await this.dataManager.deleteText(
+        this.currentUser.uid,
+        this.selectedArticleId
+      );
+      this.showMessage("✅ 글이 휴지통으로 이동되었습니다.", "success");
+      this.closeDetailPanel();
+      await this.loadArticlesForManagement();
+    } catch (error) {
+      console.error("글 삭제 실패:", error);
+      this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
     }
   }
 
