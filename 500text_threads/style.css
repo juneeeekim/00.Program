@@ -8155,3 +8155,20 @@ mark {
   border-radius: 2px;
   font-weight: bold;
 }
+
+/* 레퍼런스 아이템 메타데이터 (조회수, 좋아요, 팔로우) */
+.reference-item-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f3f5;
+}
+
+.reference-item-stats span {
+  display: inline-flex;
+  align-items: center;
+}
