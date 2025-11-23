@@ -1180,7 +1180,6 @@
         // 이미 래핑되었는지 확인
         let wrapper = select.parentElement.querySelector('.custom-select-wrapper');
         if (wrapper) {
-          // 이미 래핑되었다면 옵션만 업데이트
           updateCustomOptions(select, wrapper);
           return;
         }
@@ -1197,40 +1196,107 @@
         trigger.textContent = select.options[select.selectedIndex]?.text || '카테고리를 선택하세요...';
         wrapper.appendChild(trigger);
 
-        // 옵션 컨테이너 생성
+        // 옵션 컨테이너 생성 (초기에는 숨김)
         const optionsContainer = document.createElement('div');
         optionsContainer.className = 'custom-select-options';
-        wrapper.appendChild(optionsContainer);
+        document.body.appendChild(optionsContainer); // body에 직접 추가하여 overflow 문제 해결
 
         // 옵션 채우기
-        updateCustomOptions(select, wrapper);
+        updateCustomOptions(select, wrapper, optionsContainer);
+
+        // 드롭다운 토글 함수
+        const toggleDropdown = (e) => {
+            e.stopPropagation();
+            const isOpen = wrapper.classList.contains('open');
+            
+            // 모든 드롭다운 닫기
+            closeAllDropdowns();
+
+            if (!isOpen) {
+                openDropdown(wrapper, trigger, optionsContainer);
+            }
+        };
+
+        // 드롭다운 열기
+        const openDropdown = (wrapper, trigger, container) => {
+            wrapper.classList.add('open');
+            container.classList.add('open');
+            
+            // 위치 계산 및 적용
+            const rect = wrapper.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            container.style.position = 'absolute'; // body 기준 절대 위치
+            container.style.top = (rect.bottom + scrollTop + 5) + 'px';
+            container.style.left = rect.left + 'px';
+            container.style.width = rect.width + 'px';
+            container.style.zIndex = '9999';
+        };
 
         // 이벤트 리스너
-        trigger.addEventListener('click', (e) => {
-          e.stopPropagation(); // 즉시 닫힘 방지
-          // 다른 열린 드롭다운 닫기
-          document.querySelectorAll('.custom-select-wrapper.open').forEach(el => {
-            if (el !== wrapper) el.classList.remove('open');
-          });
-          wrapper.classList.toggle('open');
-        });
+        trigger.addEventListener('click', toggleDropdown);
 
-        // 외부 클릭 시 닫기
-        document.addEventListener('click', (e) => {
-          if (!wrapper.contains(e.target)) {
-            wrapper.classList.remove('open');
-          }
-        });
-      }
+        // 윈도우 리사이즈 시 닫기
+        window.addEventListener('resize', closeAllDropdowns);
+        
+        // 스크롤 시 닫기 (옵션)
+        window.addEventListener('scroll', closeAllDropdowns, true);
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.custom-select-wrapper').forEach(el => el.classList.remove('open'));
+        document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('open'));
+    }
+
+    // 외부 클릭 시 닫기
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.custom-select-wrapper') && !e.target.closest('.custom-select-options')) {
+            closeAllDropdowns();
+        }
+    });
 
       // 커스텀 옵션 업데이트 함수
-      function updateCustomOptions(select, wrapper) {
-        const optionsContainer = wrapper.querySelector('.custom-select-options');
+      function updateCustomOptions(select, wrapper, existingContainer = null) {
+        // 컨테이너 찾기 (body에 있는지 확인)
+        let optionsContainer = existingContainer;
+        if (!optionsContainer) {
+            // 기존 로직으로 생성된 컨테이너가 있다면 찾아서 제거 (새 로직 적용 위해)
+            const oldContainer = wrapper.querySelector('.custom-select-options');
+            if (oldContainer) {
+                oldContainer.remove();
+            }
+            
+            // body에서 찾기 (ID나 클래스로 식별 필요하지만, 여기서는 단순화를 위해 새로 생성하지 않고 전달받음)
+            // 만약 전달받지 못했다면 새로 생성해야 함 (초기화 시점이 아닌 경우)
+             // 이 부분은 setupCustomDropdown에서 처리하므로 여기서는 컨테이너가 있다고 가정하거나
+             // selectId와 연동된 컨테이너를 찾는 로직이 필요할 수 있음.
+             // 간단한 해결책: optionsContainer를 인자로 받거나, 전역 관리가 필요.
+             // 여기서는 setupCustomDropdown 클로저 내에서 해결하는 것이 좋으나, 
+             // updateCustomOptions가 외부에서 호출될 수 있으므로 수정 필요.
+        }
+        
+        // updateCustomOptions가 독립적으로 호출될 때를 대비해 컨테이너를 찾는 로직 보강이 필요하지만,
+        // 현재 구조상 setupCustomDropdown 내부 변수를 참조하기 어려움.
+        // 해결책: wrapper에 컨테이너 참조를 저장
+        if (!optionsContainer && wrapper.dataset.optionsId) {
+            optionsContainer = document.getElementById(wrapper.dataset.optionsId);
+        }
+        
+        if (!optionsContainer) {
+             // 컨테이너가 없으면 (최초 실행이 아니고 외부 호출인 경우) 새로 생성하여 body에 추가
+             optionsContainer = document.createElement('div');
+             optionsContainer.className = 'custom-select-options';
+             const uniqueId = 'dropdown-options-' + Math.random().toString(36).substr(2, 9);
+             optionsContainer.id = uniqueId;
+             wrapper.dataset.optionsId = uniqueId;
+             document.body.appendChild(optionsContainer);
+        }
+
         const trigger = wrapper.querySelector('.custom-select-trigger');
         optionsContainer.innerHTML = '';
 
         Array.from(select.options).forEach(option => {
-          if (option.value === '') return; // 플레이스홀더 제외
+          if (option.value === '') return;
 
           const customOption = document.createElement('div');
           customOption.className = 'custom-option';
@@ -1244,12 +1310,11 @@
             trigger.textContent = option.text;
             
             // 선택 스타일 업데이트
-            wrapper.querySelectorAll('.custom-option').forEach(el => el.classList.remove('selected'));
+            optionsContainer.querySelectorAll('.custom-option').forEach(el => el.classList.remove('selected'));
             customOption.classList.add('selected');
             
-            wrapper.classList.remove('open');
+            closeAllDropdowns();
             
-            // 네이티브 select에 change 이벤트 트리거
             const event = new Event('change');
             select.dispatchEvent(event);
           });
@@ -1257,7 +1322,6 @@
           optionsContainer.appendChild(customOption);
         });
         
-        // 트리거 텍스트 업데이트
         const selectedOption = select.options[select.selectedIndex];
         if (selectedOption && selectedOption.value !== '') {
             trigger.textContent = selectedOption.text;
