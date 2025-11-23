@@ -3662,15 +3662,6 @@ class DualTextWriter {
       }
     }
 
-    // ✅ 검색어 하이라이팅 적용
-    const contentHtml = this.highlightText(
-      this.escapeHtml(item.content),
-      this.savedSearch
-    );
-    const topicHtml = item.topic
-      ? this.highlightText(this.escapeHtml(item.topic), this.savedSearch)
-      : "";
-
     return `
         <div class="saved-item ${index === 0 ? "new" : ""}" data-item-id="${
       item.id
@@ -3705,13 +3696,13 @@ class DualTextWriter {
               item.topic
                 ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(
                     item.topic
-                  )}">🏷️ ${topicHtml}</div>`
+                  )}">🏷️ ${this.escapeHtml(item.topic)}</div>`
                 : ""
             }
             ${snsPlatformsHtml}
             <div class="saved-item-content ${
               expanded ? "expanded" : ""
-            }" aria-label="본문 내용">${contentHtml}</div>
+            }" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${
               item.id
             }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
@@ -3797,47 +3788,6 @@ class DualTextWriter {
             </div>
         </div>
         `;
-  }
-
-  /**
-   * 텍스트 하이라이팅 헬퍼 함수
-   * @param {string} text - 원본 텍스트 (이미 escapeHtml 처리된 상태여야 함)
-   * @param {string} query - 검색어
-   * @returns {string} 하이라이팅된 HTML 문자열
-   */
-  highlightText(text, query) {
-    if (!query || !query.trim()) {
-      return text;
-    }
-
-    try {
-      // 검색어를 공백으로 분리하여 각각 하이라이팅 (AND 검색 로직에 맞춤)
-      const terms = query.trim().split(/\s+/).filter(Boolean);
-
-      if (terms.length === 0) return text;
-
-      let highlightedText = text;
-
-      // 각 검색어에 대해 하이라이팅 적용
-      // 주의: 이미 하이라이팅된 태그(<mark>...</mark>) 내부를 다시 치환하지 않도록 주의해야 하지만,
-      // 간단한 구현으로는 순차적으로 적용해도 됨. 단, 겹치는 단어나 태그 충돌 방지를 위해
-      // 정교한 로직이 필요할 수 있음. 여기서는 단순 치환을 사용하되,
-      // HTML 태그가 아닌 텍스트만 매칭되도록 하는 것이 좋음.
-      // 하지만 escapeHtml이 이미 적용된 텍스트이므로 태그는 없음 (<mark> 제외).
-
-      terms.forEach((term) => {
-        // 정규식 특수문자 이스케이프
-        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        // 대소문자 구분 없이 매칭
-        const regex = new RegExp(`(${escapedTerm})`, "gi");
-        highlightedText = highlightedText.replace(regex, "<mark>$1</mark>");
-      });
-
-      return highlightedText;
-    } catch (e) {
-      console.warn("Highlighting error:", e);
-      return text;
-    }
   }
   // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
   /**
@@ -8463,6 +8413,132 @@ class DualTextWriter {
         }
 
         this.viewSavedText(itemId, { type: itemType });
+      });
+    });
+  }
+
+  /**
+   * 레퍼런스 선택 목록 렌더링
+   *
+   * @param {Array} references - 레퍼런스 배열 (옵션, 없으면 전체 조회)
+   *
+   * - 체크박스로 다중 선택 가능
+   * - 현재 선택된 항목 체크 표시
+   * - 검색 및 필터 적용
+   * - 최신순 정렬
+   */
+  renderReferenceSelectionList(references = null) {
+    if (!this.referenceSelectionList) return;
+
+    try {
+      // 레퍼런스 목록 가져오기 (파라미터 없으면 전체 조회)
+      let refs =
+        references ||
+        this.savedTexts.filter((item) => (item.type || "edit") === "reference");
+
+      // 검색 필터 적용
+      const searchTerm =
+        this.referenceSearchInput?.value.toLowerCase().trim() || "";
+      if (searchTerm) {
+        refs = refs.filter((ref) => {
+          const content = (ref.content || "").toLowerCase();
+          const topic = (ref.topic || "").toLowerCase();
+          return content.includes(searchTerm) || topic.includes(searchTerm);
+        });
+      }
+
+      // 타입 필터 적용
+      const typeFilter = this.referenceTypeFilterModal?.value || "all";
+      if (typeFilter !== "all") {
+        refs = refs.filter(
+          (ref) => (ref.referenceType || "other") === typeFilter
+        );
+      }
+
+      // 정렬 (최신순)
+      refs.sort((a, b) => {
+        const dateA = a.createdAt?.toDate?.() || new Date(a.date || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.date || 0);
+        return dateB - dateA;
+      });
+
+      // HTML 생성
+      if (refs.length === 0) {
+        this.referenceSelectionList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px; text-align: center; color: #6c757d;">
+                        <p>검색 결과가 없습니다.</p>
+                    </div>
+                `;
+        return;
+      }
+
+      const html = refs
+        .map((ref) => {
+          const isSelected = this.selectedReferences.includes(ref.id);
+          const content = this.escapeHtml(ref.content || "").substring(0, 100);
+          const topic = this.escapeHtml(ref.topic || "주제 없음");
+          const refType = ref.referenceType || "other";
+          const typeLabel =
+            refType === "structure"
+              ? "구조"
+              : refType === "idea"
+              ? "아이디어"
+              : "미지정";
+          const badgeClass =
+            refType === "structure"
+              ? "structure"
+              : refType === "idea"
+              ? "idea"
+              : "";
+          const date =
+            this.formatDateFromFirestore?.(ref.createdAt) || ref.date || "";
+
+          return `
+                    <div class="reference-list-item" role="option" aria-selected="${isSelected}">
+                        <input 
+                            type="checkbox" 
+                            id="ref-check-${ref.id}" 
+                            value="${ref.id}"
+                            ${isSelected ? "checked" : ""}
+                            aria-labelledby="ref-label-${ref.id}">
+                        <div class="reference-item-content">
+                            <div class="reference-item-title" id="ref-label-${
+                              ref.id
+                            }">
+                                ${content}${content.length >= 100 ? "..." : ""}
+                            </div>
+                            <div class="reference-item-meta">
+                                ${date ? `<span>${date}</span>` : ""}
+                                ${date ? "<span>·</span>" : ""}
+                                <span class="reference-type-badge ${badgeClass}">${typeLabel}</span>
+                                <span>·</span>
+                                <span>${topic}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        })
+        .join("");
+
+      this.referenceSelectionList.innerHTML = html;
+
+      // 체크박스 이벤트 바인딩
+      this.bindReferenceCheckboxEvents();
+
+      console.log(`✅ 레퍼런스 목록 렌더링 완료: ${refs.length}개`);
+    } catch (error) {
+      console.error("레퍼런스 목록 렌더링 실패:", error);
+      this.referenceSelectionList.innerHTML = `
+                <div class="error-state" style="padding: 40px; text-align: center; color: #dc3545;">
+                    <p>❌ 목록을 불러올 수 없습니다.</p>
+                </div>
+            `;
+    }
+  }
+
+  /**
+   * 레퍼런스 체크박스 이벤트 바인딩
+   *
    * - 체크박스 변경 시 선택 배열 업데이트
    * - 선택 개수 실시간 표시
    * - 리스트 아이템 클릭으로도 토글 가능
