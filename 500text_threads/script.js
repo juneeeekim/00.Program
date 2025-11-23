@@ -935,12 +935,12 @@ class DualTextWriter {
       "expand-content-textarea"
     );
 
-    // 열기 버튼 이벤트
-    if (this.detailExpandBtn) {
-      this.detailExpandBtn.addEventListener("click", () => {
-        this.openExpandModal();
-      });
-    }
+    // 열기 버튼 이벤트 - initArticleManagement 또는 DOMContentLoaded에서 처리됨
+    // if (this.detailExpandBtn) {
+    //   this.detailExpandBtn.addEventListener("click", () => {
+    //     this.openExpandModal();
+    //   });
+    // }
 
     // 닫기 버튼 이벤트
     if (this.expandModalCloseBtn) {
@@ -966,63 +966,6 @@ class DualTextWriter {
         this.closeExpandModal();
       }
     });
-  }
-
-  /**
-   * 확대 모드 열기
-   */
-  openExpandModal() {
-    if (!this.expandModal) return;
-
-    // 현재 상세 패널의 내용을 가져와서 확대 모드에 동기화
-    const detailTitle = document.getElementById("detail-title");
-    const detailCategory = document.getElementById("detail-category");
-    const detailContent = document.getElementById("detail-content"); // 읽기 모드 내용
-    const editContentTextarea = document.getElementById(
-      "edit-content-textarea"
-    ); // 수정 모드 내용
-
-    // 프리뷰 정보 업데이트
-    if (detailTitle)
-      document.getElementById("expand-preview-title").textContent =
-        detailTitle.textContent;
-    if (detailCategory)
-      document.getElementById("expand-preview-category").textContent =
-        detailCategory.textContent;
-
-    // 내용 동기화 (수정 모드 내용 우선)
-    const detailEditMode = document.getElementById("detail-edit-mode");
-    let sourceContent = "";
-
-    // 1. 수정 모드가 활성화되어 있다면 에디터 내용 사용
-    if (
-      detailEditMode &&
-      detailEditMode.style.display !== "none" &&
-      editContentTextarea
-    ) {
-      sourceContent = editContentTextarea.value;
-    }
-    // 2. 읽기 모드라면 읽기 모드 내용 사용 (innerText로 텍스트만 추출)
-    else if (detailContent) {
-      sourceContent = detailContent.innerText;
-    }
-    // 3. fallback: 에디터가 있다면 에디터 값 사용
-    else if (editContentTextarea) {
-      sourceContent = editContentTextarea.value;
-    }
-
-    if (this.expandContentTextarea) {
-      this.expandContentTextarea.value = sourceContent;
-    }
-
-    this.expandModal.style.display = "block";
-    document.body.style.overflow = "hidden"; // 배경 스크롤 방지
-  }
-
-  /**
-   * 확대 모드 닫기
-   */
-  closeExpandModal() {
     if (!this.expandModal) return;
 
     // 변경된 내용을 상세 패널(수정 모드)에 반영
@@ -8519,16 +8462,21 @@ class DualTextWriter {
       const html = refs
         .map((ref) => {
           const isSelected = this.selectedReferences.includes(ref.id);
-          
+
           // 텍스트 준비 (길이 제한)
-          const contentRaw = (ref.content || "");
+          const contentRaw = ref.content || "";
           const isLong = contentRaw.length > 100;
-          const contentDisplay = isLong ? contentRaw.substring(0, 100) : contentRaw;
-          
+          const contentDisplay = isLong
+            ? contentRaw.substring(0, 100)
+            : contentRaw;
+
           // 하이라이팅 적용
           const content = this.highlightText(contentDisplay, searchTerm);
-          const topic = this.highlightText(ref.topic || "주제 없음", searchTerm);
-          
+          const topic = this.highlightText(
+            ref.topic || "주제 없음",
+            searchTerm
+          );
+
           const refType = ref.referenceType || "other";
           const typeLabel =
             refType === "structure"
@@ -10379,25 +10327,45 @@ class DualTextWriter {
    * 접근성: ARIA 속성 업데이트, 스크린 리더 알림, 포커스 트랩, ESC 키 처리 포함
    */
   openExpandMode() {
-    if (
-      !this.contentExpandModal ||
-      !this.expandContentTextarea ||
-      !this.scriptContentTextarea
-    )
-      return;
+    if (!this.contentExpandModal || !this.expandContentTextarea) return;
 
-    // 현재 내용을 확대 모드 textarea에 복사
-    this.expandContentTextarea.value = this.scriptContentTextarea.value;
+    // 컨텍스트 감지: 수정 모드인지 확인
+    const isEditMode =
+      document.getElementById("detail-edit-mode")?.style.display !== "none" &&
+      this.selectedArticleId;
 
-    // 미리보기 업데이트
-    if (this.expandPreviewTitle) {
-      const title = this.scriptTitleInput?.value.trim() || "-";
-      this.expandPreviewTitle.textContent = title || "-";
-    }
+    // 소스 결정
+    if (isEditMode) {
+      // 수정 모드: 제목, 카테고리, 내용을 수정 폼에서 가져옴
+      this.expandSourceMode = "edit"; // 컨텍스트 저장
+      const title = this.editTitleInput?.value.trim() || "-";
+      const category = this.editCategorySelect?.value || "-";
+      const content = this.editContentTextarea?.value || "";
 
-    if (this.expandPreviewCategory) {
-      const category = this.scriptCategoryInput?.value.trim() || "-";
-      this.expandPreviewCategory.textContent = category || "-";
+      this.expandContentTextarea.value = content;
+
+      if (this.expandPreviewTitle) {
+        this.expandPreviewTitle.textContent = title;
+      }
+      if (this.expandPreviewCategory) {
+        this.expandPreviewCategory.textContent = category;
+      }
+    } else {
+      // 새 글 작성 모드 (기본)
+      this.expandSourceMode = "new"; // 컨텍스트 저장
+      if (this.scriptContentTextarea) {
+        this.expandContentTextarea.value = this.scriptContentTextarea.value;
+      }
+
+      if (this.expandPreviewTitle) {
+        const title = this.scriptTitleInput?.value.trim() || "-";
+        this.expandPreviewTitle.textContent = title || "-";
+      }
+
+      if (this.expandPreviewCategory) {
+        const category = this.scriptCategoryInput?.value.trim() || "-";
+        this.expandPreviewCategory.textContent = category || "-";
+      }
     }
 
     // 카운터 업데이트
@@ -10408,8 +10376,11 @@ class DualTextWriter {
 
     // 접근성: ARIA 속성 업데이트
     this.contentExpandModal.setAttribute("aria-hidden", "false");
-    if (this.expandContentBtn) {
-      this.expandContentBtn.setAttribute("aria-expanded", "true");
+
+    // 현재 활성화된 버튼에 aria-expanded 업데이트
+    const activeBtn = isEditMode ? this.detailExpandBtn : this.expandContentBtn;
+    if (activeBtn) {
+      activeBtn.setAttribute("aria-expanded", "true");
     }
 
     // 스크린 리더 사용자를 위한 알림
@@ -10438,8 +10409,7 @@ class DualTextWriter {
   closeExpandMode() {
     if (
       !this.contentExpandModal ||
-      !this.expandContentTextarea ||
-      !this.scriptContentTextarea
+      !this.expandContentTextarea
     )
       return;
 
@@ -10451,14 +10421,25 @@ class DualTextWriter {
       this._expandModeTimeouts = [];
     }
 
-    // 확대 모드의 내용을 원본 textarea에 동기화
-    this.scriptContentTextarea.value = this.expandContentTextarea.value;
-    this.updateContentCounter();
+    // 확대 모드의 내용을 원본 textarea에 동기화 (닫을 때 자동 동기화)
+    if (this.expandSourceMode === "edit") {
+      if (this.editContentTextarea) {
+        this.editContentTextarea.value = this.expandContentTextarea.value;
+      }
+    } else {
+      if (this.scriptContentTextarea) {
+        this.scriptContentTextarea.value = this.expandContentTextarea.value;
+        this.updateContentCounter();
+      }
+    }
 
     // 접근성: ARIA 속성 업데이트
     this.contentExpandModal.setAttribute("aria-hidden", "true");
-    if (this.expandContentBtn) {
-      this.expandContentBtn.setAttribute("aria-expanded", "false");
+    
+    // 열었던 버튼의 aria-expanded 복구
+    const activeBtn = this.expandSourceMode === "edit" ? this.detailExpandBtn : this.expandContentBtn;
+    if (activeBtn) {
+      activeBtn.setAttribute("aria-expanded", "false");
     }
 
     // 스크린 리더 사용자를 위한 알림
@@ -10472,9 +10453,10 @@ class DualTextWriter {
     this.contentExpandModal.style.display = "none";
 
     // 접근성: 원래 포커스 위치로 복귀 (확대 모드 열기 버튼)
-    if (this.expandContentBtn) {
+    const focusTarget = this.expandSourceMode === "edit" ? this.detailExpandBtn : this.expandContentBtn;
+    if (focusTarget) {
       setTimeout(() => {
-        this.expandContentBtn.focus();
+        focusTarget.focus();
       }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
     }
   }
@@ -10583,12 +10565,33 @@ class DualTextWriter {
    * 저장하고 확대 모드 닫기
    */
   saveAndCloseExpandMode() {
-    // 내용 동기화
+    // 내용 동기화 (닫기 전에 수행)
+    if (this.expandSourceMode === "edit") {
+      // 수정 모드로 반환
+      if (this.editContentTextarea && this.expandContentTextarea) {
+        this.editContentTextarea.value = this.expandContentTextarea.value;
+      }
+    } else {
+      // 새 글 작성 모드로 반환 (기본)
+      if (this.scriptContentTextarea && this.expandContentTextarea) {
+        this.scriptContentTextarea.value = this.expandContentTextarea.value;
+        this.updateContentCounter(); // 새 글 카운터 업데이트
+      }
+    }
+
     this.closeExpandMode();
 
-    // 저장 버튼 클릭 (기존 저장 로직 사용)
-    if (this.scriptSaveBtn) {
-      this.scriptSaveBtn.click();
+    // 저장 버튼 클릭
+    if (this.expandSourceMode === "edit") {
+      // 수정 저장
+      if (this.editSaveBtn) {
+        this.editSaveBtn.click();
+      }
+    } else {
+      // 새 글 저장
+      if (this.scriptSaveBtn) {
+        this.scriptSaveBtn.click();
+      }
     }
   }
 
@@ -17175,8 +17178,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 확대 버튼 클릭 이벤트
-  detailExpandBtn.addEventListener("click", toggleDetailPanelExpand);
+  // 확대 버튼 클릭 이벤트 -> 모달 확대 모드로 변경
+  detailExpandBtn.addEventListener("click", () => {
+    if (window.dualTextWriter) {
+      window.dualTextWriter.openExpandMode();
+    } else {
+      console.error("DualTextWriter 인스턴스를 찾을 수 없습니다.");
+    }
+  });
 
   // ESC 키로 확대 모드 닫기
   document.addEventListener("keydown", (e) => {
