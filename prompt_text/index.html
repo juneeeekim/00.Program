@@ -348,6 +348,101 @@
           padding: 20px;
         }
       }
+      /* Custom Select Dropdown */
+      .custom-select-wrapper {
+        position: relative;
+        user-select: none;
+        width: 100%;
+      }
+      
+      .custom-select-wrapper select {
+        display: none;
+      }
+      
+      .custom-select-trigger {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 400;
+        color: #333;
+        background: white;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .custom-select-trigger:hover {
+        border-color: #667eea;
+      }
+      
+      .custom-select-trigger:after {
+        content: '▼';
+        font-size: 12px;
+        color: #666;
+        transition: transform 0.3s;
+      }
+      
+      .custom-select-wrapper.open .custom-select-trigger:after {
+        transform: rotate(180deg);
+      }
+      
+      .custom-select-options {
+        position: absolute;
+        display: block;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: 9999;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      
+      .custom-select-wrapper.open .custom-select-options {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: all;
+        transform: translateY(0);
+      }
+      
+      .custom-option {
+        position: relative;
+        display: block;
+        padding: 14px;
+        font-size: 15px;
+        color: #333;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f1f3f5;
+      }
+      
+      .custom-option:last-child {
+        border-bottom: none;
+      }
+      
+      .custom-option:hover {
+        background-color: #f8f9fa;
+        color: #667eea;
+        padding-left: 20px;
+      }
+      
+      .custom-option.selected {
+        background-color: #f0f4ff;
+        color: #667eea;
+        font-weight: 600;
+      }
     </style>
   </head>
 
@@ -1077,6 +1172,100 @@
         }
       }
 
+      // 커스텀 드롭다운 설정 함수
+      function setupCustomDropdown(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // 이미 래핑되었는지 확인
+        let wrapper = select.parentElement.querySelector('.custom-select-wrapper');
+        if (wrapper) {
+          // 이미 래핑되었다면 옵션만 업데이트
+          updateCustomOptions(select, wrapper);
+          return;
+        }
+
+        // 래퍼 생성
+        wrapper = document.createElement('div');
+        wrapper.className = 'custom-select-wrapper';
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+
+        // 트리거 생성
+        const trigger = document.createElement('div');
+        trigger.className = 'custom-select-trigger';
+        trigger.textContent = select.options[select.selectedIndex]?.text || '카테고리를 선택하세요...';
+        wrapper.appendChild(trigger);
+
+        // 옵션 컨테이너 생성
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'custom-select-options';
+        wrapper.appendChild(optionsContainer);
+
+        // 옵션 채우기
+        updateCustomOptions(select, wrapper);
+
+        // 이벤트 리스너
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation(); // 즉시 닫힘 방지
+          // 다른 열린 드롭다운 닫기
+          document.querySelectorAll('.custom-select-wrapper.open').forEach(el => {
+            if (el !== wrapper) el.classList.remove('open');
+          });
+          wrapper.classList.toggle('open');
+        });
+
+        // 외부 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+          if (!wrapper.contains(e.target)) {
+            wrapper.classList.remove('open');
+          }
+        });
+      }
+
+      // 커스텀 옵션 업데이트 함수
+      function updateCustomOptions(select, wrapper) {
+        const optionsContainer = wrapper.querySelector('.custom-select-options');
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        optionsContainer.innerHTML = '';
+
+        Array.from(select.options).forEach(option => {
+          if (option.value === '') return; // 플레이스홀더 제외
+
+          const customOption = document.createElement('div');
+          customOption.className = 'custom-option';
+          if (option.selected) customOption.classList.add('selected');
+          customOption.textContent = option.text;
+          customOption.dataset.value = option.value;
+
+          customOption.addEventListener('click', (e) => {
+            e.stopPropagation();
+            select.value = option.value;
+            trigger.textContent = option.text;
+            
+            // 선택 스타일 업데이트
+            wrapper.querySelectorAll('.custom-option').forEach(el => el.classList.remove('selected'));
+            customOption.classList.add('selected');
+            
+            wrapper.classList.remove('open');
+            
+            // 네이티브 select에 change 이벤트 트리거
+            const event = new Event('change');
+            select.dispatchEvent(event);
+          });
+
+          optionsContainer.appendChild(customOption);
+        });
+        
+        // 트리거 텍스트 업데이트
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption && selectedOption.value !== '') {
+            trigger.textContent = selectedOption.text;
+        } else {
+            trigger.textContent = '카테고리를 선택하세요...';
+        }
+      }
+
       // 탭 2: 프롬프트 사용용 로드
       async function loadPromptsForUse() {
         if (!elements.categorySelectDropdown) return;
@@ -1126,6 +1315,9 @@
             elements.promptCardsContainer.style.display = 'none';
             elements.executionPanel.innerHTML = '';
           }
+
+          // 커스텀 드롭다운 적용 (최상단 레이어 보장)
+          setupCustomDropdown('category-select-dropdown');
         } catch (error) {
           console.error('프롬프트 사용 목록 로드 실패:', error);
           if (elements.categorySelectDropdown) {
