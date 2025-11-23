@@ -462,6 +462,210 @@ class DualTextWriter {
   }
 
   /**
+   * 휴지통 기능 초기화
+   */
+  initTrashFeature() {
+    this.trashBinBtn = document.getElementById("trash-bin-btn");
+    this.trashModal = document.getElementById("trash-modal");
+    this.trashModalClose = document.getElementById("trash-modal-close");
+    this.trashList = document.getElementById("trash-list");
+    this.trashEmptyState = document.getElementById("trash-empty-state");
+    this.trashEmptyBtn = document.getElementById("trash-empty-btn");
+
+    if (this.trashBinBtn) {
+      this.trashBinBtn.addEventListener("click", () => {
+        this.openTrashModal();
+      });
+    }
+
+    if (this.trashModalClose) {
+      this.trashModalClose.addEventListener("click", () => {
+        this.closeTrashModal();
+      });
+    }
+
+    if (this.trashEmptyBtn) {
+      this.trashEmptyBtn.addEventListener("click", () => {
+        this.emptyTrash();
+      });
+    }
+
+    // 모달 외부 클릭 시 닫기
+    if (this.trashModal) {
+      this.trashModal.addEventListener("click", (e) => {
+        if (e.target === this.trashModal) {
+          this.closeTrashModal();
+        }
+      });
+    }
+
+    // ESC 키로 닫기
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "Escape" &&
+        this.trashModal &&
+        this.trashModal.style.display === "flex"
+      ) {
+        this.closeTrashModal();
+      }
+    });
+  }
+
+  /**
+   * 휴지통 모달 열기
+   */
+  async openTrashModal() {
+    if (!this.currentUser || !this.trashModal) return;
+
+    this.trashModal.style.display = "flex";
+    this.trashModal.setAttribute("aria-hidden", "false");
+    
+    // 로딩 표시 (선택사항)
+    this.trashList.innerHTML = '<div style="text-align:center; padding:20px;">로딩 중...</div>';
+
+    try {
+      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
+      this.renderTrashList(trashItems);
+    } catch (error) {
+      console.error("휴지통 목록 로드 실패:", error);
+      this.trashList.innerHTML = '<div style="text-align:center; padding:20px; color:red;">목록을 불러오지 못했습니다.</div>';
+    }
+  }
+
+  /**
+   * 휴지통 모달 닫기
+   */
+  closeTrashModal() {
+    if (!this.trashModal) return;
+    this.trashModal.style.display = "none";
+    this.trashModal.setAttribute("aria-hidden", "true");
+  }
+
+  /**
+   * 휴지통 목록 렌더링
+   */
+  renderTrashList(items) {
+    if (!this.trashList || !this.trashEmptyState) return;
+
+    this.trashList.innerHTML = "";
+
+    if (items.length === 0) {
+      this.trashList.style.display = "none";
+      this.trashEmptyState.style.display = "block";
+      if (this.trashEmptyBtn) this.trashEmptyBtn.style.display = "none";
+      return;
+    }
+
+    this.trashList.style.display = "flex";
+    this.trashEmptyState.style.display = "none";
+    if (this.trashEmptyBtn) this.trashEmptyBtn.style.display = "block";
+
+    items.forEach((item) => {
+      const el = document.createElement("div");
+      el.className = "trash-item";
+      
+      const dateStr = item.deletedAt 
+        ? this.formatDateFromFirestore(item.deletedAt) 
+        : "날짜 없음";
+
+      el.innerHTML = `
+        <div class="trash-item-info">
+          <div class="trash-item-title">${this.escapeHtml(item.title || "제목 없음")}</div>
+          <div class="trash-item-meta">
+            <span>삭제일: ${dateStr}</span>
+            <span>•</span>
+            <span>${this.escapeHtml(item.topic || "미분류")}</span>
+          </div>
+        </div>
+        <div class="trash-item-actions">
+          <button class="trash-item-btn btn-restore" data-id="${item.id}" title="복구">
+            ♻️ 복구
+          </button>
+          <button class="trash-item-btn btn-permanent-delete" data-id="${item.id}" title="영구 삭제">
+            🗑️ 삭제
+          </button>
+        </div>
+      `;
+
+      // 이벤트 리스너
+      el.querySelector(".btn-restore").addEventListener("click", () => {
+        this.restoreArticle(item.id);
+      });
+
+      el.querySelector(".btn-permanent-delete").addEventListener("click", () => {
+        this.permanentlyDeleteArticle(item.id);
+      });
+
+      this.trashList.appendChild(el);
+    });
+  }
+
+  /**
+   * 글 복구
+   */
+  async restoreArticle(articleId) {
+    if (!confirm("이 글을 복구하시겠습니까?")) return;
+
+    try {
+      await this.dataManager.restoreText(this.currentUser.uid, articleId);
+      this.showMessage("✅ 글이 복구되었습니다.", "success");
+      
+      // 휴지통 목록 새로고침
+      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
+      this.renderTrashList(trashItems);
+
+      // 메인 목록 새로고침 (백그라운드)
+      this.loadArticlesForManagement();
+    } catch (error) {
+      console.error("글 복구 실패:", error);
+      this.showMessage("❌ 글 복구 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 글 영구 삭제
+   */
+  async permanentlyDeleteArticle(articleId) {
+    if (!confirm("정말 영구 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+
+    try {
+      await this.dataManager.permanentlyDeleteText(this.currentUser.uid, articleId);
+      this.showMessage("✅ 글이 영구 삭제되었습니다.", "success");
+      
+      // 휴지통 목록 새로고침
+      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
+      this.renderTrashList(trashItems);
+    } catch (error) {
+      console.error("영구 삭제 실패:", error);
+      this.showMessage("❌ 영구 삭제 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 휴지통 비우기
+   */
+  async emptyTrash() {
+    if (!confirm("휴지통을 비우시겠습니까? 모든 글이 영구 삭제됩니다.")) return;
+
+    try {
+      const trashItems = await this.dataManager.loadTrashTexts(this.currentUser.uid);
+      
+      // 병렬 처리로 모든 항목 삭제
+      const deletePromises = trashItems.map(item => 
+        this.dataManager.permanentlyDeleteText(this.currentUser.uid, item.id)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      this.showMessage("✅ 휴지통을 비웠습니다.", "success");
+      this.renderTrashList([]);
+    } catch (error) {
+      console.error("휴지통 비우기 실패:", error);
+      this.showMessage("❌ 휴지통 비우기 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
    * 참고 레퍼런스 패널 토글
    *
    * - 패널 펼치기/접기
@@ -1363,6 +1567,8 @@ class DualTextWriter {
     this.initReferenceLoader();
     // 확대 모드 초기화
     this.initExpandModal();
+    // 휴지통 기능 초기화
+    this.initTrashFeature();
   }
 
   // [Refactoring] AuthManager로 위임
@@ -9981,28 +10187,6 @@ class DualTextWriter {
 
     if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
 
-    try {
-      const articleRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        this.selectedArticleId
-      );
-      await window.firebaseDeleteDoc(articleRef);
-
-      // 로컬 데이터에서 제거
-      this.managementArticles = this.managementArticles.filter(
-        (a) => a.id !== this.selectedArticleId
-      );
-
-      // UI 업데이트
-      this.showMessage("✅ 글이 삭제되었습니다.", "success");
-      this.closeDetailPanel();
-      await this.loadArticlesForManagement();
-    } catch (error) {
-      console.error("글 삭제 실패:", error);
-      this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
     }
   }
 
