@@ -3662,6 +3662,15 @@ class DualTextWriter {
       }
     }
 
+    // 검색어 가져오기
+    const searchTerm = this.savedSearchInput?.value.toLowerCase().trim() || "";
+
+    // 하이라이팅 적용
+    const highlightedTopic = item.topic
+      ? this.highlightText(item.topic, searchTerm)
+      : "";
+    const highlightedContent = this.highlightText(item.content, searchTerm);
+
     return `
         <div class="saved-item ${index === 0 ? "new" : ""}" data-item-id="${
       item.id
@@ -3696,13 +3705,13 @@ class DualTextWriter {
               item.topic
                 ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(
                     item.topic
-                  )}">🏷️ ${this.escapeHtml(item.topic)}</div>`
+                  )}">🏷️ ${highlightedTopic}</div>`
                 : ""
             }
             ${snsPlatformsHtml}
             <div class="saved-item-content ${
               expanded ? "expanded" : ""
-            }" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
+            }" aria-label="본문 내용">${highlightedContent}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${
               item.id
             }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
