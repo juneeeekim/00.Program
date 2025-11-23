@@ -3662,6 +3662,15 @@ class DualTextWriter {
       }
     }
 
+    // ✅ 검색어 하이라이팅 적용
+    const contentHtml = this.highlightText(
+      this.escapeHtml(item.content),
+      this.savedSearch
+    );
+    const topicHtml = item.topic
+      ? this.highlightText(this.escapeHtml(item.topic), this.savedSearch)
+      : "";
+
     return `
         <div class="saved-item ${index === 0 ? "new" : ""}" data-item-id="${
       item.id
@@ -3696,13 +3705,13 @@ class DualTextWriter {
               item.topic
                 ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(
                     item.topic
-                  )}">🏷️ ${this.escapeHtml(item.topic)}</div>`
+                  )}">🏷️ ${topicHtml}</div>`
                 : ""
             }
             ${snsPlatformsHtml}
             <div class="saved-item-content ${
               expanded ? "expanded" : ""
-            }" aria-label="본문 내용">${this.escapeHtml(item.content)}</div>
+            }" aria-label="본문 내용">${contentHtml}</div>
             <button class="saved-item-toggle" data-action="toggle" data-item-id="${
               item.id
             }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
@@ -3788,6 +3797,47 @@ class DualTextWriter {
             </div>
         </div>
         `;
+  }
+
+  /**
+   * 텍스트 하이라이팅 헬퍼 함수
+   * @param {string} text - 원본 텍스트 (이미 escapeHtml 처리된 상태여야 함)
+   * @param {string} query - 검색어
+   * @returns {string} 하이라이팅된 HTML 문자열
+   */
+  highlightText(text, query) {
+    if (!query || !query.trim()) {
+      return text;
+    }
+
+    try {
+      // 검색어를 공백으로 분리하여 각각 하이라이팅 (AND 검색 로직에 맞춤)
+      const terms = query.trim().split(/\s+/).filter(Boolean);
+
+      if (terms.length === 0) return text;
+
+      let highlightedText = text;
+
+      // 각 검색어에 대해 하이라이팅 적용
+      // 주의: 이미 하이라이팅된 태그(<mark>...</mark>) 내부를 다시 치환하지 않도록 주의해야 하지만,
+      // 간단한 구현으로는 순차적으로 적용해도 됨. 단, 겹치는 단어나 태그 충돌 방지를 위해
+      // 정교한 로직이 필요할 수 있음. 여기서는 단순 치환을 사용하되,
+      // HTML 태그가 아닌 텍스트만 매칭되도록 하는 것이 좋음.
+      // 하지만 escapeHtml이 이미 적용된 텍스트이므로 태그는 없음 (<mark> 제외).
+
+      terms.forEach((term) => {
+        // 정규식 특수문자 이스케이프
+        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        // 대소문자 구분 없이 매칭
+        const regex = new RegExp(`(${escapedTerm})`, "gi");
+        highlightedText = highlightedText.replace(regex, "<mark>$1</mark>");
+      });
+
+      return highlightedText;
+    } catch (e) {
+      console.warn("Highlighting error:", e);
+      return text;
+    }
   }
   // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
   /**
