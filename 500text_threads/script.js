@@ -8427,6 +8427,41 @@ class DualTextWriter {
    * - 검색 및 필터 적용
    * - 최신순 정렬
    */
+  /**
+   * 텍스트 하이라이팅 (검색어 강조)
+   *
+   * @param {string} text - 원본 텍스트
+   * @param {string} query - 검색어
+   * @returns {string} 하이라이팅된 HTML 문자열
+   *
+   * - 검색어와 일치하는 부분을 <mark> 태그로 감쌈
+   * - XSS 방지를 위해 나머지 부분은 이스케이프 처리
+   * - 대소문자 구분 없이 매칭
+   */
+  highlightText(text, query) {
+    if (!text) return "";
+    if (!query) return this.escapeHtml(text);
+
+    try {
+      // 정규식 특수문자 이스케이프
+      const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(${escapedQuery})`, "gi");
+
+      return text
+        .split(regex)
+        .map((part) => {
+          if (part.toLowerCase() === query.toLowerCase()) {
+            return `<mark>${this.escapeHtml(part)}</mark>`;
+          }
+          return this.escapeHtml(part);
+        })
+        .join("");
+    } catch (e) {
+      console.warn("하이라이팅 처리 중 오류:", e);
+      return this.escapeHtml(text);
+    }
+  }
+
   renderReferenceSelectionList(references = null) {
     if (!this.referenceSelectionList) return;
 
@@ -8475,8 +8510,16 @@ class DualTextWriter {
       const html = refs
         .map((ref) => {
           const isSelected = this.selectedReferences.includes(ref.id);
-          const content = this.escapeHtml(ref.content || "").substring(0, 100);
-          const topic = this.escapeHtml(ref.topic || "주제 없음");
+          
+          // 텍스트 준비 (길이 제한)
+          const contentRaw = (ref.content || "");
+          const isLong = contentRaw.length > 100;
+          const contentDisplay = isLong ? contentRaw.substring(0, 100) : contentRaw;
+          
+          // 하이라이팅 적용
+          const content = this.highlightText(contentDisplay, searchTerm);
+          const topic = this.highlightText(ref.topic || "주제 없음", searchTerm);
+          
           const refType = ref.referenceType || "other";
           const typeLabel =
             refType === "structure"
@@ -8505,7 +8548,7 @@ class DualTextWriter {
                             <div class="reference-item-title" id="ref-label-${
                               ref.id
                             }">
-                                ${content}${content.length >= 100 ? "..." : ""}
+                                ${content}${isLong ? "..." : ""}
                             </div>
                             <div class="reference-item-meta">
                                 ${date ? `<span>${date}</span>` : ""}
