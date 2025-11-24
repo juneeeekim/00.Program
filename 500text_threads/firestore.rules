@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function: Validate text data structure
+    function isValidTextData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['content', 'type', 'characterCount', 'createdAt', 'updatedAt'])
+        && data.content is string
+        && data.content.size() > 0
+        && data.content.size() <= 10000
+        && data.type in ['edit', 'reference', 'script']
+        && data.characterCount is int
+        && data.characterCount >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+    
+    // Helper function: Validate tracking post data
+    function isValidPostData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['content', 'sourceTextId', 'createdAt', 'updatedAt'])
+        && data.content is string
+        && data.content.size() > 0
+        && data.sourceTextId is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+    
+
+    // Helper function: Check if user has admin claim
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // [Admin Dashboard] Daily Stats Collection
+    match /stats_daily/{dateId} {
+      // Admins can read/write
+      allow read: if isAdmin();
+      // Cloud Functions (backend) can write, but from client SDK only admins can read
+      // Note: Cloud Functions bypass these rules, so we mainly protect client access here.
+    }
+
+    // [Admin Dashboard] Admin Logs Collection
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin(); // Admins can create logs (e.g. from client dashboard)
+    }
+
+    // Users collection - only authenticated users can read/write their own data
+    match /users/{userId} {
+      // Allow read/write only to the owner OR Admin
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      // User profile subcollection
+      match /profile/{profileId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      // User texts subcollection
+      match /texts/{textId} {
+        // Allow read to owner OR Admin
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Allow create with validation
+        allow create: if isOwner(userId) && isValidTextData();
+        
+        // Allow update to owner with validation OR Admin (for moderation)
+        allow update: if (isOwner(userId) && isValidTextData() && request.resource.data.createdAt == resource.data.createdAt)
+                      || isAdmin();
+        
+        // Allow delete to owner OR Admin
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+      
+      // User tracking posts subcollection
+      match /posts/{postId} {
+        // Allow read to owner OR Admin
+        allow read: if isOwner(userId) || isAdmin();
+        
+        // Allow create with validation
+        allow create: if isOwner(userId) && isValidPostData();
+        
+        // Allow update to owner with validation
+        allow update: if isOwner(userId) 
+          && isValidPostData()
+          && request.resource.data.createdAt == resource.data.createdAt; // Prevent createdAt modification
+        
+        // Allow delete to owner OR Admin
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

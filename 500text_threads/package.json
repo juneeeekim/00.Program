@@ -7,7 +7,10 @@
     "start": "python -m http.server 8000",
     "dev": "python -m http.server 8000",
     "build": "echo 'No build process needed for static site'",
-    "deploy": "echo 'Deploy via GitHub Pages'"
+    "deploy": "echo 'Deploy via GitHub Pages'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "writing",
@@ -28,7 +31,12 @@
   },
   "homepage": "https://username.github.io/500text_threads",
   "devDependencies": {
-    "firebase-tools": "^13.0.0"
+    "firebase-tools": "^13.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "babel-jest": "^29.7.0"
   },
   "engines": {
     "node": ">=18.0.0"

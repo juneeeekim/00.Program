@@ -1,7 +1,22 @@
-# 500자 미만 글 작성기 - Firebase 연동 버전
+# 📝 500자 미만 글 작성기 (500text_threads)
 
-레퍼런스 글을 참고하면서 새로운 글을 작성할 수 있는 듀얼 패널 웹 애플리케이션입니다.
-Firebase Authentication과 Firestore를 사용하여 멀티유저 지원 및 클라우드 데이터 저장을 제공합니다.
+> **Firebase 기반 멀티유저 글 작성 플랫폼**  
+> 레퍼런스 글을 참고하면서 새로운 글을 작성하고, 성과를 트래킹할 수 있는 듀얼 패널 웹 애플리케이션
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Firebase](https://img.shields.io/badge/Firebase-10.7.1-orange.svg)](https://firebase.google.com/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-yellow.svg)](https://www.ecma-international.org/)
+
+## 🌟 프로젝트 개요
+
+500text_threads는 콘텐츠 크리에이터를 위한 올인원 글 작성 및 성과 분석 도구입니다. 레퍼런스 글을 참고하여 새로운 콘텐츠를 작성하고, Threads 등 SNS에 반자동으로 포스팅하며, 성과 데이터를 시각화하여 분석할 수 있습니다.
+
+### 핵심 가치
+- 🎯 **효율적인 글 작성**: 듀얼 패널로 레퍼런스와 작성 글을 동시에 관리
+- 📊 **데이터 기반 분석**: Chart.js 기반 성과 트래킹 및 시각화
+- ☁️ **클라우드 동기화**: Firebase로 어디서나 접근 가능
+- 🚀 **빠른 포스팅**: 반자동 포스팅으로 워크플로우 최적화
+- 🔒 **안전한 데이터**: 사용자별 완전 격리 및 보안
 
 ## 🚀 주요 기능
 
@@ -61,14 +76,26 @@ Firebase Authentication과 Firestore를 사용하여 멀티유저 지원 및 클
 ## 🛠️ 기술 스택
 
 ### 프론트엔드
-- HTML5, CSS3, Vanilla JavaScript
-- Firebase SDK v10.7.1
-- GitHub Pages 호스팅
+- **HTML5**: 시맨틱 마크업, 접근성 준수
+- **CSS3**: Flexbox/Grid 레이아웃, 반응형 디자인, 애니메이션
+- **Vanilla JavaScript (ES6+)**: 클래스 기반 아키텍처, async/await, 모듈 시스템
+- **Chart.js**: 데이터 시각화 라이브러리
+- **Firebase SDK v10.7.1**: 클라이언트 사이드 Firebase 연동
 
 ### 백엔드 (Firebase)
-- Firebase Authentication (Google OAuth)
-- Cloud Firestore (NoSQL 데이터베이스)
-- Firebase Hosting (선택사항)
+- **Firebase Authentication**: Google OAuth 2.0, Anonymous Auth
+- **Cloud Firestore**: NoSQL 데이터베이스, 실시간 동기화, 오프라인 지원
+- **Cloud Functions (Node.js 18)**: 서버리스 함수, Cloudinary 연동
+- **Firebase Hosting**: CDN 기반 정적 호스팅 (선택사항)
+
+### 외부 서비스
+- **Cloudinary**: 이미지 저장 및 CDN
+- **GitHub Pages**: 무료 정적 호스팅
+
+### 개발 도구
+- **Git**: 버전 관리
+- **ESLint**: 코드 품질 관리
+- **Firebase CLI**: 배포 및 관리
 
 ## 📖 사용법
 
@@ -209,22 +236,120 @@ MIT License
 
 ## 📚 기술 문서
 
-### 핵심 문서
-- `report/데이터_모델_문서.md` - Firestore 데이터 모델 구조 및 관계 설명
-- `report/데이터_모델_관계_다이어그램.md` - 데이터 관계 시각적 다이어그램
-- `report/데이터_마이그레이션_가이드.md` - 기존 데이터 마이그레이션 가이드
-- `report/2510292055_트래킹_시스템_개선_체크리스트.md` - 트래킹 시스템 개선 작업 내역
+### 📖 사용자 가이드
+- [`FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Firebase 프로젝트 설정 상세 가이드
+- [`DEPLOYMENT_GUIDE.md`](./DEPLOYMENT_GUIDE.md) - 단계별 배포 과정 및 체크리스트
 
-### 개발 문서
-- `report/2510282140_Semi-Automated_Threads_Posting_Solution_Technical_Documentation.md`
-  - Semi-automated Threads posting solution (Firebase multi-user, clipboard fallbacks, accessibility, mobile)
-- `report/2510290820_500text_threads_project_analysis_and_development_roadmap.md`
-  - 종합 프로젝트 분석 및 향후 개발 방향성 문서
-- `DEPLOYMENT_GUIDE.md`
-  - 단계별 배포 과정 및 체크리스트
-- `FIREBASE_SETUP.md`
-  - Firebase 프로젝트 설정 상세 가이드
+### 🔧 백엔드 문서 (plan_backend/)
+- [`백엔드_서비스_종합_분석_보고서.md`](./plan_backend/2511182040_백엔드_서비스_종합_분석_보고서.md) - 백엔드 아키텍처 상세 분석
+- [`데이터_흐름_다이어그램.md`](./plan_backend/2511182045_데이터_흐름_다이어그램.md) - 시스템 데이터 흐름 시각화
+- [`API_명세서.md`](./plan_backend/) - Cloud Functions API 문서
+- [`데이터베이스_스키마.md`](./plan_backend/) - Firestore 데이터 모델
+- [`보안_가이드.md`](./plan_backend/) - 보안 규칙 및 권한 관리
+
+### 🎨 프론트엔드 문서 (plan_frontend/)
+- [`컴포넌트_구조_문서.md`](./plan_frontend/) - UI 컴포넌트 아키텍처
+- [`상태_관리_문서.md`](./plan_frontend/) - 클라이언트 상태 관리
+- [`스타일_가이드.md`](./plan_frontend/) - CSS 설계 및 디자인 시스템
+- [`성능_최적화_가이드.md`](./plan_frontend/) - 프론트엔드 성능 개선
+
+### 📊 프로젝트 분석 (plan_report/)
+- [`데이터_모델_문서.md`](./plan_report/데이터_모델_문서.md) - Firestore 데이터 모델 구조
+- [`데이터_모델_관계_다이어그램.md`](./plan_report/데이터_모델_관계_다이어그램.md) - 데이터 관계 다이어그램
+- [`트래킹_시스템_개선_체크리스트.md`](./plan_report/2510292055_트래킹_시스템_개선_체크리스트.md) - 트래킹 시스템 개선 내역
+- [`프로젝트_분석_및_로드맵.md`](./plan_report/2510290820_500text_threads_project_analysis_and_development_roadmap.md) - 종합 분석 및 개발 방향
+
+## 🚀 빠른 시작
+
+### 로컬 개발 환경 설정
+
+1. **저장소 클론**
+```bash
+git clone https://github.com/username/500text_threads.git
+cd 500text_threads
+```
+
+2. **Firebase 설정**
+- [Firebase Console](https://console.firebase.google.com)에서 프로젝트 생성
+- `index.html`의 `firebaseConfig` 업데이트
+- 자세한 내용은 [`FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) 참조
+
+3. **로컬 서버 실행**
+```bash
+# Python 3
+python -m http.server 8000
+
+# Node.js (http-server)
+npx http-server -p 8000
+```
+
+4. **브라우저에서 열기**
+```
+http://localhost:8000
+```
+
+### Cloud Functions 배포 (선택사항)
+
+```bash
+cd functions
+npm install
+firebase deploy --only functions
+```
+
+---
+
+## 🤝 기여하기
+
+기여를 환영합니다! 다음 단계를 따라주세요:
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📊 프로젝트 통계
+
+- **총 코드 라인**: ~11,000 lines (script.js)
+- **지원 언어**: 한국어
+- **브라우저 호환성**: Chrome, Firefox, Safari, Edge
+- **모바일 지원**: iOS, Android
+
+---
+
+## 🔮 로드맵
+
+### v2.0 (계획 중)
+- [ ] 다국어 지원 (영어, 일본어)
+- [ ] PWA 지원 (오프라인 모드 강화)
+- [ ] AI 기반 글 추천
+- [ ] 팀 협업 기능
+
+### v2.1 (계획 중)
+- [ ] 이미지 첨부 기능
+- [ ] 글 버전 관리
+- [ ] 통계 대시보드 고도화
+
+---
 
 ## 📞 지원
 
 문제가 발생하거나 기능 요청이 있으시면 GitHub Issues를 통해 연락해주세요.
+
+**이메일**: support@500text.com (예시)  
+**문서**: [기술 문서 모음](./plan_backend/)
+
+---
+
+## 🙏 감사의 말
+
+이 프로젝트는 다음 오픈소스 프로젝트들을 사용합니다:
+- [Firebase](https://firebase.google.com/)
+- [Chart.js](https://www.chartjs.org/)
+- [Cloudinary](https://cloudinary.com/)
+
+---
+
+**Made with ❤️ by Senior & Junior Developers**
