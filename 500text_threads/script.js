@@ -3070,8 +3070,12 @@ class DualTextWriter {
       .filter((item) => item.isDeleted)
       .sort((a, b) => {
         // 삭제된 날짜 내림차순 (없으면 생성일)
-        const dateA = a.deletedAt ? new Date(a.deletedAt) : new Date(a.createdAt);
-        const dateB = b.deletedAt ? new Date(b.deletedAt) : new Date(b.createdAt);
+        const dateA = a.deletedAt
+          ? new Date(a.deletedAt)
+          : new Date(a.createdAt);
+        const dateB = b.deletedAt
+          ? new Date(b.deletedAt)
+          : new Date(b.createdAt);
         return dateB - dateA;
       });
 
@@ -3092,7 +3096,7 @@ class DualTextWriter {
           : "날짜 없음";
         const typeLabel =
           (item.type || "edit") === "reference" ? "📖 레퍼런스" : "✏️ 작성글";
-        
+
         // 내용 미리보기 (HTML 태그 제거 및 길이 제한)
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = item.content;
@@ -9605,6 +9609,10 @@ class DualTextWriter {
     });
 
     try {
+      const batch = window.firebaseWriteBatch(this.db);
+      let batchCount = 0;
+      let hasUpdates = false;
+
       for (const [category, articles] of Object.entries(articlesByCategory)) {
         // 중복 체크
         const orders = articles.map((a) => a.order);
@@ -9650,13 +9658,20 @@ class DualTextWriter {
                 "texts",
                 article.id
               );
-              await window.firebaseUpdateDoc(articleRef, {
-                order: newOrder,
-              });
+              batch.update(articleRef, { order: newOrder });
+              batchCount++;
+              hasUpdates = true;
             }
           }
           console.log(`[Order Fix] ${category}: 재정렬 완료`);
         }
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+        console.log(
+          `[Order Fix] 총 ${batchCount}개의 글 순서가 업데이트되었습니다.`
+        );
       }
     } catch (error) {
       console.error("order 필드 초기화 실패:", error);
@@ -10602,11 +10617,7 @@ class DualTextWriter {
    * 성능: 대기 중인 timeout 정리
    */
   closeExpandMode() {
-    if (
-      !this.contentExpandModal ||
-      !this.expandContentTextarea
-    )
-      return;
+    if (!this.contentExpandModal || !this.expandContentTextarea) return;
 
     // 대기 중인 timeout 정리 (메모리 누수 방지)
     if (this._expandModeTimeouts && this._expandModeTimeouts.length > 0) {
@@ -10630,9 +10641,12 @@ class DualTextWriter {
 
     // 접근성: ARIA 속성 업데이트
     this.contentExpandModal.setAttribute("aria-hidden", "true");
-    
+
     // 열었던 버튼의 aria-expanded 복구
-    const activeBtn = this.expandSourceMode === "edit" ? this.detailExpandBtn : this.expandContentBtn;
+    const activeBtn =
+      this.expandSourceMode === "edit"
+        ? this.detailExpandBtn
+        : this.expandContentBtn;
     if (activeBtn) {
       activeBtn.setAttribute("aria-expanded", "false");
     }
@@ -10648,7 +10662,10 @@ class DualTextWriter {
     this.contentExpandModal.style.display = "none";
 
     // 접근성: 원래 포커스 위치로 복귀 (확대 모드 열기 버튼)
-    const focusTarget = this.expandSourceMode === "edit" ? this.detailExpandBtn : this.expandContentBtn;
+    const focusTarget =
+      this.expandSourceMode === "edit"
+        ? this.detailExpandBtn
+        : this.expandContentBtn;
     if (focusTarget) {
       setTimeout(() => {
         focusTarget.focus();
