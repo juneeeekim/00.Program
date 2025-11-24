@@ -1021,6 +1021,83 @@ header h1 {
   box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
+/* ========================================
+   순서 변경 버튼 스타일
+   ======================================== */
+
+/* 순서 변경 버튼 컨테이너 */
+.article-card-actions {
+  display: flex;
+  gap: var(--spacing-1); /* 8px */
+  align-items: center;
+}
+
+/* 순서 변경 버튼 기본 스타일 */
+.order-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* 호버 효과 (비활성화 상태 제외) */
+.order-button:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+/* 클릭 효과 (비활성화 상태 제외) */
+.order-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* 비활성화 상태 스타일 */
+.order-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #999;
+  background: #f5f5f5;
+}
+
+/* 포커스 스타일 (키보드 접근성) */
+.order-button:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* 고대비 모드 지원 */
+@media (prefers-contrast: high) {
+  .order-button:disabled {
+    opacity: 1;
+    border: 2px solid #999;
+    text-decoration: line-through;
+  }
+}
+
+/* 모션 감소 모드 지원 */
+@media (prefers-reduced-motion: reduce) {
+  .order-button {
+    transition: none;
+  }
+
+  .order-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
 .btn-success {
   background: linear-gradient(135deg, #28a745, #20c997);
   color: white;
