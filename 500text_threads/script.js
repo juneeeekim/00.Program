@@ -8,7 +8,6 @@ import { AuthManager } from "./js/auth.js";
 import { Constants } from "./js/constants.js";
 import { DataManager } from "./js/data.js";
 import { UIManager } from "./js/ui.js";
-import { DashboardManager } from "./js/dashboard.js";
 
 /**
  * 500 Text Threads - Main Script
@@ -279,9 +278,6 @@ class DualTextWriter {
 
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
-
-    // [Admin Dashboard] DashboardManager 초기화
-    this.dashboardManager = new DashboardManager(this.authManager, this.uiManager, this.dataManager);
 
     this.init();
   }

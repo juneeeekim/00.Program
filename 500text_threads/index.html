@@ -95,11 +95,6 @@
             <span class="tab-icon">📋</span>
             <span class="tab-text">스크립트 작성</span>
           </button>
-          <!-- [Admin Dashboard] 관리자 전용 탭 (초기에는 숨김) -->
-          <button class="tab-button" data-tab="dashboard" id="dashboard-tab-btn" style="display: none;">
-            <span class="tab-icon">⚡</span>
-            <span class="tab-text">대시보드</span>
-          </button>
         </div>
 
         <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
@@ -574,101 +569,7 @@
         <div class="tab-content" id="saved-tab">
           <div class="saved-texts">
             <h3>저장된 글</h3>
-            <!-- ... existing saved tab content ... -->
-          </div>
-        </div>
-
-        <!-- [Admin Dashboard] 대시보드 탭 콘텐츠 -->
-        <div class="tab-content" id="dashboard-tab">
-          <div class="dashboard-container">
-            <div class="dashboard-header">
-              <h3>⚡ 관리자 대시보드</h3>
-              <button id="admin-refresh-btn" class="btn btn-sm btn-secondary">
-                <span>🔄</span> 새로고침
-              </button>
-            </div>
-
-            <!-- 1. 핵심 지표 (KPI Cards) -->
-            <div class="kpi-grid" id="admin-stats-container">
-              <div class="kpi-card">
-                <div class="kpi-icon">👥</div>
-                <div class="kpi-info">
-                  <span class="kpi-label">총 사용자</span>
-                  <span class="kpi-value" id="kpi-total-users">-</span>
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon">📝</div>
-                <div class="kpi-info">
-                  <span class="kpi-label">오늘 작성된 글</span>
-                  <span class="kpi-value" id="kpi-today-posts">-</span>
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon">🤖</div>
-                <div class="kpi-info">
-                  <span class="kpi-label">LLM 검증 사용</span>
-                  <span class="kpi-value" id="kpi-llm-usage">-</span>
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon">🗑️</div>
-                <div class="kpi-info">
-                  <span class="kpi-label">휴지통 용량</span>
-                  <span class="kpi-value" id="kpi-trash-size">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. 차트 섹션 (트렌드 + 플랫폼 점유율) -->
-            <div class="charts-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-              <div class="chart-section">
-                <h4>📈 주간 활동 추이</h4>
-                <div class="chart-container-admin">
-                  <canvas id="admin-main-chart" role="img" aria-label="주간 활동 추이 차트"></canvas>
-                </div>
-              </div>
-              <div class="chart-section">
-                <h4>📱 SNS 플랫폼 점유율</h4>
-                <div class="chart-container-admin">
-                  <canvas id="admin-platform-chart" role="img" aria-label="SNS 플랫폼 점유율 차트"></canvas>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3. 사용자 관리 및 액션 -->
-            <div class="management-section" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border-radius: 16px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.5);">
-              <h4>🛡️ 사용자 관리</h4>
-              <div class="search-bar" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" id="admin-user-search" placeholder="사용자 이메일 또는 UID 검색..." aria-label="사용자 검색" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <button id="admin-user-search-btn" class="btn btn-primary" aria-label="검색">검색</button>
-              </div>
-              <div id="admin-user-result" class="user-result-container" aria-live="polite">
-                <!-- 검색 결과가 여기에 표시됨 -->
-              </div>
-            </div>
-
-            <!-- 4. 관리자 로그 -->
-            <div class="logs-section">
-              <h4>📜 관리자 활동 로그</h4>
-              <div class="table-responsive">
-                <table class="admin-logs-table">
-                  <thead>
-                    <tr>
-                      <th>액션</th>
-                      <th>대상</th>
-                      <th>수행자</th>
-                      <th>시간</th>
-                    </tr>
-                  </thead>
-                  <tbody id="admin-logs-body">
-                    <!-- 로그 데이터가 동적으로 추가됨 -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+            <div class="saved-filters">
               <div
                 class="segmented-control"
                 role="tablist"
