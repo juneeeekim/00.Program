@@ -9507,6 +9507,7 @@ class DualTextWriter {
           createdAt: data.createdAt,
           order: data.order || 0, // order 필드 (기본값 0)
           viewCount: data.viewCount || 0,
+          characterCount: data.characterCount, // [Fix] 글자 수 필드 로드
         });
       });
 
@@ -9617,13 +9618,17 @@ class DualTextWriter {
         // 중복 체크
         const orders = articles.map((a) => a.order);
         const hasDuplicates = new Set(orders).size !== orders.length;
-        const hasMissing = articles.some(
+        const hasMissingOrder = articles.some(
           (a) => a.order === undefined || a.order === null
         );
+        // [Fix] characterCount 누락 확인
+        const hasMissingCharCount = articles.some(
+          (a) => typeof a.characterCount !== "number"
+        );
 
-        if (hasDuplicates || hasMissing) {
+        if (hasDuplicates || hasMissingOrder || hasMissingCharCount) {
           console.log(
-            `[Order Fix] ${category}: 중복/누락 발견. 재정렬을 시작합니다.`
+            `[Order/Data Fix] ${category}: 데이터 보정(순서/글자수)을 시작합니다.`
           );
 
           // createdAt 오름차순 정렬 (과거 -> 최신)
@@ -9633,8 +9638,7 @@ class DualTextWriter {
             return dateA - dateB;
           });
 
-          // order 재할당 (타임스탬프 기반)
-          // 순차적으로 1ms씩 증가시켜 고유성 보장
+          // order 재할당 및 characterCount 보정
           for (let i = 0; i < articles.length; i++) {
             const article = articles[i];
             const date = article.createdAt?.toDate?.() || new Date();
@@ -9648,9 +9652,25 @@ class DualTextWriter {
               }
             }
 
-            // 변경이 필요한 경우만 업데이트
-            if (article.order !== newOrder) {
-              article.order = newOrder;
+            // 업데이트가 필요한지 확인
+            const needsOrderUpdate = article.order !== newOrder;
+            const needsCharCountUpdate =
+              typeof article.characterCount !== "number";
+
+            if (needsOrderUpdate || needsCharCountUpdate) {
+              const updateData = {};
+              
+              if (needsOrderUpdate) {
+                article.order = newOrder;
+                updateData.order = newOrder;
+              }
+              
+              if (needsCharCountUpdate) {
+                const count = (article.content || "").length;
+                article.characterCount = count;
+                updateData.characterCount = count;
+              }
+
               const articleRef = window.firebaseDoc(
                 this.db,
                 "users",
@@ -9658,12 +9678,12 @@ class DualTextWriter {
                 "texts",
                 article.id
               );
-              batch.update(articleRef, { order: newOrder });
+              batch.update(articleRef, updateData);
               batchCount++;
               hasUpdates = true;
             }
           }
-          console.log(`[Order Fix] ${category}: 재정렬 완료`);
+          console.log(`[Order/Data Fix] ${category}: 보정 완료`);
         }
       }
 
@@ -10106,6 +10126,7 @@ class DualTextWriter {
       await window.firebaseUpdateDoc(articleRef, {
         title: title.trim(),
         content: content,
+        characterCount: content.length, // [Fix] 필수 필드 추가
         topic: category, // topic 필드에 카테고리 저장
         updatedAt: window.firebaseServerTimestamp(),
       });
@@ -10434,6 +10455,7 @@ class DualTextWriter {
       const newScriptData = {
         title: title.trim(), // 사용자가 직접 입력한 제목
         content: content,
+        characterCount: content.length, // [Fix] 필수 필드 추가
         topic: category, // 카테고리는 topic 필드에 저장
         type: "script", // [Tab Separation] 스크립트 작성 탭 전용 타입 (기존 'edit'와 분리)
         createdAt: window.firebaseServerTimestamp(),
