@@ -279,6 +279,9 @@ class DualTextWriter {
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
 
+    // [Admin Dashboard] DashboardManager 초기화
+    this.dashboardManager = new DashboardManager(this.authManager, this.uiManager, this.dataManager);
+
     this.init();
   }
 
