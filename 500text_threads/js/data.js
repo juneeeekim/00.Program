@@ -60,7 +60,7 @@ export class DataManager {
     }
 
     /**
-     * 저장된 텍스트 목록 조회 (삭제되지 않은 글만)
+     * 저장된 텍스트 목록 조회
      * @param {string} uid - 사용자 UID
      * @returns {Promise<Array>} - 텍스트 데이터 배열
      */
@@ -76,44 +76,11 @@ export class DataManager {
             const querySnapshot = await window.firebaseGetDocs(q);
             const texts = [];
             querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                // isDeleted가 true가 아닌 경우만 포함 (undefined, null, false)
-                if (data.isDeleted !== true) {
-                    texts.push({ id: doc.id, ...data });
-                }
+                texts.push({ id: doc.id, ...doc.data() });
             });
             return texts;
         } catch (error) {
             console.error('텍스트 목록 조회 실패:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 휴지통 목록 조회 (삭제된 글만)
-     * @param {string} uid - 사용자 UID
-     * @returns {Promise<Array>} - 텍스트 데이터 배열
-     */
-    async loadTrashTexts(uid) {
-        if (!this.db) throw new Error('Firestore not initialized');
-
-        try {
-            const q = window.firebaseQuery(
-                window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS),
-                window.firebaseOrderBy('deletedAt', 'desc')
-            );
-            
-            const querySnapshot = await window.firebaseGetDocs(q);
-            const texts = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.isDeleted === true) {
-                    texts.push({ id: doc.id, ...data });
-                }
-            });
-            return texts;
-        } catch (error) {
-            console.error('휴지통 목록 조회 실패:', error);
             throw error;
         }
     }
@@ -140,7 +107,7 @@ export class DataManager {
     }
 
     /**
-     * 텍스트 데이터 삭제 (Soft Delete - 휴지통으로 이동)
+     * 텍스트 데이터 삭제
      * @param {string} uid - 사용자 UID
      * @param {string} textId - 텍스트 문서 ID
      */
@@ -148,51 +115,9 @@ export class DataManager {
         if (!this.db) throw new Error('Firestore not initialized');
 
         try {
-            const docRef = window.firebaseDoc(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS, textId);
-            await window.firebaseUpdateDoc(docRef, {
-                isDeleted: true,
-                deletedAt: window.firebaseServerTimestamp(),
-                updatedAt: window.firebaseServerTimestamp()
-            });
-        } catch (error) {
-            console.error('텍스트 삭제(휴지통 이동) 실패:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 텍스트 데이터 복원 (휴지통에서 복구)
-     * @param {string} uid - 사용자 UID
-     * @param {string} textId - 텍스트 문서 ID
-     */
-    async restoreText(uid, textId) {
-        if (!this.db) throw new Error('Firestore not initialized');
-
-        try {
-            const docRef = window.firebaseDoc(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS, textId);
-            await window.firebaseUpdateDoc(docRef, {
-                isDeleted: false,
-                deletedAt: window.firebaseDeleteField(), // 필드 삭제
-                updatedAt: window.firebaseServerTimestamp()
-            });
-        } catch (error) {
-            console.error('텍스트 복원 실패:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * 텍스트 데이터 영구 삭제
-     * @param {string} uid - 사용자 UID
-     * @param {string} textId - 텍스트 문서 ID
-     */
-    async permanentlyDeleteText(uid, textId) {
-        if (!this.db) throw new Error('Firestore not initialized');
-
-        try {
             await window.firebaseDeleteDoc(window.firebaseDoc(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS, textId));
         } catch (error) {
-            console.error('텍스트 영구 삭제 실패:', error);
+            console.error('텍스트 삭제 실패:', error);
             throw error;
         }
     }
