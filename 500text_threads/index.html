@@ -615,11 +615,16 @@
                 class="btn btn-secondary btn-sm"
                 onclick="window.dualTextWriter.openTrashBin()"
                 aria-label="휴지통 열기"
-                style="margin-left: auto; display: inline-flex; align-items: center; gap: 4px;"
+                style="
+                  margin-left: auto;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                "
               >
                 🗑️ 휴지통
               </button>
-              
+
               <!-- 검색 입력 필드 -->
               <div
                 class="saved-search"
@@ -2540,6 +2545,7 @@
         Timestamp,
         limit,
         startAfter,
+        writeBatch,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       // Firebase 설정 (실제 사용 시 Firebase Console에서 발급받은 설정으로 교체)
@@ -2579,6 +2585,7 @@
       window.firebaseStartAfter = startAfter;
       window.firebaseServerTimestamp = serverTimestamp;
       window.firebaseTimestamp = (date) => Timestamp.fromDate(date);
+      window.firebaseWriteBatch = writeBatch;
     </script>
 
     <!-- 모달들 -->
@@ -3100,7 +3107,11 @@
       <div class="modal-content trash-bin-content">
         <div class="modal-header">
           <h3>🗑️ 휴지통</h3>
-          <button class="close-btn" onclick="window.dualTextWriter.closeTrashBin()" aria-label="닫기">
+          <button
+            class="close-btn"
+            onclick="window.dualTextWriter.closeTrashBin()"
+            aria-label="닫기"
+          >
             &times;
           </button>
         </div>
@@ -3108,7 +3119,10 @@
           <!-- 삭제된 항목이 여기에 표시됩니다 -->
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary" onclick="window.dualTextWriter.closeTrashBin()">
+          <button
+            class="btn btn-secondary"
+            onclick="window.dualTextWriter.closeTrashBin()"
+          >
             닫기
           </button>
         </div>
