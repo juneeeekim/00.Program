@@ -37,56 +37,37 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
     
-
-    // Helper function: Check if user has admin claim
-    function isAdmin() {
-      return isAuthenticated() && request.auth.token.admin == true;
-    }
-
-    // [Admin Dashboard] Daily Stats Collection
-    match /stats_daily/{dateId} {
-      // Admins can read/write
-      allow read: if isAdmin();
-      // Cloud Functions (backend) can write, but from client SDK only admins can read
-      // Note: Cloud Functions bypass these rules, so we mainly protect client access here.
-    }
-
-    // [Admin Dashboard] Admin Logs Collection
-    match /admin_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin(); // Admins can create logs (e.g. from client dashboard)
-    }
-
     // Users collection - only authenticated users can read/write their own data
     match /users/{userId} {
-      // Allow read/write only to the owner OR Admin
-      allow read, write: if isOwner(userId) || isAdmin();
+      // Allow read/write only to the owner
+      allow read, write: if isOwner(userId);
       
       // User profile subcollection
       match /profile/{profileId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read, write: if isOwner(userId);
       }
       
       // User texts subcollection
       match /texts/{textId} {
-        // Allow read to owner OR Admin
-        allow read: if isOwner(userId) || isAdmin();
+        // Allow read to owner
+        allow read: if isOwner(userId);
         
         // Allow create with validation
         allow create: if isOwner(userId) && isValidTextData();
         
-        // Allow update to owner with validation OR Admin (for moderation)
-        allow update: if (isOwner(userId) && isValidTextData() && request.resource.data.createdAt == resource.data.createdAt)
-                      || isAdmin();
+        // Allow update to owner with validation
+        allow update: if isOwner(userId) 
+          && isValidTextData()
+          && request.resource.data.createdAt == resource.data.createdAt; // Prevent createdAt modification
         
-        // Allow delete to owner OR Admin
-        allow delete: if isOwner(userId) || isAdmin();
+        // Allow delete to owner
+        allow delete: if isOwner(userId);
       }
       
       // User tracking posts subcollection
       match /posts/{postId} {
-        // Allow read to owner OR Admin
-        allow read: if isOwner(userId) || isAdmin();
+        // Allow read to owner
+        allow read: if isOwner(userId);
         
         // Allow create with validation
         allow create: if isOwner(userId) && isValidPostData();
@@ -96,8 +77,8 @@ service cloud.firestore {
           && isValidPostData()
           && request.resource.data.createdAt == resource.data.createdAt; // Prevent createdAt modification
         
-        // Allow delete to owner OR Admin
-        allow delete: if isOwner(userId) || isAdmin();
+        // Allow delete to owner
+        allow delete: if isOwner(userId);
       }
     }
     
