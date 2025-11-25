@@ -350,13 +350,38 @@
         let totalTexts = 0;
         let totalPosts = 0;
         
+        // 월별 활동 집계용 객체 (Key: 'YYYY-MM', Value: count)
+        const monthlyCounts = {};
+        
+        // 최근 6개월 라벨 생성
+        const today = new Date();
+        const last6Months = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          last6Months.push(key);
+          monthlyCounts[key] = 0; // 초기화
+        }
+        
         console.log(`   - 사용자 ${usersSnapshot.size}명 처리 중...`);
 
         // 2. 각 사용자의 데이터 집계 (병렬 처리)
-        // 주의: 사용자 수가 많을 경우 배치 처리 필요 (현재는 단순 구현)
         const promises = usersSnapshot.docs.map(async doc => {
           const texts = await doc.ref.collection('texts').get();
           const posts = await doc.ref.collection('posts').get();
+          
+          // 텍스트 작성일 집계
+          texts.docs.forEach(textDoc => {
+            const data = textDoc.data();
+            if (data.createdAt) {
+              const date = data.createdAt.toDate();
+              const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+              if (monthlyCounts[key] !== undefined) {
+                monthlyCounts[key]++;
+              }
+            }
+          });
+
           return { texts: texts.size, posts: posts.size };
         });
         
@@ -366,28 +391,34 @@
           totalPosts += r.posts;
         });
 
-        // 3. 통계 데이터 구성
+        // 3. 차트 데이터 변환
+        const chartLabels = last6Months.map(key => {
+          const [year, month] = key.split('-');
+          return `${month}월`;
+        });
+        const chartValues = last6Months.map(key => monthlyCounts[key]);
+
+        // 4. 통계 데이터 구성
         const statsData = {
           totalUsers: usersSnapshot.size,
           totalTexts,
           totalPosts,
           lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-          // 차트용 더미 데이터 (실제 구현 시 날짜별 집계 로직 필요)
           monthlyActivity: {
-            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
-            values: [12, 19, 3, 5, 2, 3] 
+            labels: chartLabels,
+            values: chartValues
           }
         };
 
-        // 4. 저장
+        // 5. 저장
         await this.db.collection('admin_stats').doc('summary').set(statsData);
         
-        // 5. UI 업데이트
-        // 서버 타임스탬프는 즉시 읽을 수 없으므로 현재 시간으로 대체하여 렌더링
+        // 6. UI 업데이트
         const renderData = { ...statsData, lastUpdated: new Date() };
         this.renderStats(renderData);
         
         console.log('✅ 데이터 집계 및 저장 완료');
+        console.log('📊 월별 데이터:', monthlyCounts);
         alert('데이터가 성공적으로 갱신되었습니다.');
         
       } catch (error) {
