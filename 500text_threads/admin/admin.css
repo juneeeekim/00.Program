@@ -20,6 +20,12 @@
   --admin-gray-600: #6c757d;
   --admin-gray-900: #212529;
   
+  /* Light Mode (기본) */
+  --admin-bg-primary: #ffffff;
+  --admin-bg-secondary: #f8f9fa;
+  --admin-text-primary: #212529;
+  --admin-text-secondary: #6c757d;
+  
   /* Admin Typography */
   --admin-font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", sans-serif;
   --admin-font-size-base: 16px;
@@ -42,6 +48,16 @@
   --admin-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --admin-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
   --admin-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --admin-bg-primary: #1a1d23;
+    --admin-bg-secondary: #2d3238;
+    --admin-text-primary: #e9ecef;
+    --admin-text-secondary: #adb5bd;
+  }
 }
 
 /* ========================================
@@ -150,6 +166,239 @@ body {
 }
 
 /* ========================================
+   Admin Header & Buttons
+   ======================================== */
+
+.admin-header__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-btn {
+  padding: var(--admin-spacing-sm) var(--admin-spacing-md);
+  border: none;
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-family: var(--admin-font-family);
+  font-size: 14px;
+}
+
+.admin-btn--primary {
+  background: var(--admin-primary);
+  color: white;
+}
+
+.admin-btn--primary:hover {
+  background: var(--admin-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.admin-last-updated {
+  font-size: 12px;
+  color: var(--admin-text-secondary);
+  margin-top: var(--admin-spacing-xs);
+  text-align: right;
+}
+
+/* 회전 애니메이션 */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 
+  100% { transform: rotate(360deg); } 
+}
+
+/* 로딩 애니메이션 */
+.admin-loading-text {
+  animation: admin-pulse 1.5s ease-in-out infinite;
+  color: var(--admin-text-secondary);
+}
+
+@keyframes admin-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 에러 상태 */
+.admin-error-text {
+  color: var(--admin-danger);
+  font-weight: 600;
+}
+
+/* 데이터 없음 상태 */
+.admin-no-data {
+  text-align: center;
+  padding: var(--admin-spacing-xl);
+  color: var(--admin-text-secondary);
+}
+
+.admin-no-data__icon {
+  font-size: 48px;
+  margin-bottom: var(--admin-spacing-md);
+  opacity: 0.5;
+}
+
+.admin-no-data__text {
+  font-size: var(--admin-font-size-lg);
+}
+
+/* ========================================
+   Admin Navigation
+   ======================================== */
+
+.admin-nav {
+  display: flex;
+  gap: var(--admin-spacing-sm);
+  margin-bottom: var(--admin-spacing-lg);
+  padding: var(--admin-spacing-sm);
+  background: var(--admin-bg-secondary);
+  border-radius: var(--admin-radius-md);
+}
+
+.admin-nav__item {
+  flex: 1;
+  padding: var(--admin-spacing-md);
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: var(--admin-font-size-base);
+  color: var(--admin-text-secondary);
+  font-family: var(--admin-font-family);
+}
+
+.admin-nav__item:hover {
+  background: var(--admin-bg-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-nav__item--active {
+  background: var(--admin-primary);
+  color: var(--admin-white);
+  border-color: var(--admin-primary);
+  font-weight: 600;
+}
+
+.admin-nav__item:focus {
+  outline: 3px solid var(--admin-info);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Admin Sections
+   ======================================== */
+
+.admin-section {
+  margin-bottom: var(--admin-spacing-lg);
+}
+
+.admin-section__title {
+  font-size: var(--admin-font-size-xl);
+  color: var(--admin-text-primary);
+  margin-bottom: var(--admin-spacing-lg);
+  font-weight: 700;
+}
+
+/* ========================================
+   Admin Stats Grid
+   ======================================== */
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--admin-spacing-lg);
+  margin-bottom: var(--admin-spacing-xl);
+}
+
+.admin-stat-card {
+  background: var(--admin-bg-secondary);
+  border-radius: var(--admin-radius-md);
+  padding: var(--admin-spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--admin-spacing-md);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--admin-shadow-lg);
+}
+
+.admin-stat-card__icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.admin-stat-card__content {
+  flex: 1;
+}
+
+.admin-stat-card__title {
+  font-size: 14px;
+  color: var(--admin-text-secondary);
+  margin-bottom: var(--admin-spacing-xs);
+  font-weight: 500;
+}
+
+.admin-stat-card__value {
+  font-size: 32px;
+  color: var(--admin-text-primary);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ========================================
+   Admin Chart Container
+   ======================================== */
+
+.admin-chart-container {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  height: 400px;
+  margin: var(--admin-spacing-lg) auto;
+  padding: var(--admin-spacing-lg);
+  background: var(--admin-bg-secondary);
+  border-radius: var(--admin-radius-md);
+  box-shadow: var(--admin-shadow-md);
+}
+
+/* ========================================
+   Admin User List
+   ======================================== */
+
+.admin-user-list {
+  background: var(--admin-bg-secondary);
+  border-radius: var(--admin-radius-md);
+  padding: var(--admin-spacing-lg);
+  min-height: 300px;
+}
+
+.admin-loading {
+  text-align: center;
+  color: var(--admin-text-secondary);
+  padding: var(--admin-spacing-xl);
+  font-size: var(--admin-font-size-lg);
+}
+
+/* ========================================
    Admin Responsive Design
    ======================================== */
 
@@ -160,6 +409,16 @@ body {
   
   .admin-header {
     padding: var(--admin-spacing-lg);
+  }
+  
+  .admin-header__content {
+    flex-direction: column;
+    gap: var(--admin-spacing-md);
+    text-align: center;
+  }
+  
+  .admin-last-updated {
+    text-align: center;
   }
   
   .admin-main {
@@ -173,44 +432,41 @@ body {
   .admin-subtitle {
     font-size: 14px;
   }
+  
+  .admin-nav {
+    flex-direction: column;
+  }
+  
+  .admin-nav__item {
+    width: 100%;
+  }
+  
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .admin-chart-container {
+    height: 300px;
+    padding: var(--admin-spacing-md);
+  }
 }
 
-/* ========================================
-   Admin Utility Classes
-   ======================================== */
-
-.admin-hidden {
-  display: none !important;
+@media (max-width: 375px) {
+  .admin-chart-container {
+    height: 250px;
+    padding: var(--admin-spacing-sm);
+  }
+  
+  .admin-stat-card {
+    padding: var(--admin-spacing-md);
+  }
+  
+  .admin-stat-card__icon {
+    font-size: 36px;
+  }
+  
+  .admin-stat-card__value {
+    font-size: 24px;
+  }
 }
 
-.admin-text-center {
-  text-align: center;
-}
-
-.admin-text-right {
-  text-align: right;
-}
-
-.admin-mt-sm {
-  margin-top: var(--admin-spacing-sm);
-}
-
-.admin-mt-md {
-  margin-top: var(--admin-spacing-md);
-}
-
-.admin-mt-lg {
-  margin-top: var(--admin-spacing-lg);
-}
-
-.admin-mb-sm {
-  margin-bottom: var(--admin-spacing-sm);
-}
-
-.admin-mb-md {
-  margin-bottom: var(--admin-spacing-md);
-}
-
-.admin-mb-lg {
-  margin-bottom: var(--admin-spacing-lg);
-}

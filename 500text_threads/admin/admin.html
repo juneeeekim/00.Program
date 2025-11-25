@@ -11,15 +11,84 @@
 <body>
   <div class="admin-container">
     <header class="admin-header">
-      <h1 class="admin-title">📊 관리자 대시보드</h1>
-      <p class="admin-subtitle">500자 미만 글 작성기 관리 시스템</p>
+      <div class="admin-header__content">
+        <div>
+          <h1 class="admin-title">📊 관리자 대시보드</h1>
+          <p class="admin-subtitle">500자 미만 글 작성기 관리 시스템</p>
+        </div>
+        <button id="refresh-stats-btn" class="admin-btn admin-btn--primary" aria-label="데이터 갱신">
+          🔄 데이터 갱신
+        </button>
+      </div>
+      <p class="admin-last-updated">마지막 업데이트: <span id="last-updated-time">-</span></p>
     </header>
 
-    <main class="admin-main">
-      <div class="admin-welcome">
-        <p>관리자 대시보드 환경이 성공적으로 구축되었습니다.</p>
-        <p>Phase 1 완료 - 격리 환경 구축 ✅</p>
-      </div>
+    <main class="admin-main" role="main">
+      <!-- 네비게이션 -->
+      <nav class="admin-nav" role="navigation" aria-label="관리자 메뉴">
+        <button class="admin-nav__item admin-nav__item--active" 
+                data-section="overview"
+                aria-label="개요 보기"
+                tabindex="0">
+          📊 개요
+        </button>
+        <button class="admin-nav__item" 
+                data-section="users"
+                aria-label="사용자 목록 보기"
+                tabindex="0">
+          👥 사용자
+        </button>
+        <button class="admin-nav__item" 
+                data-section="stats"
+                aria-label="통계 차트 보기"
+                tabindex="0">
+          📈 통계
+        </button>
+      </nav>
+
+      <!-- 개요 섹션 -->
+      <section class="admin-section" id="admin-overview" aria-labelledby="overview-title">
+        <h2 id="overview-title" class="admin-section__title">대시보드 개요</h2>
+        <div class="admin-stats-grid">
+          <div class="admin-stat-card" role="region" aria-label="총 사용자 수">
+            <div class="admin-stat-card__icon">👥</div>
+            <div class="admin-stat-card__content">
+              <h3 class="admin-stat-card__title">총 사용자</h3>
+              <p class="admin-stat-card__value" id="total-users">-</p>
+            </div>
+          </div>
+          <div class="admin-stat-card" role="region" aria-label="작성된 글 수">
+            <div class="admin-stat-card__icon">📝</div>
+            <div class="admin-stat-card__content">
+              <h3 class="admin-stat-card__title">작성된 글</h3>
+              <p class="admin-stat-card__value" id="total-texts">-</p>
+            </div>
+          </div>
+          <div class="admin-stat-card" role="region" aria-label="트래킹 포스트 수">
+            <div class="admin-stat-card__icon">📊</div>
+            <div class="admin-stat-card__content">
+              <h3 class="admin-stat-card__title">트래킹 포스트</h3>
+              <p class="admin-stat-card__value" id="total-posts">-</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 사용자 섹션 -->
+      <section class="admin-section admin-hidden" id="admin-users" aria-labelledby="users-title">
+        <h2 id="users-title" class="admin-section__title">사용자 목록</h2>
+        <div class="admin-user-list" role="list">
+          <p class="admin-loading">사용자 데이터 로딩 중...</p>
+        </div>
+      </section>
+
+      <!-- 차트 섹션 -->
+      <section class="admin-section admin-hidden" id="admin-stats" aria-labelledby="stats-title">
+        <h2 id="stats-title" class="admin-section__title">사용 통계</h2>
+        <div class="admin-chart-container">
+          <canvas id="admin-chart-main" role="img" aria-label="사용자 활동 차트"></canvas>
+        </div>
+      </section>
     </main>
 
     <footer class="admin-footer">
@@ -27,6 +96,28 @@
     </footer>
   </div>
 
+  <!-- Firebase SDK (CDN) - compat version for compatibility -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <!-- Firebase Config -->
+  <script>
+    // Firebase 설정 및 초기화
+    const firebaseConfig = {
+      apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
+      authDomain: "text-threads.firebaseapp.com",
+      projectId: "text-threads",
+      storageBucket: "text-threads.firebasestorage.app",
+      messagingSenderId: "84225903613",
+      appId: "1:84225903613:web:e0909478d5a334d7046794"
+    };
+
+    // Firebase 초기화
+    firebase.initializeApp(firebaseConfig);
+    console.log('✅ Firebase 초기화 완료');
+  </script>
+  
   <!-- Chart.js 로컬 라이브러리 -->
   <script src="lib/chart.min.js"></script>
   
