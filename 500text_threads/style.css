@@ -7756,6 +7756,7 @@ header h1 {
 }
 
 .article-card-date,
+.article-card-count,
 .article-card-category {
   display: flex;
   align-items: center;
@@ -8082,6 +8083,7 @@ header h1 {
 }
 
 .detail-date,
+.detail-char-count,
 .detail-view-count {
   font-size: 13px;
   color: #999;

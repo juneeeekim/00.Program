@@ -9907,6 +9907,7 @@ class DualTextWriter {
             )}</div>
             <div class="article-card-meta">
                 <span class="article-card-date">📅 ${dateStr}</span>
+                <span class="article-card-count">📝 ${article.content ? article.content.length : 0}자</span>
                 <span class="article-card-category">📁 ${this.escapeHtml(
                   article.category || "미분류"
                 )}</span>
@@ -10032,6 +10033,7 @@ class DualTextWriter {
     // 데이터 채우기
     const categoryEl = document.getElementById("detail-category");
     const dateEl = document.getElementById("detail-date");
+    const charCountEl = document.getElementById("detail-char-count");
     const titleEl = document.getElementById("detail-title");
     const contentEl = document.getElementById("detail-content");
 
@@ -10042,6 +10044,9 @@ class DualTextWriter {
       dateEl.textContent = article.createdAt
         ? this.formatDateFromFirestore(article.createdAt)
         : "날짜 없음";
+    }
+    if (charCountEl) {
+      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
     }
     if (titleEl) {
       titleEl.textContent = article.title;
