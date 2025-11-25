@@ -1,0 +1,216 @@
+/* ========================================
+   Admin Dashboard - CSS Variables & Design System
+   BEM Naming Convention: .admin-*
+   ======================================== */
+
+:root {
+  /* Admin Color Palette */
+  --admin-primary: #667eea;
+  --admin-secondary: #764ba2;
+  --admin-success: #28a745;
+  --admin-danger: #dc3545;
+  --admin-warning: #ffc107;
+  --admin-info: #17a2b8;
+  
+  /* Admin Neutrals */
+  --admin-white: #ffffff;
+  --admin-gray-100: #f8f9fa;
+  --admin-gray-200: #e9ecef;
+  --admin-gray-300: #dee2e6;
+  --admin-gray-600: #6c757d;
+  --admin-gray-900: #212529;
+  
+  /* Admin Typography */
+  --admin-font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --admin-font-size-base: 16px;
+  --admin-font-size-lg: 18px;
+  --admin-font-size-xl: 24px;
+  
+  /* Admin Spacing */
+  --admin-spacing-xs: 8px;
+  --admin-spacing-sm: 12px;
+  --admin-spacing-md: 16px;
+  --admin-spacing-lg: 24px;
+  --admin-spacing-xl: 32px;
+  
+  /* Admin Border Radius */
+  --admin-radius-sm: 8px;
+  --admin-radius-md: 12px;
+  --admin-radius-lg: 16px;
+  
+  /* Admin Shadows */
+  --admin-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --admin-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --admin-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   Admin Reset & Base Styles
+   ======================================== */
+
+.admin-container * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ========================================
+   Admin Layout
+   ======================================== */
+
+body {
+  font-family: var(--admin-font-family);
+  background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-secondary) 100%);
+  min-height: 100vh;
+  color: var(--admin-gray-900);
+}
+
+.admin-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--admin-spacing-lg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================
+   Admin Header
+   ======================================== */
+
+.admin-header {
+  background: var(--admin-white);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--admin-spacing-xl);
+  margin-bottom: var(--admin-spacing-lg);
+  box-shadow: var(--admin-shadow-md);
+  text-align: center;
+}
+
+.admin-title {
+  font-size: var(--admin-font-size-xl);
+  font-weight: 700;
+  color: var(--admin-primary);
+  margin-bottom: var(--admin-spacing-sm);
+}
+
+.admin-subtitle {
+  font-size: var(--admin-font-size-base);
+  color: var(--admin-gray-600);
+  font-weight: 400;
+}
+
+/* ========================================
+   Admin Main Content
+   ======================================== */
+
+.admin-main {
+  flex: 1;
+  background: var(--admin-white);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--admin-spacing-xl);
+  box-shadow: var(--admin-shadow-md);
+  margin-bottom: var(--admin-spacing-lg);
+}
+
+.admin-welcome {
+  text-align: center;
+  padding: var(--admin-spacing-xl);
+}
+
+.admin-welcome p {
+  font-size: var(--admin-font-size-lg);
+  color: var(--admin-gray-600);
+  margin-bottom: var(--admin-spacing-md);
+  line-height: 1.6;
+}
+
+.admin-welcome p:last-child {
+  font-weight: 600;
+  color: var(--admin-success);
+  font-size: var(--admin-font-size-xl);
+}
+
+/* ========================================
+   Admin Footer
+   ======================================== */
+
+.admin-footer {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--admin-radius-md);
+  padding: var(--admin-spacing-md);
+  text-align: center;
+  color: var(--admin-white);
+  backdrop-filter: blur(10px);
+}
+
+.admin-footer p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* ========================================
+   Admin Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .admin-container {
+    padding: var(--admin-spacing-md);
+  }
+  
+  .admin-header {
+    padding: var(--admin-spacing-lg);
+  }
+  
+  .admin-main {
+    padding: var(--admin-spacing-lg);
+  }
+  
+  .admin-title {
+    font-size: 20px;
+  }
+  
+  .admin-subtitle {
+    font-size: 14px;
+  }
+}
+
+/* ========================================
+   Admin Utility Classes
+   ======================================== */
+
+.admin-hidden {
+  display: none !important;
+}
+
+.admin-text-center {
+  text-align: center;
+}
+
+.admin-text-right {
+  text-align: right;
+}
+
+.admin-mt-sm {
+  margin-top: var(--admin-spacing-sm);
+}
+
+.admin-mt-md {
+  margin-top: var(--admin-spacing-md);
+}
+
+.admin-mt-lg {
+  margin-top: var(--admin-spacing-lg);
+}
+
+.admin-mb-sm {
+  margin-bottom: var(--admin-spacing-sm);
+}
+
+.admin-mb-md {
+  margin-bottom: var(--admin-spacing-md);
+}
+
+.admin-mb-lg {
+  margin-bottom: var(--admin-spacing-lg);
+}
