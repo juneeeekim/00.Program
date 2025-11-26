@@ -9102,6 +9102,8 @@ class DualTextWriter {
   initArticleManagement() {
     // DOM 요소 참조
     this.categorySelect = document.getElementById("category-select");
+    // [Dual Filter] SNS 필터 드롭다운 참조
+    this.snsFilterSelect = document.getElementById("sns-filter-select");
     this.articleCardsGrid = document.getElementById("article-cards-grid");
     this.managementEmptyState = document.getElementById(
       "management-empty-state"
@@ -9240,6 +9242,13 @@ class DualTextWriter {
     if (this.categorySelect) {
       this.categorySelect.addEventListener("change", (e) => {
         this.filterArticlesByCategory(e.target.value);
+      });
+    }
+
+    // [Dual Filter] SNS 필터 이벤트 리스너
+    if (this.snsFilterSelect) {
+      this.snsFilterSelect.addEventListener("change", (e) => {
+        this.filterArticlesBySns(e.target.value);
       });
     }
 
@@ -9508,6 +9517,8 @@ class DualTextWriter {
           order: data.order || 0, // order 필드 (기본값 0)
           viewCount: data.viewCount || 0,
           characterCount: data.characterCount, // [Fix] 글자 수 필드 로드
+          // [Dual Filter] SNS 플랫폼 필드 (하위 호환성: platformsSNS 없으면 llmModel 사용)
+          platformsSNS: data.platformsSNS || data.llmModel || "",
         });
       });
 
@@ -9533,13 +9544,21 @@ class DualTextWriter {
       // 카테고리 드롭다운 업데이트 (렌더링 전에 업데이트)
       this.updateCategoryDropdown();
 
+      // [Dual Filter] SNS 드롭다운 업데이트
+      this.updateSnsFilterDropdown();
+
       // 현재 선택된 카테고리 필터 값 가져오기
       const currentCategory = this.categorySelect
         ? this.categorySelect.value
         : "";
 
+      // [Dual Filter] 현재 선택된 SNS 필터 값 가져오기
+      const currentSns = this.snsFilterSelect
+        ? this.snsFilterSelect.value
+        : "";
+
       // 카테고리별로 정렬 후 렌더링 (현재 선택된 필터 값 전달)
-      this.renderArticleCards(currentCategory);
+      this.renderArticleCards(currentCategory, currentSns);
 
       // 카테고리 제안 업데이트
       this.updateCategorySuggestions();
@@ -9739,6 +9758,50 @@ class DualTextWriter {
   }
 
   /**
+   * [Dual Filter] SNS 필터 드롭다운 업데이트
+   */
+  updateSnsFilterDropdown() {
+    if (!this.snsFilterSelect) return;
+
+    // 고유한 SNS 플랫폼 목록 추출
+    const snsSet = new Set();
+    this.managementArticles.forEach((article) => {
+      if (article.platformsSNS) {
+        snsSet.add(article.platformsSNS);
+      }
+    });
+
+    const sortedSns = Array.from(snsSet).sort();
+
+    // 현재 선택된 값 저장
+    const currentValue = this.snsFilterSelect.value;
+
+    // SNS 필터 드롭다운 업데이트
+    this.snsFilterSelect.innerHTML = '<option value="">전체 SNS</option>';
+    sortedSns.forEach((sns) => {
+      const option = document.createElement("option");
+      option.value = sns;
+      option.textContent = sns;
+      this.snsFilterSelect.appendChild(option);
+    });
+
+    // 이전 선택값 복원 (존재하는 경우)
+    if (currentValue && sortedSns.includes(currentValue)) {
+      this.snsFilterSelect.value = currentValue;
+    }
+  }
+
+  /**
+   * [Dual Filter] SNS별 필터링
+   */
+  filterArticlesBySns(sns) {
+    const currentCategory = this.categorySelect
+      ? this.categorySelect.value
+      : "";
+    this.renderArticleCards(currentCategory, sns);
+  }
+
+  /**
    * 레퍼런스 로더 카테고리 필터 업데이트
    */
   updateReferenceCategoryFilter() {
@@ -9771,22 +9834,34 @@ class DualTextWriter {
 
   /**
    * 카테고리별 필터링
+   * [Dual Filter] SNS 필터도 함께 적용
    */
   filterArticlesByCategory(category) {
-    this.renderArticleCards(category);
+    const currentSns = this.snsFilterSelect ? this.snsFilterSelect.value : "";
+    this.renderArticleCards(category, currentSns);
   }
 
   /**
    * 글 카드 렌더링
+   * [Dual Filter] filterCategory와 filterSns 두 가지 필터 지원
    */
-  renderArticleCards(filterCategory = "") {
+  renderArticleCards(filterCategory = "", filterSns = "") {
     if (!this.articleCardsGrid) return;
 
-    // 필터링
+    // [Dual Filter] 듀얼 필터링 (AND 조건)
     let filteredArticles = this.managementArticles;
+    
+    // 카테고리 필터
     if (filterCategory) {
-      filteredArticles = this.managementArticles.filter(
+      filteredArticles = filteredArticles.filter(
         (article) => (article.category || "미분류") === filterCategory
+      );
+    }
+    
+    // SNS 필터
+    if (filterSns) {
+      filteredArticles = filteredArticles.filter(
+        (article) => (article.platformsSNS || "") === filterSns
       );
     }
 
@@ -9807,14 +9882,21 @@ class DualTextWriter {
       });
     });
 
-    // 빈 상태 처리
+    // [Dual Filter] 빈 상태 처리 - 구체적 메시지
     if (filteredArticles.length === 0) {
       this.articleCardsGrid.innerHTML = "";
       if (this.managementEmptyState) {
         this.managementEmptyState.style.display = "block";
-        this.managementEmptyState.textContent = filterCategory
-          ? `${filterCategory} 카테고리에 글이 없습니다.`
-          : "표시할 글이 없습니다.";
+        // 필터 조합에 따른 메시지
+        if (filterCategory && filterSns) {
+          this.managementEmptyState.textContent = `${filterCategory} 카테고리의 ${filterSns} 글이 없습니다.`;
+        } else if (filterCategory) {
+          this.managementEmptyState.textContent = `${filterCategory} 카테고리에 글이 없습니다.`;
+        } else if (filterSns) {
+          this.managementEmptyState.textContent = `${filterSns} 글이 없습니다.`;
+        } else {
+          this.managementEmptyState.textContent = "표시할 글이 없습니다.";
+        }
       }
       return;
     }
@@ -9832,7 +9914,8 @@ class DualTextWriter {
         const card = this.createArticleCard(
           article,
           globalOrder++,
-          filterCategory
+          filterCategory,
+          filterSns
         );
         this.articleCardsGrid.appendChild(card);
       });
@@ -9841,8 +9924,9 @@ class DualTextWriter {
 
   /**
    * 글 카드 생성
+   * [Dual Filter] filterSns 매개변수 추가
    */
-  createArticleCard(article, orderNumber, filterCategory = "") {
+  createArticleCard(article, orderNumber, filterCategory = "", filterSns = "") {
     const card = document.createElement("div");
     card.className = "article-card";
     card.setAttribute("data-article-id", article.id);
@@ -9869,9 +9953,9 @@ class DualTextWriter {
       ? this.formatDateFromFirestore(article.createdAt)
       : "날짜 없음";
 
-    // 순서 조정 버튼 활성화 여부 확인
-    const canMoveUp = this.canMoveUp(article, filterCategory);
-    const canMoveDown = this.canMoveDown(article, filterCategory);
+    // [Dual Filter] 순서 조정 버튼 활성화 여부 확인 (듀얼 필터 적용)
+    const canMoveUp = this.canMoveUp(article, filterCategory, filterSns);
+    const canMoveDown = this.canMoveDown(article, filterCategory, filterSns);
 
     card.innerHTML = `
             <div class="article-card-header">
@@ -9950,13 +10034,21 @@ class DualTextWriter {
 
   /**
    * 위로 이동 가능 여부
+   * [Dual Filter] filterSns 매개변수 추가
    */
-  canMoveUp(article, filterCategory = "") {
-    const filtered = filterCategory
-      ? this.managementArticles.filter(
-          (a) => (a.category || "미분류") === filterCategory
-        )
-      : this.managementArticles;
+  canMoveUp(article, filterCategory = "", filterSns = "") {
+    // [Dual Filter] 듀얼 필터링 적용
+    let filtered = this.managementArticles;
+    if (filterCategory) {
+      filtered = filtered.filter(
+        (a) => (a.category || "미분류") === filterCategory
+      );
+    }
+    if (filterSns) {
+      filtered = filtered.filter(
+        (a) => (a.platformsSNS || "") === filterSns
+      );
+    }
 
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
@@ -9968,13 +10060,21 @@ class DualTextWriter {
 
   /**
    * 아래로 이동 가능 여부
+   * [Dual Filter] filterSns 매개변수 추가
    */
-  canMoveDown(article, filterCategory = "") {
-    const filtered = filterCategory
-      ? this.managementArticles.filter(
-          (a) => (a.category || "미분류") === filterCategory
-        )
-      : this.managementArticles;
+  canMoveDown(article, filterCategory = "", filterSns = "") {
+    // [Dual Filter] 듀얼 필터링 적용
+    let filtered = this.managementArticles;
+    if (filterCategory) {
+      filtered = filtered.filter(
+        (a) => (a.category || "미분류") === filterCategory
+      );
+    }
+    if (filterSns) {
+      filtered = filtered.filter(
+        (a) => (a.platformsSNS || "") === filterSns
+      );
+    }
 
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
@@ -10258,6 +10358,7 @@ class DualTextWriter {
 
   /**
    * 순서 변경
+   * [Dual Filter] 듀얼 필터링 상태에서도 정확한 순서 변경 지원
    */
   async moveArticleOrder(articleId, direction) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -10266,8 +10367,25 @@ class DualTextWriter {
       const article = this.managementArticles.find((a) => a.id === articleId);
       if (!article) return;
 
+      // [Dual Filter] 현재 필터 상태 가져오기
+      const filterCategory = this.categorySelect?.value || "";
+      const filterSns = this.snsFilterSelect?.value || "";
+
+      // [Dual Filter] 듀얼 필터링 적용
+      let filtered = this.managementArticles;
+      if (filterCategory) {
+        filtered = filtered.filter(
+          (a) => (a.category || "미분류") === filterCategory
+        );
+      }
+      if (filterSns) {
+        filtered = filtered.filter(
+          (a) => (a.platformsSNS || "") === filterSns
+        );
+      }
+
       const category = article.category || "미분류";
-      const sameCategoryArticles = this.managementArticles
+      const sameCategoryArticles = filtered
         .filter((a) => (a.category || "미분류") === category)
         .sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
 
@@ -10314,9 +10432,8 @@ class DualTextWriter {
       article.order = targetOrder;
       targetArticle.order = currentOrder;
 
-      // UI 리렌더링
-      const currentCategory = this.categorySelect?.value || "";
-      this.renderArticleCards(currentCategory);
+      // [Dual Filter] UI 리렌더링 (듀얼 필터 적용)
+      this.renderArticleCards(filterCategory, filterSns);
     } catch (error) {
       console.error("순서 변경 실패:", error);
       this.showMessage("❌ 순서 변경 중 오류가 발생했습니다.", "error");
@@ -10426,7 +10543,8 @@ class DualTextWriter {
     const title = this.scriptTitleInput?.value.trim() || "";
     const content = this.scriptContentTextarea?.value.trim() || "";
     const category = this.scriptCategoryInput?.value.trim() || "미분류";
-    const llmModel =
+    // [Dual Filter] llmModel → platformsSNS로 필드명 변경
+    const platformsSNS =
       this.scriptLlmModelSelect?.value === "custom"
         ? this.scriptLlmModelCustom?.value.trim() || ""
         : this.scriptLlmModelSelect?.value || "";
@@ -10466,8 +10584,8 @@ class DualTextWriter {
         createdAt: window.firebaseServerTimestamp(),
         updatedAt: window.firebaseServerTimestamp(),
         order: Date.now(), // 타임스탬프 기반 정렬 (최신 글이 큰 값)
-        // LLM 관련 필드 (선택사항)
-        ...(llmModel && { llmModel: llmModel }),
+        // [Dual Filter] SNS 플랫폼 필드 (선택사항)
+        ...(platformsSNS && { platformsSNS: platformsSNS }),
         ...(llmModelType && { llmModelType: llmModelType }),
       };
 
@@ -10485,6 +10603,11 @@ class DualTextWriter {
       // 카테고리 필터를 "전체 글 보기"로 리셋 (새로 저장된 글이 보이도록)
       if (this.categorySelect) {
         this.categorySelect.value = "";
+      }
+
+      // [Dual Filter] SNS 필터도 리셋
+      if (this.snsFilterSelect) {
+        this.snsFilterSelect.value = "";
       }
 
       // 목록 새로고침

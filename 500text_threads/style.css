@@ -7590,11 +7590,23 @@ header h1 {
   margin-bottom: 24px;
 }
 
-/* 카테고리 선택 드롭다운 */
+/* 듀얼 필터링 영역 */
 .management-filters {
   margin-bottom: 24px;
 }
 
+.filter-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 카테고리 선택 드롭다운 */
 .category-select {
   width: 100%;
   padding: 14px;
@@ -7616,6 +7628,41 @@ header h1 {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* SNS 플랫폼 선택 드롭다운 */
+.sns-filter-select {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 15px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  min-height: 44px;
+}
+
+.sns-filter-select:hover {
+  border-color: #764ba2;
+}
+
+.sns-filter-select:focus {
+  outline: none;
+  border-color: #764ba2;
+  box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+}
+
+/* 모바일 반응형 */
+@media (max-width: 480px) {
+  .filter-group {
+    flex-direction: column;
+  }
+  
+  .filter-item {
+    min-width: 100%;
+  }
 }
 
 /* 글 카드 그리드 */

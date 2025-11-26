@@ -1910,21 +1910,43 @@
               </div>
             </div>
 
-            <!-- 카테고리 선택 드롭다운 -->
+            <!-- 듀얼 필터링: 카테고리 + SNS 플랫폼 -->
             <div class="management-filters">
-              <label for="category-select" class="sr-only">카테고리 선택</label>
-              <select
-                id="category-select"
-                class="category-select"
-                aria-label="카테고리별 글 필터링"
-                aria-describedby="category-select-description"
-              >
-                <option value="">전체 글 보기</option>
-                <!-- 동적으로 카테고리 추가됨 -->
-              </select>
-              <span id="category-select-description" class="sr-only">
-                카테고리를 선택하면 해당 카테고리의 글만 표시됩니다.
-              </span>
+              <div class="filter-group">
+                <!-- 카테고리 필터 -->
+                <div class="filter-item">
+                  <label for="category-select" class="sr-only">카테고리 선택</label>
+                  <select
+                    id="category-select"
+                    class="category-select"
+                    aria-label="카테고리별 글 필터링"
+                    aria-describedby="category-select-description"
+                  >
+                    <option value="">전체 카테고리</option>
+                    <!-- 동적으로 카테고리 추가됨 -->
+                  </select>
+                  <span id="category-select-description" class="sr-only">
+                    카테고리를 선택하면 해당 카테고리의 글만 표시됩니다.
+                  </span>
+                </div>
+
+                <!-- SNS 플랫폼 필터 -->
+                <div class="filter-item">
+                  <label for="sns-filter-select" class="sr-only">SNS 플랫폼 선택</label>
+                  <select
+                    id="sns-filter-select"
+                    class="sns-filter-select"
+                    aria-label="SNS 플랫폼별 글 필터링"
+                    aria-describedby="sns-filter-select-description"
+                  >
+                    <option value="">전체 플랫폼</option>
+                    <!-- 동적으로 SNS 플랫폼 추가됨 -->
+                  </select>
+                  <span id="sns-filter-select-description" class="sr-only">
+                    SNS 플랫폼을 선택하면 해당 플랫폼의 글만 표시됩니다.
+                  </span>
+                </div>
+              </div>
             </div>
 
             <!-- 글 카드 그리드 -->
