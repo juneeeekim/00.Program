@@ -693,6 +693,7 @@ button:active,
   border-radius: var(--radius-lg); /* 12px for mobile? keeping consistent */
   /* Performance Optimization */
   contain: content;
+  overflow-y: visible; /* 2025-11-28: Mobile에서는 자연스러운 흐름 유지 */
 }
 
 .panel-controls {
@@ -767,8 +768,8 @@ button:active,
     grid-template-columns: 1fr 1fr; /* 2 Columns */
     gap: var(--space-5); /* 40px */
     min-height: 500px;
-    max-height: 800px;
-    height: calc(100vh - 280px);
+    max-height: calc(100vh - 280px); /* 2025-11-28: vh 기반 최대 높이 유지 */
+    height: auto; /* 2025-11-28: 고정 높이 제거하여 컨텐츠에 따라 조정 */
   }
   
   .writing-panel {
@@ -831,9 +832,12 @@ button:active,
   box-shadow: var(--shadow-xl); /* ??洹몃┝???곸슜 */
   display: flex;
   flex-direction: column;
-  min-height: 800px;
-  height: auto;
-  border-top: 4px solid transparent; /* ?곷떒 蹂대뜑 湲곕낯媛?(?섏쐞 ?대옒?ㅼ뿉???됱긽 吏?? */
+  min-height: 400px; /* 2025-11-28: 800px → 400px로 감소 */
+  height: 100%; /* 2025-11-28: 부모 높이에 맞춤 */
+  overflow-y: auto; /* 2025-11-28: 세로 스크롤 활성화 */
+  overflow-x: hidden; /* 2025-11-28: 가로 스크롤 방지 */
+  border-top: 4px solid transparent; /* ?곷떒 蹂대뜑 湲곕낯媛?(?섏쐞 ?대옒?ㅼ뿉???됱긽 吏€?? */
+  /* Touch Optimization - 이미 전역 규칙 (:50-55)에 포함되어 있음 */
 }
 
 /* ========================================
@@ -841,12 +845,10 @@ button:active,
    ========================================
    ???ㅻ뜑 ?곸뿭: flex ?덉씠?꾩썐 ?곸슜
    ???쒕ぉ + ?꾩씠肄? ?섑룊 ?뺣젹
-   ??湲????移댁슫?? ?곗륫 ?뺣젹
+   ??湲€????移댁슫?? ?곗륫 ?뺣젹
    ???섎떒 援щ텇?? 2px solid gray-200
    ======================================== */
 .panel-header {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1); /* 8px 媛꾧꺽 */
@@ -10094,4 +10096,41 @@ mark {
 /* Remove default outline for mouse users if :focus-visible is supported */
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* ========================================
+   [2025-11-28] Custom Scrollbar Styles
+   - Webkit 브라우저 (Chrome, Safari, Edge)
+   - 반응형 레이아웃 개선의 일부
+   ======================================== */
+
+/* Webkit 브라우저용 스크롤바 커스터마이징 */
+.writing-panel::-webkit-scrollbar {
+  width: 8px; /* 스크롤바 너비 */
+}
+
+.writing-panel::-webkit-scrollbar-track {
+  background: var(--color-gray-100); /* 트랙 배경색 */
+  border-radius: var(--radius-sm); /* 4px 둥근 모서리 */
+  margin: var(--space-1) 0; /* 상하 여백 */
+}
+
+.writing-panel::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400); /* 썸 색상 */
+  border-radius: var(--radius-sm); /* 4px 둥근 모서리 */
+  transition: background var(--transition-fast); /* 호버 전환 효과 */
+}
+
+.writing-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500); /* 호버 시 어두운 색 */
+}
+
+.writing-panel::-webkit-scrollbar-thumb:active {
+  background: var(--color-gray-600); /* 클릭 시 더 어두운 색 */
+}
+
+/* Firefox용 스크롤바 스타일 (선택적) */
+.writing-panel {
+  scrollbar-width: thin; /* 얇은 스크롤바 */
+  scrollbar-color: var(--color-gray-400) var(--color-gray-100); /* 썸/트랙 색상 */
 }
