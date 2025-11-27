@@ -1,0 +1,261 @@
+/* ========================================
+   CSS 변수 정의 (디자인 시스템)
+   파일: variables.css
+   작성일: 2024-11-27
+   목적: 프로젝트 전체에서 사용할 디자인 토큰 정의
+   ======================================== */
+
+:root {
+  /* ========================================
+     1. 색상 변수 (Colors)
+     ======================================== */
+  
+  /* Primary Colors - 주요 브랜드 색상 */
+  --color-primary: #667eea;
+  --color-primary-light: #8b9df0;
+  --color-primary-dark: #4a5fd4;
+  --color-primary-rgb: 102, 126, 234; /* rgba() 사용 시 */
+  
+  /* Secondary Colors - 보조 브랜드 색상 */
+  --color-secondary: #764ba2;
+  --color-secondary-light: #9a6fc4;
+  --color-secondary-dark: #5a3580;
+  --color-secondary-rgb: 118, 75, 162;
+  
+  /* Success Colors - 성공/완료 상태 */
+  --color-success: #28a745;
+  --color-success-light: #48c764;
+  --color-success-dark: #1e7e34;
+  --color-success-rgb: 40, 167, 69;
+  
+  /* Warning Colors - 경고 상태 */
+  --color-warning: #ffc107;
+  --color-warning-light: #ffcd39;
+  --color-warning-dark: #d39e00;
+  --color-warning-rgb: 255, 193, 7;
+  
+  /* Error/Danger Colors - 오류/위험 상태 */
+  --color-error: #dc3545;
+  --color-error-light: #e4606d;
+  --color-error-dark: #bd2130;
+  --color-error-rgb: 220, 53, 69;
+  
+  /* Info Colors - 정보 상태 */
+  --color-info: #17a2b8;
+  --color-info-light: #3ab5c6;
+  --color-info-dark: #117a8b;
+  --color-info-rgb: 23, 162, 184;
+  
+  /* Gray Scale - 회색 계열 (접근성 대비 4.5:1 이상 확보) */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f8f9fa;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-400: #ced4da;
+  --color-gray-500: #868e96; /* Darkened for 3:1+ contrast */
+  --color-gray-600: #6c757d;
+  --color-gray-700: #495057;
+  --color-gray-800: #343a40;
+  --color-gray-900: #212529;
+  
+  /* Text Colors - 텍스트 색상 */
+  --color-text-primary: #333333;
+  --color-text-secondary: #595959; /* Darkened for better contrast */
+  --color-text-muted: #767676; /* Darkened to meet 4.5:1 contrast */
+  --color-text-inverse: #ffffff;
+  
+  /* Background Colors - 배경 색상 */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-tertiary: #e9ecef;
+  
+  /* Border Colors - 테두리 색상 */
+  --color-border-light: #e1e5e9;
+  --color-border-default: #dee2e6;
+  --color-border-dark: #ced4da;
+  
+  /* Gradient - 그라데이션 */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  --gradient-google: linear-gradient(135deg, #4285f4, #34a853);
+
+
+  /* ========================================
+     2. 간격 변수 (Spacing) - 8의 배수 체계
+     ======================================== */
+  
+  --space-0: 0;
+  --space-1: 8px;    /* 0.5rem */
+  --space-2: 16px;   /* 1rem */
+  --space-3: 24px;   /* 1.5rem */
+  --space-4: 32px;   /* 2rem */
+  --space-5: 40px;   /* 2.5rem */
+  --space-6: 48px;   /* 3rem */
+  --space-7: 56px;   /* 3.5rem */
+  --space-8: 64px;   /* 4rem */
+  
+  /* 추가 간격 (세밀한 조정용) */
+  --space-px: 1px;
+  --space-0-5: 4px;  /* 0.25rem */
+  --space-1-5: 12px; /* 0.75rem */
+  --space-2-5: 20px; /* 1.25rem */
+
+  /* ========================================
+     3. 타이포그래피 변수 (Typography)
+     ======================================== */
+  
+  /* Font Family */
+  --font-family-base: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 
+                      'Malgun Gothic', '맑은 고딕', 'Segoe UI', Tahoma, 
+                      Geneva, Verdana, sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 
+                      'Consolas', monospace;
+  
+  /* ========================================
+     Font Size - 헤더 제목 크기 2rem(32px) 적용
+     ======================================== */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-2rem: 2rem;     /* 32px - 헤더 제목용 */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+  
+  /* Font Weight */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Line Height */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 1.75;
+
+  /* ========================================
+     4. 반경 변수 (Border Radius)
+     ======================================== */
+  
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  /* ========================================
+     5. 그림자 변수 (Box Shadow)
+     ======================================== */
+  
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+  
+  /* 컬러 그림자 */
+  --shadow-primary: 0 4px 15px rgba(102, 126, 234, 0.3);
+  --shadow-success: 0 4px 15px rgba(40, 167, 69, 0.3);
+  --shadow-error: 0 4px 15px rgba(220, 53, 69, 0.3);
+  
+  /* 인셋 그림자 */
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* ========================================
+     6. 트랜지션 변수 (Transition)
+     ======================================== */
+  
+  /* Duration */
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+  --transition-slower: 500ms;
+  
+  /* Easing */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* Combined Transitions */
+  --transition-all-fast: all 150ms ease;
+  --transition-all-normal: all 200ms ease;
+  --transition-all-slow: all 300ms ease;
+  --transition-transform: transform 200ms ease;
+  --transition-opacity: opacity 200ms ease;
+  --transition-colors: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+
+  /* ========================================
+     7. Z-Index 변수 (레이어 순서)
+     ======================================== */
+  
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+
+  /* ========================================
+     8. 접근성 변수 (Accessibility)
+     ======================================== */
+  
+  --min-touch-target: 44px;
+  --focus-ring-width: 2px;
+  --focus-ring-color: rgba(102, 126, 234, 0.5);
+  --focus-ring-offset: 2px;
+
+  /* ========================================
+     9. 컨테이너 변수 (Container)
+     ======================================== */
+  
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1200px;
+  --container-2xl: 1400px;
+}
+
+/* ========================================
+   모션 감소 설정 존중
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0.01ms;
+    --transition-normal: 0.01ms;
+    --transition-slow: 0.01ms;
+    --transition-slower: 0.01ms;
+  }
+}
+
+/* ========================================
+   다크 모드 색상 (선택적 적용)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 다크 모드에서 색상 오버라이드 */
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #a0aec0;
+    --color-text-muted: #718096;
+    
+    --color-bg-primary: #1a202c;
+    --color-bg-secondary: #2d3748;
+    --color-bg-tertiary: #4a5568;
+    
+    --color-border-light: #4a5568;
+    --color-border-default: #718096;
+    --color-border-dark: #a0aec0;
+  }
+}

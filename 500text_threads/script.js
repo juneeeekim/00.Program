@@ -1379,29 +1379,106 @@ class DualTextWriter {
   }
 
   // 탭 기능 초기화
+  /* ============================================
+     탭 접근성 기능 초기화
+     - 클릭 이벤트 리스너
+     - 키보드 화살표 키 네비게이션
+     - Enter/Space 키 활성화
+     ============================================ */
   initTabListeners() {
+    // 탭 버튼 배열 (순서 유지)
+    const tabOrder = ["writing", "saved", "tracking", "management"];
+
     this.tabButtons.forEach((button) => {
+      // 클릭 이벤트
       button.addEventListener("click", (e) => {
         const tabName = e.currentTarget.getAttribute("data-tab");
         this.switchTab(tabName);
+      });
+
+      // 키보드 네비게이션 이벤트
+      button.addEventListener("keydown", (e) => {
+        const currentTab = e.currentTarget.getAttribute("data-tab");
+        const currentIndex = tabOrder.indexOf(currentTab);
+        let newIndex = currentIndex;
+
+        switch (e.key) {
+          case "ArrowLeft":
+          case "ArrowUp":
+            // 이전 탭으로 이동 (순환)
+            e.preventDefault();
+            newIndex =
+              currentIndex === 0 ? tabOrder.length - 1 : currentIndex - 1;
+            break;
+          case "ArrowRight":
+          case "ArrowDown":
+            // 다음 탭으로 이동 (순환)
+            e.preventDefault();
+            newIndex =
+              currentIndex === tabOrder.length - 1 ? 0 : currentIndex + 1;
+            break;
+          case "Home":
+            // 첫 번째 탭으로 이동
+            e.preventDefault();
+            newIndex = 0;
+            break;
+          case "End":
+            // 마지막 탭으로 이동
+            e.preventDefault();
+            newIndex = tabOrder.length - 1;
+            break;
+          case "Enter":
+          case " ":
+            // 현재 포커스된 탭 활성화
+            e.preventDefault();
+            this.switchTab(currentTab);
+            return;
+          default:
+            return;
+        }
+
+        // 새 탭으로 포커스 이동 및 활성화
+        const newTabName = tabOrder[newIndex];
+        const newTabButton = document.querySelector(
+          `[data-tab="${newTabName}"]`
+        );
+        if (newTabButton) {
+          newTabButton.focus();
+          this.switchTab(newTabName);
+        }
       });
     });
   }
 
   /**
-   * 탭 전환 처리
+   * 탭 전환 처리 (접근성 지원)
    * @param {string} tabName - 전환할 탭 이름 ('writing', 'saved', 'tracking', 'management')
    */
   switchTab(tabName) {
-    // 모든 탭 버튼과 콘텐츠에서 active 클래스 제거
-    this.tabButtons.forEach((btn) => btn.classList.remove("active"));
+    /* ============================================
+       탭 상태 업데이트 (접근성 속성 포함)
+       - aria-selected: 선택 상태
+       - tabindex: 키보드 포커스 관리
+       ============================================ */
+    // 모든 탭 버튼에서 active 클래스 제거 및 접근성 속성 업데이트
+    this.tabButtons.forEach((btn) => {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-selected", "false");
+      btn.setAttribute("tabindex", "-1");
+    });
+
+    // 모든 탭 콘텐츠에서 active 클래스 제거
     this.tabContents.forEach((content) => content.classList.remove("active"));
 
-    // 선택된 탭 버튼과 콘텐츠에 active 클래스 추가
+    // 선택된 탭 버튼과 콘텐츠에 active 클래스 및 접근성 속성 추가
     const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
     const activeContent = document.getElementById(`${tabName}-tab`);
 
-    if (activeButton) activeButton.classList.add("active");
+    if (activeButton) {
+      activeButton.classList.add("active");
+      activeButton.setAttribute("aria-selected", "true");
+      activeButton.setAttribute("tabindex", "0");
+    }
     if (activeContent) activeContent.classList.add("active");
 
     // 저장된 글 탭으로 전환할 때 목록 새로고침
@@ -1564,33 +1641,26 @@ class DualTextWriter {
       if (this.trackingSearchInput) {
         this.trackingSearchInput.value = this.trackingSearch;
         this.trackingSearchDebounce = null;
-        this.trackingSearchInput.addEventListener("input", (e) => {
-          const val = e.target.value;
-          clearTimeout(this.trackingSearchDebounce);
-          // debounce로 성능 최적화 및 sticky 필터바 충돌 방지
-          this.trackingSearchDebounce = setTimeout(() => {
-            this.trackingSearch = val;
-            localStorage.setItem("dtw_tracking_search", this.trackingSearch);
-            // refreshUI 사용으로 통합 업데이트
-            this.refreshUI({ trackingPosts: true });
-          }, 300);
-        });
+        const handleTrackingSearch = debounce((e) => {
+          this.trackingSearch = e.target.value;
+          localStorage.setItem("dtw_tracking_search", this.trackingSearch);
+          this.refreshUI({ trackingPosts: true });
+        }, 300);
+        this.trackingSearchInput.addEventListener(
+          "input",
+          handleTrackingSearch
+        );
       }
       // ✅ 저장된 글 검색 이벤트 바인딩
       if (this.savedSearchInput) {
         this.savedSearchInput.value = this.savedSearch;
         this.savedSearchDebounce = null;
-        this.savedSearchInput.addEventListener("input", (e) => {
-          const val = e.target.value;
-          clearTimeout(this.savedSearchDebounce);
-          // debounce로 성능 최적화 (600ms)
-          this.savedSearchDebounce = setTimeout(() => {
-            this.savedSearch = val;
-            localStorage.setItem("dtw_saved_search", this.savedSearch);
-            // 저장된 글 목록 새로고침
-            this.renderSavedTexts();
-          }, 600);
-        });
+        const handleSavedSearch = debounce((e) => {
+          this.savedSearch = e.target.value;
+          localStorage.setItem("dtw_saved_search", this.savedSearch);
+          this.renderSavedTexts();
+        }, 600);
+        this.savedSearchInput.addEventListener("input", handleSavedSearch);
       }
       if (this.trackingUpdatedFromInput) {
         this.trackingUpdatedFromInput.value = this.trackingUpdatedFrom;
@@ -1627,7 +1697,7 @@ class DualTextWriter {
         if (!input) return;
         if (this.rangeFilters[key] !== undefined)
           input.value = this.rangeFilters[key];
-        input.addEventListener("input", (e) => {
+        const handleRangeInput = debounce((e, key) => {
           const val = e.target.value;
           if (val === "") {
             delete this.rangeFilters[key];
@@ -1639,7 +1709,9 @@ class DualTextWriter {
             JSON.stringify(this.rangeFilters)
           );
           this.refreshUI({ trackingPosts: true });
-        });
+        }, 300);
+
+        input.addEventListener("input", (e) => handleRangeInput(e, key));
       };
       bindRange(this.minViewsInput, "minViews");
       bindRange(this.maxViewsInput, "maxViews");
@@ -2090,6 +2162,15 @@ class DualTextWriter {
     this.referenceTypeFilterContainer.style.display = show ? "flex" : "none";
   }
 
+  /* ========================================
+     4-7. 글자 수 실시간 카운트 함수 (개선)
+     ========================================
+     ✓ 글자 수 실시간 업데이트
+     ✓ 500자 초과 시 경고 스타일 적용 (.character-counter.warning)
+     ✓ 제한 초과 시 오류 스타일 적용 (.character-counter.error)
+     ✓ 진행바 색상 변경
+     ✓ 버튼 상태 업데이트
+     ======================================== */
   updateCharacterCount(panel) {
     const textInput = panel === "ref" ? this.refTextInput : this.editTextInput;
     const currentCount =
@@ -2103,24 +2184,67 @@ class DualTextWriter {
     const text = textInput.value;
     const currentLength = this.getKoreanCharacterCount(text);
 
+    // 글자 수 표시 업데이트
     currentCount.textContent = currentLength;
 
-    // Update progress bar
+    // 진행바 업데이트
     const progress = (currentLength / this.maxLength) * 100;
     progressFill.style.width = `${Math.min(progress, 100)}%`;
 
-    // Update character count color based on usage
-    if (currentLength >= this.maxLength * 0.9) {
+    // --- 4-7 개선: character-counter 컨테이너에 경고/오류 클래스 적용 ---
+    // 글자 수 카운터 컨테이너 찾기 (부모 요소)
+    const counterContainer = currentCount.closest(".character-counter");
+
+    // 제한 초과 시 오류 스타일 (maxLength 초과)
+    if (currentLength > this.maxLength) {
       currentCount.className = "danger";
-    } else if (currentLength >= this.maxLength * 0.7) {
+      if (counterContainer) {
+        counterContainer.classList.remove("warning");
+        counterContainer.classList.add("error");
+      }
+      // 진행바 오류 색상
+      progressFill.style.backgroundColor = "var(--color-error)";
+    }
+    // 500자 초과 또는 90% 이상 시 경고 스타일
+    else if (currentLength >= 500 || currentLength >= this.maxLength * 0.9) {
       currentCount.className = "warning";
-    } else {
+      if (counterContainer) {
+        counterContainer.classList.remove("error");
+        counterContainer.classList.add("warning");
+      }
+      // 진행바 경고 색상
+      progressFill.style.backgroundColor = "var(--color-warning)";
+    }
+    // 70% 이상 시 주의 표시
+    else if (currentLength >= this.maxLength * 0.7) {
+      currentCount.className = "warning";
+      if (counterContainer) {
+        counterContainer.classList.remove("warning", "error");
+      }
+      // 진행바 기본 색상
+      progressFill.style.backgroundColor = "";
+    }
+    // 정상 상태
+    else {
       currentCount.className = "";
+      if (counterContainer) {
+        counterContainer.classList.remove("warning", "error");
+      }
+      // 진행바 기본 색상
+      progressFill.style.backgroundColor = "";
     }
 
-    // Update button states
+    // 버튼 상태 업데이트
     saveBtn.disabled = currentLength === 0;
     downloadBtn.disabled = currentLength === 0;
+
+    // --- 4-7 개선: 스크린 리더 알림 (500자 초과 시 1회만) ---
+    if (currentLength === 501 && !this._warned500Chars) {
+      this._warned500Chars = true;
+      this.announceToScreenReader("글자 수가 500자를 초과했습니다.");
+    } else if (currentLength < 500) {
+      this._warned500Chars = false;
+    }
   }
 
   getKoreanCharacterCount(text) {
@@ -2642,7 +2766,75 @@ class DualTextWriter {
     }
   }
 
-  // [Refactoring] AuthManager로 위임
+  /* ========================================
+     2-4. 로그인/로그아웃 JavaScript 연동
+     ========================================
+     ✅ 로그인 버튼 클릭 이벤트 정상 작동
+     ✅ 로그인 상태 UI 변경 정상 작동
+     ✅ 에러 발생 시 사용자 피드백 표시
+     ======================================== */
+
+  /**
+   * [2-4] 사용자명 로그인 처리
+   * - 로그인 버튼 클릭 시 호출
+   * - AuthManager로 위임하여 Firebase 익명 로그인 수행
+   * - 에러 발생 시 사용자에게 피드백 표시
+   */
+  async login() {
+    // 입력값 검증
+    const username = this.usernameInput?.value?.trim();
+
+    if (!username) {
+      this.showMessage("사용자명을 입력해주세요.", "warning");
+      this.usernameInput?.focus();
+      return;
+    }
+
+    if (username.length < 2) {
+      this.showMessage("사용자명은 2자 이상 입력해주세요.", "warning");
+      this.usernameInput?.focus();
+      return;
+    }
+
+    // 로그인 버튼 비활성화 (중복 클릭 방지)
+    if (this.loginBtn) {
+      this.loginBtn.disabled = true;
+      this.loginBtn.textContent = "로그인 중...";
+    }
+
+    try {
+      // AuthManager를 통한 로그인 처리
+      const result = await this.authManager.login(username);
+
+      if (result.success) {
+        // 사용자명을 Firestore에 저장
+        await this.saveUsernameToFirestore(result.user.uid, username);
+
+        // 기존 로컬 데이터 마이그레이션 확인
+        await this.checkAndMigrateLocalData(result.user.uid);
+
+        this.showMessage(`${username}님, 환영합니다!`, "success");
+      }
+    } catch (error) {
+      console.error("로그인 처리 중 오류:", error);
+      this.showMessage(
+        "로그인 중 오류가 발생했습니다. 다시 시도해주세요.",
+        "error"
+      );
+    } finally {
+      // 로그인 버튼 복원
+      if (this.loginBtn) {
+        this.loginBtn.disabled = false;
+        this.loginBtn.textContent = "로그인";
+      }
+    }
+  }
+
+  /**
+   * [2-4] 로그아웃 처리 - AuthManager로 위임
+   * - 로그아웃 전 임시 저장 수행
+   * - 사용자 확인 후 로그아웃 진행
+   */
   async logout() {
     if (
       confirm("로그아웃하시겠습니까? 현재 작성 중인 내용은 임시 저장됩니다.")
@@ -2654,10 +2846,20 @@ class DualTextWriter {
 
   // Firebase Auth가 자동으로 토큰 관리함
 
+  /**
+   * [2-4] 로그인 인터페이스 표시
+   * - 로그아웃 상태일 때 호출
+   * - 로그인 폼 표시, 사용자 정보 숨김
+   */
   showLoginInterface() {
     this.loginForm.style.display = "block";
     this.userInfo.style.display = "none";
     this.mainContent.style.display = "block"; // 로그인 없이도 메인 콘텐츠 표시
+
+    // 입력 필드 초기화
+    if (this.usernameInput) {
+      this.usernameInput.value = "";
+    }
   }
 
   // 기존 로컬 스토리지 데이터를 Firestore로 마이그레이션
@@ -2720,6 +2922,12 @@ class DualTextWriter {
       `${localTexts.length}개의 텍스트를 Firestore로 마이그레이션했습니다.`
     );
   }
+  /**
+   * [2-4] 로그인 상태 UI 변경 - 사용자 인터페이스 표시
+   * - 로그인 성공 시 호출
+   * - 로그인 폼 숨김, 사용자 정보 표시
+   * - 사용자명 또는 이메일 표시
+   */
   showUserInterface() {
     this.loginForm.style.display = "none";
     this.userInfo.style.display = "block";
@@ -2730,7 +2938,29 @@ class DualTextWriter {
       const displayName =
         this.currentUser.displayName || this.currentUser.email || "사용자";
       this.usernameDisplay.textContent = displayName;
+
+      // 접근성: 스크린 리더에 로그인 상태 알림
+      this.announceToScreenReader(`${displayName}님으로 로그인되었습니다.`);
     }
+  }
+
+  /**
+   * [2-4] 스크린 리더 알림 (접근성 지원)
+   * @param {string} message - 알림 메시지
+   */
+  announceToScreenReader(message) {
+    const announcement = document.createElement("div");
+    announcement.setAttribute("role", "status");
+    announcement.setAttribute("aria-live", "polite");
+    announcement.setAttribute("aria-atomic", "true");
+    announcement.className = "sr-only";
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+
+    // 알림 후 제거
+    setTimeout(() => {
+      announcement.remove();
+    }, 1000);
   }
 
   clearAllData() {
@@ -3106,14 +3336,21 @@ class DualTextWriter {
             ? textContent.substring(0, 100) + "..."
             : textContent;
 
+        /* [5-1] 삭제된 항목 카드 - 시맨틱 태그 적용 */
         return `
-        <div class="saved-item deleted-item" data-id="${item.id}">
-          <div class="saved-item-header">
-            <span class="saved-item-type">${typeLabel}</span>
-            <span class="saved-item-date">삭제일: ${date}</span>
+        <article class="saved-item-card saved-item-card--deleted" data-id="${
+          item.id
+        }">
+          <header class="saved-item-card__header">
+            <div class="saved-item-card__badges">
+              <span class="saved-item-card__type-badge">${typeLabel}</span>
+            </div>
+            <div class="saved-item-card__meta">삭제일: ${date}</div>
+          </header>
+          <div class="saved-item-card__content">
+            <div class="saved-item-card__text">${this.escapeHtml(preview)}</div>
           </div>
-          <div class="saved-item-content">${this.escapeHtml(preview)}</div>
-          <div class="saved-item-actions">
+          <footer class="saved-item-card__footer">
             <button class="btn-restore" onclick="window.dualTextWriter.restoreText('${
               item.id
             }')" aria-label="글 복원">
@@ -3124,8 +3361,8 @@ class DualTextWriter {
             }')" aria-label="영구 삭제">
               🔥 영구 삭제
             </button>
-          </div>
-        </div>
+          </footer>
+        </article>
       `;
       })
       .join("");
@@ -3708,13 +3945,39 @@ class DualTextWriter {
       : "";
     const highlightedContent = this.highlightText(item.content, searchTerm);
 
+    /* ========================================
+       [5-1] 카드 구조 개선 - 시맨틱 태그 적용
+       ========================================
+       - <article> 시맨틱 태그 사용
+       - <header> / content / <footer> 영역 구분
+       - 배지 영역 분리 (.saved-item-card__badges)
+       
+       [5-7] 접근성 구현 - 2024-11-27
+       - 카드에 적절한 heading 레벨 (<h4>) 추가
+       - 버튼에 aria-label 추가 (완료)
+       - 더보기 메뉴 aria-expanded 상태 관리 (완료)
+       ======================================== */
     return `
-        <div class="saved-item ${index === 0 ? "new" : ""}" data-item-id="${
-      item.id
-    }" role="article" aria-labelledby="item-header-${item.id}">
-            <div class="saved-item-header" id="item-header-${item.id}">
-                <div class="saved-item-header-left">
-                    <span class="saved-item-type" aria-label="${
+        <article class="saved-item-card ${
+          index === 0 ? "new" : ""
+        }" data-item-id="${item.id}" aria-labelledby="card-heading-${item.id}">
+            <!-- [5-1] 카드 헤더 영역 -->
+            <header class="saved-item-card__header" id="item-header-${item.id}">
+                <!-- [5-7] 접근성: 카드에 적절한 heading 레벨 추가 -->
+                <h4 class="saved-item-card__heading sr-only" id="card-heading-${
+                  item.id
+                }">
+                    ${
+                      (item.type || "edit") === "reference"
+                        ? "레퍼런스 글"
+                        : "작성 글"
+                    }: ${
+      item.topic ? this.escapeHtml(item.topic) : "제목 없음"
+    } (${item.date})
+                </h4>
+                <!-- 배지 영역 (타입, 주제) 분리 -->
+                <div class="saved-item-card__badges">
+                    <span class="saved-item-card__type-badge" aria-label="${
                       (item.type || "edit") === "reference"
                         ? "레퍼런스 글"
                         : "작성 글"
@@ -3724,117 +3987,307 @@ class DualTextWriter {
                     ${refTypeBadgeHtml}
                     ${usageBadgeHtml}
                 </div>
-            </div>
-            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">
-                ${metaText}
+                <!-- 메타 정보 -->
+                <div class="saved-item-card__meta" aria-label="메타 정보: ${metaText}">
+                    ${metaText}
+                    ${
+                      linkedRefBadge
+                        ? `<span class="meta-separator">·</span>${linkedRefBadge}`
+                        : ""
+                    }
+                    ${
+                      usedInEditsBadge
+                        ? `<span class="meta-separator">·</span>${usedInEditsBadge}`
+                        : ""
+                    }
+                </div>
+            </header>
+            
+            <!-- [5-1] 카드 콘텐츠 영역 -->
+            <div class="saved-item-card__content">
                 ${
-                  linkedRefBadge
-                    ? `<span class="meta-separator">·</span>${linkedRefBadge}`
+                  item.topic
+                    ? `<div class="saved-item-card__topic" aria-label="주제: ${this.escapeHtml(
+                        item.topic
+                      )}">🏷️ ${highlightedTopic}</div>`
                     : ""
                 }
-                ${
-                  usedInEditsBadge
-                    ? `<span class="meta-separator">·</span>${usedInEditsBadge}`
-                    : ""
-                }
-            </div>
-            ${
-              item.topic
-                ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(
-                    item.topic
-                  )}">🏷️ ${highlightedTopic}</div>`
-                : ""
-            }
-            ${snsPlatformsHtml}
-            <div class="saved-item-content ${
-              expanded ? "expanded" : ""
-            }" aria-label="본문 내용">${highlightedContent}</div>
-            <button class="saved-item-toggle" data-action="toggle" data-item-id="${
-              item.id
-            }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
+                ${snsPlatformsHtml}
+                <div class="saved-item-card__text ${
+                  expanded ? "expanded" : ""
+                }" aria-label="본문 내용">${highlightedContent}</div>
+                <button class="saved-item-card__toggle" data-action="toggle" data-item-id="${
+                  item.id
+                }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
       expanded ? "내용 접기" : "내용 더보기"
     }">${expanded ? "접기" : "더보기"}</button>
-            ${
-              timelineHtml
-                ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>`
-                : ""
-            }
-            <div class="saved-item-actions actions--primary" role="group" aria-label="카드 작업 버튼">
-                <button class="action-button btn-primary" data-action="edit" data-type="${
-                  item.type || "edit"
-                }" data-item-id="${item.id}" aria-label="${
-      (item.type || "edit") === "reference"
-        ? "레퍼런스 글 편집"
-        : "작성 글 편집"
-    }">편집</button>
-                <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${
-                  item.id
-                }" aria-label="트래킹 데이터 입력">📊 데이터 입력</button>
-                <div class="llm-validation-dropdown" style="position: relative; display: inline-block;">
-                    <button class="action-button btn-llm-main" data-action="llm-validation" data-item-id="${
-                      item.id
-                    }" aria-label="LLM 검증 메뉴">🔍 LLM 검증</button>
-                    <div class="llm-dropdown-menu">
-                        <button class="llm-option" data-llm="chatgpt" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🤖</span>
-                                    <span class="llm-name">ChatGPT</span>
-                                    <span class="llm-description">SNS 후킹 분석</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="gemini" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🧠</span>
-                                    <span class="llm-name">Gemini</span>
-                                    <span class="llm-description">심리적 후킹 분석</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="perplexity" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🔎</span>
-                                    <span class="llm-name">Perplexity</span>
-                                    <span class="llm-description">트렌드 검증</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="grok" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🚀</span>
-                                    <span class="llm-name">Grok</span>
-                                    <span class="llm-description">임팩트 최적화</span>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-                <div class="more-menu actions--more">
-                    <button class="more-menu-btn" data-action="more" data-item-id="${
-                      item.id
-                    }" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
-                    <div class="more-menu-list" role="menu" aria-label="기타 작업">
-                        <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${
-                          item.id
-                        }" aria-label="글 삭제">삭제</button>
-                    </div>
-                </div>
+                ${
+                  timelineHtml
+                    ? `<div class="saved-item-card__tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>`
+                    : ""
+                }
             </div>
-        </div>
+            
+            <!-- ========================================
+                 [5-4] 카드 푸터 스타일 개선 - 2024-11-27
+                 ========================================
+                 ✓ 글자 수 표시
+                 ✓ 플랫폼 배지 (이모지 아이콘)
+                 ✓ 액션 버튼 그룹 (편집, 복사, 더보기)
+                 ======================================== -->
+            <footer class="saved-item-card__footer" role="group" aria-label="카드 정보 및 작업 버튼">
+                <!-- [5-4] 푸터 정보 영역 (글자 수 + 플랫폼 배지) -->
+                <div class="saved-item-card__footer-info">
+                    <!-- 글자 수 표시 -->
+                    <span class="saved-item-card__char-count" aria-label="글자 수: ${
+                      item.characterCount
+                    }자">
+                        <span class="char-icon" aria-hidden="true">📝</span>
+                        <span class="char-value">${item.characterCount}</span>
+                        <span class="char-unit">자</span>
+                    </span>
+                    <!-- 플랫폼 배지 (이모지 아이콘) -->
+                    ${this.renderFooterPlatformBadges(item)}
+                </div>
+                
+                <!-- [5-4] 액션 버튼 그룹 -->
+                <div class="saved-item-card__footer-actions">
+                    <!-- 편집 버튼 -->
+                    <button class="saved-item-card__action-btn saved-item-card__action-btn--edit" 
+                            data-action="edit" 
+                            data-type="${item.type || "edit"}" 
+                            data-item-id="${item.id}" 
+                            aria-label="${
+                              (item.type || "edit") === "reference"
+                                ? "레퍼런스 글 편집"
+                                : "작성 글 편집"
+                            }">
+                        <span class="btn-icon" aria-hidden="true">✏️</span>
+                        <span class="btn-text">편집</span>
+                    </button>
+                    <!-- 복사 버튼 -->
+                    <button class="saved-item-card__action-btn saved-item-card__action-btn--copy" 
+                            data-action="copy" 
+                            data-item-id="${item.id}" 
+                            aria-label="글 내용 복사">
+                        <span class="btn-icon" aria-hidden="true">📋</span>
+                        <span class="btn-text">복사</span>
+                    </button>
+                    <!-- 트래킹 데이터 입력 버튼 -->
+                    <button class="saved-item-card__action-btn" 
+                            data-action="add-tracking" 
+                            data-item-id="${item.id}" 
+                            aria-label="트래킹 데이터 입력">
+                        <span class="btn-icon" aria-hidden="true">📊</span>
+                        <span class="btn-text">데이터</span>
+                    </button>
+                    <!-- LLM 검증 드롭다운 -->
+                    <div class="llm-validation-dropdown" style="position: relative; display: inline-block;">
+                        <button class="saved-item-card__action-btn" 
+                                data-action="llm-validation" 
+                                data-item-id="${item.id}" 
+                                aria-label="LLM 검증 메뉴" 
+                                aria-haspopup="true" 
+                                aria-expanded="false">
+                            <span class="btn-icon" aria-hidden="true">🔍</span>
+                            <span class="btn-text">검증</span>
+                        </button>
+                        <div class="llm-dropdown-menu" role="menu" aria-label="LLM 검증 옵션">
+                            <button class="llm-option" role="menuitem" data-llm="chatgpt" data-item-id="${
+                              item.id
+                            }">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🤖</span>
+                                        <span class="llm-name">ChatGPT</span>
+                                        <span class="llm-description">SNS 후킹 분석</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button class="llm-option" role="menuitem" data-llm="gemini" data-item-id="${
+                              item.id
+                            }">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🧠</span>
+                                        <span class="llm-name">Gemini</span>
+                                        <span class="llm-description">심리적 후킹 분석</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button class="llm-option" role="menuitem" data-llm="perplexity" data-item-id="${
+                              item.id
+                            }">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🔎</span>
+                                        <span class="llm-name">Perplexity</span>
+                                        <span class="llm-description">트렌드 검증</span>
+                                    </div>
+                                </div>
+                            </button>
+                            <button class="llm-option" role="menuitem" data-llm="grok" data-item-id="${
+                              item.id
+                            }">
+                                <div class="llm-option-content">
+                                    <div class="llm-option-header">
+                                        <span class="llm-icon">🚀</span>
+                                        <span class="llm-name">Grok</span>
+                                        <span class="llm-description">임팩트 최적화</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 더보기 메뉴 -->
+                    <div class="more-menu actions--more">
+                        <button class="saved-item-card__action-btn saved-item-card__action-btn--more" 
+                                data-action="more" 
+                                data-item-id="${item.id}" 
+                                aria-haspopup="true" 
+                                aria-expanded="false" 
+                                aria-label="기타 작업 메뉴 열기">
+                            <span class="btn-icon" aria-hidden="true">⋯</span>
+                        </button>
+                        <div class="more-menu-list" role="menu" aria-label="기타 작업">
+                            <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${
+                              item.id
+                            }" aria-label="글 삭제">🗑️ 삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </article>
         `;
   }
+
+  /* ========================================
+     [5-4] 푸터 플랫폼 배지 렌더링 함수 - 2024-11-27
+     ========================================
+     카드 푸터에 표시할 플랫폼 배지(이모지 아이콘)를 생성합니다.
+     
+     @param {Object} item - 저장된 글 아이템
+     @returns {string} - 플랫폼 배지 HTML 문자열
+     ======================================== */
+  renderFooterPlatformBadges(item) {
+    // 작성 글이 아니거나 플랫폼이 없으면 빈 문자열 반환
+    const isEdit = (item.type || "edit") === "edit";
+    if (
+      !isEdit ||
+      !Array.isArray(item.platforms) ||
+      item.platforms.length === 0
+    ) {
+      return "";
+    }
+
+    // 유효한 플랫폼 ID만 필터링
+    const validPlatformIds = DualTextWriter.SNS_PLATFORMS.map((p) => p.id);
+    const validPlatforms = item.platforms
+      .filter((platformId) => validPlatformIds.includes(platformId))
+      .map((platformId) => {
+        const platform = DualTextWriter.SNS_PLATFORMS.find(
+          (p) => p.id === platformId
+        );
+        return platform
+          ? { id: platformId, name: platform.name, icon: platform.icon }
+          : null;
+      })
+      .filter(Boolean);
+
+    // 유효한 플랫폼이 없으면 빈 문자열 반환
+    if (validPlatforms.length === 0) {
+      return "";
+    }
+
+    // 플랫폼 배지 HTML 생성 (이모지 아이콘만 표시)
+    const badgesHtml = validPlatforms
+      .map(
+        (p) =>
+          `<span class="saved-item-card__platform-badge" 
+                 data-platform="${this.escapeHtml(p.id)}" 
+                 role="img" 
+                 aria-label="${this.escapeHtml(p.name)} 플랫폼" 
+                 title="${this.escapeHtml(p.name)}">${p.icon}</span>`
+      )
+      .join("");
+
+    return `
+      <div class="saved-item-card__footer-platforms" role="list" aria-label="게시 플랫폼">
+        ${badgesHtml}
+      </div>
+    `;
+  }
+
+  /* ========================================
+     [5-4] 클립보드 복사 함수 - 2024-11-27
+     ========================================
+     저장된 글 내용을 클립보드에 복사하고 시각적 피드백 제공
+     
+     @param {string} itemId - 복사할 글의 ID
+     @param {HTMLElement} button - 클릭된 복사 버튼 요소
+     @returns {Promise<void>}
+     ======================================== */
+  async copyTextToClipboard(itemId, button) {
+    try {
+      // 저장된 글에서 해당 아이템 찾기
+      const item = this.savedTexts.find((t) => t.id === itemId);
+      if (!item) {
+        this.showMessage("복사할 글을 찾을 수 없습니다.", "error");
+        return;
+      }
+
+      // 클립보드에 복사
+      await navigator.clipboard.writeText(item.content);
+
+      // 시각적 피드백: 버튼 상태 변경
+      if (button) {
+        const originalIcon = button.querySelector(".btn-icon");
+        const originalText = button.querySelector(".btn-text");
+
+        // 복사 완료 상태로 변경
+        button.classList.add("copied");
+        if (originalIcon) originalIcon.textContent = "✅";
+        if (originalText) originalText.textContent = "복사됨";
+        button.setAttribute("aria-label", "복사 완료");
+
+        // 2초 후 원래 상태로 복원
+        setTimeout(() => {
+          button.classList.remove("copied");
+          if (originalIcon) originalIcon.textContent = "📋";
+          if (originalText) originalText.textContent = "복사";
+          button.setAttribute("aria-label", "글 내용 복사");
+        }, 2000);
+      }
+
+      // 성공 메시지 표시
+      this.showMessage("글이 클립보드에 복사되었습니다.", "success");
+      console.log("복사 완료:", { itemId, contentLength: item.content.length });
+    } catch (error) {
+      console.error("클립보드 복사 실패:", error);
+
+      // 폴백: execCommand 사용 (구형 브라우저 지원)
+      try {
+        const item = this.savedTexts.find((t) => t.id === itemId);
+        if (item) {
+          const textArea = document.createElement("textarea");
+          textArea.value = item.content;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textArea);
+          this.showMessage("글이 클립보드에 복사되었습니다.", "success");
+          return;
+        }
+      } catch (fallbackError) {
+        console.error("폴백 복사도 실패:", fallbackError);
+      }
+
+      this.showMessage("복사에 실패했습니다. 다시 시도해주세요.", "error");
+    }
+  }
+
   // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
   /**
    * 미트래킹 글 확인 및 일괄 마이그레이션 버튼 업데이트
@@ -4587,13 +5040,19 @@ class DualTextWriter {
         // 이벤트 전파 제어: outsideClickHandler가 메뉴를 닫기 전에 삭제 실행
         event.preventDefault();
         event.stopPropagation();
+        /* ========================================
+           [5-7] 접근성: 더보기 메뉴 aria-expanded 상태 관리
+           ======================================== */
         // 메뉴 닫기
         const moreMenuContainer = button.closest(".more-menu");
         if (moreMenuContainer) {
           const menu = moreMenuContainer.querySelector(".more-menu-list");
           if (menu) {
             menu.classList.remove("open");
-            const menuBtn = moreMenuContainer.querySelector(".more-menu-btn");
+            // [5-7] 접근성: 더보기 버튼의 aria-expanded 상태 업데이트
+            const menuBtn = moreMenuContainer.querySelector(
+              ".saved-item-card__action-btn--more, .more-menu-btn"
+            );
             if (menuBtn) {
               menuBtn.setAttribute("aria-expanded", "false");
             }
@@ -4601,6 +5060,16 @@ class DualTextWriter {
         }
         // 삭제 실행
         this.deleteText(itemId);
+      } else if (action === "copy") {
+        /* ========================================
+           [5-4] 복사 버튼 액션 - 2024-11-27
+           ========================================
+           글 내용을 클립보드에 복사하고 시각적 피드백 제공
+           ======================================== */
+        console.log("복사 액션 실행:", { itemId });
+        event.preventDefault();
+        event.stopPropagation();
+        this.copyTextToClipboard(itemId, button);
       } else if (action === "track") {
         console.log("트래킹 액션 실행:", { itemId });
         this.startTrackingFromSaved(itemId);
@@ -4668,18 +5137,31 @@ class DualTextWriter {
       if (!isInsideMenu && !isInsideLLMDropdown) {
         // 이벤트 처리 순서 보장: 메뉴 열기 동작이 완료된 후 실행되도록 setTimeout 사용
         setTimeout(() => {
+          /* ========================================
+             [5-7] 접근성: 더보기 메뉴 aria-expanded 상태 관리
+             ======================================== */
           // More 메뉴 닫기
           document.querySelectorAll(".more-menu-list.open").forEach((el) => {
             el.classList.remove("open");
             // 포커스 트랩 해제: 메뉴 버튼으로 포커스 복원
             const menuBtn = el.previousElementSibling;
-            if (menuBtn && menuBtn.classList.contains("more-menu-btn")) {
+            // [5-7] 접근성: 두 가지 클래스 모두 지원 (saved-item-card__action-btn--more, more-menu-btn)
+            if (
+              menuBtn &&
+              (menuBtn.classList.contains(
+                "saved-item-card__action-btn--more"
+              ) ||
+                menuBtn.classList.contains("more-menu-btn"))
+            ) {
               menuBtn.setAttribute("aria-expanded", "false");
               menuBtn.focus();
             }
           });
+          // [5-7] 접근성: 두 가지 선택자 모두 처리
           document
-            .querySelectorAll('.more-menu-btn[aria-expanded="true"]')
+            .querySelectorAll(
+              '.saved-item-card__action-btn--more[aria-expanded="true"], .more-menu-btn[aria-expanded="true"]'
+            )
             .forEach((btn) => btn.setAttribute("aria-expanded", "false"));
 
           // LLM 드롭다운 닫기
@@ -4795,6 +5277,9 @@ class DualTextWriter {
       );
     }
 
+    /* ========================================
+       [5-7] 접근성: ESC 키로 메뉴 닫기 및 aria-expanded 상태 관리
+       ======================================== */
     // ESC 키로 메뉴 닫기
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -4802,7 +5287,12 @@ class DualTextWriter {
         if (openMenu) {
           openMenu.classList.remove("open");
           const menuBtn = openMenu.previousElementSibling;
-          if (menuBtn && menuBtn.classList.contains("more-menu-btn")) {
+          // [5-7] 접근성: 두 가지 클래스 모두 지원
+          if (
+            menuBtn &&
+            (menuBtn.classList.contains("saved-item-card__action-btn--more") ||
+              menuBtn.classList.contains("more-menu-btn"))
+          ) {
             menuBtn.setAttribute("aria-expanded", "false");
             menuBtn.focus();
           }
@@ -9553,9 +10043,7 @@ class DualTextWriter {
         : "";
 
       // [Dual Filter] 현재 선택된 SNS 필터 값 가져오기
-      const currentSns = this.snsFilterSelect
-        ? this.snsFilterSelect.value
-        : "";
+      const currentSns = this.snsFilterSelect ? this.snsFilterSelect.value : "";
 
       // 카테고리별로 정렬 후 렌더링 (현재 선택된 필터 값 전달)
       this.renderArticleCards(currentCategory, currentSns);
@@ -9678,12 +10166,12 @@ class DualTextWriter {
 
             if (needsOrderUpdate || needsCharCountUpdate) {
               const updateData = {};
-              
+
               if (needsOrderUpdate) {
                 article.order = newOrder;
                 updateData.order = newOrder;
               }
-              
+
               if (needsCharCountUpdate) {
                 const count = (article.content || "").length;
                 article.characterCount = count;
@@ -9850,14 +10338,14 @@ class DualTextWriter {
 
     // [Dual Filter] 듀얼 필터링 (AND 조건)
     let filteredArticles = this.managementArticles;
-    
+
     // 카테고리 필터
     if (filterCategory) {
       filteredArticles = filteredArticles.filter(
         (article) => (article.category || "미분류") === filterCategory
       );
     }
-    
+
     // SNS 필터
     if (filterSns) {
       filteredArticles = filteredArticles.filter(
@@ -9991,7 +10479,9 @@ class DualTextWriter {
             )}</div>
             <div class="article-card-meta">
                 <span class="article-card-date">📅 ${dateStr}</span>
-                <span class="article-card-count">📝 ${article.content ? article.content.length : 0}자</span>
+                <span class="article-card-count">📝 ${
+                  article.content ? article.content.length : 0
+                }자</span>
                 <span class="article-card-category">📁 ${this.escapeHtml(
                   article.category || "미분류"
                 )}</span>
@@ -10045,9 +10535,7 @@ class DualTextWriter {
       );
     }
     if (filterSns) {
-      filtered = filtered.filter(
-        (a) => (a.platformsSNS || "") === filterSns
-      );
+      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
     }
 
     const sameCategory = filtered.filter(
@@ -10071,9 +10559,7 @@ class DualTextWriter {
       );
     }
     if (filterSns) {
-      filtered = filtered.filter(
-        (a) => (a.platformsSNS || "") === filterSns
-      );
+      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
     }
 
     const sameCategory = filtered.filter(
@@ -10146,7 +10632,9 @@ class DualTextWriter {
         : "날짜 없음";
     }
     if (charCountEl) {
-      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
+      charCountEl.textContent = `📝 ${
+        article.content ? article.content.length : 0
+      }자`;
     }
     if (titleEl) {
       titleEl.textContent = article.title;
@@ -10379,9 +10867,7 @@ class DualTextWriter {
         );
       }
       if (filterSns) {
-        filtered = filtered.filter(
-          (a) => (a.platformsSNS || "") === filterSns
-        );
+        filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
       }
 
       const category = article.category || "미분류";
