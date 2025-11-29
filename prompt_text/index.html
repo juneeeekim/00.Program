@@ -1,10 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="PromptHub - AI 프롬프트 관리 플랫폼" />
-    <meta name="keywords" content="AI, 프롬프트, 관리, ChatGPT, Claude, Gemini" />
+    <meta
+      name="keywords"
+      content="AI, 프롬프트, 관리, ChatGPT, Claude, Gemini"
+    />
     <meta name="theme-color" content="#667eea" />
     <title>PromptHub - AI 프롬프트 관리 플랫폼</title>
 
@@ -25,7 +28,8 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #333;
         min-height: 100vh;
@@ -159,7 +163,7 @@
       }
 
       .auth-divider::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 50%;
         left: 0;
@@ -235,7 +239,7 @@
       }
 
       .tab-button.active::after {
-        content: '';
+        content: "";
         position: absolute;
         bottom: -2px;
         left: 0;
@@ -382,20 +386,39 @@
         <form class="auth-form" onsubmit="return false;">
           <div class="input-group">
             <label for="email-input">이메일</label>
-            <input type="email" id="email-input" placeholder="your@email.com" aria-label="이메일" required />
+            <input
+              type="email"
+              id="email-input"
+              placeholder="your@email.com"
+              aria-label="이메일"
+              required
+            />
           </div>
           <div class="input-group">
             <label for="password-input">비밀번호</label>
-            <input type="password" id="password-input" placeholder="••••••••" aria-label="비밀번호" required />
+            <input
+              type="password"
+              id="password-input"
+              placeholder="••••••••"
+              aria-label="비밀번호"
+              required
+            />
           </div>
-          <button type="button" id="login-btn" class="btn-primary">로그인</button>
+          <button type="button" id="login-btn" class="btn-primary">
+            로그인
+          </button>
 
           <div class="auth-divider">
             <span>또는</span>
           </div>
 
           <button type="button" id="google-login-btn" class="btn-google">
-            <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right: 8px">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              style="margin-right: 8px"
+            >
               <path
                 fill="#4285F4"
                 d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
@@ -416,7 +439,9 @@
             Google로 시작하기
           </button>
 
-          <button type="button" id="signup-btn" class="btn-secondary">회원가입</button>
+          <button type="button" id="signup-btn" class="btn-secondary">
+            회원가입
+          </button>
         </form>
         <p class="auth-note">테스트: test@example.com / test123</p>
       </section>
@@ -428,7 +453,10 @@
           <div class="user-info">
             <div class="user-avatar">👤</div>
             <div>
-              <div style="font-weight: 600; font-size: 16px" id="user-email"></div>
+              <div
+                style="font-weight: 600; font-size: 16px"
+                id="user-email"
+              ></div>
               <div style="font-size: 13px; opacity: 0.9">PromptHub 사용자</div>
             </div>
           </div>
@@ -437,39 +465,106 @@
 
         <!-- 탭 네비게이션 -->
         <div class="tab-navigation" role="tablist">
-          <button class="tab-button active" data-tab="register" role="tab" aria-selected="true" aria-controls="tab-register">
+          <button
+            class="tab-button active"
+            data-tab="register"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-register"
+          >
             ✏️ 프롬프트 등록
           </button>
-          <button class="tab-button" data-tab="use" role="tab" aria-selected="false" aria-controls="tab-use">
+          <button
+            class="tab-button"
+            data-tab="use"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-use"
+          >
             🚀 프롬프트 사용
           </button>
-          <button class="tab-button" data-tab="search" role="tab" aria-selected="false" aria-controls="tab-search">
+          <button
+            class="tab-button"
+            data-tab="search"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-search"
+          >
             🔍 프롬프트 검색
           </button>
         </div>
 
         <!-- 탭 1: 프롬프트 등록 -->
-        <div id="tab-register" class="tab-content active" role="tabpanel" aria-labelledby="tab-register">
-          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">✨ 새 프롬프트 등록</h2>
-          <button id="create-prompt-btn" class="btn-primary" style="margin-bottom: 20px;">➕ 새 프롬프트 생성</button>
+        <div
+          id="tab-register"
+          class="tab-content active"
+          role="tabpanel"
+          aria-labelledby="tab-register"
+        >
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333">
+            ✨ 새 프롬프트 등록
+          </h2>
+          <button
+            id="create-prompt-btn"
+            class="btn-primary"
+            style="margin-bottom: 20px"
+          >
+            ➕ 새 프롬프트 생성
+          </button>
           <div id="prompt-form"></div>
         </div>
 
         <!-- 탭 2: 프롬프트 사용 -->
-        <div id="tab-use" class="tab-content" role="tabpanel" aria-labelledby="tab-use">
-          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🚀 프롬프트 사용</h2>
-          
+        <div
+          id="tab-use"
+          class="tab-content"
+          role="tabpanel"
+          aria-labelledby="tab-use"
+        >
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333">
+            🚀 프롬프트 사용
+          </h2>
+
           <!-- 카테고리 선택 영역 -->
-          <div id="category-selector" style="margin-bottom: 24px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">카테고리 선택</label>
-            <select id="category-select-dropdown" style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; background: white; cursor: pointer;">
+          <div id="category-selector" style="margin-bottom: 24px">
+            <label
+              style="
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 600;
+                color: #333;
+              "
+              >카테고리 선택</label
+            >
+            <select
+              id="category-select-dropdown"
+              style="
+                width: 100%;
+                padding: 14px;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 15px;
+                background: white;
+                cursor: pointer;
+              "
+            >
               <option value="">카테고리를 선택하세요...</option>
             </select>
           </div>
 
           <!-- 프롬프트 카드 그리드 -->
-          <div id="prompt-cards-container" style="display: none; margin-bottom: 24px;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;" id="prompt-cards-grid"></div>
+          <div
+            id="prompt-cards-container"
+            style="display: none; margin-bottom: 24px"
+          >
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 16px;
+              "
+              id="prompt-cards-grid"
+            ></div>
           </div>
 
           <!-- 실행 패널 -->
@@ -477,14 +572,27 @@
         </div>
 
         <!-- 탭 3: 프롬프트 검색 -->
-        <div id="tab-search" class="tab-content" role="tabpanel" aria-labelledby="tab-search">
-          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333;">🔍 프롬프트 검색</h2>
-          <div style="margin-bottom: 20px;">
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="프롬프트 제목, 내용, 카테고리로 검색..." 
-              style="width: 100%; padding: 14px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;"
+        <div
+          id="tab-search"
+          class="tab-content"
+          role="tabpanel"
+          aria-labelledby="tab-search"
+        >
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333">
+            🔍 프롬프트 검색
+          </h2>
+          <div style="margin-bottom: 20px">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="프롬프트 제목, 내용, 카테고리로 검색..."
+              style="
+                width: 100%;
+                padding: 14px;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 15px;
+              "
             />
           </div>
           <div id="prompt-search-results"></div>
@@ -501,24 +609,26 @@
     <script>
       // Firebase 설정
       const firebaseConfig = {
-        apiKey: 'AIzaSyDudPHjfulRRa6wtOzC8nkPE8wnhya__DE',
-        authDomain: 'prompthub-production.firebaseapp.com',
-        projectId: 'prompthub-production',
-        storageBucket: 'prompthub-production.firebasestorage.app',
-        messagingSenderId: '547082323866',
-        appId: '1:547082323866:web:b44da017391ab6dd2cdc23',
-        measurementId: 'G-NRW0VKLWDK'
+        apiKey: "AIzaSyDudPHjfulRRa6wtOzC8nkPE8wnhya__DE",
+        authDomain: "prompthub-production.firebaseapp.com",
+        projectId: "prompthub-production",
+        storageBucket: "prompthub-production.firebasestorage.app",
+        messagingSenderId: "547082323866",
+        appId: "1:547082323866:web:b44da017391ab6dd2cdc23",
+        measurementId: "G-NRW0VKLWDK",
       };
 
       // Firebase 초기화
       try {
         if (!firebase.apps.length) {
           firebase.initializeApp(firebaseConfig);
-          console.log('✅ Firebase 초기화 완료');
+          console.log("✅ Firebase 초기화 완료");
         }
       } catch (error) {
-        console.error('❌ Firebase 초기화 실패:', error);
-        alert('Firebase 설정을 확인해주세요. firebase-config.js 파일을 참고하세요.');
+        console.error("❌ Firebase 초기화 실패:", error);
+        alert(
+          "Firebase 설정을 확인해주세요. firebase-config.js 파일을 참고하세요."
+        );
       }
 
       // 전역 변수
@@ -528,57 +638,61 @@
 
       // DOM 요소
       const elements = {
-        loading: document.getElementById('loading'),
-        authSection: document.getElementById('auth-section'),
-        mainContent: document.getElementById('main-content'),
-        emailInput: document.getElementById('email-input'),
-        passwordInput: document.getElementById('password-input'),
-        loginBtn: document.getElementById('login-btn'),
-        signupBtn: document.getElementById('signup-btn'),
-        logoutBtn: document.getElementById('logout-btn'),
-        userEmail: document.getElementById('user-email'),
-        createPromptBtn: document.getElementById('create-prompt-btn'),
-        promptLibrary: document.getElementById('prompt-library'),
-        promptForm: document.getElementById('prompt-form'),
-        executionPanel: document.getElementById('execution-panel'),
-        tabButtons: document.querySelectorAll('.tab-button'),
-        tabContents: document.querySelectorAll('.tab-content'),
-        searchInput: document.getElementById('search-input'),
-        promptUseList: document.getElementById('prompt-use-list'),
-        promptSearchResults: document.getElementById('prompt-search-results'),
-        promptSelectDropdown: document.getElementById('prompt-select-dropdown'),
-        categorySelectDropdown: document.getElementById('category-select-dropdown'),
-        promptCardsContainer: document.getElementById('prompt-cards-container'),
-        promptCardsGrid: document.getElementById('prompt-cards-grid')
+        loading: document.getElementById("loading"),
+        authSection: document.getElementById("auth-section"),
+        mainContent: document.getElementById("main-content"),
+        emailInput: document.getElementById("email-input"),
+        passwordInput: document.getElementById("password-input"),
+        loginBtn: document.getElementById("login-btn"),
+        signupBtn: document.getElementById("signup-btn"),
+        logoutBtn: document.getElementById("logout-btn"),
+        userEmail: document.getElementById("user-email"),
+        createPromptBtn: document.getElementById("create-prompt-btn"),
+        promptLibrary: document.getElementById("prompt-library"),
+        promptForm: document.getElementById("prompt-form"),
+        executionPanel: document.getElementById("execution-panel"),
+        tabButtons: document.querySelectorAll(".tab-button"),
+        tabContents: document.querySelectorAll(".tab-content"),
+        searchInput: document.getElementById("search-input"),
+        promptUseList: document.getElementById("prompt-use-list"),
+        promptSearchResults: document.getElementById("prompt-search-results"),
+        promptSelectDropdown: document.getElementById("prompt-select-dropdown"),
+        categorySelectDropdown: document.getElementById(
+          "category-select-dropdown"
+        ),
+        promptCardsContainer: document.getElementById("prompt-cards-container"),
+        promptCardsGrid: document.getElementById("prompt-cards-grid"),
       };
 
       // 현재 활성 탭
-      let currentTab = 'register';
+      let currentTab = "register";
 
       // LLM 모델 옵션
       const llmModelOptions = [
-        { value: 'gpt-5', label: 'OpenAI GPT-5' },
-        { value: 'gpt-5.1', label: 'OpenAI GPT-5.1' },
-        { value: 'gpt-4o-mini', label: 'OpenAI GPT-4o mini' },
-        { value: 'gpt-4.1', label: 'OpenAI GPT-4.1' },
-        { value: 'gpt-4o', label: 'OpenAI GPT-4o' },
-        { value: 'gpt-3.5-turbo', label: 'OpenAI GPT-3.5 Turbo' },
-        { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
-        { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-        { value: 'claude-4-opus', label: 'Claude 4 Opus' },
-        { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-        { value: 'grok-4', label: 'Grok 4' },
-        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-        { value: 'mistral-large', label: 'Mistral Large' },
-        { value: 'custom', label: '직접 입력' }
+        { value: "gpt-5", label: "OpenAI GPT-5" },
+        { value: "gpt-5.1", label: "OpenAI GPT-5.1" },
+        { value: "gpt-4o-mini", label: "OpenAI GPT-4o mini" },
+        { value: "gpt-4.1", label: "OpenAI GPT-4.1" },
+        { value: "gpt-4o", label: "OpenAI GPT-4o" },
+        { value: "gpt-3.5-turbo", label: "OpenAI GPT-3.5 Turbo" },
+        { value: "claude-sonnet-4.5", label: "Claude Sonnet 4.5" },
+        { value: "claude-3-5-sonnet", label: "Claude 3.5 Sonnet" },
+        { value: "claude-4-opus", label: "Claude 4 Opus" },
+        { value: "claude-3-opus", label: "Claude 3 Opus" },
+        { value: "grok-4", label: "Grok 4" },
+        { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+        { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+        { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+        { value: "mistral-large", label: "Mistral Large" },
+        { value: "custom", label: "직접 입력" },
       ];
 
       function renderLlmModelField({ selectId, customInputId }) {
         const optionsHtml = llmModelOptions
-          .map(({ value, label }) => `<option value="${value}">${label}</option>`)
-          .join('');
+          .map(
+            ({ value, label }) => `<option value="${value}">${label}</option>`
+          )
+          .join("");
 
         return `
           <div>
@@ -612,7 +726,11 @@
         `;
       }
 
-      function setupLlmModelSelector({ selectId, customInputId, initialValue }) {
+      function setupLlmModelSelector({
+        selectId,
+        customInputId,
+        initialValue,
+      }) {
         const selectEl = document.getElementById(selectId);
         const customEl = document.getElementById(customInputId);
         if (!selectEl || !customEl) return;
@@ -620,31 +738,33 @@
         const applyInitialValue = () => {
           if (!initialValue) {
             selectEl.value = llmModelOptions[0].value;
-            customEl.style.display = 'none';
-            customEl.value = '';
+            customEl.style.display = "none";
+            customEl.value = "";
             return;
           }
 
-          const exists = llmModelOptions.some(option => option.value === initialValue);
+          const exists = llmModelOptions.some(
+            (option) => option.value === initialValue
+          );
           if (exists) {
             selectEl.value = initialValue;
-            customEl.style.display = 'none';
-            customEl.value = '';
+            customEl.style.display = "none";
+            customEl.value = "";
           } else {
-            selectEl.value = 'custom';
-            customEl.style.display = 'block';
+            selectEl.value = "custom";
+            customEl.style.display = "block";
             customEl.value = initialValue;
           }
         };
 
         applyInitialValue();
 
-        selectEl.addEventListener('change', () => {
-          if (selectEl.value === 'custom') {
-            customEl.style.display = 'block';
+        selectEl.addEventListener("change", () => {
+          if (selectEl.value === "custom") {
+            customEl.style.display = "block";
             customEl.focus();
           } else {
-            customEl.style.display = 'none';
+            customEl.style.display = "none";
           }
         });
       }
@@ -652,9 +772,9 @@
       function getSelectedLlmModel(selectId, customInputId) {
         const selectEl = document.getElementById(selectId);
         const customEl = document.getElementById(customInputId);
-        if (!selectEl) return '미지정';
-        if (selectEl.value === 'custom') {
-          return (customEl?.value.trim() || '미지정');
+        if (!selectEl) return "미지정";
+        if (selectEl.value === "custom") {
+          return customEl?.value.trim() || "미지정";
         }
         return selectEl.value;
       }
@@ -662,13 +782,13 @@
       function setLlmModeValue(inputId, value) {
         const input = document.getElementById(inputId);
         if (input) {
-          input.value = value || '';
+          input.value = value || "";
         }
       }
 
       function getLlmModeValue(inputId) {
         const input = document.getElementById(inputId);
-        return input ? (input.value.trim() || '일반') : '일반';
+        return input ? input.value.trim() || "일반" : "일반";
       }
 
       // 초기화
@@ -676,72 +796,87 @@
         try {
           // 초기 로딩 표시
           showLoading();
-          
+
           auth = firebase.auth();
           db = firebase.firestore();
 
           // 인증 상태 감지 (타임아웃 추가)
           const authStateTimeout = setTimeout(() => {
-            console.warn('⚠️ 인증 상태 확인이 지연되고 있습니다. 로딩을 숨깁니다.');
+            console.warn(
+              "⚠️ 인증 상태 확인이 지연되고 있습니다. 로딩을 숨깁니다."
+            );
             hideLoading();
             showAuthSection();
           }, 5000); // 5초 타임아웃
 
-          auth.onAuthStateChanged((user) => {
-            clearTimeout(authStateTimeout); // 타임아웃 취소
-            handleAuthStateChanged(user);
-          }, (error) => {
-            clearTimeout(authStateTimeout); // 타임아웃 취소
-            console.error('❌ 인증 상태 확인 실패:', error);
-            hideLoading();
-            showAuthSection();
-            showError('인증 상태를 확인하는데 실패했습니다. 페이지를 새로고침해주세요.');
-          });
+          auth.onAuthStateChanged(
+            (user) => {
+              clearTimeout(authStateTimeout); // 타임아웃 취소
+              handleAuthStateChanged(user);
+            },
+            (error) => {
+              clearTimeout(authStateTimeout); // 타임아웃 취소
+              console.error("❌ 인증 상태 확인 실패:", error);
+              hideLoading();
+              showAuthSection();
+              showError(
+                "인증 상태를 확인하는데 실패했습니다. 페이지를 새로고침해주세요."
+              );
+            }
+          );
 
           // 이벤트 리스너
-          elements.loginBtn.addEventListener('click', handleLogin);
-          elements.signupBtn.addEventListener('click', handleSignup);
-          elements.logoutBtn.addEventListener('click', handleLogout);
-          elements.createPromptBtn.addEventListener('click', handleCreatePrompt);
-          
+          elements.loginBtn.addEventListener("click", handleLogin);
+          elements.signupBtn.addEventListener("click", handleSignup);
+          elements.logoutBtn.addEventListener("click", handleLogout);
+          elements.createPromptBtn.addEventListener(
+            "click",
+            handleCreatePrompt
+          );
+
           // Google 로그인 버튼 이벤트 리스너 추가
-          const googleLoginBtn = document.getElementById('google-login-btn');
+          const googleLoginBtn = document.getElementById("google-login-btn");
           if (googleLoginBtn) {
-            googleLoginBtn.addEventListener('click', handleGoogleLogin);
+            googleLoginBtn.addEventListener("click", handleGoogleLogin);
           }
 
           // 탭 전환 이벤트 리스너
-          elements.tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-              const tabName = button.getAttribute('data-tab');
+          elements.tabButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const tabName = button.getAttribute("data-tab");
               switchTab(tabName);
             });
           });
 
           // 검색 입력 이벤트 리스너
           if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', handleSearch);
+            elements.searchInput.addEventListener("input", handleSearch);
           }
 
           // 카테고리 선택 드롭다운 이벤트 리스너
           if (elements.categorySelectDropdown) {
-            elements.categorySelectDropdown.addEventListener('change', handleCategorySelect);
+            elements.categorySelectDropdown.addEventListener(
+              "change",
+              handleCategorySelect
+            );
           }
 
           // Enter 키 처리
-          elements.emailInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') elements.passwordInput.focus();
+          elements.emailInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") elements.passwordInput.focus();
           });
-          elements.passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
+          elements.passwordInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleLogin();
           });
 
-          console.log('✅ 앱 초기화 완료');
+          console.log("✅ 앱 초기화 완료");
         } catch (error) {
-          console.error('❌ 초기화 실패:', error);
+          console.error("❌ 초기화 실패:", error);
           hideLoading();
           showAuthSection();
-          showError('앱 초기화에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          showError(
+            "앱 초기화에 실패했습니다: " + (error.message || "알 수 없는 오류")
+          );
         }
       }
 
@@ -762,25 +897,25 @@
       // 탭 전환
       function switchTab(tabName, options = {}) {
         currentTab = tabName;
-        
+
         // 탭 버튼 상태 업데이트
-        elements.tabButtons.forEach(button => {
-          const isActive = button.getAttribute('data-tab') === tabName;
-          button.classList.toggle('active', isActive);
-          button.setAttribute('aria-selected', isActive);
+        elements.tabButtons.forEach((button) => {
+          const isActive = button.getAttribute("data-tab") === tabName;
+          button.classList.toggle("active", isActive);
+          button.setAttribute("aria-selected", isActive);
         });
 
         // 탭 콘텐츠 표시/숨김
-        elements.tabContents.forEach(content => {
+        elements.tabContents.forEach((content) => {
           const isActive = content.id === `tab-${tabName}`;
-          content.classList.toggle('active', isActive);
+          content.classList.toggle("active", isActive);
         });
 
         // 탭별 데이터 로드 (skipReload 옵션이 없을 때만)
         if (!options.skipReload) {
-          if (tabName === 'use') {
+          if (tabName === "use") {
             loadPromptsForUse();
-          } else if (tabName === 'search') {
+          } else if (tabName === "search") {
             loadPromptsForSearch();
           }
         }
@@ -792,7 +927,7 @@
         const password = elements.passwordInput.value;
 
         if (!email || !password) {
-          showError('이메일과 비밀번호를 입력해주세요.');
+          showError("이메일과 비밀번호를 입력해주세요.");
           return;
         }
 
@@ -800,9 +935,9 @@
 
         try {
           await auth.signInWithEmailAndPassword(email, password);
-          showSuccess('로그인 성공!');
+          showSuccess("로그인 성공!");
         } catch (error) {
-          console.error('로그인 실패:', error);
+          console.error("로그인 실패:", error);
           showError(getErrorMessage(error.code));
         } finally {
           hideLoading();
@@ -815,12 +950,12 @@
         const password = elements.passwordInput.value;
 
         if (!email || !password) {
-          showError('이메일과 비밀번호를 입력해주세요.');
+          showError("이메일과 비밀번호를 입력해주세요.");
           return;
         }
 
         if (password.length < 6) {
-          showError('비밀번호는 6자 이상이어야 합니다.');
+          showError("비밀번호는 6자 이상이어야 합니다.");
           return;
         }
 
@@ -828,9 +963,9 @@
 
         try {
           await auth.createUserWithEmailAndPassword(email, password);
-          showSuccess('회원가입 성공!');
+          showSuccess("회원가입 성공!");
         } catch (error) {
-          console.error('회원가입 실패:', error);
+          console.error("회원가입 실패:", error);
           showError(getErrorMessage(error.code));
         } finally {
           hideLoading();
@@ -845,40 +980,56 @@
           const provider = new firebase.auth.GoogleAuthProvider();
           // 추가 옵션 설정 (선택사항)
           provider.setCustomParameters({
-            prompt: 'select_account' // 계정 선택 화면 표시
+            prompt: "select_account", // 계정 선택 화면 표시
           });
-          
+
           const result = await auth.signInWithPopup(provider);
           const user = result.user;
-          
+
           // 신규 사용자 여부 확인 (추가 정보가 없으면 신규 사용자로 간주)
           const isNewUser = result.additionalUserInfo?.isNewUser;
-          
+
           if (isNewUser) {
-            showSuccess(`환영합니다! ${user.displayName || user.email}님, 회원가입이 완료되었습니다.`);
-            console.log('✅ Google 회원가입 성공:', user.uid, user.email);
+            showSuccess(
+              `환영합니다! ${
+                user.displayName || user.email
+              }님, 회원가입이 완료되었습니다.`
+            );
+            console.log("✅ Google 회원가입 성공:", user.uid, user.email);
           } else {
-            showSuccess(`환영합니다! ${user.displayName || user.email}님, 로그인되었습니다.`);
-            console.log('✅ Google 로그인 성공:', user.uid, user.email);
+            showSuccess(
+              `환영합니다! ${
+                user.displayName || user.email
+              }님, 로그인되었습니다.`
+            );
+            console.log("✅ Google 로그인 성공:", user.uid, user.email);
           }
         } catch (error) {
-          console.error('❌ Google 로그인/회원가입 실패:', error);
-          console.error('에러 코드:', error.code);
-          console.error('에러 메시지:', error.message);
-          
+          console.error("❌ Google 로그인/회원가입 실패:", error);
+          console.error("에러 코드:", error.code);
+          console.error("에러 메시지:", error.message);
+
           // 상세한 에러 처리
-          if (error.code === 'auth/popup-closed-by-user') {
-            showError('로그인 창이 닫혔습니다. 다시 시도해주세요.');
-          } else if (error.code === 'auth/popup-blocked') {
-            showError('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
-          } else if (error.code === 'auth/operation-not-allowed') {
-            showError('Google 로그인이 활성화되지 않았습니다. Firebase Console에서 Google 로그인을 활성화해주세요.');
-          } else if (error.code === 'auth/unauthorized-domain') {
-            showError('승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.');
-          } else if (error.code === 'auth/network-request-failed') {
-            showError('네트워크 연결을 확인해주세요.');
+          if (error.code === "auth/popup-closed-by-user") {
+            showError("로그인 창이 닫혔습니다. 다시 시도해주세요.");
+          } else if (error.code === "auth/popup-blocked") {
+            showError(
+              "팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요."
+            );
+          } else if (error.code === "auth/operation-not-allowed") {
+            showError(
+              "Google 로그인이 활성화되지 않았습니다. Firebase Console에서 Google 로그인을 활성화해주세요."
+            );
+          } else if (error.code === "auth/unauthorized-domain") {
+            showError(
+              "승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요."
+            );
+          } else if (error.code === "auth/network-request-failed") {
+            showError("네트워크 연결을 확인해주세요.");
           } else {
-            const errorMsg = getErrorMessage(error.code) || `Google 로그인/회원가입에 실패했습니다. (${error.code})`;
+            const errorMsg =
+              getErrorMessage(error.code) ||
+              `Google 로그인/회원가입에 실패했습니다. (${error.code})`;
             showError(errorMsg);
           }
         } finally {
@@ -892,12 +1043,12 @@
 
         try {
           await auth.signOut();
-          showSuccess('로그아웃되었습니다.');
-          elements.emailInput.value = '';
-          elements.passwordInput.value = '';
+          showSuccess("로그아웃되었습니다.");
+          elements.emailInput.value = "";
+          elements.passwordInput.value = "";
         } catch (error) {
-          console.error('로그아웃 실패:', error);
-          showError('로그아웃에 실패했습니다.');
+          console.error("로그아웃 실패:", error);
+          showError("로그아웃에 실패했습니다.");
         } finally {
           hideLoading();
         }
@@ -914,39 +1065,47 @@
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 8px; font-weight: 600;">내용</label>
-                        <textarea id="prompt-content" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
+                        <textarea id="prompt-content" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 300px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;"></textarea>
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
                         <input type="text" id="prompt-category" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
                     </div>
-                    ${renderLlmModelField({ selectId: 'llm-model-select', customInputId: 'llm-model-custom' })}
-                    ${renderLlmModeField({ inputId: 'llm-mode-input' })}
+                    ${renderLlmModelField({
+                      selectId: "llm-model-select",
+                      customInputId: "llm-model-custom",
+                    })}
+                    ${renderLlmModeField({ inputId: "llm-mode-input" })}
                     <div style="display: flex; gap: 12px;">
                         <button onclick="savePrompt()" class="btn-primary" style="flex: 1;">💾 저장</button>
                         <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
                     </div>
                 </div>
             `;
-        elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+        elements.promptForm.scrollIntoView({ behavior: "smooth" });
         setupLlmModelSelector({
-          selectId: 'llm-model-select',
-          customInputId: 'llm-model-custom',
-          initialValue: llmModelOptions[0].value
+          selectId: "llm-model-select",
+          customInputId: "llm-model-custom",
+          initialValue: llmModelOptions[0].value,
         });
-        setLlmModeValue('llm-mode-input', '일반');
+        setLlmModeValue("llm-mode-input", "일반");
       }
 
       // 프롬프트 저장
       window.savePrompt = async function () {
-        const title = document.getElementById('prompt-title').value.trim();
-        const content = document.getElementById('prompt-content').value.trim();
-        const category = document.getElementById('prompt-category').value.trim();
-        const llmModel = getSelectedLlmModel('llm-model-select', 'llm-model-custom');
-        const llmMode = getLlmModeValue('llm-mode-input');
+        const title = document.getElementById("prompt-title").value.trim();
+        const content = document.getElementById("prompt-content").value.trim();
+        const category = document
+          .getElementById("prompt-category")
+          .value.trim();
+        const llmModel = getSelectedLlmModel(
+          "llm-model-select",
+          "llm-model-custom"
+        );
+        const llmMode = getLlmModeValue("llm-mode-input");
 
         if (!title || !content) {
-          showError('제목과 내용을 입력해주세요.');
+          showError("제목과 내용을 입력해주세요.");
           return;
         }
 
@@ -955,18 +1114,22 @@
         try {
           // Firestore 규칙에 맞는 경로 사용: users/{userId}/prompts/{promptId}
           const userId = currentUser.uid;
-          const promptRef = db.collection('users').doc(userId).collection('prompts').doc();
+          const promptRef = db
+            .collection("users")
+            .doc(userId)
+            .collection("prompts")
+            .doc();
           const promptId = promptRef.id;
-          
+
           // 같은 카테고리의 프롬프트 개수 확인하여 displayOrder 설정
           const categoryPrompts = await db
-            .collection('users')
+            .collection("users")
             .doc(userId)
-            .collection('prompts')
-            .where('category', '==', category || '기타')
-            .where('isDeleted', '==', false)
+            .collection("prompts")
+            .where("category", "==", category || "기타")
+            .where("isDeleted", "==", false)
             .get();
-          
+
           const displayOrder = categoryPrompts.size; // 새 프롬프트는 마지막 순서
 
           // Firestore 규칙에서 요구하는 필수 필드 포함
@@ -974,9 +1137,9 @@
             id: promptId,
             title,
             content,
-            category: category || '기타',
-            llmModel: llmModel || '미지정',
-            llmMode: llmMode || '일반',
+            category: category || "기타",
+            llmModel: llmModel || "미지정",
+            llmMode: llmMode || "일반",
             userId: userId,
             userEmail: currentUser.email,
             currentVersion: 1, // 초기 버전 (숫자로 저장, 하위 호환성 유지)
@@ -984,43 +1147,45 @@
             isPublic: false,
             displayOrder: displayOrder, // 카테고리별 순서
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
 
           // 초기 버전을 versions 서브컬렉션에 저장
-          const versionRef = promptRef.collection('versions').doc();
+          const versionRef = promptRef.collection("versions").doc();
           await versionRef.set({
             id: versionRef.id,
-            version: 'v1', // 문자열 형식으로 저장
+            version: "v1", // 문자열 형식으로 저장
             title: title,
             content: content,
-            category: category || '기타',
-            llmModel: llmModel || '미지정',
-            llmMode: llmMode || '일반',
-            changelog: '초기 버전 생성', // 필수 필드 추가
+            category: category || "기타",
+            llmModel: llmModel || "미지정",
+            llmMode: llmMode || "일반",
+            changelog: "초기 버전 생성", // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdBy: userId
+            createdBy: userId,
           });
 
-          showSuccess('프롬프트가 저장되었습니다!');
-          elements.promptForm.innerHTML = '';
-          
+          showSuccess("프롬프트가 저장되었습니다!");
+          elements.promptForm.innerHTML = "";
+
           // 모든 탭용 데이터 다시 로드
           await loadPromptsForAllTabs();
-          
+
           // 저장된 프롬프트를 바로 사용할 수 있도록 사용 탭으로 전환
           // 사용자에게 선택권 제공: 사용 탭으로 이동하거나 등록 탭에 유지
-          const useNow = confirm('프롬프트가 저장되었습니다!\n\n바로 사용하시겠습니까?');
+          const useNow = confirm(
+            "프롬프트가 저장되었습니다!\n\n바로 사용하시겠습니까?"
+          );
           if (useNow) {
-            switchTab('use');
+            switchTab("use");
             // 저장된 프롬프트의 카테고리를 찾아서 선택
             setTimeout(() => {
-              const savedPrompt = allPrompts.find(p => p.id === promptId);
+              const savedPrompt = allPrompts.find((p) => p.id === promptId);
               if (savedPrompt && elements.categorySelectDropdown) {
-                const category = savedPrompt.category || '기타';
+                const category = savedPrompt.category || "기타";
                 elements.categorySelectDropdown.value = category;
                 handleCategorySelect();
-                
+
                 // 카테고리 로드 후 프롬프트 선택
                 setTimeout(() => {
                   selectPromptForUse(promptId);
@@ -1029,8 +1194,11 @@
             }, 300);
           }
         } catch (error) {
-          console.error('저장 실패:', error);
-          showError('프롬프트 저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("저장 실패:", error);
+          showError(
+            "프롬프트 저장에 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -1038,7 +1206,7 @@
 
       // 프롬프트 취소
       window.cancelPrompt = function () {
-        elements.promptForm.innerHTML = '';
+        elements.promptForm.innerHTML = "";
       };
 
       // 모든 탭용 프롬프트 로드 (공통)
@@ -1050,29 +1218,29 @@
         try {
           const userId = currentUser.uid;
           const snapshot = await db
-            .collection('users')
+            .collection("users")
             .doc(userId)
-            .collection('prompts')
-            .where('isDeleted', '==', false)
-            .orderBy('createdAt', 'desc')
+            .collection("prompts")
+            .where("isDeleted", "==", false)
+            .orderBy("createdAt", "desc")
             .get();
 
           allPrompts = [];
           snapshot.forEach((doc) => {
             allPrompts.push({
               id: doc.id,
-              ...doc.data()
+              ...doc.data(),
             });
           });
 
           // 현재 탭에 맞게 데이터 표시
-          if (currentTab === 'use') {
+          if (currentTab === "use") {
             loadPromptsForUse();
-          } else if (currentTab === 'search') {
+          } else if (currentTab === "search") {
             loadPromptsForSearch();
           }
         } catch (error) {
-          console.error('프롬프트 로드 실패:', error);
+          console.error("프롬프트 로드 실패:", error);
           handleLoadError(error);
         }
       }
@@ -1089,7 +1257,7 @@
           // 카테고리 드롭다운 업데이트
           const categoryDropdown = elements.categorySelectDropdown;
           const currentCategory = categoryDropdown.value; // 현재 선택된 카테고리 저장
-          
+
           // 기존 카테고리 옵션 제거 (첫 번째 옵션 제외)
           while (categoryDropdown.options.length > 1) {
             categoryDropdown.remove(1);
@@ -1097,20 +1265,23 @@
 
           if (allPrompts.length === 0) {
             categoryDropdown.disabled = true;
-            categoryDropdown.innerHTML = '<option value="">프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</option>';
-            elements.promptCardsContainer.style.display = 'none';
-            elements.executionPanel.innerHTML = '';
+            categoryDropdown.innerHTML =
+              '<option value="">프롬프트가 없습니다. 먼저 프롬프트를 등록해주세요.</option>';
+            elements.promptCardsContainer.style.display = "none";
+            elements.executionPanel.innerHTML = "";
             return;
           }
 
           categoryDropdown.disabled = false;
-          
+
           // 고유한 카테고리 목록 추출
-          const categories = [...new Set(allPrompts.map(p => p.category || '기타'))].sort();
-          
+          const categories = [
+            ...new Set(allPrompts.map((p) => p.category || "기타")),
+          ].sort();
+
           // 카테고리 옵션 추가
           categories.forEach((category) => {
-            const option = document.createElement('option');
+            const option = document.createElement("option");
             option.value = category;
             option.textContent = category;
             categoryDropdown.appendChild(option);
@@ -1122,14 +1293,15 @@
             handleCategorySelect();
           } else {
             // 선택 초기화
-            categoryDropdown.value = '';
-            elements.promptCardsContainer.style.display = 'none';
-            elements.executionPanel.innerHTML = '';
+            categoryDropdown.value = "";
+            elements.promptCardsContainer.style.display = "none";
+            elements.executionPanel.innerHTML = "";
           }
         } catch (error) {
-          console.error('프롬프트 사용 목록 로드 실패:', error);
+          console.error("프롬프트 사용 목록 로드 실패:", error);
           if (elements.categorySelectDropdown) {
-            elements.categorySelectDropdown.innerHTML = '<option value="">프롬프트를 불러오는데 실패했습니다.</option>';
+            elements.categorySelectDropdown.innerHTML =
+              '<option value="">프롬프트를 불러오는데 실패했습니다.</option>';
             elements.categorySelectDropdown.disabled = true;
           }
         }
@@ -1138,44 +1310,51 @@
       // 카테고리 선택 처리
       function handleCategorySelect() {
         const selectedCategory = elements.categorySelectDropdown.value;
-        
+
         // 실행 패널 초기화
-        elements.executionPanel.innerHTML = '';
+        elements.executionPanel.innerHTML = "";
 
         if (!selectedCategory) {
-          elements.promptCardsContainer.style.display = 'none';
+          elements.promptCardsContainer.style.display = "none";
           return;
         }
 
         // 선택한 카테고리에 속한 프롬프트 필터링 (사용자 정의 순서 기준 정렬)
         const categoryPrompts = allPrompts
-          .filter(p => (p.category || '기타') === selectedCategory)
+          .filter((p) => (p.category || "기타") === selectedCategory)
           .sort((a, b) => {
             // displayOrder가 있으면 그것을 우선 사용, 없으면 createdAt 사용
-            const aOrder = a.displayOrder !== undefined ? a.displayOrder : 999999;
-            const bOrder = b.displayOrder !== undefined ? b.displayOrder : 999999;
-            
+            const aOrder =
+              a.displayOrder !== undefined ? a.displayOrder : 999999;
+            const bOrder =
+              b.displayOrder !== undefined ? b.displayOrder : 999999;
+
             if (aOrder !== bOrder) {
               return aOrder - bOrder;
             }
-            
+
             // displayOrder가 같거나 둘 다 없으면 createdAt 기준 (오래된 것부터)
-            const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
-            const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
+            const aTime = a.createdAt?.toDate
+              ? a.createdAt.toDate().getTime()
+              : (a.createdAt?.seconds || 0) * 1000;
+            const bTime = b.createdAt?.toDate
+              ? b.createdAt.toDate().getTime()
+              : (b.createdAt?.seconds || 0) * 1000;
             return aTime - bTime;
           });
 
         if (categoryPrompts.length === 0) {
-          elements.promptCardsContainer.style.display = 'none';
-          elements.promptCardsGrid.innerHTML = '<p style="text-align: center; padding: 40px; color: #999;">선택한 카테고리에 프롬프트가 없습니다.</p>';
+          elements.promptCardsContainer.style.display = "none";
+          elements.promptCardsGrid.innerHTML =
+            '<p style="text-align: center; padding: 40px; color: #999;">선택한 카테고리에 프롬프트가 없습니다.</p>';
           return;
         }
 
         // 프롬프트 카드 그리드 표시
-        elements.promptCardsContainer.style.display = 'block';
-        
+        elements.promptCardsContainer.style.display = "block";
+
         // 카드 생성
-        let cardsHtml = '';
+        let cardsHtml = "";
         categoryPrompts.forEach((prompt, index) => {
           const orderNumber = index + 1;
           const isFirst = index === 0;
@@ -1213,140 +1392,200 @@
                     font-weight: 600;
                     flex-shrink: 0;
                   ">${orderNumber}</span>
-                  <h3 style="font-size: 18px; color: #333; margin: 0; flex: 1;">${escapeHtml(prompt.title)}</h3>
+                  <h3 style="font-size: 18px; color: #333; margin: 0; flex: 1;">${escapeHtml(
+                    prompt.title
+                  )}</h3>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 8px;" onclick="event.stopPropagation();">
                   <button 
-                    onclick="movePromptOrder('${prompt.id}', '${selectedCategory}', 'up')"
-                    ${isFirst ? 'disabled' : ''}
+                    onclick="movePromptOrder('${
+                      prompt.id
+                    }', '${selectedCategory}', 'up')"
+                    ${isFirst ? "disabled" : ""}
                     style="
                       width: 28px;
                       height: 28px;
                       border: 1px solid #e1e5e9;
                       border-radius: 6px;
-                      background: ${isFirst ? '#f0f0f0' : 'white'};
-                      color: ${isFirst ? '#999' : '#667eea'};
-                      cursor: ${isFirst ? 'not-allowed' : 'pointer'};
+                      background: ${isFirst ? "#f0f0f0" : "white"};
+                      color: ${isFirst ? "#999" : "#667eea"};
+                      cursor: ${isFirst ? "not-allowed" : "pointer"};
                       display: flex;
                       align-items: center;
                       justify-content: center;
                       font-size: 14px;
                       transition: all 0.2s;
                     "
-                    onmouseover="${isFirst ? '' : "this.style.background='#f0f4ff'; this.style.borderColor='#667eea';"}"
-                    onmouseout="${isFirst ? '' : "this.style.background='white'; this.style.borderColor='#e1e5e9';"}"
+                    onmouseover="${
+                      isFirst
+                        ? ""
+                        : "this.style.background='#f0f4ff'; this.style.borderColor='#667eea';"
+                    }"
+                    onmouseout="${
+                      isFirst
+                        ? ""
+                        : "this.style.background='white'; this.style.borderColor='#e1e5e9';"
+                    }"
                     title="위로 이동"
                   >▲</button>
                   <button 
-                    onclick="movePromptOrder('${prompt.id}', '${selectedCategory}', 'down')"
-                    ${isLast ? 'disabled' : ''}
+                    onclick="movePromptOrder('${
+                      prompt.id
+                    }', '${selectedCategory}', 'down')"
+                    ${isLast ? "disabled" : ""}
                     style="
                       width: 28px;
                       height: 28px;
                       border: 1px solid #e1e5e9;
                       border-radius: 6px;
-                      background: ${isLast ? '#f0f0f0' : 'white'};
-                      color: ${isLast ? '#999' : '#667eea'};
-                      cursor: ${isLast ? 'not-allowed' : 'pointer'};
+                      background: ${isLast ? "#f0f0f0" : "white"};
+                      color: ${isLast ? "#999" : "#667eea"};
+                      cursor: ${isLast ? "not-allowed" : "pointer"};
                       display: flex;
                       align-items: center;
                       justify-content: center;
                       font-size: 14px;
                       transition: all 0.2s;
                     "
-                    onmouseover="${isLast ? '' : "this.style.background='#f0f4ff'; this.style.borderColor='#667eea';"}"
-                    onmouseout="${isLast ? '' : "this.style.background='white'; this.style.borderColor='#e1e5e9';"}"
+                    onmouseover="${
+                      isLast
+                        ? ""
+                        : "this.style.background='#f0f4ff'; this.style.borderColor='#667eea';"
+                    }"
+                    onmouseout="${
+                      isLast
+                        ? ""
+                        : "this.style.background='white'; this.style.borderColor='#e1e5e9';"
+                    }"
                     title="아래로 이동"
                   >▼</button>
                 </div>
               </div>
               <p style="color: #666; line-height: 1.6; margin: 0; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                ${escapeHtml(prompt.content.substring(0, 150))}${prompt.content.length > 150 ? '...' : ''}
+                ${escapeHtml(prompt.content.substring(0, 150))}${
+            prompt.content.length > 150 ? "..." : ""
+          }
               </p>
             </div>
           `;
         });
-        
+
         elements.promptCardsGrid.innerHTML = cardsHtml;
       }
 
       // 프롬프트 선택 처리 (카드 클릭 시)
       window.selectPromptForUse = async function (id) {
         // 선택된 프롬프트 찾기
-        const prompt = allPrompts.find(p => p.id === id);
-        
+        const prompt = allPrompts.find((p) => p.id === id);
+
         if (!prompt) {
-          showError('선택한 프롬프트를 찾을 수 없습니다.');
+          showError("선택한 프롬프트를 찾을 수 없습니다.");
           return;
         }
 
         // 모든 카드의 선택 상태 제거
-        const allCards = document.querySelectorAll('.prompt-card');
-        allCards.forEach(card => {
-          card.classList.remove('selected');
-          if (!card.classList.contains('selected')) {
-            card.style.borderColor = '#e1e5e9';
-            card.style.borderWidth = '2px';
-            card.style.background = '#f8f9fa';
-            card.style.boxShadow = 'none';
+        const allCards = document.querySelectorAll(".prompt-card");
+        allCards.forEach((card) => {
+          card.classList.remove("selected");
+          if (!card.classList.contains("selected")) {
+            card.style.borderColor = "#e1e5e9";
+            card.style.borderWidth = "2px";
+            card.style.background = "#f8f9fa";
+            card.style.boxShadow = "none";
           }
         });
 
         // 선택된 카드 강조
-        const selectedCard = document.querySelector(`.prompt-card[data-prompt-id="${id}"]`);
+        const selectedCard = document.querySelector(
+          `.prompt-card[data-prompt-id="${id}"]`
+        );
         if (selectedCard) {
           // 이전 선택 제거
-          document.querySelectorAll('.prompt-card').forEach(card => {
-            card.classList.remove('selected');
+          document.querySelectorAll(".prompt-card").forEach((card) => {
+            card.classList.remove("selected");
           });
-          
-          selectedCard.classList.add('selected');
-          selectedCard.style.borderColor = '#667eea';
-          selectedCard.style.borderWidth = '3px';
-          selectedCard.style.background = 'linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%)';
-          selectedCard.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+
+          selectedCard.classList.add("selected");
+          selectedCard.style.borderColor = "#667eea";
+          selectedCard.style.borderWidth = "3px";
+          selectedCard.style.background =
+            "linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%)";
+          selectedCard.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.3)";
         }
 
         // 버전 히스토리 로드
         const versions = await loadVersionHistory(prompt.id);
-        
+
         // 실행 패널에 프롬프트 즉시 표시 (로딩 없이)
         // currentVersion이 숫자면 문자열로 변환하여 비교
         let currentVersion = prompt.currentVersion || 1;
-        let currentVersionStr = typeof currentVersion === 'number' ? 'v' + currentVersion : currentVersion;
-        if (!currentVersionStr.startsWith('v')) {
-          currentVersionStr = 'v' + currentVersionStr;
+        let currentVersionStr =
+          typeof currentVersion === "number"
+            ? "v" + currentVersion
+            : currentVersion;
+        if (!currentVersionStr.startsWith("v")) {
+          currentVersionStr = "v" + currentVersionStr;
         }
-        const versionInfo = versions.find(v => v.version === currentVersionStr);
-        const versionDate = versionInfo?.createdAt ? 
-          new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
-          (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
+        const versionInfo = versions.find(
+          (v) => v.version === currentVersionStr
+        );
+        const versionDate = versionInfo?.createdAt
+          ? new Date(
+              versionInfo.createdAt.toDate
+                ? versionInfo.createdAt.toDate()
+                : versionInfo.createdAt
+            ).toLocaleString("ko-KR")
+          : prompt.updatedAt
+          ? new Date(
+              prompt.updatedAt.toDate
+                ? prompt.updatedAt.toDate()
+                : prompt.updatedAt
+            ).toLocaleString("ko-KR")
+          : "알 수 없음";
 
         elements.executionPanel.innerHTML = `
           <h2 style="font-size: 20px; margin-bottom: 16px; color: #333;">📄 프롬프트 상세</h2>
           <div style="margin-top: 20px; border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa;">
             <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
               <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
-                <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(prompt.llmModel || '미지정')}</span>
-                <span style="background: #0ea5e9; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">모드: ${escapeHtml(prompt.llmMode || '일반')}</span>
+                <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(
+                  prompt.category
+                )}</span>
+                <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(
+                  prompt.llmModel || "미지정"
+                )}</span>
+                <span style="background: #0ea5e9; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">모드: ${escapeHtml(
+                  prompt.llmMode || "일반"
+                )}</span>
               </div>
               <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
             </div>
-            <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
+            <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(
+              prompt.title
+            )}</h3>
             <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-              <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
+              <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(
+                prompt.content
+              )}</p>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-              <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
-              <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
-              <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
+              <button onclick="copyPromptToClipboard('${
+                prompt.id
+              }')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+              <button onclick="viewPromptInSearch('${
+                prompt.id
+              }')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🔍 검색 탭에서 보기</button>
+              <button onclick="editPrompt('${
+                prompt.id
+              }')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
             </div>
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9;">
               <div style="color: #999; font-size: 13px; margin-bottom: 12px;">
                 현재 버전 생성일: ${versionDate}
               </div>
-              ${versions.length > 1 ? `
+              ${
+                versions.length > 1
+                  ? `
                 <div style="margin-top: 16px;">
                   <button 
                     onclick="toggleVersionHistory('${prompt.id}')" 
@@ -1354,118 +1593,159 @@
                     style="padding: 8px 16px; font-size: 13px; width: 100%;"
                     id="version-history-toggle-${prompt.id}"
                   >
-                    📜 이전 버전 보기 (${versions.filter(v => {
-                      const vNum = parseInt(v.version.replace('v', '')) || 0;
-                      const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
-                      return vNum < currentNum;
-                    }).length}개)
+                    📜 이전 버전 보기 (${
+                      versions.filter((v) => {
+                        const vNum = parseInt(v.version.replace("v", "")) || 0;
+                        const currentNum =
+                          typeof currentVersion === "number"
+                            ? currentVersion
+                            : parseInt(currentVersionStr.replace("v", "")) || 1;
+                        return vNum < currentNum;
+                      }).length
+                    }개)
                   </button>
-                  <div id="version-history-${prompt.id}" style="display: none; margin-top: 16px;">
-                    ${renderVersionHistory(prompt.id, versions.filter(v => {
-                      const vNum = parseInt(v.version.replace('v', '')) || 0;
-                      const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
-                      return vNum < currentNum;
-                    }))}
+                  <div id="version-history-${
+                    prompt.id
+                  }" style="display: none; margin-top: 16px;">
+                    ${renderVersionHistory(
+                      prompt.id,
+                      versions.filter((v) => {
+                        const vNum = parseInt(v.version.replace("v", "")) || 0;
+                        const currentNum =
+                          typeof currentVersion === "number"
+                            ? currentVersion
+                            : parseInt(currentVersionStr.replace("v", "")) || 1;
+                        return vNum < currentNum;
+                      })
+                    )}
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
           </div>
         `;
-        
+
         // 실행 패널로 스크롤
-        elements.executionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+        elements.executionPanel.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      };
 
       // 버전 히스토리 로드
       async function loadVersionHistory(promptId) {
         try {
           const userId = currentUser.uid;
           const versionsSnapshot = await db
-            .collection('users')
+            .collection("users")
             .doc(userId)
-            .collection('prompts')
+            .collection("prompts")
             .doc(promptId)
-            .collection('versions')
-            .orderBy('version', 'desc')
+            .collection("versions")
+            .orderBy("version", "desc")
             .get();
 
           const versions = [];
           versionsSnapshot.forEach((doc) => {
             versions.push({
               id: doc.id,
-              ...doc.data()
+              ...doc.data(),
             });
           });
 
           return versions;
         } catch (error) {
-          console.error('버전 히스토리 로드 실패:', error);
+          console.error("버전 히스토리 로드 실패:", error);
           return [];
         }
       }
 
       // 버전 히스토리 렌더링
       function renderVersionHistory(promptId, versions) {
-        if (versions.length === 0) return '';
+        if (versions.length === 0) return "";
 
-        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        let html =
+          '<div style="display: flex; flex-direction: column; gap: 12px;">';
         versions.forEach((version) => {
-          const versionDate = version.createdAt ? 
-            new Date(version.createdAt.toDate ? version.createdAt.toDate() : version.createdAt).toLocaleString('ko-KR') :
-            '알 수 없음';
-          
+          const versionDate = version.createdAt
+            ? new Date(
+                version.createdAt.toDate
+                  ? version.createdAt.toDate()
+                  : version.createdAt
+              ).toLocaleString("ko-KR")
+            : "알 수 없음";
+
           html += `
             <div style="border: 1px solid #e1e5e9; border-radius: 8px; padding: 16px; background: white;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">버전 ${version.version}</span>
+                <span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">버전 ${
+                  version.version
+                }</span>
                 <span style="color: #999; font-size: 12px;">${versionDate}</span>
               </div>
               <div style="margin-bottom: 8px;">
-                <strong style="color: #333; font-size: 14px;">${escapeHtml(version.title)}</strong>
+                <strong style="color: #333; font-size: 14px;">${escapeHtml(
+                  version.title
+                )}</strong>
               </div>
               <div style="margin-bottom: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-                <span style="background: #f97316; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px;">LLM: ${escapeHtml(version.llmModel || '미지정')}</span>
-                <span style="background: #0ea5e9; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px;">모드: ${escapeHtml(version.llmMode || '일반')}</span>
+                <span style="background: #f97316; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px;">LLM: ${escapeHtml(
+                  version.llmModel || "미지정"
+                )}</span>
+                <span style="background: #0ea5e9; color: white; padding: 4px 10px; border-radius: 10px; font-size: 12px;">모드: ${escapeHtml(
+                  version.llmMode || "일반"
+                )}</span>
               </div>
               <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
-                <p style="color: #666; line-height: 1.6; white-space: pre-wrap; margin: 0; font-size: 13px;">${escapeHtml(version.content)}</p>
+                <p style="color: #666; line-height: 1.6; white-space: pre-wrap; margin: 0; font-size: 13px;">${escapeHtml(
+                  version.content
+                )}</p>
               </div>
             </div>
           `;
         });
-        html += '</div>';
+        html += "</div>";
         return html;
       }
 
       // 버전 히스토리 토글 (사용 탭)
       window.toggleVersionHistory = function (promptId) {
-        const historyDiv = document.getElementById(`version-history-${promptId}`);
-        const toggleBtn = document.getElementById(`version-history-toggle-${promptId}`);
-        
+        const historyDiv = document.getElementById(
+          `version-history-${promptId}`
+        );
+        const toggleBtn = document.getElementById(
+          `version-history-toggle-${promptId}`
+        );
+
         if (historyDiv && toggleBtn) {
-          if (historyDiv.style.display === 'none') {
-            historyDiv.style.display = 'block';
-            toggleBtn.textContent = '📜 이전 버전 숨기기';
+          if (historyDiv.style.display === "none") {
+            historyDiv.style.display = "block";
+            toggleBtn.textContent = "📜 이전 버전 숨기기";
           } else {
-            historyDiv.style.display = 'none';
-            toggleBtn.textContent = '📜 이전 버전 보기';
+            historyDiv.style.display = "none";
+            toggleBtn.textContent = "📜 이전 버전 보기";
           }
         }
       };
 
       // 버전 히스토리 토글 (검색 탭)
       window.toggleVersionHistoryInSearch = function (promptId) {
-        const historyDiv = document.getElementById(`version-history-search-${promptId}`);
-        const toggleBtn = document.getElementById(`version-history-toggle-search-${promptId}`);
-        
+        const historyDiv = document.getElementById(
+          `version-history-search-${promptId}`
+        );
+        const toggleBtn = document.getElementById(
+          `version-history-toggle-search-${promptId}`
+        );
+
         if (historyDiv && toggleBtn) {
-          if (historyDiv.style.display === 'none') {
-            historyDiv.style.display = 'block';
-            toggleBtn.textContent = '📜 이전 버전 숨기기';
+          if (historyDiv.style.display === "none") {
+            historyDiv.style.display = "block";
+            toggleBtn.textContent = "📜 이전 버전 숨기기";
           } else {
-            historyDiv.style.display = 'none';
-            toggleBtn.textContent = '📜 이전 버전 보기';
+            historyDiv.style.display = "none";
+            toggleBtn.textContent = "📜 이전 버전 보기";
           }
         }
       };
@@ -1475,23 +1755,34 @@
         try {
           // 현재 카테고리의 프롬프트 목록 가져오기
           const categoryPrompts = allPrompts
-            .filter(p => (p.category || '기타') === category)
+            .filter((p) => (p.category || "기타") === category)
             .sort((a, b) => {
-              const aOrder = a.displayOrder !== undefined ? a.displayOrder : 999999;
-              const bOrder = b.displayOrder !== undefined ? b.displayOrder : 999999;
+              const aOrder =
+                a.displayOrder !== undefined ? a.displayOrder : 999999;
+              const bOrder =
+                b.displayOrder !== undefined ? b.displayOrder : 999999;
               if (aOrder !== bOrder) return aOrder - bOrder;
-              const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds || 0) * 1000;
-              const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds || 0) * 1000;
+              const aTime = a.createdAt?.toDate
+                ? a.createdAt.toDate().getTime()
+                : (a.createdAt?.seconds || 0) * 1000;
+              const bTime = b.createdAt?.toDate
+                ? b.createdAt.toDate().getTime()
+                : (b.createdAt?.seconds || 0) * 1000;
               return aTime - bTime;
             });
 
-          const currentIndex = categoryPrompts.findIndex(p => p.id === promptId);
+          const currentIndex = categoryPrompts.findIndex(
+            (p) => p.id === promptId
+          );
           if (currentIndex === -1) return;
 
           let newIndex;
-          if (direction === 'up' && currentIndex > 0) {
+          if (direction === "up" && currentIndex > 0) {
             newIndex = currentIndex - 1;
-          } else if (direction === 'down' && currentIndex < categoryPrompts.length - 1) {
+          } else if (
+            direction === "down" &&
+            currentIndex < categoryPrompts.length - 1
+          ) {
             newIndex = currentIndex + 1;
           } else {
             return; // 이동 불가능
@@ -1505,37 +1796,57 @@
           const batch = db.batch();
 
           // 현재 프롬프트의 displayOrder를 대상 프롬프트의 displayOrder로 변경
-          const currentRef = db.collection('users').doc(userId).collection('prompts').doc(currentPrompt.id);
-          const currentOrder = currentPrompt.displayOrder !== undefined ? currentPrompt.displayOrder : currentIndex;
-          const targetOrder = targetPrompt.displayOrder !== undefined ? targetPrompt.displayOrder : newIndex;
+          const currentRef = db
+            .collection("users")
+            .doc(userId)
+            .collection("prompts")
+            .doc(currentPrompt.id);
+          const currentOrder =
+            currentPrompt.displayOrder !== undefined
+              ? currentPrompt.displayOrder
+              : currentIndex;
+          const targetOrder =
+            targetPrompt.displayOrder !== undefined
+              ? targetPrompt.displayOrder
+              : newIndex;
 
           batch.update(currentRef, {
             displayOrder: targetOrder,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
 
           // 대상 프롬프트의 displayOrder를 현재 프롬프트의 displayOrder로 변경
-          const targetRef = db.collection('users').doc(userId).collection('prompts').doc(targetPrompt.id);
+          const targetRef = db
+            .collection("users")
+            .doc(userId)
+            .collection("prompts")
+            .doc(targetPrompt.id);
           batch.update(targetRef, {
             displayOrder: currentOrder,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
 
           await batch.commit();
 
           // 로컬 데이터 업데이트
-          const currentPromptLocal = allPrompts.find(p => p.id === currentPrompt.id);
-          const targetPromptLocal = allPrompts.find(p => p.id === targetPrompt.id);
+          const currentPromptLocal = allPrompts.find(
+            (p) => p.id === currentPrompt.id
+          );
+          const targetPromptLocal = allPrompts.find(
+            (p) => p.id === targetPrompt.id
+          );
           if (currentPromptLocal) currentPromptLocal.displayOrder = targetOrder;
           if (targetPromptLocal) targetPromptLocal.displayOrder = currentOrder;
 
           // 카드 다시 렌더링
           handleCategorySelect();
 
-          showSuccess('순서가 변경되었습니다.');
+          showSuccess("순서가 변경되었습니다.");
         } catch (error) {
-          console.error('순서 변경 실패:', error);
-          showError('순서 변경에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("순서 변경 실패:", error);
+          showError(
+            "순서 변경에 실패했습니다: " + (error.message || "알 수 없는 오류")
+          );
         }
       };
 
@@ -1549,15 +1860,21 @@
           }
 
           // 검색어가 없으면 모든 프롬프트 표시
-          const searchQuery = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
+          const searchQuery = elements.searchInput
+            ? elements.searchInput.value.trim().toLowerCase()
+            : "";
           let filteredPrompts = allPrompts;
 
           if (searchQuery) {
-            filteredPrompts = allPrompts.filter(prompt => {
-              const title = (prompt.title || '').toLowerCase();
-              const content = (prompt.content || '').toLowerCase();
-              const category = (prompt.category || '').toLowerCase();
-              return title.includes(searchQuery) || content.includes(searchQuery) || category.includes(searchQuery);
+            filteredPrompts = allPrompts.filter((prompt) => {
+              const title = (prompt.title || "").toLowerCase();
+              const content = (prompt.content || "").toLowerCase();
+              const category = (prompt.category || "").toLowerCase();
+              return (
+                title.includes(searchQuery) ||
+                content.includes(searchQuery) ||
+                category.includes(searchQuery)
+              );
             });
           }
 
@@ -1572,24 +1889,38 @@
             html += `
               <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                  <h3 style="font-size: 18px; color: #333;">${escapeHtml(prompt.title)}</h3>
-                  <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(prompt.category)}</span>
+                  <h3 style="font-size: 18px; color: #333;">${escapeHtml(
+                    prompt.title
+                  )}</h3>
+                  <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(
+                    prompt.category
+                  )}</span>
                 </div>
-                <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(prompt.content.substring(0, 200))}${prompt.content.length > 200 ? '...' : ''}</p>
+                <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(
+                  prompt.content.substring(0, 200)
+                )}${prompt.content.length > 200 ? "..." : ""}</p>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <button onclick="viewPromptInSearch('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
-                  <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
-                  <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
-                  <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
+                  <button onclick="viewPromptInSearch('${
+                    prompt.id
+                  }')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
+                  <button onclick="usePrompt('${
+                    prompt.id
+                  }')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+                  <button onclick="editPrompt('${
+                    prompt.id
+                  }')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
+                  <button onclick="deletePrompt('${
+                    prompt.id
+                  }')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
                 </div>
               </div>
             `;
           });
-          html += '</div>';
+          html += "</div>";
 
           elements.promptSearchResults.innerHTML = html;
         } catch (error) {
-          console.error('프롬프트 검색 실패:', error);
+          console.error("프롬프트 검색 실패:", error);
           elements.promptSearchResults.innerHTML =
             '<p style="color: #dc3545; text-align: center; padding: 40px;">검색 중 오류가 발생했습니다.</p>';
         }
@@ -1597,7 +1928,7 @@
 
       // 검색 처리
       function handleSearch() {
-        if (currentTab === 'search') {
+        if (currentTab === "search") {
           loadPromptsForSearch();
         }
       }
@@ -1615,11 +1946,17 @@
               1. 아래 링크를 클릭하여 인덱스를 생성하거나<br/>
               2. Firebase Console에서 직접 인덱스를 생성하세요
             </p>
-            ${error.message && error.message.includes('create it here') && error.message.includes('http') ? 
-              `<a href="${error.message.match(/https:\/\/[^\s]+/)?.[0]}" target="_blank" 
+            ${
+              error.message &&
+              error.message.includes("create it here") &&
+              error.message.includes("http")
+                ? `<a href="${
+                    error.message.match(/https:\/\/[^\s]+/)?.[0]
+                  }" target="_blank" 
                   style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
                 인덱스 생성하기 (Firebase Console)
-              </a>` : ''
+              </a>`
+                : ""
             }
             <p style="color: #856404; margin-top: 16px; font-size: 12px;">
               또는 터미널에서 다음 명령어를 실행하세요:<br/>
@@ -1627,9 +1964,11 @@
             </p>
           </div>
         `;
-        
-        if (elements.promptUseList) elements.promptUseList.innerHTML = errorHtml;
-        if (elements.promptSearchResults) elements.promptSearchResults.innerHTML = errorHtml;
+
+        if (elements.promptUseList)
+          elements.promptUseList.innerHTML = errorHtml;
+        if (elements.promptSearchResults)
+          elements.promptSearchResults.innerHTML = errorHtml;
       }
 
       // 프롬프트 사용하기 (다른 탭에서 호출 시)
@@ -1638,46 +1977,49 @@
 
         try {
           // 로컬 캐시에서 먼저 찾기
-          let prompt = allPrompts.find(p => p.id === id);
-          
+          let prompt = allPrompts.find((p) => p.id === id);
+
           if (!prompt) {
             // Firestore에서 직접 가져오기
             const userId = currentUser.uid;
             const doc = await db
-              .collection('users')
+              .collection("users")
               .doc(userId)
-              .collection('prompts')
+              .collection("prompts")
               .doc(id)
               .get();
-              
+
             if (!doc.exists) {
-              showError('프롬프트를 찾을 수 없습니다.');
+              showError("프롬프트를 찾을 수 없습니다.");
               return;
             }
             prompt = { id: doc.id, ...doc.data() };
           }
 
           // 사용 탭으로 전환
-          if (currentTab !== 'use') {
-            switchTab('use', { skipReload: true });
+          if (currentTab !== "use") {
+            switchTab("use", { skipReload: true });
           }
 
           // 해당 프롬프트의 카테고리를 찾아서 선택
           if (prompt && elements.categorySelectDropdown) {
-            const category = prompt.category || '기타';
+            const category = prompt.category || "기타";
             elements.categorySelectDropdown.value = category;
             handleCategorySelect();
-            
+
             // 카테고리 로드 후 프롬프트 선택
             setTimeout(() => {
               selectPromptForUse(id);
             }, 100);
           }
 
-          elements.executionPanel.scrollIntoView({ behavior: 'smooth' });
+          elements.executionPanel.scrollIntoView({ behavior: "smooth" });
         } catch (error) {
-          console.error('프롬프트 사용 실패:', error);
-          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("프롬프트 사용 실패:", error);
+          showError(
+            "프롬프트를 불러오는데 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -1694,28 +2036,28 @@
 
         try {
           // 로컬 캐시에서 먼저 찾기
-          let prompt = allPrompts.find(p => p.id === id);
-          
+          let prompt = allPrompts.find((p) => p.id === id);
+
           if (!prompt) {
             // Firestore에서 직접 가져오기
             const userId = currentUser.uid;
             const doc = await db
-              .collection('users')
+              .collection("users")
               .doc(userId)
-              .collection('prompts')
+              .collection("prompts")
               .doc(id)
               .get();
-              
+
             if (!doc.exists) {
-              showError('프롬프트를 찾을 수 없습니다.');
+              showError("프롬프트를 찾을 수 없습니다.");
               return;
             }
             prompt = { id: doc.id, ...doc.data() };
           }
 
           // 검색 탭으로 전환하여 상세보기
-          if (currentTab !== 'search') {
-            switchTab('search', { skipReload: true });
+          if (currentTab !== "search") {
+            switchTab("search", { skipReload: true });
           }
 
           // 검색어를 프롬프트 제목으로 설정하여 관련 프롬프트도 함께 표시
@@ -1727,41 +2069,76 @@
           const versions = await loadVersionHistory(prompt.id);
           // currentVersion이 숫자면 문자열로 변환하여 비교
           let currentVersion = prompt.currentVersion || 1;
-          let currentVersionStr = typeof currentVersion === 'number' ? 'v' + currentVersion : currentVersion;
-          if (!currentVersionStr.startsWith('v')) {
-            currentVersionStr = 'v' + currentVersionStr;
+          let currentVersionStr =
+            typeof currentVersion === "number"
+              ? "v" + currentVersion
+              : currentVersion;
+          if (!currentVersionStr.startsWith("v")) {
+            currentVersionStr = "v" + currentVersionStr;
           }
-          const versionInfo = versions.find(v => v.version === currentVersionStr);
-          const versionDate = versionInfo?.createdAt ? 
-            new Date(versionInfo.createdAt.toDate ? versionInfo.createdAt.toDate() : versionInfo.createdAt).toLocaleString('ko-KR') :
-            (prompt.updatedAt ? new Date(prompt.updatedAt.toDate ? prompt.updatedAt.toDate() : prompt.updatedAt).toLocaleString('ko-KR') : '알 수 없음');
+          const versionInfo = versions.find(
+            (v) => v.version === currentVersionStr
+          );
+          const versionDate = versionInfo?.createdAt
+            ? new Date(
+                versionInfo.createdAt.toDate
+                  ? versionInfo.createdAt.toDate()
+                  : versionInfo.createdAt
+              ).toLocaleString("ko-KR")
+            : prompt.updatedAt
+            ? new Date(
+                prompt.updatedAt.toDate
+                  ? prompt.updatedAt.toDate()
+                  : prompt.updatedAt
+              ).toLocaleString("ko-KR")
+            : "알 수 없음";
 
           // 검색 결과 영역에 상세 정보 표시
           const detailHtml = `
             <div style="border: 2px solid #667eea; border-radius: 12px; padding: 24px; background: #f8f9fa; margin-bottom: 20px;">
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(prompt.category)}</span>
-                  <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(prompt.llmModel || '미지정')}</span>
-                  <span style="background: #0ea5e9; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">모드: ${escapeHtml(prompt.llmMode || '일반')}</span>
+                  <span style="background: #667eea; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">${escapeHtml(
+                    prompt.category
+                  )}</span>
+                  <span style="background: #f97316; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">LLM: ${escapeHtml(
+                    prompt.llmModel || "미지정"
+                  )}</span>
+                  <span style="background: #0ea5e9; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px;">모드: ${escapeHtml(
+                    prompt.llmMode || "일반"
+                  )}</span>
                 </div>
                 <span style="background: #28a745; color: white; padding: 6px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;">버전 ${currentVersionStr}</span>
               </div>
-              <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(prompt.title)}</h3>
+              <h3 style="font-size: 24px; margin-bottom: 16px; color: #333;">${escapeHtml(
+                prompt.title
+              )}</h3>
               <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(prompt.content)}</p>
+                <p style="color: #666; line-height: 1.8; white-space: pre-wrap; margin: 0;">${escapeHtml(
+                  prompt.content
+                )}</p>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-                <button onclick="usePrompt('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">🚀 사용하기</button>
-                <button onclick="copyPromptToClipboard('${prompt.id}')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
-                <button onclick="editPrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
-                <button onclick="deletePrompt('${prompt.id}')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🗑️ 삭제</button>
+                <button onclick="usePrompt('${
+                  prompt.id
+                }')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">🚀 사용하기</button>
+                <button onclick="copyPromptToClipboard('${
+                  prompt.id
+                }')" class="btn-primary" style="padding: 10px 20px; font-size: 14px;">📋 클립보드에 복사</button>
+                <button onclick="editPrompt('${
+                  prompt.id
+                }')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">✏️ 수정하기</button>
+                <button onclick="deletePrompt('${
+                  prompt.id
+                }')" class="btn-secondary" style="padding: 10px 20px; font-size: 14px;">🗑️ 삭제</button>
               </div>
               <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1e5e9;">
                 <div style="color: #999; font-size: 13px; margin-bottom: 12px;">
                   현재 버전 생성일: ${versionDate}
                 </div>
-                ${versions.length > 1 ? `
+                ${
+                  versions.length > 1
+                    ? `
                   <div style="margin-top: 16px;">
                     <button 
                       onclick="toggleVersionHistoryInSearch('${prompt.id}')" 
@@ -1769,65 +2146,108 @@
                       style="padding: 8px 16px; font-size: 13px; width: 100%;"
                       id="version-history-toggle-search-${prompt.id}"
                     >
-                      📜 이전 버전 보기 (${versions.filter(v => {
-                        const vNum = parseInt(v.version.replace('v', '')) || 0;
-                        const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
-                        return vNum < currentNum;
-                      }).length}개)
+                      📜 이전 버전 보기 (${
+                        versions.filter((v) => {
+                          const vNum =
+                            parseInt(v.version.replace("v", "")) || 0;
+                          const currentNum =
+                            typeof currentVersion === "number"
+                              ? currentVersion
+                              : parseInt(currentVersionStr.replace("v", "")) ||
+                                1;
+                          return vNum < currentNum;
+                        }).length
+                      }개)
                     </button>
-                    <div id="version-history-search-${prompt.id}" style="display: none; margin-top: 16px;">
-                      ${renderVersionHistory(prompt.id, versions.filter(v => {
-                        const vNum = parseInt(v.version.replace('v', '')) || 0;
-                        const currentNum = typeof currentVersion === 'number' ? currentVersion : parseInt(currentVersionStr.replace('v', '')) || 1;
-                        return vNum < currentNum;
-                      }))}
+                    <div id="version-history-search-${
+                      prompt.id
+                    }" style="display: none; margin-top: 16px;">
+                      ${renderVersionHistory(
+                        prompt.id,
+                        versions.filter((v) => {
+                          const vNum =
+                            parseInt(v.version.replace("v", "")) || 0;
+                          const currentNum =
+                            typeof currentVersion === "number"
+                              ? currentVersion
+                              : parseInt(currentVersionStr.replace("v", "")) ||
+                                1;
+                          return vNum < currentNum;
+                        })
+                      )}
                     </div>
                   </div>
-                ` : ''}
+                `
+                    : ""
+                }
               </div>
             </div>
           `;
-          
+
           // 관련 프롬프트 목록 로드 (현재 프롬프트 제외)
-          const searchQuery = elements.searchInput ? elements.searchInput.value.trim().toLowerCase() : '';
-          let filteredPrompts = allPrompts.filter(p => p.id !== prompt.id);
-          
+          const searchQuery = elements.searchInput
+            ? elements.searchInput.value.trim().toLowerCase()
+            : "";
+          let filteredPrompts = allPrompts.filter((p) => p.id !== prompt.id);
+
           if (searchQuery) {
-            filteredPrompts = filteredPrompts.filter(p => {
-              const title = (p.title || '').toLowerCase();
-              const content = (p.content || '').toLowerCase();
-              const category = (p.category || '').toLowerCase();
-              return title.includes(searchQuery) || content.includes(searchQuery) || category.includes(searchQuery);
+            filteredPrompts = filteredPrompts.filter((p) => {
+              const title = (p.title || "").toLowerCase();
+              const content = (p.content || "").toLowerCase();
+              const category = (p.category || "").toLowerCase();
+              return (
+                title.includes(searchQuery) ||
+                content.includes(searchQuery) ||
+                category.includes(searchQuery)
+              );
             });
           }
-          
-          let listHtml = '';
+
+          let listHtml = "";
           if (filteredPrompts.length > 0) {
-            listHtml = '<h3 style="font-size: 18px; margin-bottom: 16px; color: #333;">관련 프롬프트</h3><div style="display: grid; gap: 16px;">';
+            listHtml =
+              '<h3 style="font-size: 18px; margin-bottom: 16px; color: #333;">관련 프롬프트</h3><div style="display: grid; gap: 16px;">';
             filteredPrompts.forEach((p) => {
               listHtml += `
                 <div style="border: 2px solid #e1e5e9; border-radius: 12px; padding: 20px; background: #f8f9fa;">
                   <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                    <h3 style="font-size: 18px; color: #333;">${escapeHtml(p.title)}</h3>
-                    <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(p.category)}</span>
+                    <h3 style="font-size: 18px; color: #333;">${escapeHtml(
+                      p.title
+                    )}</h3>
+                    <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${escapeHtml(
+                      p.category
+                    )}</span>
                   </div>
-                  <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(p.content.substring(0, 200))}${p.content.length > 200 ? '...' : ''}</p>
+                  <p style="color: #666; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(
+                    p.content.substring(0, 200)
+                  )}${p.content.length > 200 ? "..." : ""}</p>
                   <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="viewPromptInSearch('${p.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
-                    <button onclick="usePrompt('${p.id}')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
-                    <button onclick="editPrompt('${p.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
-                    <button onclick="deletePrompt('${p.id}')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
+                    <button onclick="viewPromptInSearch('${
+                      p.id
+                    }')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">👁️ 상세보기</button>
+                    <button onclick="usePrompt('${
+                      p.id
+                    }')" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">🚀 사용하기</button>
+                    <button onclick="editPrompt('${
+                      p.id
+                    }')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">✏️ 수정</button>
+                    <button onclick="deletePrompt('${
+                      p.id
+                    }')" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">🗑️ 삭제</button>
                   </div>
                 </div>
               `;
             });
-            listHtml += '</div>';
+            listHtml += "</div>";
           }
-          
+
           elements.promptSearchResults.innerHTML = detailHtml + listHtml;
         } catch (error) {
-          console.error('프롬프트 조회 실패:', error);
-          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("프롬프트 조회 실패:", error);
+          showError(
+            "프롬프트를 불러오는데 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -1839,27 +2259,27 @@
 
         try {
           // 로컬 캐시에서 먼저 찾기
-          let prompt = allPrompts.find(p => p.id === id);
-          
+          let prompt = allPrompts.find((p) => p.id === id);
+
           if (!prompt) {
             // Firestore에서 직접 가져오기
             const userId = currentUser.uid;
             const doc = await db
-              .collection('users')
+              .collection("users")
               .doc(userId)
-              .collection('prompts')
+              .collection("prompts")
               .doc(id)
               .get();
-              
+
             if (!doc.exists) {
-              showError('프롬프트를 찾을 수 없습니다.');
+              showError("프롬프트를 찾을 수 없습니다.");
               return;
             }
             prompt = { id: doc.id, ...doc.data() };
           }
 
           // 등록 탭으로 전환
-          switchTab('register');
+          switchTab("register");
 
           // 수정 폼 표시
           elements.promptForm.innerHTML = `
@@ -1867,34 +2287,48 @@
             <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
               <div>
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">제목</label>
-                <input type="text" id="prompt-title-edit" value="${escapeHtml(prompt.title)}" placeholder="프롬프트 제목" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+                <input type="text" id="prompt-title-edit" value="${escapeHtml(
+                  prompt.title
+                )}" placeholder="프롬프트 제목" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
               </div>
               <div>
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">내용</label>
-                <textarea id="prompt-content-edit" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;">${escapeHtml(prompt.content)}</textarea>
+                <textarea id="prompt-content-edit" placeholder="프롬프트 내용을 입력하세요..." style="width: 100%; min-height: 150px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; resize: vertical;">${escapeHtml(
+                  prompt.content
+                )}</textarea>
               </div>
               <div>
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">카테고리</label>
-                <input type="text" id="prompt-category-edit" value="${escapeHtml(prompt.category || '')}" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
+                <input type="text" id="prompt-category-edit" value="${escapeHtml(
+                  prompt.category || ""
+                )}" placeholder="예: 코딩, 글쓰기, 번역" style="width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px;">
               </div>
-              ${renderLlmModelField({ selectId: 'llm-model-select-edit', customInputId: 'llm-model-custom-edit' })}
-              ${renderLlmModeField({ inputId: 'llm-mode-input-edit' })}
+              ${renderLlmModelField({
+                selectId: "llm-model-select-edit",
+                customInputId: "llm-model-custom-edit",
+              })}
+              ${renderLlmModeField({ inputId: "llm-mode-input-edit" })}
               <div style="display: flex; gap: 12px;">
-                <button onclick="updatePrompt('${prompt.id}')" class="btn-primary" style="flex: 1;">💾 수정 저장</button>
+                <button onclick="updatePrompt('${
+                  prompt.id
+                }')" class="btn-primary" style="flex: 1;">💾 수정 저장</button>
                 <button onclick="cancelPrompt()" class="btn-secondary" style="flex: 1;">❌ 취소</button>
               </div>
             </div>
           `;
-          elements.promptForm.scrollIntoView({ behavior: 'smooth' });
+          elements.promptForm.scrollIntoView({ behavior: "smooth" });
           setupLlmModelSelector({
-            selectId: 'llm-model-select-edit',
-            customInputId: 'llm-model-custom-edit',
-            initialValue: prompt.llmModel || llmModelOptions[0].value
+            selectId: "llm-model-select-edit",
+            customInputId: "llm-model-custom-edit",
+            initialValue: prompt.llmModel || llmModelOptions[0].value,
           });
-          setLlmModeValue('llm-mode-input-edit', prompt.llmMode || '일반');
+          setLlmModeValue("llm-mode-input-edit", prompt.llmMode || "일반");
         } catch (error) {
-          console.error('프롬프트 수정 폼 로드 실패:', error);
-          showError('프롬프트를 불러오는데 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("프롬프트 수정 폼 로드 실패:", error);
+          showError(
+            "프롬프트를 불러오는데 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -1902,14 +2336,21 @@
 
       // 프롬프트 수정 저장
       window.updatePrompt = async function (id) {
-        const title = document.getElementById('prompt-title-edit').value.trim();
-        const content = document.getElementById('prompt-content-edit').value.trim();
-        const category = document.getElementById('prompt-category-edit').value.trim();
-        const llmModel = getSelectedLlmModel('llm-model-select-edit', 'llm-model-custom-edit');
-        const llmMode = getLlmModeValue('llm-mode-input-edit');
+        const title = document.getElementById("prompt-title-edit").value.trim();
+        const content = document
+          .getElementById("prompt-content-edit")
+          .value.trim();
+        const category = document
+          .getElementById("prompt-category-edit")
+          .value.trim();
+        const llmModel = getSelectedLlmModel(
+          "llm-model-select-edit",
+          "llm-model-custom-edit"
+        );
+        const llmMode = getLlmModeValue("llm-mode-input-edit");
 
         if (!title || !content) {
-          showError('제목과 내용을 입력해주세요.');
+          showError("제목과 내용을 입력해주세요.");
           return;
         }
 
@@ -1917,49 +2358,54 @@
 
         try {
           const userId = currentUser.uid;
-          const promptRef = db.collection('users').doc(userId).collection('prompts').doc(id);
-          
+          const promptRef = db
+            .collection("users")
+            .doc(userId)
+            .collection("prompts")
+            .doc(id);
+
           // 현재 프롬프트 정보 가져오기
           const currentPrompt = await promptRef.get();
           if (!currentPrompt.exists) {
-            showError('프롬프트를 찾을 수 없습니다.');
+            showError("프롬프트를 찾을 수 없습니다.");
             return;
           }
 
           const currentData = currentPrompt.data();
           // currentVersion이 숫자면 문자열로 변환, 이미 문자열이면 그대로 사용
           let currentVersionStr = currentData.currentVersion;
-          if (typeof currentVersionStr === 'number') {
-            currentVersionStr = 'v' + currentVersionStr;
+          if (typeof currentVersionStr === "number") {
+            currentVersionStr = "v" + currentVersionStr;
           } else if (!currentVersionStr) {
-            currentVersionStr = 'v1';
+            currentVersionStr = "v1";
           }
-          
+
           // 버전 번호 추출 (v1 -> 1, v2 -> 2)
-          const currentVersionNum = parseInt(currentVersionStr.replace('v', '')) || 1;
+          const currentVersionNum =
+            parseInt(currentVersionStr.replace("v", "")) || 1;
           const newVersionNum = currentVersionNum + 1;
-          const newVersionStr = 'v' + newVersionNum;
+          const newVersionStr = "v" + newVersionNum;
 
           // 현재 버전이 versions에 없으면 저장 (중복 방지)
           const currentVersionSnapshot = await promptRef
-            .collection('versions')
-            .where('version', '==', currentVersionStr)
+            .collection("versions")
+            .where("version", "==", currentVersionStr)
             .get();
-          
+
           if (currentVersionSnapshot.empty) {
             // 현재 버전을 versions 서브컬렉션에 저장 (히스토리 보관)
-            const versionRef = promptRef.collection('versions').doc();
+            const versionRef = promptRef.collection("versions").doc();
             await versionRef.set({
               id: versionRef.id,
               version: currentVersionStr, // 문자열 형식
               title: currentData.title,
               content: currentData.content,
-              category: currentData.category || '기타',
-              llmModel: currentData.llmModel || '미지정',
-              llmMode: currentData.llmMode || '일반',
-              changelog: '이전 버전 보관', // 필수 필드 추가
+              category: currentData.category || "기타",
+              llmModel: currentData.llmModel || "미지정",
+              llmMode: currentData.llmMode || "일반",
+              changelog: "이전 버전 보관", // 필수 필드 추가
               createdAt: currentData.updatedAt || currentData.createdAt,
-              createdBy: userId
+              createdBy: userId,
             });
           }
 
@@ -1967,42 +2413,44 @@
           await promptRef.update({
             title,
             content,
-            category: category || '기타',
-            llmModel: llmModel || '미지정',
-            llmMode: llmMode || '일반',
+            category: category || "기타",
+            llmModel: llmModel || "미지정",
+            llmMode: llmMode || "일반",
             currentVersion: newVersionNum, // 숫자로 저장 (하위 호환성)
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
 
           // 새 버전도 versions에 저장
-          const newVersionRef = promptRef.collection('versions').doc();
+          const newVersionRef = promptRef.collection("versions").doc();
           await newVersionRef.set({
             id: newVersionRef.id,
             version: newVersionStr, // 문자열 형식 (v2, v3 등)
             title: title,
             content: content,
-            category: category || '기타',
-            llmModel: llmModel || '미지정',
-            llmMode: llmMode || '일반',
-            changelog: '프롬프트 수정', // 필수 필드 추가
+            category: category || "기타",
+            llmModel: llmModel || "미지정",
+            llmMode: llmMode || "일반",
+            changelog: "프롬프트 수정", // 필수 필드 추가
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdBy: userId
+            createdBy: userId,
           });
 
           showSuccess(`프롬프트가 수정되었습니다! (버전 ${newVersionStr})`);
-          elements.promptForm.innerHTML = '';
-          
+          elements.promptForm.innerHTML = "";
+
           // 모든 탭용 데이터 다시 로드
           await loadPromptsForAllTabs();
-          
+
           // 사용 탭에 수정된 프롬프트가 표시되어 있다면 갱신
-          if (currentTab === 'use') {
-            const selectedCard = document.querySelector('.prompt-card[data-prompt-id="' + id + '"]');
+          if (currentTab === "use") {
+            const selectedCard = document.querySelector(
+              '.prompt-card[data-prompt-id="' + id + '"]'
+            );
             if (selectedCard) {
               // 카테고리와 프롬프트 선택 상태 유지하면서 갱신
-              const updatedPrompt = allPrompts.find(p => p.id === id);
+              const updatedPrompt = allPrompts.find((p) => p.id === id);
               if (updatedPrompt) {
-                const category = updatedPrompt.category || '기타';
+                const category = updatedPrompt.category || "기타";
                 // 카테고리가 변경되었을 수 있으므로 확인
                 if (elements.categorySelectDropdown.value !== category) {
                   elements.categorySelectDropdown.value = category;
@@ -2017,8 +2465,11 @@
             }
           }
         } catch (error) {
-          console.error('수정 실패:', error);
-          showError('프롬프트 수정에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("수정 실패:", error);
+          showError(
+            "프롬프트 수정에 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -2027,14 +2478,14 @@
       // 클립보드에 복사
       window.copyPromptToClipboard = async function (id) {
         try {
-          let prompt = allPrompts.find(p => p.id === id);
-          
+          let prompt = allPrompts.find((p) => p.id === id);
+
           if (!prompt) {
             const userId = currentUser.uid;
             const doc = await db
-              .collection('users')
+              .collection("users")
               .doc(userId)
-              .collection('prompts')
+              .collection("prompts")
               .doc(id)
               .get();
             if (doc.exists) {
@@ -2044,17 +2495,17 @@
 
           if (prompt) {
             await navigator.clipboard.writeText(prompt.content);
-            showSuccess('프롬프트가 클립보드에 복사되었습니다!');
+            showSuccess("프롬프트가 클립보드에 복사되었습니다!");
           }
         } catch (error) {
-          console.error('복사 실패:', error);
-          showError('클립보드 복사에 실패했습니다.');
+          console.error("복사 실패:", error);
+          showError("클립보드 복사에 실패했습니다.");
         }
       };
 
       // 프롬프트 삭제 (소프트 삭제)
       window.deletePrompt = async function (id) {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
+        if (!confirm("정말 삭제하시겠습니까?")) return;
 
         showLoading();
 
@@ -2063,34 +2514,37 @@
           // 소프트 삭제: isDeleted = true로 설정
           const userId = currentUser.uid;
           await db
-            .collection('users')
+            .collection("users")
             .doc(userId)
-            .collection('prompts')
+            .collection("prompts")
             .doc(id)
             .update({
               isDeleted: true,
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             });
-          showSuccess('프롬프트가 삭제되었습니다.');
-          
+          showSuccess("프롬프트가 삭제되었습니다.");
+
           // 모든 탭용 데이터 다시 로드
           await loadPromptsForAllTabs();
-          
+
           // 현재 탭이 사용 탭이고 삭제된 프롬프트가 실행 패널에 표시되어 있다면 초기화
-          if (currentTab === 'use' && elements.executionPanel) {
+          if (currentTab === "use" && elements.executionPanel) {
             const executionContent = elements.executionPanel.innerHTML;
             if (executionContent.includes(`'${id}'`)) {
-              elements.executionPanel.innerHTML = '';
+              elements.executionPanel.innerHTML = "";
             }
           }
-          
+
           // 현재 탭이 검색 탭이고 검색 결과에 삭제된 프롬프트가 있다면 갱신
-          if (currentTab === 'search') {
+          if (currentTab === "search") {
             loadPromptsForSearch();
           }
         } catch (error) {
-          console.error('삭제 실패:', error);
-          showError('프롬프트 삭제에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          console.error("삭제 실패:", error);
+          showError(
+            "프롬프트 삭제에 실패했습니다: " +
+              (error.message || "알 수 없는 오류")
+          );
         } finally {
           hideLoading();
         }
@@ -2098,61 +2552,67 @@
 
       // UI 헬퍼
       function showAuthSection() {
-        elements.authSection.style.display = 'block';
-        elements.mainContent.style.display = 'none';
+        elements.authSection.style.display = "block";
+        elements.mainContent.style.display = "none";
       }
 
       function showMainContent() {
-        elements.authSection.style.display = 'none';
-        elements.mainContent.style.display = 'block';
+        elements.authSection.style.display = "none";
+        elements.mainContent.style.display = "block";
         elements.userEmail.textContent = currentUser.email;
       }
 
       function showLoading() {
-        elements.loading.style.display = 'flex';
+        elements.loading.style.display = "flex";
       }
 
       function hideLoading() {
-        elements.loading.style.display = 'none';
+        elements.loading.style.display = "none";
       }
 
       function showError(message) {
-        alert('❌ ' + message);
+        alert("❌ " + message);
       }
 
       function showSuccess(message) {
-        alert('✅ ' + message);
+        alert("✅ " + message);
       }
 
       function escapeHtml(text) {
-        const div = document.createElement('div');
+        const div = document.createElement("div");
         div.textContent = text;
         return div.innerHTML;
       }
 
       function getErrorMessage(code) {
         const messages = {
-          'auth/invalid-email': '올바른 이메일 주소를 입력해주세요.',
-          'auth/user-disabled': '비활성화된 계정입니다.',
-          'auth/user-not-found': '존재하지 않는 계정입니다.',
-          'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
-          'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
-          'auth/weak-password': '비밀번호가 너무 약합니다. 6자 이상 입력해주세요.',
-          'auth/network-request-failed': '네트워크 연결을 확인해주세요.',
-          'auth/popup-closed-by-user': '로그인 창이 닫혔습니다.',
-          'auth/cancelled-popup-request': '로그인 요청이 취소되었습니다.',
-          'auth/popup-blocked': '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.',
-          'auth/operation-not-allowed': 'Google 로그인이 활성화되지 않았습니다. Firebase Console에서 활성화해주세요.',
-          'auth/unauthorized-domain': '승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.',
-          'auth/account-exists-with-different-credential': '이 이메일은 다른 로그인 방법으로 이미 등록되어 있습니다.',
-          'auth/invalid-credential': '인증 정보가 올바르지 않습니다.',
-          'auth/too-many-requests': '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'
+          "auth/invalid-email": "올바른 이메일 주소를 입력해주세요.",
+          "auth/user-disabled": "비활성화된 계정입니다.",
+          "auth/user-not-found": "존재하지 않는 계정입니다.",
+          "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
+          "auth/email-already-in-use": "이미 사용 중인 이메일입니다.",
+          "auth/weak-password":
+            "비밀번호가 너무 약합니다. 6자 이상 입력해주세요.",
+          "auth/network-request-failed": "네트워크 연결을 확인해주세요.",
+          "auth/popup-closed-by-user": "로그인 창이 닫혔습니다.",
+          "auth/cancelled-popup-request": "로그인 요청이 취소되었습니다.",
+          "auth/popup-blocked":
+            "팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.",
+          "auth/operation-not-allowed":
+            "Google 로그인이 활성화되지 않았습니다. Firebase Console에서 활성화해주세요.",
+          "auth/unauthorized-domain":
+            "승인되지 않은 도메인입니다. Firebase Console에서 도메인을 추가해주세요.",
+          "auth/account-exists-with-different-credential":
+            "이 이메일은 다른 로그인 방법으로 이미 등록되어 있습니다.",
+          "auth/invalid-credential": "인증 정보가 올바르지 않습니다.",
+          "auth/too-many-requests":
+            "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
         };
-        return messages[code] || '오류가 발생했습니다. 다시 시도해주세요.';
+        return messages[code] || "오류가 발생했습니다. 다시 시도해주세요.";
       }
 
       // 페이지 로드 시 초기화
-      window.addEventListener('DOMContentLoaded', init);
+      window.addEventListener("DOMContentLoaded", init);
     </script>
   </body>
 </html>
