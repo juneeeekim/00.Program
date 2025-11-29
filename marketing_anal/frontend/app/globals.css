@@ -1,0 +1,336 @@
+/**
+ * ==================================================
+ * Global Styles - Premium Dark Mode Theme
+ * ==================================================
+ * Phase 5: Clothes - Premium Aesthetics
+ * 
+ * Design System:
+ * - Deep Navy Dark Mode (#0F172A)
+ * - Glassmorphism Effects
+ * - Inter/Pretendard Typography
+ * - Smooth Transitions
+ * ==================================================
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* ==================================================
+   SECTION 1: CSS CUSTOM PROPERTIES (Design Tokens)
+   ================================================== */
+
+:root {
+  /* Color System - Deep Navy Dark Mode */
+  --color-background: #0f172a; /* Deep Navy Background */
+  --color-surface: #1e293b; /* Card Background */
+  --color-surface-hover: #334155; /* Hover State */
+
+  /* Primary Colors */
+  --color-primary: #3b82f6; /* Blue - Actions */
+  --color-primary-hover: #2563eb; /* Blue Hover */
+
+  /* Accent Colors */
+  --color-success: #10b981; /* Green - Success */
+  --color-error: #ef4444; /* Red - Error */
+  --color-warning: #f59e0b; /* Amber - Warning */
+
+  /* Text Colors */
+  --color-text-primary: #f8fafc; /* Primary Text */
+  --color-text-secondary: #94a3b8; /* Secondary Text */
+  --color-text-tertiary: #64748b; /* Tertiary Text */
+
+  /* Border Colors */
+  --color-border: #334155; /* Default Border */
+  --color-border-light: #475569; /* Light Border */
+
+  /* Typography Scale */
+  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  --font-size-h1: 1.5rem; /* 24px */
+  --font-size-h2: 1.125rem; /* 18px */
+  --font-size-body: 0.875rem; /* 14px */
+  --font-size-label: 0.75rem; /* 12px */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem; /* 4px */
+  --spacing-sm: 0.5rem; /* 8px */
+  --spacing-md: 1rem; /* 16px */
+  --spacing-lg: 1.5rem; /* 24px */
+  --spacing-xl: 2rem; /* 32px */
+
+  /* Border Radius */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
+  --radius-xl: 1rem; /* 16px */
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
+}
+
+/* ==================================================
+   SECTION 2: BASE STYLES
+   ================================================== */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================================================
+   SECTION 3: TYPOGRAPHY
+   ================================================== */
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+p {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+/* ==================================================
+   SECTION 4: LINKS & BUTTONS
+   ================================================== */
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-normal);
+}
+
+a:hover {
+  color: var(--color-primary);
+}
+
+/**
+ * Button Base Styles - Premium interactions
+ */
+button {
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+/**
+ * Button Active State - Subtle scale down for click feedback
+ */
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/**
+ * Button Disabled State
+ */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================================================
+   SECTION 5: GLASSMORPHISM UTILITIES
+   ================================================== */
+
+.glass {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.glass-strong {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+}
+
+/* ==================================================
+   SECTION 6: SCROLLBAR STYLING
+   ================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-surface-hover);
+}
+
+/* ==================================================
+   SECTION 7: SELECTION STYLING
+   ================================================== */
+
+::selection {
+  background: var(--color-primary);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* ==================================================
+   SECTION 8: FOCUS STYLES
+   ================================================== */
+
+/**
+ * Focus Visible - Premium focus ring for keyboard navigation
+ * Smooth transition for better UX
+ */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  transition: outline-color var(--transition-normal);
+}
+
+/**
+ * Input Focus States - Enhanced visual feedback
+ */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transition: border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+/* ==================================================
+   SECTION 9: ANIMATIONS
+   ================================================== */
+
+/**
+ * Fade In Animation - For page/component entrance
+ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * Pulse Animation - For loading skeletons
+ */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/**
+ * Shimmer Animation - For loading skeleton shimmer effect
+ */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-slow) ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* ==================================================
+   SECTION 10: UTILITY CLASSES
+   ================================================== */
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+.transition-all {
+  transition: all var(--transition-normal);
+}
+
+.transition-colors {
+  transition: color var(--transition-normal),
+    background-color var(--transition-normal),
+    border-color var(--transition-normal);
+}

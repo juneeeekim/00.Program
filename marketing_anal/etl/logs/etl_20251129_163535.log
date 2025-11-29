@@ -1,0 +1,24 @@
+2025-11-29 16:35:35,763 - INFO - ==================================================
+2025-11-29 16:35:35,763 - INFO - ETL Pipeline Started
+2025-11-29 16:35:35,764 - INFO - ==================================================
+2025-11-29 16:35:35,765 - INFO - ✓ Environment initialized successfully
+2025-11-29 16:35:35,775 - INFO - ✓ Firestore client initialized successfully
+2025-11-29 16:35:35,776 - INFO - Found 1 GA files and 1 Ad files
+2025-11-29 16:35:35,776 - INFO - Processing GA file: ga_sessions_sample.csv
+2025-11-29 16:35:35,779 - INFO - ✓ Loaded 9 GA rows
+2025-11-29 16:35:35,790 - INFO - ✓ Processed 9 valid GA rows
+2025-11-29 16:35:35,791 - INFO - Processing Ad file: ad_performance_sample.csv
+2025-11-29 16:35:35,792 - INFO - ✓ Loaded 6 Ad rows
+2025-11-29 16:35:35,800 - INFO - ✓ Processed 6 valid Ad rows
+2025-11-29 16:35:35,802 - INFO - ✓ Combined 15 total rows
+2025-11-29 16:35:35,805 - INFO - ✓ Aggregated to 9 unique records
+2025-11-29 16:35:36,522 - INFO - ✓ Uploaded 9 records to Firestore
+2025-11-29 16:35:36,522 - INFO - ==================================================
+2025-11-29 16:35:36,523 - INFO - ETL Pipeline Completed Successfully
+2025-11-29 16:35:36,523 - INFO - ==================================================
+2025-11-29 16:35:36,523 - INFO - Duration: 0.76 seconds
+2025-11-29 16:35:36,523 - INFO - Files Processed: 2
+2025-11-29 16:35:36,523 - INFO - Files Failed: 0
+2025-11-29 16:35:36,524 - INFO - Rows Processed: 15
+2025-11-29 16:35:36,524 - INFO - Rows Uploaded: 9
+2025-11-29 16:35:36,524 - INFO - ==================================================

@@ -1,0 +1,10 @@
+date,source,medium,campaign,sessions,users,conversions,revenue
+2025-11-25,naver,cpc,self_esteem_202511,120,95,5,250000
+2025-11-25,google,cpc,anxiety_202511,80,65,3,150000
+2025-11-25,instagram,sns,self_esteem_202511,45,40,1,50000
+2025-11-26,naver,cpc,self_esteem_202511,135,110,7,350000
+2025-11-26,google,cpc,anxiety_202511,90,72,4,200000
+2025-11-26,naver_blog,blog,self_esteem_202511,30,28,2,100000
+2025-11-27,naver,cpc,self_esteem_202511,150,120,8,400000
+2025-11-27,google,cpc,anxiety_202511,95,78,5,250000
+2025-11-27,youtube,social,anxiety_202511,25,22,1,50000
