@@ -3565,6 +3565,8 @@ class DualTextWriter {
           setTimeout(() => {
             this.setupSavedItemEventListeners();
             this.bindLinkedReferenceBadgeEvents();
+            // [Phase 3-1 버그 수정] 대량 렌더링 경로에서도 "더 보기" 버튼 렌더링
+            this.renderLoadMoreButton();
           }, 100);
         }
       };
