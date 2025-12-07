@@ -11304,7 +11304,32 @@ class DualTextWriter {
 
     if (titleInput) titleInput.value = article.title;
     if (contentTextarea) contentTextarea.value = article.content;
-    if (categorySelect) categorySelect.value = article.category || "미분류";
+    
+    /* ================================================================
+       카테고리 드롭다운 옵션 동적 채우기
+       - 수정 모드 진입 시 현재 글 목록에서 카테고리 추출
+       ================================================================ */
+    if (categorySelect) {
+      // 기존 옵션 초기화
+      categorySelect.innerHTML = "";
+      
+      // 고유 카테고리 목록 추출
+      const categories = new Set(["미분류"]);
+      this.managementArticles.forEach((a) => {
+        if (a.category) categories.add(a.category);
+      });
+      
+      // 정렬하여 옵션 추가
+      Array.from(categories).sort().forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+      });
+      
+      // 현재 글의 카테고리 선택
+      categorySelect.value = article.category || "미분류";
+    }
 
     // 레퍼런스 연동 (패널 인덱스 정보 전달)
     if (window.setCurrentEditingArticle) {
