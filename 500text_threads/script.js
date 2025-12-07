@@ -1346,31 +1346,62 @@ class DualTextWriter {
     });
   }
 
+  /* ============================================================
+   * [Phase 1-2 Hotfix] 2025-12-07
+   * 애플리케이션 초기화 로직 강화
+   * - Firebase 초기화 실패 시 안전한 에러 처리
+   * - 초기화 실패해도 UI는 표시되지만 데이터 로드는 차단됨
+   * ============================================================ */
   async init() {
     this.bindEvents();
-    await this.waitForFirebase();
-    this.setupAuthStateListener();
-    this.initCharLimitToggle();
-    // 초기 글자 제한 반영
-    this.applyCharLimit(this.maxLength);
-    // 실시간 중복 체크 초기화
-    this.initLiveDuplicateCheck();
-    // 레퍼런스 선택 기능 초기화
-    this.initReferenceSelection();
-    // SNS 플랫폼 선택 기능 초기화
-    this.initSnsPlatformSelection();
-    // 레퍼런스 불러오기 패널 초기화
-    this.initReferenceLoader();
-    // 확대 모드 초기화
-    this.initExpandModal();
+    
+    try {
+      // Firebase 초기화 대기 (타임아웃 시 에러 throw)
+      await this.waitForFirebase();
+      
+      // Firebase 초기화 성공 후 추가 설정
+      this.setupAuthStateListener();
+      this.initCharLimitToggle();
+      this.applyCharLimit(this.maxLength);
+      this.initLiveDuplicateCheck();
+      this.initReferenceSelection();
+      this.initSnsPlatformSelection();
+      this.initReferenceLoader();
+      this.initExpandModal();
+      
+      console.log('[DualTextWriter] ✅ 애플리케이션 초기화 완료');
+    } catch (error) {
+      // Firebase 초기화 실패: 기본 UI는 표시하되, 데이터 기능은 비활성화
+      console.error('[DualTextWriter] ❌ 초기화 실패:', error.message);
+      
+      // 기본 UI 컴포넌트는 초기화 (선택적)
+      this.initCharLimitToggle();
+      this.applyCharLimit(this.maxLength);
+      
+      // 사용자에게 상태 안내 (이미 AuthManager에서 메시지 표시됨)
+    }
   }
 
-  // [Refactoring] AuthManager로 위임
+  /* ============================================================
+   * [Phase 1-2 Hotfix] 2025-12-07
+   * Firebase 초기화 대기 래퍼
+   * - AuthManager의 waitForFirebase 호출 및 상태 동기화
+   * - 에러 발생 시 상위로 전파하여 init()에서 처리
+   * ============================================================ */
   async waitForFirebase() {
+    // AuthManager에서 에러 throw 가능 → 상위로 전파
     await this.authManager.waitForFirebase();
+    
+    // 상태 동기화
     this.auth = this.authManager.auth;
     this.db = this.authManager.db;
     this.isFirebaseReady = this.authManager.isFirebaseReady;
+    
+    console.log('[DualTextWriter] Firebase 상태 동기화 완료:', {
+      isFirebaseReady: this.isFirebaseReady,
+      hasAuth: !!this.auth,
+      hasDb: !!this.db
+    });
   }
 
   // [Refactoring] AuthManager에서 처리하므로 제거 또는 래핑
@@ -3553,8 +3584,72 @@ class DualTextWriter {
       setTimeout(() => {
         this.setupSavedItemEventListeners();
         this.bindLinkedReferenceBadgeEvents();
+        // [Phase 3-1] "더 보기" 버튼 렌더링
+        this.renderLoadMoreButton();
       }, 100);
     }
+  }
+  
+  /* ============================================================
+   * [Phase 3-1] 2025-12-07
+   * "더 보기" 버튼 렌더링
+   * - 추가 데이터가 있을 때만 표시
+   * - 접근성: aria-label 속성 사용
+   * ============================================================ */
+  renderLoadMoreButton() {
+    if (!this.savedList) return;
+    
+    // 기존 "더 보기" 버튼 컨테이너 제거
+    const existingContainer = this.savedList.querySelector('.load-more-container');
+    if (existingContainer) existingContainer.remove();
+    
+    // 페이지네이션 상태 확인
+    if (!this.paginationState?.hasMore) {
+      // 더 이상 데이터가 없으면 완료 메시지 표시 (데이터가 pageSize 이상일 때만)
+      if (this.savedTexts && this.savedTexts.length >= (this.paginationState?.pageSize || 20)) {
+        const allLoadedContainer = document.createElement('div');
+        allLoadedContainer.className = 'all-loaded-message';
+        allLoadedContainer.innerHTML = '✅ 모든 글을 불러왔습니다.';
+        this.savedList.appendChild(allLoadedContainer);
+      }
+      return;
+    }
+    
+    // "더 보기" 버튼 컨테이너 생성
+    const loadMoreContainer = document.createElement('div');
+    loadMoreContainer.className = 'load-more-container';
+    loadMoreContainer.innerHTML = `
+      <button class="btn-load-more" aria-label="더 많은 글 불러오기">
+        📜 더 보기
+      </button>
+    `;
+    
+    // 버튼 이벤트 리스너
+    const loadMoreBtn = loadMoreContainer.querySelector('.btn-load-more');
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', async () => {
+        // 로딩 상태 표시
+        loadMoreBtn.classList.add('loading');
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = '로딩 중';
+        
+        try {
+          await this.loadMoreSavedTexts();
+        } catch (error) {
+          console.error('[renderLoadMoreButton] 추가 로드 실패:', error);
+          this.showMessage('추가 데이터 로드에 실패했습니다.', 'error');
+        } finally {
+          // 로딩 상태 제거 (버튼이 아직 존재하면)
+          if (loadMoreBtn.parentNode) {
+            loadMoreBtn.classList.remove('loading');
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = '📜 더 보기';
+          }
+        }
+      });
+    }
+    
+    this.savedList.appendChild(loadMoreContainer);
   }
 
   /**
@@ -5968,9 +6063,31 @@ class DualTextWriter {
     }
   }
 
-  // Firestore에서 사용자 데이터 로드
+  /* ============================================================
+   * [Phase 1-2 Hotfix + Phase 2-1] 2025-12-07
+   * 사용자 데이터 로드 - Silent Failure 방지 + 스켈레톤 UI
+   * - isFirebaseReady 체크 추가
+   * - 진입 실패 시 명시적 warning 로그 출력
+   * - 로딩 중 스켈레톤 UI 표시
+   * - 에러 발생 시 재시도 버튼 표시
+   * ============================================================ */
   async loadUserData() {
-    if (!this.currentUser) return;
+    // 진입 조건 검증 (Silent Failure 방지)
+    if (!this.currentUser) {
+      console.warn('[loadUserData] ⚠️ 스킵됨: 로그인된 사용자 없음');
+      return;
+    }
+    
+    if (!this.isFirebaseReady) {
+      console.warn('[loadUserData] ⚠️ 스킵됨: Firebase가 초기화되지 않음');
+      this.showMessage('Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', 'warning');
+      return;
+    }
+
+    console.log('[loadUserData] 데이터 로드 시작...');
+    
+    // [Phase 2-1] 스켈레톤 UI 표시
+    this.showLoadingSkeleton();
 
     try {
       // ✅ Phase 3.1.1: 필수 데이터 병렬 로드 (30-50% 단축)
@@ -5980,6 +6097,9 @@ class DualTextWriter {
         this.loadSavedTextsFromFirestore(),
         this.loadTrackingPosts ? this.loadTrackingPosts() : Promise.resolve(),
       ]);
+
+      // [Phase 2-1] 스켈레톤 UI 제거
+      this.hideLoadingSkeleton();
 
       // UI 업데이트 (동기)
       this.updateCharacterCount("ref");
@@ -5992,10 +6112,114 @@ class DualTextWriter {
       if (this.updateBatchMigrationButton) {
         this.updateBatchMigrationButton();
       }
+      
+      console.log('[loadUserData] ✅ 데이터 로드 완료');
     } catch (error) {
-      console.error("사용자 데이터 로드 실패:", error);
-      this.showMessage("데이터를 불러오는데 실패했습니다.", "error");
+      console.error('[loadUserData] ❌ 사용자 데이터 로드 실패:', error);
+      
+      // [Phase 2-1] 스켈레톤 제거 및 에러 컨테이너 표시
+      this.hideLoadingSkeleton();
+      this.showErrorContainer('데이터를 불러오는데 실패했습니다.', () => this.loadUserData());
     }
+  }
+
+  /* ============================================================
+   * [Phase 2-1] 2025-12-07
+   * 스켈레톤 UI 헬퍼 함수
+   * - 접근성: aria-busy, aria-label 속성 사용
+   * ============================================================ */
+  
+  /**
+   * 저장된 글 목록 영역에 스켈레톤 UI를 표시합니다.
+   */
+  showLoadingSkeleton() {
+    const savedList = document.querySelector('.saved-list');
+    if (!savedList) return;
+    
+    // 기존 에러 컨테이너 제거
+    const existingError = savedList.querySelector('.error-container');
+    if (existingError) existingError.remove();
+    
+    // 스켈레톤 이미 표시중이면 스킵
+    if (savedList.querySelector('.skeleton-container')) return;
+    
+    // 접근성 속성 설정
+    savedList.setAttribute('aria-busy', 'true');
+    savedList.setAttribute('aria-label', '데이터 로딩 중');
+    
+    // 스켈레톤 HTML 생성 (3개 카드)
+    const skeletonHTML = `
+      <div class="skeleton-container" aria-busy="true" aria-label="데이터 로딩 중">
+        ${[1, 2, 3].map(() => `
+          <div class="skeleton-saved-item">
+            <div class="skeleton-header">
+              <div class="skeleton-type-badge skeleton-shimmer"></div>
+              <div class="skeleton-date skeleton-shimmer"></div>
+            </div>
+            <div class="skeleton-content skeleton-shimmer"></div>
+            <div class="skeleton-content skeleton-shimmer"></div>
+            <div class="skeleton-content skeleton-shimmer"></div>
+            <div class="skeleton-footer">
+              <div class="skeleton-button skeleton-shimmer"></div>
+              <div class="skeleton-button skeleton-shimmer"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    
+    savedList.innerHTML = skeletonHTML;
+  }
+  
+  /**
+   * 스켈레톤 UI를 제거합니다.
+   */
+  hideLoadingSkeleton() {
+    const savedList = document.querySelector('.saved-list');
+    if (!savedList) return;
+    
+    // 접근성 속성 제거
+    savedList.removeAttribute('aria-busy');
+    savedList.removeAttribute('aria-label');
+    
+    // 스켈레톤 컨테이너 제거
+    const skeleton = savedList.querySelector('.skeleton-container');
+    if (skeleton) skeleton.remove();
+  }
+  
+  /**
+   * 에러 컨테이너를 표시합니다.
+   * @param {string} message - 에러 메시지
+   * @param {Function} onRetry - 재시도 버튼 클릭 시 콜백
+   */
+  showErrorContainer(message, onRetry) {
+    const savedList = document.querySelector('.saved-list');
+    if (!savedList) return;
+    
+    // 기존 내용 제거
+    savedList.innerHTML = '';
+    
+    // 에러 컨테이너 생성 (접근성: role="alert")
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'error-container';
+    errorContainer.setAttribute('role', 'alert');
+    errorContainer.setAttribute('aria-live', 'assertive');
+    errorContainer.innerHTML = `
+      <div class="error-icon">⚠️</div>
+      <p class="error-message">${message}</p>
+      <button class="btn-retry" aria-label="다시 시도">🔄 다시 시도</button>
+    `;
+    
+    // 재시도 버튼 이벤트
+    const retryBtn = errorContainer.querySelector('.btn-retry');
+    if (retryBtn && onRetry) {
+      retryBtn.addEventListener('click', () => {
+        errorContainer.remove();
+        onRetry();
+      });
+    }
+    
+    savedList.appendChild(errorContainer);
   }
 
   /**
@@ -6102,12 +6326,46 @@ class DualTextWriter {
     }
   }
 
-  // Firestore에서 저장된 텍스트들 불러오기
-  // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
-  async loadSavedTextsFromFirestore(filterOptions = {}) {
+  /* ============================================================
+   * [Phase 3-1] 2025-12-07
+   * Firestore에서 저장된 텍스트들 불러오기 (페이지네이션 적용)
+   * - limit(20)으로 초기 로드 최적화
+   * - 커서 기반 페이지네이션 (startAfter) 지원
+   * - 성능: 대용량 데이터 처리 시 메모리 효율화
+   * ============================================================ */
+  
+  // 페이지네이션 상태 (클래스 속성으로 관리)
+  // this.paginationState = { lastDoc: null, hasMore: true, pageSize: 20 }
+  
+  async loadSavedTextsFromFirestore(filterOptions = {}, append = false) {
     if (!this.currentUser || !this.isFirebaseReady) return;
+    
+    // 페이지네이션 상태 초기화 (append가 아닌 경우)
+    if (!append) {
+      this.paginationState = {
+        lastDoc: null,
+        hasMore: true,
+        pageSize: 20,
+        isLoading: false
+      };
+      this.savedTexts = [];
+    }
+    
+    // 이미 로딩 중이면 스킵
+    if (this.paginationState?.isLoading) {
+      console.log('[loadSavedTextsFromFirestore] 이미 로딩 중입니다.');
+      return;
+    }
+    
+    // 더 이상 데이터가 없으면 스킵
+    if (append && !this.paginationState?.hasMore) {
+      console.log('[loadSavedTextsFromFirestore] 더 이상 로드할 데이터가 없습니다.');
+      return;
+    }
 
     try {
+      this.paginationState.isLoading = true;
+      
       const textsRef = window.firebaseCollection(
         this.db,
         "users",
@@ -6116,8 +6374,6 @@ class DualTextWriter {
       );
 
       // 서버 사이드 필터링 구성 (성능 최적화)
-      // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
-      // 인덱스 예시: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)
       const queryConstraints = [window.firebaseOrderBy("createdAt", "desc")];
 
       // type 필터 (서버 사이드)
@@ -6127,7 +6383,7 @@ class DualTextWriter {
         );
       }
 
-      // referenceType 필터 (서버 사이드, type이 'reference'일 때만 유효)
+      // referenceType 필터 (서버 사이드)
       if (
         filterOptions.type === "reference" &&
         filterOptions.referenceType &&
@@ -6141,86 +6397,153 @@ class DualTextWriter {
           )
         );
       }
+      
+      // [Phase 3-1] limit 적용 (페이지네이션)
+      queryConstraints.push(window.firebaseLimit(this.paginationState.pageSize));
+      
+      // [Phase 3-1] 커서 기반 페이지네이션 (append 모드일 때)
+      if (append && this.paginationState.lastDoc) {
+        queryConstraints.push(window.firebaseStartAfter(this.paginationState.lastDoc));
+      }
 
       const q = window.firebaseQuery(textsRef, ...queryConstraints);
       const querySnapshot = await window.firebaseGetDocs(q);
+      
+      // [Phase 3-1] 마지막 문서 저장 (다음 페이지 로드용)
+      const docs = querySnapshot.docs;
+      if (docs.length > 0) {
+        this.paginationState.lastDoc = docs[docs.length - 1];
+      }
+      
+      // [Phase 3-1] 더 이상 데이터가 있는지 확인
+      this.paginationState.hasMore = docs.length === this.paginationState.pageSize;
 
-      this.savedTexts = [];
-      // 캐시 무효화 (데이터 로드 시)
-      this.renderSavedTextsCache = null;
-      this.renderSavedTextsCacheKey = null;
+      // append가 아니면 캐시 무효화
+      if (!append) {
+        this.renderSavedTextsCache = null;
+        this.renderSavedTextsCacheKey = null;
+      }
+      
+      // 데이터 변환 및 저장
+      const newTexts = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
+        // 타입 정규화 (레거시 값 대응)
         let normalizedType = (data.type || "").toString().toLowerCase();
         if (normalizedType === "writing") normalizedType = "edit";
         if (normalizedType === "ref") normalizedType = "reference";
 
-        // [Tab Separation] 'script' 타입 보존 (기존에는 알 수 없는 타입은 무조건 edit로 처리했음)
         if (
           normalizedType !== "edit" &&
           normalizedType !== "reference" &&
           normalizedType !== "script"
         ) {
-          // 알 수 없는 타입은 편의상 'edit'로 처리
           normalizedType = "edit";
         }
-        this.savedTexts.push({
+        
+        newTexts.push({
           id: doc.id,
           content: data.content,
           date: data.createdAt
             ? data.createdAt.toDate().toLocaleString("ko-KR")
             : "날짜 없음",
-          createdAt: data.createdAt, // Firestore Timestamp 원본 보존
+          createdAt: data.createdAt,
           characterCount: data.characterCount,
           type: normalizedType,
           referenceType: data.referenceType || "unspecified",
           topic: data.topic || undefined,
           contentHash: data.contentHash || undefined,
           hashVersion: data.hashVersion || undefined,
-
-          // ✅ 연결된 레퍼런스 (기존 데이터는 undefined이므로 빈 배열로 처리)
           linkedReferences: Array.isArray(data.linkedReferences)
             ? data.linkedReferences
             : [],
           referenceMeta: data.referenceMeta || undefined,
-
-          // ✅ SNS 플랫폼 (기존 데이터는 undefined이므로 빈 배열로 처리)
           platforms: Array.isArray(data.platforms) ? data.platforms : [],
         });
       });
+      
+      // [Phase 3-1] append 모드면 기존 데이터에 추가, 아니면 교체
+      if (append) {
+        this.savedTexts = [...this.savedTexts, ...newTexts];
+      } else {
+        this.savedTexts = newTexts;
+      }
 
-      console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
+      console.log(`[loadSavedTextsFromFirestore] ${newTexts.length}개 로드 (총: ${this.savedTexts.length}개, 추가 데이터: ${this.paginationState.hasMore ? '있음' : '없음'})`);
 
-      // 주제 필터 옵션 업데이트 (데이터 로드 후)
-      this.updateTopicFilterOptions();
+      // 주제 필터 옵션 업데이트 (초기 로드 시에만)
+      if (!append) {
+        this.updateTopicFilterOptions();
+      }
 
-      // 해시 미보유 레퍼런스 안내 (접근성: 토스트는 aria-live로 표시됨)
-      try {
-        const missingHashCount = this.savedTexts.filter(
-          (t) => (t.type || "edit") === "reference" && !t.contentHash
-        ).length;
-        if (missingHashCount > 0) {
-          this.showMessage(
-            `ℹ️ 해시가 없는 레퍼런스 ${missingHashCount}개가 있습니다. 필요 시 해시 마이그레이션을 실행하세요.`,
-            "info"
-          );
+      // 해시 미보유 레퍼런스 안내 (초기 로드 시에만)
+      if (!append) {
+        try {
+          const missingHashCount = this.savedTexts.filter(
+            (t) => (t.type || "edit") === "reference" && !t.contentHash
+          ).length;
+          if (missingHashCount > 0) {
+            this.showMessage(
+              `ℹ️ 해시가 없는 레퍼런스 ${missingHashCount}개가 있습니다. 필요 시 해시 마이그레이션을 실행하세요.`,
+              "info"
+            );
+          }
+        } catch (e) {
+          // 무시
         }
-      } catch (e) {
-        // 무시
       }
     } catch (error) {
-      console.error("Firestore에서 텍스트 불러오기 실패:", error);
-      // 복합 인덱스 오류인 경우 안내 메시지
+      console.error("[loadSavedTextsFromFirestore] 오류:", error);
       if (error.code === "failed-precondition") {
         console.warn(
           "복합 인덱스가 필요합니다. Firebase Console에서 인덱스를 생성해주세요."
         );
-        console.warn(
-          "인덱스 구성: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)"
-        );
       }
-      this.savedTexts = [];
+      if (!append) {
+        this.savedTexts = [];
+      }
+    } finally {
+      this.paginationState.isLoading = false;
+    }
+  }
+  
+  /* ============================================================
+   * [Phase 3-1] 2025-12-07
+   * 추가 데이터 로드 (더 보기)
+   * - 기존 filterOptions 유지하며 다음 페이지 로드
+   * ============================================================ */
+  async loadMoreSavedTexts() {
+    if (!this.paginationState?.hasMore || this.paginationState?.isLoading) {
+      return false;
+    }
+    
+    console.log('[loadMoreSavedTexts] 추가 데이터 로드 시작...');
+    
+    // 기존 필터 옵션 유지하며 append 모드로 로드
+    await this.loadSavedTextsFromFirestore(this.currentFilterOptions || {}, true);
+    
+    // UI 업데이트 (기존 renderSavedTexts는 append=true면 더해서 표시)
+    await this.renderSavedTexts();
+    
+    // "더 보기" 버튼 상태 업데이트
+    this.updateLoadMoreButton();
+    
+    return this.paginationState.hasMore;
+  }
+  
+  /**
+   * "더 보기" 버튼 상태 업데이트
+   */
+  updateLoadMoreButton() {
+    const loadMoreBtn = document.querySelector('.btn-load-more');
+    if (!loadMoreBtn) return;
+    
+    if (this.paginationState?.hasMore) {
+      loadMoreBtn.style.display = 'block';
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = '📜 더 보기';
+    } else {
+      loadMoreBtn.style.display = 'none';
     }
   }
 

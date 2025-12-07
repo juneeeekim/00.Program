@@ -3155,9 +3155,13 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="script.js?v=20251103"></script>
-
-    <!-- Main Script -->
+    <!-- ============================================================
+         [Phase 1-1 Hotfix] 2025-12-07
+         중복 스크립트 로딩 제거: ES Module 방식만 유지
+         - 기존: script.js?v=20251103 (일반) + script.js (모듈) = 중복 실행
+         - 변경: type="module" 스크립트만 유지하여 단일 인스턴스 보장
+         ============================================================ -->
+    <!-- Main Script (ES Module) -->
     <script type="module" src="script.js"></script>
     <script src="test-firebase.js"></script>
   </body>
