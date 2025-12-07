@@ -7678,6 +7678,50 @@ header h1 {
   transform: translateY(-2px);
 }
 
+/* 듀얼 패널 카드 선택 스타일 - 패널별 색상 구분 */
+.article-card.selected-panel-1 {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);
+}
+
+.article-card.selected-panel-1::before {
+  content: "📌 1";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  z-index: 1;
+}
+
+.article-card.selected-panel-2 {
+  border-color: #764ba2;
+  background: linear-gradient(135deg, #fdf5ff 0%, #f5eeff 100%);
+}
+
+.article-card.selected-panel-2::before {
+  content: "📌 2";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  z-index: 1;
+}
+
+/* 카드에 position relative 추가 (::before 위치 기준) */
+.article-card {
+  position: relative;
+}
+
 /* 카드 헤더 (순서 번호 + 제목 + 순서 조정 버튼) */
 .article-card-header {
   display: flex;
@@ -7796,7 +7840,205 @@ header h1 {
   font-size: 15px;
 }
 
+/* ================================================================
+   듀얼 글 상세 패널 시스템
+   - 두 개의 글을 동시에 비교/편집할 수 있는 레이아웃
+   - 2025-12-07 Phase 2 추가
+   ================================================================ */
+
+/* 듀얼 패널 컨테이너 - 기본 상태 (단일 모드) */
+.article-detail-container {
+  width: 100%;
+}
+
+/* 듀얼 패널 컨테이너 - 듀얼 모드 (두 패널 동시 표시) */
+.article-detail-container.dual-mode {
+  display: grid;
+  grid-template-columns: 1fr 4px 1fr;
+  gap: 0;
+  align-items: start;
+}
+
+/* 듀얼 모드에서 패널 너비 조절 */
+.article-detail-container.dual-mode .article-detail-panel {
+  margin-top: 0;
+  height: fit-content;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* ----------------------------------------------------------------
+   듀얼 모드 구분선 스타일
+   ---------------------------------------------------------------- */
+
+/* 구분선 기본 스타일 */
+.detail-dual-divider {
+  width: 4px;
+  background: linear-gradient(180deg, #e1e5e9 0%, #d0d5da 100%);
+  cursor: col-resize;
+  position: relative;
+  border-radius: 2px;
+  transition: background 0.2s ease;
+  align-self: stretch;
+  min-height: 200px;
+}
+
+/* 구분선 호버 스타일 */
+.detail-dual-divider:hover {
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 구분선 드래그 중 스타일 */
+.detail-dual-divider.dragging {
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+}
+
+/* 구분선 핸들 (드래그 표시) */
+.detail-dual-divider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.detail-dual-divider:hover .detail-dual-divider-handle,
+.detail-dual-divider.dragging .detail-dual-divider-handle {
+  opacity: 1;
+}
+
+/* ----------------------------------------------------------------
+   패널 번호 배지 스타일
+   ---------------------------------------------------------------- */
+
+/* 패널 배지 (📌 1, 📌 2) */
+.detail-panel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  margin-right: 12px;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+/* 활성 패널 스타일 */
+.article-detail-panel.active-panel {
+  border-color: #667eea;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+}
+
+.article-detail-panel.active-panel .detail-panel-badge {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    box-shadow: 0 2px 6px rgba(240, 147, 251, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(240, 147, 251, 0.6);
+  }
+}
+
+/* ----------------------------------------------------------------
+   듀얼 패널 반응형 처리 (768px 이하)
+   - 듀얼 모드 대신 탭 전환 방식으로 변경
+   ---------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  /* 모바일에서 듀얼 모드 비활성화 - 단일 열 레이아웃 */
+  .article-detail-container.dual-mode {
+    display: block;
+    grid-template-columns: none;
+  }
+
+  /* 모바일에서 구분선 숨김 */
+  .detail-dual-divider {
+    display: none;
+  }
+
+  /* 모바일 패널 탭 전환 UI */
+  .dual-panel-mobile-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 4px;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
+
+  .dual-panel-mobile-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .dual-panel-mobile-tab.active {
+    background: white;
+    color: #667eea;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 모바일에서 비활성 패널 숨김 */
+  .article-detail-container.dual-mode .article-detail-panel {
+    display: none;
+    margin-top: 0;
+    max-height: none;
+  }
+
+  .article-detail-container.dual-mode .article-detail-panel.mobile-active {
+    display: block;
+  }
+
+  /* 모바일에서 패널 전체 너비 */
+  .article-detail-container.dual-mode .article-detail-panel {
+    width: 100%;
+  }
+
+  /* 패널 전환 애니메이션 */
+  .article-detail-panel.panel-slide-in {
+    animation: panelSlideIn 0.3s ease-out;
+  }
+
+  @keyframes panelSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+/* 데스크탑에서 모바일 탭 숨김 */
+.dual-panel-mobile-tabs {
+  display: none;
+}
+
 /* 상세 패널 */
+
+
 .article-detail-panel {
   background: white;
   border: 2px solid #e1e5e9;

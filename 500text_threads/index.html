@@ -1969,105 +1969,133 @@
               <p>표시할 글이 없습니다.</p>
             </div>
 
-            <!-- 상세 패널 -->
+            <!-- ================================================================
+                 듀얼 글 상세 패널 컨테이너
+                 - 두 개의 글을 동시에 비교/편집할 수 있는 레이아웃
+                 - dual-mode 클래스 토글로 1열/2열 전환
+                 - 2025-12-07 Phase 1 추가
+                 ================================================================ -->
             <div
-              id="article-detail-panel"
-              class="article-detail-panel"
-              style="display: none"
+              id="article-detail-container"
+              class="article-detail-container"
               role="region"
-              aria-label="글 상세 정보"
+              aria-label="글 상세 정보 영역"
             >
+              <!-- ============================================================
+                   패널 1: 첫 번째 글 상세 정보
+                   - 기본 클릭 시 이 패널에 표시
+                   ============================================================ -->
+              <div
+                id="article-detail-panel-1"
+                class="article-detail-panel"
+                style="display: none"
+                role="region"
+                aria-label="글 상세 정보 (패널 1)"
+                aria-labelledby="detail-panel-title-1"
+                aria-expanded="false"
+                data-panel-index="1"
+              >
+
               <div class="detail-panel-header">
-                <h4 id="detail-panel-title">📄 글 상세 정보</h4>
+                <!-- 패널 번호 배지 표시 -->
+                <span class="detail-panel-badge">📌 1</span>
+                <h4 id="detail-panel-title-1">📄 글 상세 정보</h4>
                 <div class="detail-panel-actions">
                   <button
                     type="button"
-                    id="detail-expand-btn"
+                    id="detail-expand-btn-1"
                     class="btn-icon btn-expand"
-                    aria-label="전체 화면 확대 모드"
+                    aria-label="전체 화면 확대 모드 (패널 1)"
                     title="전체 화면 확대 (ESC로 닫기)"
                     aria-expanded="false"
+                    data-panel-index="1"
                   >
                     🔍
                   </button>
                   <button
-                    id="detail-panel-close"
+                    id="detail-panel-close-1"
                     class="btn-icon"
-                    aria-label="상세 패널 닫기"
+                    aria-label="상세 패널 1 닫기"
                     title="닫기"
+                    data-panel-index="1"
                   >
                     ×
                   </button>
                 </div>
               </div>
 
-              <!-- 읽기 모드 -->
-              <div id="detail-read-mode" class="detail-mode">
+              <!-- 읽기 모드 (패널 1) -->
+              <div id="detail-read-mode-1" class="detail-mode">
                 <div class="detail-meta">
-                  <span id="detail-category" class="detail-badge"></span>
-                  <span id="detail-date" class="detail-date"></span>
-                  <span id="detail-char-count" class="detail-char-count"></span>
+                  <span id="detail-category-1" class="detail-badge"></span>
+                  <span id="detail-date-1" class="detail-date"></span>
+                  <span id="detail-char-count-1" class="detail-char-count"></span>
                   <span
-                    id="detail-view-count"
+                    id="detail-view-count-1"
                     class="detail-view-count"
                     style="display: none"
                   ></span>
                 </div>
-                <h5 id="detail-title" class="detail-title"></h5>
-                <div id="detail-content" class="detail-content"></div>
+                <h5 id="detail-title-1" class="detail-title"></h5>
+                <div id="detail-content-1" class="detail-content"></div>
                 <div class="detail-actions">
                   <button
-                    id="detail-edit-btn"
+                    id="detail-edit-btn-1"
                     class="btn btn-primary"
-                    aria-label="글 수정하기"
+                    aria-label="글 수정하기 (패널 1)"
+                    data-panel-index="1"
                   >
                     ✏️ 수정하기
                   </button>
                   <button
-                    id="detail-delete-btn"
+                    id="detail-delete-btn-1"
                     class="btn btn-danger"
-                    aria-label="글 삭제하기"
+                    aria-label="글 삭제하기 (패널 1)"
+                    data-panel-index="1"
                   >
                     🗑️ 삭제하기
                   </button>
                   <button
-                    id="detail-copy-btn"
+                    id="detail-copy-btn-1"
                     class="btn btn-secondary"
-                    aria-label="글 내용 복사하기"
+                    aria-label="글 내용 복사하기 (패널 1)"
+                    data-panel-index="1"
                   >
                     📋 복사
                   </button>
                 </div>
               </div>
 
-              <!-- 수정 모드 -->
+              <!-- 수정 모드 (패널 1) -->
               <div
-                id="detail-edit-mode"
+                id="detail-edit-mode-1"
                 class="detail-mode"
                 style="display: none"
+                data-panel-index="1"
               >
                 <!-- 확대 모드 전용: 2열 레이아웃 컨테이너 -->
                 <div class="detail-edit-container">
                   <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
                   <div
                     class="detail-reference-panel"
-                    id="detail-reference-panel"
+                    id="detail-reference-panel-1"
                   >
                     <div class="detail-reference-header">
                       <h5>📚 참고 레퍼런스</h5>
                       <button
                         type="button"
-                        id="detail-load-reference-btn"
+                        id="detail-load-reference-btn-1"
                         class="btn btn-small"
-                        aria-label="레퍼런스 추가"
+                        aria-label="레퍼런스 추가 (패널 1)"
                         title="레퍼런스 추가"
+                        data-panel-index="1"
                       >
                         📥 추가
                       </button>
                     </div>
                     <div
                       class="detail-reference-content"
-                      id="detail-reference-content"
+                      id="detail-reference-content-1"
                     >
                       <div class="detail-reference-empty">
                         <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
@@ -2076,7 +2104,7 @@
                         </p>
                       </div>
                       <div
-                        id="detail-reference-list"
+                        id="detail-reference-list-1"
                         class="detail-reference-list"
                         style="display: none"
                       >
@@ -2086,62 +2114,67 @@
                   </div>
 
                   <!-- 드래그 가능한 구분선 -->
-                  <div class="detail-split-divider" id="detail-split-divider">
+                  <div class="detail-split-divider" id="detail-split-divider-1">
                     <div class="detail-divider-handle"></div>
                   </div>
 
                   <!-- 오른쪽: 수정 폼 -->
                   <div class="detail-edit-form">
                     <div class="edit-form-group">
-                      <label for="edit-title-input" class="edit-label"
+                      <label for="edit-title-input-1" class="edit-label"
                         >제목</label
                       >
                       <input
                         type="text"
-                        id="edit-title-input"
+                        id="edit-title-input-1"
                         class="edit-input"
-                        aria-label="글 제목 입력"
+                        aria-label="글 제목 입력 (패널 1)"
                         aria-required="true"
                         maxlength="200"
+                        data-panel-index="1"
                       />
                     </div>
                     <div class="edit-form-group">
-                      <label for="edit-category-select" class="edit-label"
+                      <label for="edit-category-select-1" class="edit-label"
                         >카테고리</label
                       >
                       <select
-                        id="edit-category-select"
+                        id="edit-category-select-1"
                         class="edit-select"
-                        aria-label="카테고리 선택"
+                        aria-label="카테고리 선택 (패널 1)"
                         aria-required="false"
+                        data-panel-index="1"
                       >
                         <!-- 동적으로 카테고리 추가됨 -->
                       </select>
                     </div>
                     <div class="edit-form-group">
-                      <label for="edit-content-textarea" class="edit-label"
+                      <label for="edit-content-textarea-1" class="edit-label"
                         >내용</label
                       >
                       <textarea
-                        id="edit-content-textarea"
+                        id="edit-content-textarea-1"
                         class="edit-textarea"
-                        aria-label="글 내용 입력"
+                        aria-label="글 내용 입력 (패널 1)"
                         aria-required="true"
                         rows="10"
+                        data-panel-index="1"
                       ></textarea>
                     </div>
                     <div class="edit-actions">
                       <button
-                        id="edit-article-save-btn"
+                        id="edit-article-save-btn-1"
                         class="btn btn-primary"
-                        aria-label="수정 내용 저장"
+                        aria-label="수정 내용 저장 (패널 1)"
+                        data-panel-index="1"
                       >
                         💾 저장
                       </button>
                       <button
-                        id="edit-article-cancel-btn"
+                        id="edit-article-cancel-btn-1"
                         class="btn btn-secondary"
-                        aria-label="수정 취소"
+                        aria-label="수정 취소 (패널 1)"
+                        data-panel-index="1"
                       >
                         ❌ 취소
                       </button>
@@ -2150,8 +2183,232 @@
                 </div>
               </div>
             </div>
+            <!-- 패널 1 종료 -->
+
+            <!-- ============================================================
+                 듀얼 모드 구분선
+                 - 두 패널 사이 드래그 가능한 구분선
+                 - dual-mode 클래스 토글 시에만 표시
+                 ============================================================ -->
+            <div
+              id="detail-dual-divider"
+              class="detail-dual-divider"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="패널 크기 조절"
+              style="display: none"
+            >
+              <div class="detail-dual-divider-handle"></div>
+            </div>
+
+            <!-- ============================================================
+                 패널 2: 두 번째 글 상세 정보
+                 - Ctrl+클릭 또는 비교 버튼으로 이 패널에 표시
+                 ============================================================ -->
+            <div
+              id="article-detail-panel-2"
+              class="article-detail-panel"
+              style="display: none"
+              role="region"
+              aria-label="글 상세 정보 (패널 2)"
+              aria-labelledby="detail-panel-title-2"
+              aria-expanded="false"
+              data-panel-index="2"
+            >
+
+              <div class="detail-panel-header">
+                <!-- 패널 번호 배지 표시 -->
+                <span class="detail-panel-badge">📌 2</span>
+                <h4 id="detail-panel-title-2">📄 글 상세 정보</h4>
+                <div class="detail-panel-actions">
+                  <button
+                    type="button"
+                    id="detail-expand-btn-2"
+                    class="btn-icon btn-expand"
+                    aria-label="전체 화면 확대 모드 (패널 2)"
+                    title="전체 화면 확대 (ESC로 닫기)"
+                    aria-expanded="false"
+                    data-panel-index="2"
+                  >
+                    🔍
+                  </button>
+                  <button
+                    id="detail-panel-close-2"
+                    class="btn-icon"
+                    aria-label="상세 패널 2 닫기"
+                    title="닫기"
+                    data-panel-index="2"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <!-- 읽기 모드 (패널 2) -->
+              <div id="detail-read-mode-2" class="detail-mode">
+                <div class="detail-meta">
+                  <span id="detail-category-2" class="detail-badge"></span>
+                  <span id="detail-date-2" class="detail-date"></span>
+                  <span id="detail-char-count-2" class="detail-char-count"></span>
+                  <span
+                    id="detail-view-count-2"
+                    class="detail-view-count"
+                    style="display: none"
+                  ></span>
+                </div>
+                <h5 id="detail-title-2" class="detail-title"></h5>
+                <div id="detail-content-2" class="detail-content"></div>
+                <div class="detail-actions">
+                  <button
+                    id="detail-edit-btn-2"
+                    class="btn btn-primary"
+                    aria-label="글 수정하기 (패널 2)"
+                    data-panel-index="2"
+                  >
+                    ✏️ 수정하기
+                  </button>
+                  <button
+                    id="detail-delete-btn-2"
+                    class="btn btn-danger"
+                    aria-label="글 삭제하기 (패널 2)"
+                    data-panel-index="2"
+                  >
+                    🗑️ 삭제하기
+                  </button>
+                  <button
+                    id="detail-copy-btn-2"
+                    class="btn btn-secondary"
+                    aria-label="글 내용 복사하기 (패널 2)"
+                    data-panel-index="2"
+                  >
+                    📋 복사
+                  </button>
+                </div>
+              </div>
+
+              <!-- 수정 모드 (패널 2) -->
+              <div
+                id="detail-edit-mode-2"
+                class="detail-mode"
+                style="display: none"
+                data-panel-index="2"
+              >
+                <!-- 확대 모드 전용: 2열 레이아웃 컨테이너 -->
+                <div class="detail-edit-container">
+                  <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
+                  <div
+                    class="detail-reference-panel"
+                    id="detail-reference-panel-2"
+                  >
+                    <div class="detail-reference-header">
+                      <h5>📚 참고 레퍼런스</h5>
+                      <button
+                        type="button"
+                        id="detail-load-reference-btn-2"
+                        class="btn btn-small"
+                        aria-label="레퍼런스 추가 (패널 2)"
+                        title="레퍼런스 추가"
+                        data-panel-index="2"
+                      >
+                        📥 추가
+                      </button>
+                    </div>
+                    <div
+                      class="detail-reference-content"
+                      id="detail-reference-content-2"
+                    >
+                      <div class="detail-reference-empty">
+                        <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
+                        <p class="detail-reference-hint">
+                          확대 모드에서 레퍼런스를 참고하며 수정하세요.
+                        </p>
+                      </div>
+                      <div
+                        id="detail-reference-list-2"
+                        class="detail-reference-list"
+                        style="display: none"
+                      >
+                        <!-- 동적으로 레퍼런스 추가됨 -->
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 드래그 가능한 구분선 -->
+                  <div class="detail-split-divider" id="detail-split-divider-2">
+                    <div class="detail-divider-handle"></div>
+                  </div>
+
+                  <!-- 오른쪽: 수정 폼 -->
+                  <div class="detail-edit-form">
+                    <div class="edit-form-group">
+                      <label for="edit-title-input-2" class="edit-label"
+                        >제목</label
+                      >
+                      <input
+                        type="text"
+                        id="edit-title-input-2"
+                        class="edit-input"
+                        aria-label="글 제목 입력 (패널 2)"
+                        aria-required="true"
+                        maxlength="200"
+                        data-panel-index="2"
+                      />
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-category-select-2" class="edit-label"
+                        >카테고리</label
+                      >
+                      <select
+                        id="edit-category-select-2"
+                        class="edit-select"
+                        aria-label="카테고리 선택 (패널 2)"
+                        aria-required="false"
+                        data-panel-index="2"
+                      >
+                        <!-- 동적으로 카테고리 추가됨 -->
+                      </select>
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-content-textarea-2" class="edit-label"
+                        >내용</label
+                      >
+                      <textarea
+                        id="edit-content-textarea-2"
+                        class="edit-textarea"
+                        aria-label="글 내용 입력 (패널 2)"
+                        aria-required="true"
+                        rows="10"
+                        data-panel-index="2"
+                      ></textarea>
+                    </div>
+                    <div class="edit-actions">
+                      <button
+                        id="edit-article-save-btn-2"
+                        class="btn btn-primary"
+                        aria-label="수정 내용 저장 (패널 2)"
+                        data-panel-index="2"
+                      >
+                        💾 저장
+                      </button>
+                      <button
+                        id="edit-article-cancel-btn-2"
+                        class="btn btn-secondary"
+                        aria-label="수정 취소 (패널 2)"
+                        data-panel-index="2"
+                      >
+                        ❌ 취소
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- 패널 2 종료 -->
+
           </div>
+          <!-- article-detail-container 종료 -->
         </div>
+
 
         <!-- 레퍼런스 불러오기 사이드 패널 -->
         <div

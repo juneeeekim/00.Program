@@ -1354,11 +1354,11 @@ class DualTextWriter {
    * ============================================================ */
   async init() {
     this.bindEvents();
-    
+
     try {
       // Firebase 초기화 대기 (타임아웃 시 에러 throw)
       await this.waitForFirebase();
-      
+
       // Firebase 초기화 성공 후 추가 설정
       this.setupAuthStateListener();
       this.initCharLimitToggle();
@@ -1368,16 +1368,16 @@ class DualTextWriter {
       this.initSnsPlatformSelection();
       this.initReferenceLoader();
       this.initExpandModal();
-      
-      console.log('[DualTextWriter] ✅ 애플리케이션 초기화 완료');
+
+      console.log("[DualTextWriter] ✅ 애플리케이션 초기화 완료");
     } catch (error) {
       // Firebase 초기화 실패: 기본 UI는 표시하되, 데이터 기능은 비활성화
-      console.error('[DualTextWriter] ❌ 초기화 실패:', error.message);
-      
+      console.error("[DualTextWriter] ❌ 초기화 실패:", error.message);
+
       // 기본 UI 컴포넌트는 초기화 (선택적)
       this.initCharLimitToggle();
       this.applyCharLimit(this.maxLength);
-      
+
       // 사용자에게 상태 안내 (이미 AuthManager에서 메시지 표시됨)
     }
   }
@@ -1391,16 +1391,16 @@ class DualTextWriter {
   async waitForFirebase() {
     // AuthManager에서 에러 throw 가능 → 상위로 전파
     await this.authManager.waitForFirebase();
-    
+
     // 상태 동기화
     this.auth = this.authManager.auth;
     this.db = this.authManager.db;
     this.isFirebaseReady = this.authManager.isFirebaseReady;
-    
-    console.log('[DualTextWriter] Firebase 상태 동기화 완료:', {
+
+    console.log("[DualTextWriter] Firebase 상태 동기화 완료:", {
       isFirebaseReady: this.isFirebaseReady,
       hasAuth: !!this.auth,
-      hasDb: !!this.db
+      hasDb: !!this.db,
     });
   }
 
@@ -3604,7 +3604,7 @@ class DualTextWriter {
       }, 100);
     }
   }
-  
+
   /* ============================================================
    * [Phase 3-1] 2025-12-07
    * "더 보기" 버튼 렌더링
@@ -3613,57 +3613,62 @@ class DualTextWriter {
    * ============================================================ */
   renderLoadMoreButton() {
     if (!this.savedList) return;
-    
+
     // 기존 "더 보기" 버튼 컨테이너 제거
-    const existingContainer = this.savedList.querySelector('.load-more-container');
+    const existingContainer = this.savedList.querySelector(
+      ".load-more-container"
+    );
     if (existingContainer) existingContainer.remove();
-    
+
     // 페이지네이션 상태 확인
     if (!this.paginationState?.hasMore) {
       // 더 이상 데이터가 없으면 완료 메시지 표시 (데이터가 pageSize 이상일 때만)
-      if (this.savedTexts && this.savedTexts.length >= (this.paginationState?.pageSize || 20)) {
-        const allLoadedContainer = document.createElement('div');
-        allLoadedContainer.className = 'all-loaded-message';
-        allLoadedContainer.innerHTML = '✅ 모든 글을 불러왔습니다.';
+      if (
+        this.savedTexts &&
+        this.savedTexts.length >= (this.paginationState?.pageSize || 20)
+      ) {
+        const allLoadedContainer = document.createElement("div");
+        allLoadedContainer.className = "all-loaded-message";
+        allLoadedContainer.innerHTML = "✅ 모든 글을 불러왔습니다.";
         this.savedList.appendChild(allLoadedContainer);
       }
       return;
     }
-    
+
     // "더 보기" 버튼 컨테이너 생성
-    const loadMoreContainer = document.createElement('div');
-    loadMoreContainer.className = 'load-more-container';
+    const loadMoreContainer = document.createElement("div");
+    loadMoreContainer.className = "load-more-container";
     loadMoreContainer.innerHTML = `
       <button class="btn-load-more" aria-label="더 많은 글 불러오기">
         📜 더 보기
       </button>
     `;
-    
+
     // 버튼 이벤트 리스너
-    const loadMoreBtn = loadMoreContainer.querySelector('.btn-load-more');
+    const loadMoreBtn = loadMoreContainer.querySelector(".btn-load-more");
     if (loadMoreBtn) {
-      loadMoreBtn.addEventListener('click', async () => {
+      loadMoreBtn.addEventListener("click", async () => {
         // 로딩 상태 표시
-        loadMoreBtn.classList.add('loading');
+        loadMoreBtn.classList.add("loading");
         loadMoreBtn.disabled = true;
-        loadMoreBtn.textContent = '로딩 중';
-        
+        loadMoreBtn.textContent = "로딩 중";
+
         try {
           await this.loadMoreSavedTexts();
         } catch (error) {
-          console.error('[renderLoadMoreButton] 추가 로드 실패:', error);
-          this.showMessage('추가 데이터 로드에 실패했습니다.', 'error');
+          console.error("[renderLoadMoreButton] 추가 로드 실패:", error);
+          this.showMessage("추가 데이터 로드에 실패했습니다.", "error");
         } finally {
           // 로딩 상태 제거 (버튼이 아직 존재하면)
           if (loadMoreBtn.parentNode) {
-            loadMoreBtn.classList.remove('loading');
+            loadMoreBtn.classList.remove("loading");
             loadMoreBtn.disabled = false;
-            loadMoreBtn.textContent = '📜 더 보기';
+            loadMoreBtn.textContent = "📜 더 보기";
           }
         }
       });
     }
-    
+
     this.savedList.appendChild(loadMoreContainer);
   }
 
@@ -6122,18 +6127,21 @@ class DualTextWriter {
   async loadUserData() {
     // 진입 조건 검증 (Silent Failure 방지)
     if (!this.currentUser) {
-      console.warn('[loadUserData] ⚠️ 스킵됨: 로그인된 사용자 없음');
-      return;
-    }
-    
-    if (!this.isFirebaseReady) {
-      console.warn('[loadUserData] ⚠️ 스킵됨: Firebase가 초기화되지 않음');
-      this.showMessage('Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.', 'warning');
+      console.warn("[loadUserData] ⚠️ 스킵됨: 로그인된 사용자 없음");
       return;
     }
 
-    console.log('[loadUserData] 데이터 로드 시작...');
-    
+    if (!this.isFirebaseReady) {
+      console.warn("[loadUserData] ⚠️ 스킵됨: Firebase가 초기화되지 않음");
+      this.showMessage(
+        "Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.",
+        "warning"
+      );
+      return;
+    }
+
+    console.log("[loadUserData] 데이터 로드 시작...");
+
     // [Phase 2-1] 스켈레톤 UI 표시
     this.showLoadingSkeleton();
 
@@ -6160,14 +6168,16 @@ class DualTextWriter {
       if (this.updateBatchMigrationButton) {
         this.updateBatchMigrationButton();
       }
-      
-      console.log('[loadUserData] ✅ 데이터 로드 완료');
+
+      console.log("[loadUserData] ✅ 데이터 로드 완료");
     } catch (error) {
-      console.error('[loadUserData] ❌ 사용자 데이터 로드 실패:', error);
-      
+      console.error("[loadUserData] ❌ 사용자 데이터 로드 실패:", error);
+
       // [Phase 2-1] 스켈레톤 제거 및 에러 컨테이너 표시
       this.hideLoadingSkeleton();
-      this.showErrorContainer('데이터를 불러오는데 실패했습니다.', () => this.loadUserData());
+      this.showErrorContainer("데이터를 불러오는데 실패했습니다.", () =>
+        this.loadUserData()
+      );
     }
   }
 
@@ -6176,29 +6186,31 @@ class DualTextWriter {
    * 스켈레톤 UI 헬퍼 함수
    * - 접근성: aria-busy, aria-label 속성 사용
    * ============================================================ */
-  
+
   /**
    * 저장된 글 목록 영역에 스켈레톤 UI를 표시합니다.
    */
   showLoadingSkeleton() {
-    const savedList = document.querySelector('.saved-list');
+    const savedList = document.querySelector(".saved-list");
     if (!savedList) return;
-    
+
     // 기존 에러 컨테이너 제거
-    const existingError = savedList.querySelector('.error-container');
+    const existingError = savedList.querySelector(".error-container");
     if (existingError) existingError.remove();
-    
+
     // 스켈레톤 이미 표시중이면 스킵
-    if (savedList.querySelector('.skeleton-container')) return;
-    
+    if (savedList.querySelector(".skeleton-container")) return;
+
     // 접근성 속성 설정
-    savedList.setAttribute('aria-busy', 'true');
-    savedList.setAttribute('aria-label', '데이터 로딩 중');
-    
+    savedList.setAttribute("aria-busy", "true");
+    savedList.setAttribute("aria-label", "데이터 로딩 중");
+
     // 스켈레톤 HTML 생성 (3개 카드)
     const skeletonHTML = `
       <div class="skeleton-container" aria-busy="true" aria-label="데이터 로딩 중">
-        ${[1, 2, 3].map(() => `
+        ${[1, 2, 3]
+          .map(
+            () => `
           <div class="skeleton-saved-item">
             <div class="skeleton-header">
               <div class="skeleton-type-badge skeleton-shimmer"></div>
@@ -6212,61 +6224,63 @@ class DualTextWriter {
               <div class="skeleton-button skeleton-shimmer"></div>
             </div>
           </div>
-        `).join('')}
+        `
+          )
+          .join("")}
       </div>
     `;
-    
+
     savedList.innerHTML = skeletonHTML;
   }
-  
+
   /**
    * 스켈레톤 UI를 제거합니다.
    */
   hideLoadingSkeleton() {
-    const savedList = document.querySelector('.saved-list');
+    const savedList = document.querySelector(".saved-list");
     if (!savedList) return;
-    
+
     // 접근성 속성 제거
-    savedList.removeAttribute('aria-busy');
-    savedList.removeAttribute('aria-label');
-    
+    savedList.removeAttribute("aria-busy");
+    savedList.removeAttribute("aria-label");
+
     // 스켈레톤 컨테이너 제거
-    const skeleton = savedList.querySelector('.skeleton-container');
+    const skeleton = savedList.querySelector(".skeleton-container");
     if (skeleton) skeleton.remove();
   }
-  
+
   /**
    * 에러 컨테이너를 표시합니다.
    * @param {string} message - 에러 메시지
    * @param {Function} onRetry - 재시도 버튼 클릭 시 콜백
    */
   showErrorContainer(message, onRetry) {
-    const savedList = document.querySelector('.saved-list');
+    const savedList = document.querySelector(".saved-list");
     if (!savedList) return;
-    
+
     // 기존 내용 제거
-    savedList.innerHTML = '';
-    
+    savedList.innerHTML = "";
+
     // 에러 컨테이너 생성 (접근성: role="alert")
-    const errorContainer = document.createElement('div');
-    errorContainer.className = 'error-container';
-    errorContainer.setAttribute('role', 'alert');
-    errorContainer.setAttribute('aria-live', 'assertive');
+    const errorContainer = document.createElement("div");
+    errorContainer.className = "error-container";
+    errorContainer.setAttribute("role", "alert");
+    errorContainer.setAttribute("aria-live", "assertive");
     errorContainer.innerHTML = `
       <div class="error-icon">⚠️</div>
       <p class="error-message">${message}</p>
       <button class="btn-retry" aria-label="다시 시도">🔄 다시 시도</button>
     `;
-    
+
     // 재시도 버튼 이벤트
-    const retryBtn = errorContainer.querySelector('.btn-retry');
+    const retryBtn = errorContainer.querySelector(".btn-retry");
     if (retryBtn && onRetry) {
-      retryBtn.addEventListener('click', () => {
+      retryBtn.addEventListener("click", () => {
         errorContainer.remove();
         onRetry();
       });
     }
-    
+
     savedList.appendChild(errorContainer);
   }
 
@@ -6381,39 +6395,41 @@ class DualTextWriter {
    * - 커서 기반 페이지네이션 (startAfter) 지원
    * - 성능: 대용량 데이터 처리 시 메모리 효율화
    * ============================================================ */
-  
+
   // 페이지네이션 상태 (클래스 속성으로 관리)
   // this.paginationState = { lastDoc: null, hasMore: true, pageSize: 20 }
-  
+
   async loadSavedTextsFromFirestore(filterOptions = {}, append = false) {
     if (!this.currentUser || !this.isFirebaseReady) return;
-    
+
     // 페이지네이션 상태 초기화 (append가 아닌 경우)
     if (!append) {
       this.paginationState = {
         lastDoc: null,
         hasMore: true,
         pageSize: 20,
-        isLoading: false
+        isLoading: false,
       };
       this.savedTexts = [];
     }
-    
+
     // 이미 로딩 중이면 스킵
     if (this.paginationState?.isLoading) {
-      console.log('[loadSavedTextsFromFirestore] 이미 로딩 중입니다.');
+      console.log("[loadSavedTextsFromFirestore] 이미 로딩 중입니다.");
       return;
     }
-    
+
     // 더 이상 데이터가 없으면 스킵
     if (append && !this.paginationState?.hasMore) {
-      console.log('[loadSavedTextsFromFirestore] 더 이상 로드할 데이터가 없습니다.');
+      console.log(
+        "[loadSavedTextsFromFirestore] 더 이상 로드할 데이터가 없습니다."
+      );
       return;
     }
 
     try {
       this.paginationState.isLoading = true;
-      
+
       const textsRef = window.firebaseCollection(
         this.db,
         "users",
@@ -6445,33 +6461,38 @@ class DualTextWriter {
           )
         );
       }
-      
+
       // [Phase 3-1] limit 적용 (페이지네이션)
-      queryConstraints.push(window.firebaseLimit(this.paginationState.pageSize));
-      
+      queryConstraints.push(
+        window.firebaseLimit(this.paginationState.pageSize)
+      );
+
       // [Phase 3-1] 커서 기반 페이지네이션 (append 모드일 때)
       if (append && this.paginationState.lastDoc) {
-        queryConstraints.push(window.firebaseStartAfter(this.paginationState.lastDoc));
+        queryConstraints.push(
+          window.firebaseStartAfter(this.paginationState.lastDoc)
+        );
       }
 
       const q = window.firebaseQuery(textsRef, ...queryConstraints);
       const querySnapshot = await window.firebaseGetDocs(q);
-      
+
       // [Phase 3-1] 마지막 문서 저장 (다음 페이지 로드용)
       const docs = querySnapshot.docs;
       if (docs.length > 0) {
         this.paginationState.lastDoc = docs[docs.length - 1];
       }
-      
+
       // [Phase 3-1] 더 이상 데이터가 있는지 확인
-      this.paginationState.hasMore = docs.length === this.paginationState.pageSize;
+      this.paginationState.hasMore =
+        docs.length === this.paginationState.pageSize;
 
       // append가 아니면 캐시 무효화
       if (!append) {
         this.renderSavedTextsCache = null;
         this.renderSavedTextsCacheKey = null;
       }
-      
+
       // 데이터 변환 및 저장
       const newTexts = [];
       querySnapshot.forEach((doc) => {
@@ -6488,7 +6509,7 @@ class DualTextWriter {
         ) {
           normalizedType = "edit";
         }
-        
+
         newTexts.push({
           id: doc.id,
           content: data.content,
@@ -6509,7 +6530,7 @@ class DualTextWriter {
           platforms: Array.isArray(data.platforms) ? data.platforms : [],
         });
       });
-      
+
       // [Phase 3-1] append 모드면 기존 데이터에 추가, 아니면 교체
       if (append) {
         this.savedTexts = [...this.savedTexts, ...newTexts];
@@ -6517,7 +6538,11 @@ class DualTextWriter {
         this.savedTexts = newTexts;
       }
 
-      console.log(`[loadSavedTextsFromFirestore] ${newTexts.length}개 로드 (총: ${this.savedTexts.length}개, 추가 데이터: ${this.paginationState.hasMore ? '있음' : '없음'})`);
+      console.log(
+        `[loadSavedTextsFromFirestore] ${newTexts.length}개 로드 (총: ${
+          this.savedTexts.length
+        }개, 추가 데이터: ${this.paginationState.hasMore ? "있음" : "없음"})`
+      );
 
       // 주제 필터 옵션 업데이트 (초기 로드 시에만)
       if (!append) {
@@ -6554,7 +6579,7 @@ class DualTextWriter {
       this.paginationState.isLoading = false;
     }
   }
-  
+
   /* ============================================================
    * [Phase 3-1] 2025-12-07
    * 추가 데이터 로드 (더 보기)
@@ -6564,34 +6589,37 @@ class DualTextWriter {
     if (!this.paginationState?.hasMore || this.paginationState?.isLoading) {
       return false;
     }
-    
-    console.log('[loadMoreSavedTexts] 추가 데이터 로드 시작...');
-    
+
+    console.log("[loadMoreSavedTexts] 추가 데이터 로드 시작...");
+
     // 기존 필터 옵션 유지하며 append 모드로 로드
-    await this.loadSavedTextsFromFirestore(this.currentFilterOptions || {}, true);
-    
+    await this.loadSavedTextsFromFirestore(
+      this.currentFilterOptions || {},
+      true
+    );
+
     // UI 업데이트 (기존 renderSavedTexts는 append=true면 더해서 표시)
     await this.renderSavedTexts();
-    
+
     // "더 보기" 버튼 상태 업데이트
     this.updateLoadMoreButton();
-    
+
     return this.paginationState.hasMore;
   }
-  
+
   /**
    * "더 보기" 버튼 상태 업데이트
    */
   updateLoadMoreButton() {
-    const loadMoreBtn = document.querySelector('.btn-load-more');
+    const loadMoreBtn = document.querySelector(".btn-load-more");
     if (!loadMoreBtn) return;
-    
+
     if (this.paginationState?.hasMore) {
-      loadMoreBtn.style.display = 'block';
+      loadMoreBtn.style.display = "block";
       loadMoreBtn.disabled = false;
-      loadMoreBtn.textContent = '📜 더 보기';
+      loadMoreBtn.textContent = "📜 더 보기";
     } else {
-      loadMoreBtn.style.display = 'none';
+      loadMoreBtn.style.display = "none";
     }
   }
 
@@ -9490,6 +9518,67 @@ class DualTextWriter {
     this.editCategorySelect = document.getElementById("edit-category-select");
     this.editContentTextarea = document.getElementById("edit-content-textarea");
 
+    /* ================================================================
+       듀얼 패널 시스템 - DOM 참조 및 상태 변수
+       - Phase 3: 두 개의 글을 동시에 비교/편집
+       - 2025-12-07 추가
+       ================================================================ */
+
+    // 듀얼 패널 컨테이너
+    this.articleDetailContainer = document.getElementById(
+      "article-detail-container"
+    );
+
+    // 패널 1 DOM 요소 (기본 패널)
+    this.articleDetailPanel1 = document.getElementById(
+      "article-detail-panel-1"
+    );
+    this.detailPanelClose1 = document.getElementById("detail-panel-close-1");
+    this.detailEditBtn1 = document.getElementById("detail-edit-btn-1");
+    this.detailDeleteBtn1 = document.getElementById("detail-delete-btn-1");
+    this.detailCopyBtn1 = document.getElementById("detail-copy-btn-1");
+    this.editSaveBtn1 = document.getElementById("edit-article-save-btn-1");
+    this.editCancelBtn1 = document.getElementById("edit-article-cancel-btn-1");
+    this.editTitleInput1 = document.getElementById("edit-title-input-1");
+    this.editCategorySelect1 = document.getElementById(
+      "edit-category-select-1"
+    );
+    this.editContentTextarea1 = document.getElementById(
+      "edit-content-textarea-1"
+    );
+
+    // 패널 2 DOM 요소 (비교 패널)
+    this.articleDetailPanel2 = document.getElementById(
+      "article-detail-panel-2"
+    );
+    this.detailPanelClose2 = document.getElementById("detail-panel-close-2");
+    this.detailEditBtn2 = document.getElementById("detail-edit-btn-2");
+    this.detailDeleteBtn2 = document.getElementById("detail-delete-btn-2");
+    this.detailCopyBtn2 = document.getElementById("detail-copy-btn-2");
+    this.editSaveBtn2 = document.getElementById("edit-article-save-btn-2");
+    this.editCancelBtn2 = document.getElementById("edit-article-cancel-btn-2");
+    this.editTitleInput2 = document.getElementById("edit-title-input-2");
+    this.editCategorySelect2 = document.getElementById(
+      "edit-category-select-2"
+    );
+    this.editContentTextarea2 = document.getElementById(
+      "edit-content-textarea-2"
+    );
+
+    // 듀얼 패널 구분선
+    this.detailDualDivider = document.getElementById("detail-dual-divider");
+
+    // 듀얼 패널 상태 변수
+    this.selectedArticleIds = [null, null]; // [패널1 글 ID, 패널2 글 ID]
+    this.activePanelIndex = 0; // 현재 활성 패널 (0 또는 1)
+    this.isDualMode = false; // 듀얼 모드 여부
+
+    // 레거시 호환성: 단일 패널 참조 (패널 1으로 매핑)
+    if (!this.articleDetailPanel && this.articleDetailPanel1) {
+      this.articleDetailPanel = this.articleDetailPanel1;
+    }
+    /* ================================================================ */
+
     // 새 스크립트 작성 폼 관련 요소
     this.newScriptToggleBtn = document.getElementById("new-script-toggle-btn");
     this.scriptCreateForm = document.getElementById("script-create-form");
@@ -9605,9 +9694,14 @@ class DualTextWriter {
     this.referenceSearchDebounce = null;
     this.recentReferences = this.loadRecentReferences(); // localStorage에서 최근 사용 글 로드
 
-    // 현재 선택된 글 ID
+    // 현재 선택된 글 ID (레거시 호환성 - 패널 1의 ID로 매핑)
     this.selectedArticleId = null;
     this.managementArticles = []; // 스크립트 작성용 글 목록
+
+    /* ================================================================
+       듀얼 패널 이벤트 리스너 바인딩
+       ================================================================ */
+    this.bindDualPanelEvents();
 
     // 이벤트 리스너 바인딩
     if (this.categorySelect) {
@@ -9924,9 +10018,7 @@ class DualTextWriter {
         : "";
 
       // [Dual Filter] 현재 선택된 SNS 필터 값 가져오기
-      const currentSns = this.snsFilterSelect
-        ? this.snsFilterSelect.value
-        : "";
+      const currentSns = this.snsFilterSelect ? this.snsFilterSelect.value : "";
 
       // 카테고리별로 정렬 후 렌더링 (현재 선택된 필터 값 전달)
       this.renderArticleCards(currentCategory, currentSns);
@@ -10049,12 +10141,12 @@ class DualTextWriter {
 
             if (needsOrderUpdate || needsCharCountUpdate) {
               const updateData = {};
-              
+
               if (needsOrderUpdate) {
                 article.order = newOrder;
                 updateData.order = newOrder;
               }
-              
+
               if (needsCharCountUpdate) {
                 const count = (article.content || "").length;
                 article.characterCount = count;
@@ -10221,14 +10313,14 @@ class DualTextWriter {
 
     // [Dual Filter] 듀얼 필터링 (AND 조건)
     let filteredArticles = this.managementArticles;
-    
+
     // 카테고리 필터
     if (filterCategory) {
       filteredArticles = filteredArticles.filter(
         (article) => (article.category || "미분류") === filterCategory
       );
     }
-    
+
     // SNS 필터
     if (filterSns) {
       filteredArticles = filteredArticles.filter(
@@ -10305,14 +10397,25 @@ class DualTextWriter {
     card.setAttribute("tabindex", "0");
     card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title}`);
 
-    // 키보드 접근성
-    card.addEventListener("click", () => {
-      this.selectArticle(article.id);
+    // 키보드 접근성 + Ctrl+클릭 듀얼 패널 지원
+    card.addEventListener("click", (e) => {
+      // Ctrl+클릭: 패널 2에 열기 (듀얼 모드)
+      if (e.ctrlKey || e.metaKey) {
+        this.selectArticleToPanel(article.id, 1, true);
+      } else {
+        // 일반 클릭: 패널 1에 열기
+        this.selectArticleToPanel(article.id, 0, false);
+      }
     });
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        this.selectArticle(article.id);
+        // Ctrl+Enter: 패널 2에 열기
+        if (e.ctrlKey || e.metaKey) {
+          this.selectArticleToPanel(article.id, 1, true);
+        } else {
+          this.selectArticleToPanel(article.id, 0, false);
+        }
       }
     });
 
@@ -10362,7 +10465,9 @@ class DualTextWriter {
             )}</div>
             <div class="article-card-meta">
                 <span class="article-card-date">📅 ${dateStr}</span>
-                <span class="article-card-count">📝 ${article.content ? article.content.length : 0}자</span>
+                <span class="article-card-count">📝 ${
+                  article.content ? article.content.length : 0
+                }자</span>
                 <span class="article-card-category">📁 ${this.escapeHtml(
                   article.category || "미분류"
                 )}</span>
@@ -10416,9 +10521,7 @@ class DualTextWriter {
       );
     }
     if (filterSns) {
-      filtered = filtered.filter(
-        (a) => (a.platformsSNS || "") === filterSns
-      );
+      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
     }
 
     const sameCategory = filtered.filter(
@@ -10442,9 +10545,7 @@ class DualTextWriter {
       );
     }
     if (filterSns) {
-      filtered = filtered.filter(
-        (a) => (a.platformsSNS || "") === filterSns
-      );
+      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
     }
 
     const sameCategory = filtered.filter(
@@ -10517,7 +10618,9 @@ class DualTextWriter {
         : "날짜 없음";
     }
     if (charCountEl) {
-      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
+      charCountEl.textContent = `📝 ${
+        article.content ? article.content.length : 0
+      }자`;
     }
     if (titleEl) {
       titleEl.textContent = article.title;
@@ -10712,7 +10815,7 @@ class DualTextWriter {
   }
 
   /**
-   * 상세 패널 닫기
+   * 상세 패널 닫기 (레거시)
    */
   closeDetailPanel() {
     if (this.articleDetailPanel) {
@@ -10726,6 +10829,577 @@ class DualTextWriter {
 
     this.selectedArticleId = null;
   }
+
+  /* ================================================================
+     듀얼 패널 시스템 - 핵심 메서드
+     - 두 개의 글을 동시에 비교/편집
+     - 2025-12-07 Phase 3 추가
+     ================================================================ */
+
+  /**
+   * 듀얼 패널 이벤트 리스너 바인딩
+   * - 패널 1/2 닫기, 수정, 삭제, 복사 버튼 이벤트
+   * - 카드 클릭 시 Ctrl+클릭 감지
+   * - 구분선 드래그 이벤트
+   */
+  bindDualPanelEvents() {
+    // 패널 1 이벤트
+    if (this.detailPanelClose1) {
+      this.detailPanelClose1.addEventListener("click", () => {
+        this.closeDetailPanelByIndex(0);
+      });
+    }
+    if (this.detailEditBtn1) {
+      this.detailEditBtn1.addEventListener("click", () => {
+        this.enterEditModeByIndex(0);
+      });
+    }
+    if (this.detailDeleteBtn1) {
+      this.detailDeleteBtn1.addEventListener("click", () => {
+        this.deleteArticleByIndex(0);
+      });
+    }
+    if (this.detailCopyBtn1) {
+      this.detailCopyBtn1.addEventListener("click", () => {
+        this.copyArticleContentByIndex(0);
+      });
+    }
+    if (this.editSaveBtn1) {
+      this.editSaveBtn1.addEventListener("click", () => {
+        this.saveArticleEditByIndex(0);
+      });
+    }
+    if (this.editCancelBtn1) {
+      this.editCancelBtn1.addEventListener("click", () => {
+        this.cancelArticleEditByIndex(0);
+      });
+    }
+
+    // 패널 2 이벤트
+    if (this.detailPanelClose2) {
+      this.detailPanelClose2.addEventListener("click", () => {
+        this.closeDetailPanelByIndex(1);
+      });
+    }
+    if (this.detailEditBtn2) {
+      this.detailEditBtn2.addEventListener("click", () => {
+        this.enterEditModeByIndex(1);
+      });
+    }
+    if (this.detailDeleteBtn2) {
+      this.detailDeleteBtn2.addEventListener("click", () => {
+        this.deleteArticleByIndex(1);
+      });
+    }
+    if (this.detailCopyBtn2) {
+      this.detailCopyBtn2.addEventListener("click", () => {
+        this.copyArticleContentByIndex(1);
+      });
+    }
+    if (this.editSaveBtn2) {
+      this.editSaveBtn2.addEventListener("click", () => {
+        this.saveArticleEditByIndex(1);
+      });
+    }
+    if (this.editCancelBtn2) {
+      this.editCancelBtn2.addEventListener("click", () => {
+        this.cancelArticleEditByIndex(1);
+      });
+    }
+
+    // 구분선 드래그 초기화
+    this.initDualDividerDrag();
+
+    /* ================================================================
+       접근성: Escape 키로 활성 패널 닫기
+       ================================================================ */
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        // 듀얼 패널 활성 상태일 때만 처리
+        if (this.selectedArticleIds[0] !== null || this.selectedArticleIds[1] !== null) {
+          // 활성 패널 우선 닫기
+          if (this.selectedArticleIds[this.activePanelIndex] !== null) {
+            this.closeDetailPanelByIndex(this.activePanelIndex);
+            this.announceToScreenReader(`패널 ${this.activePanelIndex + 1} 닫힘`);
+            e.preventDefault();
+          }
+        }
+      }
+    });
+
+    console.log("✅ 듀얼 패널 이벤트 바인딩 완료 (접근성 포함)");
+  }
+
+  /**
+   * 글 선택 (패널 지정)
+   * @param {string} articleId - 글 ID
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   * @param {boolean} fromCtrlClick - Ctrl+클릭으로 호출된 경우
+   */
+  selectArticleToPanel(articleId, panelIndex = 0, fromCtrlClick = false) {
+    // 유효성 검사
+    if (panelIndex < 0 || panelIndex > 1) {
+      console.warn("유효하지 않은 panelIndex:", panelIndex);
+      panelIndex = 0;
+    }
+
+    // 같은 글 중복 선택 방지
+    const otherPanelIndex = panelIndex === 0 ? 1 : 0;
+    if (this.selectedArticleIds[otherPanelIndex] === articleId) {
+      this.showMessage("⚠️ 이미 다른 패널에 열려있는 글입니다.", "warning");
+      return;
+    }
+
+    // 글 찾기
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) {
+      console.warn("글을 찾을 수 없습니다:", articleId);
+      return;
+    }
+
+    // 상태 업데이트
+    this.selectedArticleIds[panelIndex] = articleId;
+    this.activePanelIndex = panelIndex;
+    
+    // 레거시 호환성
+    if (panelIndex === 0) {
+      this.selectedArticleId = articleId;
+    }
+
+    // 카드 선택 상태 업데이트
+    this.updateCardSelectionState();
+
+    // 패널 렌더링
+    this.renderDetailPanelByIndex(article, panelIndex);
+
+    // 듀얼 모드 상태 업데이트
+    this.updateDualModeState();
+
+    // 패널로 스크롤
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+    if (panel) {
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    /* ================================================================
+       접근성: 스크린 리더에 패널 열림 알림
+       ================================================================ */
+    const panelLabel = panelIndex === 0 ? "패널 1" : "패널 2 (비교 모드)";
+    this.announceToScreenReader(`${panelLabel}에 "${article.title}" 글이 열렸습니다.`);
+
+    console.log(`📄 패널 ${panelIndex + 1}에 글 선택:`, article.title);
+  }
+
+  /**
+   * 카드 선택 상태 업데이트
+   * - 선택된 카드에 하이라이트 + 패널 번호 표시
+   */
+  updateCardSelectionState() {
+    // 모든 카드 선택 해제
+    document.querySelectorAll(".article-card").forEach((card) => {
+      card.classList.remove("selected", "selected-panel-1", "selected-panel-2");
+    });
+
+    // 패널별 선택 상태 적용
+    this.selectedArticleIds.forEach((articleId, panelIndex) => {
+      if (articleId) {
+        const card = document.querySelector(`[data-article-id="${articleId}"]`);
+        if (card) {
+          card.classList.add("selected", `selected-panel-${panelIndex + 1}`);
+        }
+      }
+    });
+  }
+
+  /**
+   * 상세 패널 렌더링 (인덱스 지정)
+   * @param {Object} article - 글 객체
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  renderDetailPanelByIndex(article, panelIndex = 0) {
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+
+    if (!panel) {
+      console.warn(`패널 ${panelIndex + 1}를 찾을 수 없습니다.`);
+      return;
+    }
+
+    // 읽기 모드 표시
+    const readMode = document.getElementById(`detail-read-mode${suffix}`);
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+
+    if (readMode) readMode.style.display = "block";
+    if (editMode) editMode.style.display = "none";
+
+    // 데이터 채우기
+    const categoryEl = document.getElementById(`detail-category${suffix}`);
+    const dateEl = document.getElementById(`detail-date${suffix}`);
+    const charCountEl = document.getElementById(`detail-char-count${suffix}`);
+    const titleEl = document.getElementById(`detail-title${suffix}`);
+    const contentEl = document.getElementById(`detail-content${suffix}`);
+
+    if (categoryEl) categoryEl.textContent = article.category || "미분류";
+    if (dateEl) {
+      dateEl.textContent = article.createdAt
+        ? this.formatDateFromFirestore(article.createdAt)
+        : "날짜 없음";
+    }
+    if (charCountEl) {
+      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
+    }
+    if (titleEl) titleEl.textContent = article.title;
+    if (contentEl) contentEl.textContent = article.content;
+
+    // 패널 표시
+    panel.style.display = "block";
+    
+    // 활성 패널 표시
+    if (this.articleDetailPanel1) {
+      this.articleDetailPanel1.classList.toggle("active-panel", panelIndex === 0);
+    }
+    if (this.articleDetailPanel2) {
+      this.articleDetailPanel2.classList.toggle("active-panel", panelIndex === 1);
+    }
+  }
+
+  /**
+   * 상세 패널 닫기 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  closeDetailPanelByIndex(panelIndex = 0) {
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+    
+    if (panel) {
+      panel.style.display = "none";
+      panel.classList.remove("active-panel");
+    }
+
+    // 상태 업데이트
+    this.selectedArticleIds[panelIndex] = null;
+    
+    // 레거시 호환성
+    if (panelIndex === 0) {
+      this.selectedArticleId = null;
+    }
+
+    // 카드 선택 상태 업데이트
+    this.updateCardSelectionState();
+
+    // 듀얼 모드 상태 업데이트
+    this.updateDualModeState();
+
+    console.log(`📄 패널 ${panelIndex + 1} 닫힘`);
+  }
+
+  /**
+   * 듀얼 모드 상태 업데이트
+   * - 두 패널 모두 열려있으면 듀얼 모드 활성화
+   * - 하나만 열려있으면 단일 모드
+   * - 접근성: aria-expanded 및 스크린 리더 알림
+   */
+  updateDualModeState() {
+    const panel1Open = this.selectedArticleIds[0] !== null;
+    const panel2Open = this.selectedArticleIds[1] !== null;
+
+    const wasDualMode = this.isDualMode;
+    this.isDualMode = panel1Open && panel2Open;
+
+    // 컨테이너에 듀얼 모드 클래스 토글
+    if (this.articleDetailContainer) {
+      this.articleDetailContainer.classList.toggle("dual-mode", this.isDualMode);
+    }
+
+    // 구분선 표시/숨김
+    if (this.detailDualDivider) {
+      this.detailDualDivider.style.display = this.isDualMode ? "block" : "none";
+    }
+
+    /* ================================================================
+       접근성: aria-expanded 업데이트
+       ================================================================ */
+    if (this.articleDetailPanel1) {
+      this.articleDetailPanel1.setAttribute("aria-expanded", panel1Open ? "true" : "false");
+    }
+    if (this.articleDetailPanel2) {
+      this.articleDetailPanel2.setAttribute("aria-expanded", panel2Open ? "true" : "false");
+    }
+
+    /* ================================================================
+       접근성: 스크린 리더 알림 (aria-live 영역)
+       ================================================================ */
+    if (this.isDualMode !== wasDualMode) {
+      const message = this.isDualMode 
+        ? "듀얼 모드 활성화: 두 개의 글을 비교할 수 있습니다."
+        : "단일 모드로 전환되었습니다.";
+      this.announceToScreenReader(message);
+    }
+
+    console.log(`듀얼 모드: ${this.isDualMode ? "활성화" : "비활성화"}`);
+  }
+
+  /**
+   * 스크린 리더에 메시지 알림
+   * - aria-live 영역을 통해 동적으로 알림
+   * @param {string} message - 알림 메시지
+   */
+  announceToScreenReader(message) {
+    let announcer = document.getElementById("sr-announcer");
+    
+    if (!announcer) {
+      announcer = document.createElement("div");
+      announcer.id = "sr-announcer";
+      announcer.setAttribute("role", "status");
+      announcer.setAttribute("aria-live", "polite");
+      announcer.setAttribute("aria-atomic", "true");
+      announcer.style.cssText = 
+        "position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;";
+      document.body.appendChild(announcer);
+    }
+    
+    // 약간의 지연 후 메시지 설정 (스크린 리더가 인식하도록)
+    setTimeout(() => {
+      announcer.textContent = message;
+    }, 100);
+  }
+
+
+  /**
+   * 구분선 드래그 기능 초기화
+   */
+  initDualDividerDrag() {
+    if (!this.detailDualDivider || !this.articleDetailContainer) return;
+
+    let isDragging = false;
+    let startX = 0;
+    let startPanel1Width = 0;
+
+    const handleMouseDown = (e) => {
+      if (!this.isDualMode) return;
+      
+      isDragging = true;
+      startX = e.clientX;
+      
+      const panel1 = this.articleDetailPanel1;
+      if (panel1) {
+        startPanel1Width = panel1.getBoundingClientRect().width;
+      }
+      
+      this.detailDualDivider.classList.add("dragging");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging || !this.isDualMode) return;
+
+      const deltaX = e.clientX - startX;
+      const containerWidth = this.articleDetailContainer.getBoundingClientRect().width;
+      const dividerWidth = 4;
+      
+      let newPanel1Width = startPanel1Width + deltaX;
+      
+      // 최소/최대 너비 제한 (20% ~ 80%)
+      const minWidth = containerWidth * 0.2;
+      const maxWidth = containerWidth * 0.8 - dividerWidth;
+      
+      newPanel1Width = Math.max(minWidth, Math.min(maxWidth, newPanel1Width));
+      
+      const panel2Width = containerWidth - newPanel1Width - dividerWidth;
+
+      // Grid 비율 업데이트
+      this.articleDetailContainer.style.gridTemplateColumns = 
+        `${newPanel1Width}px ${dividerWidth}px ${panel2Width}px`;
+    };
+
+    const handleMouseUp = () => {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      this.detailDualDivider.classList.remove("dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    this.detailDualDivider.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    console.log("✅ 듀얼 패널 구분선 드래그 초기화 완료");
+  }
+
+  /**
+   * 수정 모드 진입 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  enterEditModeByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) return;
+
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) return;
+
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+
+    // 읽기 모드 숨기기, 수정 모드 표시
+    const readMode = document.getElementById(`detail-read-mode${suffix}`);
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+
+    if (readMode) readMode.style.display = "none";
+    if (editMode) editMode.style.display = "block";
+
+    // 입력 필드에 값 설정
+    const titleInput = document.getElementById(`edit-title-input${suffix}`);
+    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
+    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+
+    if (titleInput) titleInput.value = article.title;
+    if (contentTextarea) contentTextarea.value = article.content;
+    if (categorySelect) categorySelect.value = article.category || "미분류";
+
+    // 레퍼런스 연동 (패널 인덱스 정보 전달)
+    if (window.setCurrentEditingArticle) {
+      window.setCurrentEditingArticle(articleId, panelIndex);
+    }
+
+    this.activePanelIndex = panelIndex;
+    console.log(`✏️ 패널 ${panelIndex + 1} 수정 모드 진입`);
+  }
+
+  /**
+   * 글 삭제 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async deleteArticleByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
+
+    if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
+
+    try {
+      const articleRef = window.firebaseDoc(
+        this.db,
+        "users",
+        this.currentUser.uid,
+        "texts",
+        articleId
+      );
+      await window.firebaseDeleteDoc(articleRef);
+
+      // 로컬 데이터에서 제거
+      this.managementArticles = this.managementArticles.filter(
+        (a) => a.id !== articleId
+      );
+
+      // UI 업데이트
+      this.showMessage("✅ 글이 삭제되었습니다.", "success");
+      this.closeDetailPanelByIndex(panelIndex);
+      await this.loadArticlesForManagement();
+    } catch (error) {
+      console.error("글 삭제 실패:", error);
+      this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 글 내용 복사 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async copyArticleContentByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) return;
+
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) return;
+
+    try {
+      await navigator.clipboard.writeText(article.content);
+      this.showMessage("✅ 클립보드에 복사되었습니다!", "success");
+    } catch (error) {
+      console.error("복사 실패:", error);
+      this.showMessage("❌ 복사 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 수정 저장 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async saveArticleEditByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
+
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+    
+    const titleInput = document.getElementById(`edit-title-input${suffix}`);
+    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
+    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+
+    const newTitle = titleInput?.value?.trim();
+    const newCategory = categorySelect?.value;
+    const newContent = contentTextarea?.value;
+
+    if (!newTitle || !newContent) {
+      this.showMessage("제목과 내용을 입력해주세요.", "warning");
+      return;
+    }
+
+    try {
+      const articleRef = window.firebaseDoc(
+        this.db,
+        "users",
+        this.currentUser.uid,
+        "texts",
+        articleId
+      );
+      await window.firebaseUpdateDoc(articleRef, {
+        title: newTitle,
+        topic: newCategory,
+        content: newContent,
+        characterCount: newContent.length,
+        updatedAt: window.firebaseServerTimestamp(),
+      });
+
+      // 로컬 데이터 업데이트
+      const article = this.managementArticles.find((a) => a.id === articleId);
+      if (article) {
+        article.title = newTitle;
+        article.category = newCategory;
+        article.content = newContent;
+      }
+
+      // UI 업데이트
+      this.showMessage("✅ 글이 수정되었습니다.", "success");
+      this.renderDetailPanelByIndex(article, panelIndex);
+      await this.loadArticlesForManagement();
+      
+      // 이 패널 다시 선택
+      this.selectArticleToPanel(articleId, panelIndex);
+    } catch (error) {
+      console.error("글 수정 실패:", error);
+      this.showMessage("❌ 글 수정 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 수정 취소 (인덱스 지정)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  cancelArticleEditByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) return;
+
+    if (confirm("수정을 취소하시겠습니까?")) {
+      const article = this.managementArticles.find((a) => a.id === articleId);
+      if (article) {
+        this.renderDetailPanelByIndex(article, panelIndex);
+      }
+    }
+  }
+  /* ================================================================ */
+
 
   /**
    * 순서 변경
@@ -10750,9 +11424,7 @@ class DualTextWriter {
         );
       }
       if (filterSns) {
-        filtered = filtered.filter(
-          (a) => (a.platformsSNS || "") === filterSns
-        );
+        filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
       }
 
       const category = article.category || "미분류";
