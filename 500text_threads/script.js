@@ -9717,7 +9717,12 @@ class DualTextWriter {
       }
     });
 
-    const sortedCategories = Array.from(categories).sort();
+    // "미분류"를 제외한 카테고리를 알파벳순으로 정렬 후 "미분류"를 맨 뒤에 추가
+    const categoriesArray = Array.from(categories);
+    const otherCategories = categoriesArray.filter(c => c !== "미분류").sort();
+    const sortedCategories = categoriesArray.includes("미분류") 
+      ? [...otherCategories, "미분류"] 
+      : otherCategories;
 
     // 카테고리 선택 드롭다운 업데이트
     this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
@@ -9756,7 +9761,12 @@ class DualTextWriter {
       });
     }
 
-    const sortedCategories = Array.from(categories).sort();
+    // "미분류"를 제외한 카테고리를 알파벳순으로 정렬 후 "미분류"를 맨 뒤에 추가
+    const categoriesArray = Array.from(categories);
+    const otherCategories = categoriesArray.filter(c => c !== "미분류").sort();
+    const sortedCategories = categoriesArray.includes("미분류") 
+      ? [...otherCategories, "미분류"] 
+      : otherCategories;
 
     // 필터 드롭다운 업데이트
     this.referenceCategoryFilter.innerHTML =
