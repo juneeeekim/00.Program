@@ -99,9 +99,6 @@ class DualTextWriter {
     this.referenceSelectionModal = null; // 레퍼런스 선택 모달 DOM
     this.referenceLinkCache = new Map(); // 역방향 조회 캐시 (refId -> editIds[])
 
-    // [Fix] 스크립트 작성 탭 초기화 중복 방지 플래그
-    this.articleManagementInitialized = false;
-
     // Firebase 초기화 대기
     this.waitForFirebase();
 
@@ -1349,62 +1346,31 @@ class DualTextWriter {
     });
   }
 
-  /* ============================================================
-   * [Phase 1-2 Hotfix] 2025-12-07
-   * 애플리케이션 초기화 로직 강화
-   * - Firebase 초기화 실패 시 안전한 에러 처리
-   * - 초기화 실패해도 UI는 표시되지만 데이터 로드는 차단됨
-   * ============================================================ */
   async init() {
     this.bindEvents();
-
-    try {
-      // Firebase 초기화 대기 (타임아웃 시 에러 throw)
-      await this.waitForFirebase();
-
-      // Firebase 초기화 성공 후 추가 설정
-      this.setupAuthStateListener();
-      this.initCharLimitToggle();
-      this.applyCharLimit(this.maxLength);
-      this.initLiveDuplicateCheck();
-      this.initReferenceSelection();
-      this.initSnsPlatformSelection();
-      this.initReferenceLoader();
-      this.initExpandModal();
-
-      console.log("[DualTextWriter] ✅ 애플리케이션 초기화 완료");
-    } catch (error) {
-      // Firebase 초기화 실패: 기본 UI는 표시하되, 데이터 기능은 비활성화
-      console.error("[DualTextWriter] ❌ 초기화 실패:", error.message);
-
-      // 기본 UI 컴포넌트는 초기화 (선택적)
-      this.initCharLimitToggle();
-      this.applyCharLimit(this.maxLength);
-
-      // 사용자에게 상태 안내 (이미 AuthManager에서 메시지 표시됨)
-    }
+    await this.waitForFirebase();
+    this.setupAuthStateListener();
+    this.initCharLimitToggle();
+    // 초기 글자 제한 반영
+    this.applyCharLimit(this.maxLength);
+    // 실시간 중복 체크 초기화
+    this.initLiveDuplicateCheck();
+    // 레퍼런스 선택 기능 초기화
+    this.initReferenceSelection();
+    // SNS 플랫폼 선택 기능 초기화
+    this.initSnsPlatformSelection();
+    // 레퍼런스 불러오기 패널 초기화
+    this.initReferenceLoader();
+    // 확대 모드 초기화
+    this.initExpandModal();
   }
 
-  /* ============================================================
-   * [Phase 1-2 Hotfix] 2025-12-07
-   * Firebase 초기화 대기 래퍼
-   * - AuthManager의 waitForFirebase 호출 및 상태 동기화
-   * - 에러 발생 시 상위로 전파하여 init()에서 처리
-   * ============================================================ */
+  // [Refactoring] AuthManager로 위임
   async waitForFirebase() {
-    // AuthManager에서 에러 throw 가능 → 상위로 전파
     await this.authManager.waitForFirebase();
-
-    // 상태 동기화
     this.auth = this.authManager.auth;
     this.db = this.authManager.db;
     this.isFirebaseReady = this.authManager.isFirebaseReady;
-
-    console.log("[DualTextWriter] Firebase 상태 동기화 완료:", {
-      isFirebaseReady: this.isFirebaseReady,
-      hasAuth: !!this.auth,
-      hasDb: !!this.db,
-    });
   }
 
   // [Refactoring] AuthManager에서 처리하므로 제거 또는 래핑
@@ -1448,24 +1414,11 @@ class DualTextWriter {
       }
     }
 
-    /* ============================================================
-     * [Phase 4] 2025-12-07
-     * 트래킹 탭 전환 시 렌더링 보장
-     * - 데이터가 이미 로드되어 있으면 즉시 렌더링 수행
-     * - 데이터가 없으면 loadTrackingPosts() 호출
-     * ============================================================ */
+    // 트래킹 탭으로 전환 시 데이터 로드
     if (tabName === Constants.TABS.TRACKING) {
-      // 데이터가 이미 로드되어 있으면 즉시 렌더링
-      if (this.trackingPosts && this.trackingPosts.length > 0) {
-        this.renderTrackingPosts();
-        this.updateTrackingSummary();
-        this.initTrackingChart();
-      } else {
-        // 데이터가 없으면 로드
-        this.loadTrackingPosts();
-        this.updateTrackingSummary();
-        this.initTrackingChart();
-      }
+      this.loadTrackingPosts();
+      this.updateTrackingSummary();
+      this.initTrackingChart();
     }
 
     // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -1476,11 +1429,7 @@ class DualTextWriter {
     // 스크립트 작성 탭으로 전환 시 데이터 로드
     if (tabName === Constants.TABS.MANAGEMENT) {
       this.loadArticlesForManagement();
-      // [Fix] 이벤트 리스너 중복 등록 방지 - 초기화는 최초 1회만 실행
-      if (!this.articleManagementInitialized) {
-        this.initArticleManagement();
-        this.articleManagementInitialized = true;
-      }
+      this.initArticleManagement();
     }
   }
 
@@ -3585,8 +3534,6 @@ class DualTextWriter {
           setTimeout(() => {
             this.setupSavedItemEventListeners();
             this.bindLinkedReferenceBadgeEvents();
-            // [Phase 3-1 버그 수정] 대량 렌더링 경로에서도 "더 보기" 버튼 렌더링
-            this.renderLoadMoreButton();
           }, 100);
         }
       };
@@ -3606,77 +3553,8 @@ class DualTextWriter {
       setTimeout(() => {
         this.setupSavedItemEventListeners();
         this.bindLinkedReferenceBadgeEvents();
-        // [Phase 3-1] "더 보기" 버튼 렌더링
-        this.renderLoadMoreButton();
       }, 100);
     }
-  }
-
-  /* ============================================================
-   * [Phase 3-1] 2025-12-07
-   * "더 보기" 버튼 렌더링
-   * - 추가 데이터가 있을 때만 표시
-   * - 접근성: aria-label 속성 사용
-   * ============================================================ */
-  renderLoadMoreButton() {
-    if (!this.savedList) return;
-
-    // 기존 "더 보기" 버튼 컨테이너 제거
-    const existingContainer = this.savedList.querySelector(
-      ".load-more-container"
-    );
-    if (existingContainer) existingContainer.remove();
-
-    // 페이지네이션 상태 확인
-    if (!this.paginationState?.hasMore) {
-      // 더 이상 데이터가 없으면 완료 메시지 표시 (데이터가 pageSize 이상일 때만)
-      if (
-        this.savedTexts &&
-        this.savedTexts.length >= (this.paginationState?.pageSize || 20)
-      ) {
-        const allLoadedContainer = document.createElement("div");
-        allLoadedContainer.className = "all-loaded-message";
-        allLoadedContainer.innerHTML = "✅ 모든 글을 불러왔습니다.";
-        this.savedList.appendChild(allLoadedContainer);
-      }
-      return;
-    }
-
-    // "더 보기" 버튼 컨테이너 생성
-    const loadMoreContainer = document.createElement("div");
-    loadMoreContainer.className = "load-more-container";
-    loadMoreContainer.innerHTML = `
-      <button class="btn-load-more" aria-label="더 많은 글 불러오기">
-        📜 더 보기
-      </button>
-    `;
-
-    // 버튼 이벤트 리스너
-    const loadMoreBtn = loadMoreContainer.querySelector(".btn-load-more");
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener("click", async () => {
-        // 로딩 상태 표시
-        loadMoreBtn.classList.add("loading");
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.textContent = "로딩 중";
-
-        try {
-          await this.loadMoreSavedTexts();
-        } catch (error) {
-          console.error("[renderLoadMoreButton] 추가 로드 실패:", error);
-          this.showMessage("추가 데이터 로드에 실패했습니다.", "error");
-        } finally {
-          // 로딩 상태 제거 (버튼이 아직 존재하면)
-          if (loadMoreBtn.parentNode) {
-            loadMoreBtn.classList.remove("loading");
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.textContent = "📜 더 보기";
-          }
-        }
-      });
-    }
-
-    this.savedList.appendChild(loadMoreContainer);
   }
 
   /**
@@ -4347,12 +4225,6 @@ class DualTextWriter {
   }
 
   // 통합 UI 업데이트 함수 (성능 최적화)
-  /* ============================================================
-   * [Phase 4] 2025-12-07
-   * refreshUI - 트래킹 탭 데이터 로드 문제 해결
-   * - force 모드에서 탭 활성화 여부와 무관하게 렌더링 수행
-   * - 탭 비활성 시 큐에 보관하여 탭 전환 시 처리
-   * ============================================================ */
   refreshUI(options = {}) {
     const {
       savedTexts = false,
@@ -4370,7 +4242,7 @@ class DualTextWriter {
 
     // 강제 업데이트이거나 즉시 실행이 필요한 경우
     if (force) {
-      this.executeUIUpdate(true); // force 플래그 전달
+      this.executeUIUpdate();
       return;
     }
 
@@ -4380,17 +4252,12 @@ class DualTextWriter {
     }
 
     this.debounceTimers.uiUpdate = setTimeout(() => {
-      this.executeUIUpdate(false);
+      this.executeUIUpdate();
     }, 100);
   }
 
-  /* ============================================================
-   * [Phase 4] 2025-12-07
-   * executeUIUpdate - force 모드 지원 추가
-   * - force=true: 탭 활성화 여부와 무관하게 모든 큐 항목 렌더링
-   * - force=false: 현재 활성화된 탭에 해당하는 항목만 렌더링
-   * ============================================================ */
-  executeUIUpdate(forceUpdate = false) {
+  // UI 업데이트 실행 (내부 함수)
+  executeUIUpdate() {
     // 활성 탭 확인
     const savedTab = document.getElementById("saved-tab");
     const trackingTab = document.getElementById("tracking-tab");
@@ -4398,28 +4265,6 @@ class DualTextWriter {
     const isTrackingTabActive =
       trackingTab && trackingTab.classList.contains("active");
 
-    // [force 모드] 탭 활성화 조건 무시하고 모든 큐 항목 렌더링
-    if (forceUpdate) {
-      if (this.updateQueue.savedTexts) {
-        this.renderSavedTexts();
-        this.updateQueue.savedTexts = false;
-      }
-      if (this.updateQueue.trackingPosts) {
-        this.renderTrackingPosts();
-        this.updateQueue.trackingPosts = false;
-      }
-      if (this.updateQueue.trackingSummary) {
-        this.updateTrackingSummary();
-        this.updateQueue.trackingSummary = false;
-      }
-      if (this.updateQueue.trackingChart) {
-        this.updateTrackingChart();
-        this.updateQueue.trackingChart = false;
-      }
-      return;
-    }
-
-    // [일반 모드] 활성 탭에 해당하는 항목만 렌더링
     // 저장된 글 탭 업데이트
     if (this.updateQueue.savedTexts && isSavedTabActive) {
       this.renderSavedTexts();
@@ -6123,34 +5968,9 @@ class DualTextWriter {
     }
   }
 
-  /* ============================================================
-   * [Phase 1-2 Hotfix + Phase 2-1] 2025-12-07
-   * 사용자 데이터 로드 - Silent Failure 방지 + 스켈레톤 UI
-   * - isFirebaseReady 체크 추가
-   * - 진입 실패 시 명시적 warning 로그 출력
-   * - 로딩 중 스켈레톤 UI 표시
-   * - 에러 발생 시 재시도 버튼 표시
-   * ============================================================ */
+  // Firestore에서 사용자 데이터 로드
   async loadUserData() {
-    // 진입 조건 검증 (Silent Failure 방지)
-    if (!this.currentUser) {
-      console.warn("[loadUserData] ⚠️ 스킵됨: 로그인된 사용자 없음");
-      return;
-    }
-
-    if (!this.isFirebaseReady) {
-      console.warn("[loadUserData] ⚠️ 스킵됨: Firebase가 초기화되지 않음");
-      this.showMessage(
-        "Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.",
-        "warning"
-      );
-      return;
-    }
-
-    console.log("[loadUserData] 데이터 로드 시작...");
-
-    // [Phase 2-1] 스켈레톤 UI 표시
-    this.showLoadingSkeleton();
+    if (!this.currentUser) return;
 
     try {
       // ✅ Phase 3.1.1: 필수 데이터 병렬 로드 (30-50% 단축)
@@ -6160,9 +5980,6 @@ class DualTextWriter {
         this.loadSavedTextsFromFirestore(),
         this.loadTrackingPosts ? this.loadTrackingPosts() : Promise.resolve(),
       ]);
-
-      // [Phase 2-1] 스켈레톤 UI 제거
-      this.hideLoadingSkeleton();
 
       // UI 업데이트 (동기)
       this.updateCharacterCount("ref");
@@ -6175,120 +5992,10 @@ class DualTextWriter {
       if (this.updateBatchMigrationButton) {
         this.updateBatchMigrationButton();
       }
-
-      console.log("[loadUserData] ✅ 데이터 로드 완료");
     } catch (error) {
-      console.error("[loadUserData] ❌ 사용자 데이터 로드 실패:", error);
-
-      // [Phase 2-1] 스켈레톤 제거 및 에러 컨테이너 표시
-      this.hideLoadingSkeleton();
-      this.showErrorContainer("데이터를 불러오는데 실패했습니다.", () =>
-        this.loadUserData()
-      );
+      console.error("사용자 데이터 로드 실패:", error);
+      this.showMessage("데이터를 불러오는데 실패했습니다.", "error");
     }
-  }
-
-  /* ============================================================
-   * [Phase 2-1] 2025-12-07
-   * 스켈레톤 UI 헬퍼 함수
-   * - 접근성: aria-busy, aria-label 속성 사용
-   * ============================================================ */
-
-  /**
-   * 저장된 글 목록 영역에 스켈레톤 UI를 표시합니다.
-   */
-  showLoadingSkeleton() {
-    const savedList = document.querySelector(".saved-list");
-    if (!savedList) return;
-
-    // 기존 에러 컨테이너 제거
-    const existingError = savedList.querySelector(".error-container");
-    if (existingError) existingError.remove();
-
-    // 스켈레톤 이미 표시중이면 스킵
-    if (savedList.querySelector(".skeleton-container")) return;
-
-    // 접근성 속성 설정
-    savedList.setAttribute("aria-busy", "true");
-    savedList.setAttribute("aria-label", "데이터 로딩 중");
-
-    // 스켈레톤 HTML 생성 (3개 카드)
-    const skeletonHTML = `
-      <div class="skeleton-container" aria-busy="true" aria-label="데이터 로딩 중">
-        ${[1, 2, 3]
-          .map(
-            () => `
-          <div class="skeleton-saved-item">
-            <div class="skeleton-header">
-              <div class="skeleton-type-badge skeleton-shimmer"></div>
-              <div class="skeleton-date skeleton-shimmer"></div>
-            </div>
-            <div class="skeleton-content skeleton-shimmer"></div>
-            <div class="skeleton-content skeleton-shimmer"></div>
-            <div class="skeleton-content skeleton-shimmer"></div>
-            <div class="skeleton-footer">
-              <div class="skeleton-button skeleton-shimmer"></div>
-              <div class="skeleton-button skeleton-shimmer"></div>
-            </div>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-    `;
-
-    savedList.innerHTML = skeletonHTML;
-  }
-
-  /**
-   * 스켈레톤 UI를 제거합니다.
-   */
-  hideLoadingSkeleton() {
-    const savedList = document.querySelector(".saved-list");
-    if (!savedList) return;
-
-    // 접근성 속성 제거
-    savedList.removeAttribute("aria-busy");
-    savedList.removeAttribute("aria-label");
-
-    // 스켈레톤 컨테이너 제거
-    const skeleton = savedList.querySelector(".skeleton-container");
-    if (skeleton) skeleton.remove();
-  }
-
-  /**
-   * 에러 컨테이너를 표시합니다.
-   * @param {string} message - 에러 메시지
-   * @param {Function} onRetry - 재시도 버튼 클릭 시 콜백
-   */
-  showErrorContainer(message, onRetry) {
-    const savedList = document.querySelector(".saved-list");
-    if (!savedList) return;
-
-    // 기존 내용 제거
-    savedList.innerHTML = "";
-
-    // 에러 컨테이너 생성 (접근성: role="alert")
-    const errorContainer = document.createElement("div");
-    errorContainer.className = "error-container";
-    errorContainer.setAttribute("role", "alert");
-    errorContainer.setAttribute("aria-live", "assertive");
-    errorContainer.innerHTML = `
-      <div class="error-icon">⚠️</div>
-      <p class="error-message">${message}</p>
-      <button class="btn-retry" aria-label="다시 시도">🔄 다시 시도</button>
-    `;
-
-    // 재시도 버튼 이벤트
-    const retryBtn = errorContainer.querySelector(".btn-retry");
-    if (retryBtn && onRetry) {
-      retryBtn.addEventListener("click", () => {
-        errorContainer.remove();
-        onRetry();
-      });
-    }
-
-    savedList.appendChild(errorContainer);
   }
 
   /**
@@ -6395,48 +6102,12 @@ class DualTextWriter {
     }
   }
 
-  /* ============================================================
-   * [Phase 3-1] 2025-12-07
-   * Firestore에서 저장된 텍스트들 불러오기 (페이지네이션 적용)
-   * - limit(20)으로 초기 로드 최적화
-   * - 커서 기반 페이지네이션 (startAfter) 지원
-   * - 성능: 대용량 데이터 처리 시 메모리 효율화
-   * ============================================================ */
-
-  // 페이지네이션 상태 (클래스 속성으로 관리)
-  // this.paginationState = { lastDoc: null, hasMore: true, pageSize: 20 }
-
-  async loadSavedTextsFromFirestore(filterOptions = {}, append = false) {
+  // Firestore에서 저장된 텍스트들 불러오기
+  // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
+  async loadSavedTextsFromFirestore(filterOptions = {}) {
     if (!this.currentUser || !this.isFirebaseReady) return;
 
-    // 페이지네이션 상태 초기화 (append가 아닌 경우)
-    if (!append) {
-      this.paginationState = {
-        lastDoc: null,
-        hasMore: true,
-        pageSize: 20,
-        isLoading: false,
-      };
-      this.savedTexts = [];
-    }
-
-    // 이미 로딩 중이면 스킵
-    if (this.paginationState?.isLoading) {
-      console.log("[loadSavedTextsFromFirestore] 이미 로딩 중입니다.");
-      return;
-    }
-
-    // 더 이상 데이터가 없으면 스킵
-    if (append && !this.paginationState?.hasMore) {
-      console.log(
-        "[loadSavedTextsFromFirestore] 더 이상 로드할 데이터가 없습니다."
-      );
-      return;
-    }
-
     try {
-      this.paginationState.isLoading = true;
-
       const textsRef = window.firebaseCollection(
         this.db,
         "users",
@@ -6445,6 +6116,8 @@ class DualTextWriter {
       );
 
       // 서버 사이드 필터링 구성 (성능 최적화)
+      // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
+      // 인덱스 예시: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)
       const queryConstraints = [window.firebaseOrderBy("createdAt", "desc")];
 
       // type 필터 (서버 사이드)
@@ -6454,7 +6127,7 @@ class DualTextWriter {
         );
       }
 
-      // referenceType 필터 (서버 사이드)
+      // referenceType 필터 (서버 사이드, type이 'reference'일 때만 유효)
       if (
         filterOptions.type === "reference" &&
         filterOptions.referenceType &&
@@ -6469,164 +6142,85 @@ class DualTextWriter {
         );
       }
 
-      // [Phase 3-1] limit 적용 (페이지네이션)
-      queryConstraints.push(
-        window.firebaseLimit(this.paginationState.pageSize)
-      );
-
-      // [Phase 3-1] 커서 기반 페이지네이션 (append 모드일 때)
-      if (append && this.paginationState.lastDoc) {
-        queryConstraints.push(
-          window.firebaseStartAfter(this.paginationState.lastDoc)
-        );
-      }
-
       const q = window.firebaseQuery(textsRef, ...queryConstraints);
       const querySnapshot = await window.firebaseGetDocs(q);
 
-      // [Phase 3-1] 마지막 문서 저장 (다음 페이지 로드용)
-      const docs = querySnapshot.docs;
-      if (docs.length > 0) {
-        this.paginationState.lastDoc = docs[docs.length - 1];
-      }
-
-      // [Phase 3-1] 더 이상 데이터가 있는지 확인
-      this.paginationState.hasMore =
-        docs.length === this.paginationState.pageSize;
-
-      // append가 아니면 캐시 무효화
-      if (!append) {
-        this.renderSavedTextsCache = null;
-        this.renderSavedTextsCacheKey = null;
-      }
-
-      // 데이터 변환 및 저장
-      const newTexts = [];
+      this.savedTexts = [];
+      // 캐시 무효화 (데이터 로드 시)
+      this.renderSavedTextsCache = null;
+      this.renderSavedTextsCacheKey = null;
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // 타입 정규화 (레거시 값 대응)
+        // 타입 정규화 (레거시 값 대응): 'writing'|'edit' -> 'edit', 'ref'|'reference' -> 'reference'
         let normalizedType = (data.type || "").toString().toLowerCase();
         if (normalizedType === "writing") normalizedType = "edit";
         if (normalizedType === "ref") normalizedType = "reference";
 
+        // [Tab Separation] 'script' 타입 보존 (기존에는 알 수 없는 타입은 무조건 edit로 처리했음)
         if (
           normalizedType !== "edit" &&
           normalizedType !== "reference" &&
           normalizedType !== "script"
         ) {
+          // 알 수 없는 타입은 편의상 'edit'로 처리
           normalizedType = "edit";
         }
-
-        newTexts.push({
+        this.savedTexts.push({
           id: doc.id,
           content: data.content,
           date: data.createdAt
             ? data.createdAt.toDate().toLocaleString("ko-KR")
             : "날짜 없음",
-          createdAt: data.createdAt,
+          createdAt: data.createdAt, // Firestore Timestamp 원본 보존
           characterCount: data.characterCount,
           type: normalizedType,
           referenceType: data.referenceType || "unspecified",
           topic: data.topic || undefined,
           contentHash: data.contentHash || undefined,
           hashVersion: data.hashVersion || undefined,
+
+          // ✅ 연결된 레퍼런스 (기존 데이터는 undefined이므로 빈 배열로 처리)
           linkedReferences: Array.isArray(data.linkedReferences)
             ? data.linkedReferences
             : [],
           referenceMeta: data.referenceMeta || undefined,
+
+          // ✅ SNS 플랫폼 (기존 데이터는 undefined이므로 빈 배열로 처리)
           platforms: Array.isArray(data.platforms) ? data.platforms : [],
         });
       });
 
-      // [Phase 3-1] append 모드면 기존 데이터에 추가, 아니면 교체
-      if (append) {
-        this.savedTexts = [...this.savedTexts, ...newTexts];
-      } else {
-        this.savedTexts = newTexts;
-      }
+      console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
 
-      console.log(
-        `[loadSavedTextsFromFirestore] ${newTexts.length}개 로드 (총: ${
-          this.savedTexts.length
-        }개, 추가 데이터: ${this.paginationState.hasMore ? "있음" : "없음"})`
-      );
+      // 주제 필터 옵션 업데이트 (데이터 로드 후)
+      this.updateTopicFilterOptions();
 
-      // 주제 필터 옵션 업데이트 (초기 로드 시에만)
-      if (!append) {
-        this.updateTopicFilterOptions();
-      }
-
-      // 해시 미보유 레퍼런스 안내 (초기 로드 시에만)
-      if (!append) {
-        try {
-          const missingHashCount = this.savedTexts.filter(
-            (t) => (t.type || "edit") === "reference" && !t.contentHash
-          ).length;
-          if (missingHashCount > 0) {
-            this.showMessage(
-              `ℹ️ 해시가 없는 레퍼런스 ${missingHashCount}개가 있습니다. 필요 시 해시 마이그레이션을 실행하세요.`,
-              "info"
-            );
-          }
-        } catch (e) {
-          // 무시
+      // 해시 미보유 레퍼런스 안내 (접근성: 토스트는 aria-live로 표시됨)
+      try {
+        const missingHashCount = this.savedTexts.filter(
+          (t) => (t.type || "edit") === "reference" && !t.contentHash
+        ).length;
+        if (missingHashCount > 0) {
+          this.showMessage(
+            `ℹ️ 해시가 없는 레퍼런스 ${missingHashCount}개가 있습니다. 필요 시 해시 마이그레이션을 실행하세요.`,
+            "info"
+          );
         }
+      } catch (e) {
+        // 무시
       }
     } catch (error) {
-      console.error("[loadSavedTextsFromFirestore] 오류:", error);
+      console.error("Firestore에서 텍스트 불러오기 실패:", error);
+      // 복합 인덱스 오류인 경우 안내 메시지
       if (error.code === "failed-precondition") {
         console.warn(
           "복합 인덱스가 필요합니다. Firebase Console에서 인덱스를 생성해주세요."
         );
+        console.warn(
+          "인덱스 구성: Collection: texts, Fields: type (Ascending), referenceType (Ascending), createdAt (Descending)"
+        );
       }
-      if (!append) {
-        this.savedTexts = [];
-      }
-    } finally {
-      this.paginationState.isLoading = false;
-    }
-  }
-
-  /* ============================================================
-   * [Phase 3-1] 2025-12-07
-   * 추가 데이터 로드 (더 보기)
-   * - 기존 filterOptions 유지하며 다음 페이지 로드
-   * ============================================================ */
-  async loadMoreSavedTexts() {
-    if (!this.paginationState?.hasMore || this.paginationState?.isLoading) {
-      return false;
-    }
-
-    console.log("[loadMoreSavedTexts] 추가 데이터 로드 시작...");
-
-    // 기존 필터 옵션 유지하며 append 모드로 로드
-    await this.loadSavedTextsFromFirestore(
-      this.currentFilterOptions || {},
-      true
-    );
-
-    // UI 업데이트 (기존 renderSavedTexts는 append=true면 더해서 표시)
-    await this.renderSavedTexts();
-
-    // "더 보기" 버튼 상태 업데이트
-    this.updateLoadMoreButton();
-
-    return this.paginationState.hasMore;
-  }
-
-  /**
-   * "더 보기" 버튼 상태 업데이트
-   */
-  updateLoadMoreButton() {
-    const loadMoreBtn = document.querySelector(".btn-load-more");
-    if (!loadMoreBtn) return;
-
-    if (this.paginationState?.hasMore) {
-      loadMoreBtn.style.display = "block";
-      loadMoreBtn.disabled = false;
-      loadMoreBtn.textContent = "📜 더 보기";
-    } else {
-      loadMoreBtn.style.display = "none";
+      this.savedTexts = [];
     }
   }
 
@@ -9508,8 +9102,6 @@ class DualTextWriter {
   initArticleManagement() {
     // DOM 요소 참조
     this.categorySelect = document.getElementById("category-select");
-    // [Dual Filter] SNS 필터 드롭다운 참조
-    this.snsFilterSelect = document.getElementById("sns-filter-select");
     this.articleCardsGrid = document.getElementById("article-cards-grid");
     this.managementEmptyState = document.getElementById(
       "management-empty-state"
@@ -9524,67 +9116,6 @@ class DualTextWriter {
     this.editTitleInput = document.getElementById("edit-title-input");
     this.editCategorySelect = document.getElementById("edit-category-select");
     this.editContentTextarea = document.getElementById("edit-content-textarea");
-
-    /* ================================================================
-       듀얼 패널 시스템 - DOM 참조 및 상태 변수
-       - Phase 3: 두 개의 글을 동시에 비교/편집
-       - 2025-12-07 추가
-       ================================================================ */
-
-    // 듀얼 패널 컨테이너
-    this.articleDetailContainer = document.getElementById(
-      "article-detail-container"
-    );
-
-    // 패널 1 DOM 요소 (기본 패널)
-    this.articleDetailPanel1 = document.getElementById(
-      "article-detail-panel-1"
-    );
-    this.detailPanelClose1 = document.getElementById("detail-panel-close-1");
-    this.detailEditBtn1 = document.getElementById("detail-edit-btn-1");
-    this.detailDeleteBtn1 = document.getElementById("detail-delete-btn-1");
-    this.detailCopyBtn1 = document.getElementById("detail-copy-btn-1");
-    this.editSaveBtn1 = document.getElementById("edit-article-save-btn-1");
-    this.editCancelBtn1 = document.getElementById("edit-article-cancel-btn-1");
-    this.editTitleInput1 = document.getElementById("edit-title-input-1");
-    this.editCategorySelect1 = document.getElementById(
-      "edit-category-select-1"
-    );
-    this.editContentTextarea1 = document.getElementById(
-      "edit-content-textarea-1"
-    );
-
-    // 패널 2 DOM 요소 (비교 패널)
-    this.articleDetailPanel2 = document.getElementById(
-      "article-detail-panel-2"
-    );
-    this.detailPanelClose2 = document.getElementById("detail-panel-close-2");
-    this.detailEditBtn2 = document.getElementById("detail-edit-btn-2");
-    this.detailDeleteBtn2 = document.getElementById("detail-delete-btn-2");
-    this.detailCopyBtn2 = document.getElementById("detail-copy-btn-2");
-    this.editSaveBtn2 = document.getElementById("edit-article-save-btn-2");
-    this.editCancelBtn2 = document.getElementById("edit-article-cancel-btn-2");
-    this.editTitleInput2 = document.getElementById("edit-title-input-2");
-    this.editCategorySelect2 = document.getElementById(
-      "edit-category-select-2"
-    );
-    this.editContentTextarea2 = document.getElementById(
-      "edit-content-textarea-2"
-    );
-
-    // 듀얼 패널 구분선
-    this.detailDualDivider = document.getElementById("detail-dual-divider");
-
-    // 듀얼 패널 상태 변수
-    this.selectedArticleIds = [null, null]; // [패널1 글 ID, 패널2 글 ID]
-    this.activePanelIndex = 0; // 현재 활성 패널 (0 또는 1)
-    this.isDualMode = false; // 듀얼 모드 여부
-
-    // 레거시 호환성: 단일 패널 참조 (패널 1으로 매핑)
-    if (!this.articleDetailPanel && this.articleDetailPanel1) {
-      this.articleDetailPanel = this.articleDetailPanel1;
-    }
-    /* ================================================================ */
 
     // 새 스크립트 작성 폼 관련 요소
     this.newScriptToggleBtn = document.getElementById("new-script-toggle-btn");
@@ -9701,26 +9232,14 @@ class DualTextWriter {
     this.referenceSearchDebounce = null;
     this.recentReferences = this.loadRecentReferences(); // localStorage에서 최근 사용 글 로드
 
-    // 현재 선택된 글 ID (레거시 호환성 - 패널 1의 ID로 매핑)
+    // 현재 선택된 글 ID
     this.selectedArticleId = null;
     this.managementArticles = []; // 스크립트 작성용 글 목록
-
-    /* ================================================================
-       듀얼 패널 이벤트 리스너 바인딩
-       ================================================================ */
-    this.bindDualPanelEvents();
 
     // 이벤트 리스너 바인딩
     if (this.categorySelect) {
       this.categorySelect.addEventListener("change", (e) => {
         this.filterArticlesByCategory(e.target.value);
-      });
-    }
-
-    // [Dual Filter] SNS 필터 이벤트 리스너
-    if (this.snsFilterSelect) {
-      this.snsFilterSelect.addEventListener("change", (e) => {
-        this.filterArticlesBySns(e.target.value);
       });
     }
 
@@ -9989,8 +9508,6 @@ class DualTextWriter {
           order: data.order || 0, // order 필드 (기본값 0)
           viewCount: data.viewCount || 0,
           characterCount: data.characterCount, // [Fix] 글자 수 필드 로드
-          // [Dual Filter] SNS 플랫폼 필드 (하위 호환성: platformsSNS 없으면 llmModel 사용)
-          platformsSNS: data.platformsSNS || data.llmModel || "",
         });
       });
 
@@ -10016,19 +9533,13 @@ class DualTextWriter {
       // 카테고리 드롭다운 업데이트 (렌더링 전에 업데이트)
       this.updateCategoryDropdown();
 
-      // [Dual Filter] SNS 드롭다운 업데이트
-      this.updateSnsFilterDropdown();
-
       // 현재 선택된 카테고리 필터 값 가져오기
       const currentCategory = this.categorySelect
         ? this.categorySelect.value
         : "";
 
-      // [Dual Filter] 현재 선택된 SNS 필터 값 가져오기
-      const currentSns = this.snsFilterSelect ? this.snsFilterSelect.value : "";
-
       // 카테고리별로 정렬 후 렌더링 (현재 선택된 필터 값 전달)
-      this.renderArticleCards(currentCategory, currentSns);
+      this.renderArticleCards(currentCategory);
 
       // 카테고리 제안 업데이트
       this.updateCategorySuggestions();
@@ -10148,12 +9659,12 @@ class DualTextWriter {
 
             if (needsOrderUpdate || needsCharCountUpdate) {
               const updateData = {};
-
+              
               if (needsOrderUpdate) {
                 article.order = newOrder;
                 updateData.order = newOrder;
               }
-
+              
               if (needsCharCountUpdate) {
                 const count = (article.content || "").length;
                 article.characterCount = count;
@@ -10194,26 +9705,21 @@ class DualTextWriter {
 
   /**
    * 카테고리 드롭다운 업데이트
-   * - 필터용 드롭다운 + 수정 모드 드롭다운
-   * - 듀얼 패널 카테고리 드롭다운 포함
    */
   updateCategoryDropdown() {
-    // 필터용 드롭다운만 필수, 나머지는 옵셔널
-    if (!this.categorySelect) return;
+    if (!this.categorySelect || !this.editCategorySelect) return;
 
-    // 고유한 카테고리 목록 추출 ("미분류" 제외하고 수집)
-    const categories = new Set();
+    // 고유한 카테고리 목록 추출
+    const categories = new Set(["미분류"]);
     this.managementArticles.forEach((article) => {
-      if (article.category && article.category !== "미분류") {
+      if (article.category) {
         categories.add(article.category);
       }
     });
 
-    // 정렬 후 "미분류"를 맨 마지막에 추가
     const sortedCategories = Array.from(categories).sort();
-    sortedCategories.push("미분류");
 
-    // 카테고리 선택 드롭다운 업데이트 (필터용) - 필수
+    // 카테고리 선택 드롭다운 업데이트
     this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
     sortedCategories.forEach((category) => {
       const option = document.createElement("option");
@@ -10222,85 +9728,14 @@ class DualTextWriter {
       this.categorySelect.appendChild(option);
     });
 
-    // 수정 모드 카테고리 드롭다운 업데이트 (레거시) - 옵셔널
-    if (this.editCategorySelect) {
-      this.editCategorySelect.innerHTML = "";
-      sortedCategories.forEach((category) => {
-        const option = document.createElement("option");
-        option.value = category;
-        option.textContent = category;
-        this.editCategorySelect.appendChild(option);
-      });
-    }
-
-    /* ================================================================
-       듀얼 패널 카테고리 드롭다운 업데이트
-       - edit-category-select-1 (패널 1 수정 모드)
-       - edit-category-select-2 (패널 2 수정 모드)
-       ================================================================ */
-    if (this.editCategorySelect1) {
-      this.editCategorySelect1.innerHTML = "";
-      sortedCategories.forEach((category) => {
-        const option = document.createElement("option");
-        option.value = category;
-        option.textContent = category;
-        this.editCategorySelect1.appendChild(option);
-      });
-    }
-
-    if (this.editCategorySelect2) {
-      this.editCategorySelect2.innerHTML = "";
-      sortedCategories.forEach((category) => {
-        const option = document.createElement("option");
-        option.value = category;
-        option.textContent = category;
-        this.editCategorySelect2.appendChild(option);
-      });
-    }
-  }
-
-  /**
-   * [Dual Filter] SNS 필터 드롭다운 업데이트
-   */
-  updateSnsFilterDropdown() {
-    if (!this.snsFilterSelect) return;
-
-    // 고유한 SNS 플랫폼 목록 추출
-    const snsSet = new Set();
-    this.managementArticles.forEach((article) => {
-      if (article.platformsSNS) {
-        snsSet.add(article.platformsSNS);
-      }
-    });
-
-    const sortedSns = Array.from(snsSet).sort();
-
-    // 현재 선택된 값 저장
-    const currentValue = this.snsFilterSelect.value;
-
-    // SNS 필터 드롭다운 업데이트
-    this.snsFilterSelect.innerHTML = '<option value="">전체 SNS</option>';
-    sortedSns.forEach((sns) => {
+    // 수정 모드 카테고리 드롭다운 업데이트
+    this.editCategorySelect.innerHTML = "";
+    sortedCategories.forEach((category) => {
       const option = document.createElement("option");
-      option.value = sns;
-      option.textContent = sns;
-      this.snsFilterSelect.appendChild(option);
+      option.value = category;
+      option.textContent = category;
+      this.editCategorySelect.appendChild(option);
     });
-
-    // 이전 선택값 복원 (존재하는 경우)
-    if (currentValue && sortedSns.includes(currentValue)) {
-      this.snsFilterSelect.value = currentValue;
-    }
-  }
-
-  /**
-   * [Dual Filter] SNS별 필터링
-   */
-  filterArticlesBySns(sns) {
-    const currentCategory = this.categorySelect
-      ? this.categorySelect.value
-      : "";
-    this.renderArticleCards(currentCategory, sns);
   }
 
   /**
@@ -10336,34 +9771,22 @@ class DualTextWriter {
 
   /**
    * 카테고리별 필터링
-   * [Dual Filter] SNS 필터도 함께 적용
    */
   filterArticlesByCategory(category) {
-    const currentSns = this.snsFilterSelect ? this.snsFilterSelect.value : "";
-    this.renderArticleCards(category, currentSns);
+    this.renderArticleCards(category);
   }
 
   /**
    * 글 카드 렌더링
-   * [Dual Filter] filterCategory와 filterSns 두 가지 필터 지원
    */
-  renderArticleCards(filterCategory = "", filterSns = "") {
+  renderArticleCards(filterCategory = "") {
     if (!this.articleCardsGrid) return;
 
-    // [Dual Filter] 듀얼 필터링 (AND 조건)
+    // 필터링
     let filteredArticles = this.managementArticles;
-
-    // 카테고리 필터
     if (filterCategory) {
-      filteredArticles = filteredArticles.filter(
+      filteredArticles = this.managementArticles.filter(
         (article) => (article.category || "미분류") === filterCategory
-      );
-    }
-
-    // SNS 필터
-    if (filterSns) {
-      filteredArticles = filteredArticles.filter(
-        (article) => (article.platformsSNS || "") === filterSns
       );
     }
 
@@ -10384,21 +9807,14 @@ class DualTextWriter {
       });
     });
 
-    // [Dual Filter] 빈 상태 처리 - 구체적 메시지
+    // 빈 상태 처리
     if (filteredArticles.length === 0) {
       this.articleCardsGrid.innerHTML = "";
       if (this.managementEmptyState) {
         this.managementEmptyState.style.display = "block";
-        // 필터 조합에 따른 메시지
-        if (filterCategory && filterSns) {
-          this.managementEmptyState.textContent = `${filterCategory} 카테고리의 ${filterSns} 글이 없습니다.`;
-        } else if (filterCategory) {
-          this.managementEmptyState.textContent = `${filterCategory} 카테고리에 글이 없습니다.`;
-        } else if (filterSns) {
-          this.managementEmptyState.textContent = `${filterSns} 글이 없습니다.`;
-        } else {
-          this.managementEmptyState.textContent = "표시할 글이 없습니다.";
-        }
+        this.managementEmptyState.textContent = filterCategory
+          ? `${filterCategory} 카테고리에 글이 없습니다.`
+          : "표시할 글이 없습니다.";
       }
       return;
     }
@@ -10416,8 +9832,7 @@ class DualTextWriter {
         const card = this.createArticleCard(
           article,
           globalOrder++,
-          filterCategory,
-          filterSns
+          filterCategory
         );
         this.articleCardsGrid.appendChild(card);
       });
@@ -10426,9 +9841,8 @@ class DualTextWriter {
 
   /**
    * 글 카드 생성
-   * [Dual Filter] filterSns 매개변수 추가
    */
-  createArticleCard(article, orderNumber, filterCategory = "", filterSns = "") {
+  createArticleCard(article, orderNumber, filterCategory = "") {
     const card = document.createElement("div");
     card.className = "article-card";
     card.setAttribute("data-article-id", article.id);
@@ -10436,25 +9850,14 @@ class DualTextWriter {
     card.setAttribute("tabindex", "0");
     card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title}`);
 
-    // 키보드 접근성 + Ctrl+클릭 듀얼 패널 지원
-    card.addEventListener("click", (e) => {
-      // Ctrl+클릭: 패널 2에 열기 (듀얼 모드)
-      if (e.ctrlKey || e.metaKey) {
-        this.selectArticleToPanel(article.id, 1, true);
-      } else {
-        // 일반 클릭: 패널 1에 열기
-        this.selectArticleToPanel(article.id, 0, false);
-      }
+    // 키보드 접근성
+    card.addEventListener("click", () => {
+      this.selectArticle(article.id);
     });
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        // Ctrl+Enter: 패널 2에 열기
-        if (e.ctrlKey || e.metaKey) {
-          this.selectArticleToPanel(article.id, 1, true);
-        } else {
-          this.selectArticleToPanel(article.id, 0, false);
-        }
+        this.selectArticle(article.id);
       }
     });
 
@@ -10466,9 +9869,9 @@ class DualTextWriter {
       ? this.formatDateFromFirestore(article.createdAt)
       : "날짜 없음";
 
-    // [Dual Filter] 순서 조정 버튼 활성화 여부 확인 (듀얼 필터 적용)
-    const canMoveUp = this.canMoveUp(article, filterCategory, filterSns);
-    const canMoveDown = this.canMoveDown(article, filterCategory, filterSns);
+    // 순서 조정 버튼 활성화 여부 확인
+    const canMoveUp = this.canMoveUp(article, filterCategory);
+    const canMoveDown = this.canMoveDown(article, filterCategory);
 
     card.innerHTML = `
             <div class="article-card-header">
@@ -10504,9 +9907,7 @@ class DualTextWriter {
             )}</div>
             <div class="article-card-meta">
                 <span class="article-card-date">📅 ${dateStr}</span>
-                <span class="article-card-count">📝 ${
-                  article.content ? article.content.length : 0
-                }자</span>
+                <span class="article-card-count">📝 ${article.content ? article.content.length : 0}자</span>
                 <span class="article-card-category">📁 ${this.escapeHtml(
                   article.category || "미분류"
                 )}</span>
@@ -10549,19 +9950,13 @@ class DualTextWriter {
 
   /**
    * 위로 이동 가능 여부
-   * [Dual Filter] filterSns 매개변수 추가
    */
-  canMoveUp(article, filterCategory = "", filterSns = "") {
-    // [Dual Filter] 듀얼 필터링 적용
-    let filtered = this.managementArticles;
-    if (filterCategory) {
-      filtered = filtered.filter(
-        (a) => (a.category || "미분류") === filterCategory
-      );
-    }
-    if (filterSns) {
-      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
-    }
+  canMoveUp(article, filterCategory = "") {
+    const filtered = filterCategory
+      ? this.managementArticles.filter(
+          (a) => (a.category || "미분류") === filterCategory
+        )
+      : this.managementArticles;
 
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
@@ -10573,19 +9968,13 @@ class DualTextWriter {
 
   /**
    * 아래로 이동 가능 여부
-   * [Dual Filter] filterSns 매개변수 추가
    */
-  canMoveDown(article, filterCategory = "", filterSns = "") {
-    // [Dual Filter] 듀얼 필터링 적용
-    let filtered = this.managementArticles;
-    if (filterCategory) {
-      filtered = filtered.filter(
-        (a) => (a.category || "미분류") === filterCategory
-      );
-    }
-    if (filterSns) {
-      filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
-    }
+  canMoveDown(article, filterCategory = "") {
+    const filtered = filterCategory
+      ? this.managementArticles.filter(
+          (a) => (a.category || "미분류") === filterCategory
+        )
+      : this.managementArticles;
 
     const sameCategory = filtered.filter(
       (a) => (a.category || "미분류") === (article.category || "미분류")
@@ -10657,9 +10046,7 @@ class DualTextWriter {
         : "날짜 없음";
     }
     if (charCountEl) {
-      charCountEl.textContent = `📝 ${
-        article.content ? article.content.length : 0
-      }자`;
+      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
     }
     if (titleEl) {
       titleEl.textContent = article.title;
@@ -10854,7 +10241,7 @@ class DualTextWriter {
   }
 
   /**
-   * 상세 패널 닫기 (레거시)
+   * 상세 패널 닫기
    */
   closeDetailPanel() {
     if (this.articleDetailPanel) {
@@ -10869,629 +10256,8 @@ class DualTextWriter {
     this.selectedArticleId = null;
   }
 
-  /* ================================================================
-     듀얼 패널 시스템 - 핵심 메서드
-     - 두 개의 글을 동시에 비교/편집
-     - 2025-12-07 Phase 3 추가
-     ================================================================ */
-
-  /**
-   * 듀얼 패널 이벤트 리스너 바인딩
-   * - 패널 1/2 닫기, 수정, 삭제, 복사 버튼 이벤트
-   * - 카드 클릭 시 Ctrl+클릭 감지
-   * - 구분선 드래그 이벤트
-   */
-  bindDualPanelEvents() {
-    // 패널 1 이벤트
-    if (this.detailPanelClose1) {
-      this.detailPanelClose1.addEventListener("click", () => {
-        this.closeDetailPanelByIndex(0);
-      });
-    }
-    if (this.detailEditBtn1) {
-      this.detailEditBtn1.addEventListener("click", () => {
-        this.enterEditModeByIndex(0);
-      });
-    }
-    if (this.detailDeleteBtn1) {
-      this.detailDeleteBtn1.addEventListener("click", () => {
-        this.deleteArticleByIndex(0);
-      });
-    }
-    if (this.detailCopyBtn1) {
-      this.detailCopyBtn1.addEventListener("click", () => {
-        this.copyArticleContentByIndex(0);
-      });
-    }
-    if (this.editSaveBtn1) {
-      this.editSaveBtn1.addEventListener("click", () => {
-        this.saveArticleEditByIndex(0);
-      });
-    }
-    if (this.editCancelBtn1) {
-      this.editCancelBtn1.addEventListener("click", () => {
-        this.cancelArticleEditByIndex(0);
-      });
-    }
-
-    // 패널 2 이벤트
-    if (this.detailPanelClose2) {
-      this.detailPanelClose2.addEventListener("click", () => {
-        this.closeDetailPanelByIndex(1);
-      });
-    }
-    if (this.detailEditBtn2) {
-      this.detailEditBtn2.addEventListener("click", () => {
-        this.enterEditModeByIndex(1);
-      });
-    }
-    if (this.detailDeleteBtn2) {
-      this.detailDeleteBtn2.addEventListener("click", () => {
-        this.deleteArticleByIndex(1);
-      });
-    }
-    if (this.detailCopyBtn2) {
-      this.detailCopyBtn2.addEventListener("click", () => {
-        this.copyArticleContentByIndex(1);
-      });
-    }
-    if (this.editSaveBtn2) {
-      this.editSaveBtn2.addEventListener("click", () => {
-        this.saveArticleEditByIndex(1);
-      });
-    }
-    if (this.editCancelBtn2) {
-      this.editCancelBtn2.addEventListener("click", () => {
-        this.cancelArticleEditByIndex(1);
-      });
-    }
-
-    // 구분선 드래그 초기화
-    this.initDualDividerDrag();
-
-    /* ================================================================
-       듀얼 패널 확대 버튼 이벤트 바인딩
-       - detail-expand-btn-1 (패널 1 확대)
-       - detail-expand-btn-2 (패널 2 확대)
-       ================================================================ */
-    const detailExpandBtn1 = document.getElementById("detail-expand-btn-1");
-    const detailExpandBtn2 = document.getElementById("detail-expand-btn-2");
-
-    if (detailExpandBtn1) {
-      detailExpandBtn1.addEventListener("click", () => {
-        this.openExpandModeByIndex(0);
-      });
-    }
-
-    if (detailExpandBtn2) {
-      detailExpandBtn2.addEventListener("click", () => {
-        this.openExpandModeByIndex(1);
-      });
-    }
-
-    /* ================================================================
-       접근성: Escape 키로 활성 패널 닫기
-       ================================================================ */
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        // 듀얼 패널 활성 상태일 때만 처리
-        if (this.selectedArticleIds[0] !== null || this.selectedArticleIds[1] !== null) {
-          // 활성 패널 우선 닫기
-          if (this.selectedArticleIds[this.activePanelIndex] !== null) {
-            this.closeDetailPanelByIndex(this.activePanelIndex);
-            this.announceToScreenReader(`패널 ${this.activePanelIndex + 1} 닫힘`);
-            e.preventDefault();
-          }
-        }
-      }
-    });
-
-    console.log("✅ 듀얼 패널 이벤트 바인딩 완료 (접근성 포함)");
-  }
-
-  /**
-   * 글 선택 (패널 지정)
-   * @param {string} articleId - 글 ID
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   * @param {boolean} fromCtrlClick - Ctrl+클릭으로 호출된 경우
-   */
-  selectArticleToPanel(articleId, panelIndex = 0, fromCtrlClick = false) {
-    // 유효성 검사
-    if (panelIndex < 0 || panelIndex > 1) {
-      console.warn("유효하지 않은 panelIndex:", panelIndex);
-      panelIndex = 0;
-    }
-
-    // 같은 글 중복 선택 방지
-    const otherPanelIndex = panelIndex === 0 ? 1 : 0;
-    if (this.selectedArticleIds[otherPanelIndex] === articleId) {
-      this.showMessage("⚠️ 이미 다른 패널에 열려있는 글입니다.", "warning");
-      return;
-    }
-
-    // 글 찾기
-    const article = this.managementArticles.find((a) => a.id === articleId);
-    if (!article) {
-      console.warn("글을 찾을 수 없습니다:", articleId);
-      return;
-    }
-
-    // 상태 업데이트
-    this.selectedArticleIds[panelIndex] = articleId;
-    this.activePanelIndex = panelIndex;
-    
-    // 레거시 호환성
-    if (panelIndex === 0) {
-      this.selectedArticleId = articleId;
-    }
-
-    // 카드 선택 상태 업데이트
-    this.updateCardSelectionState();
-
-    // 패널 렌더링
-    this.renderDetailPanelByIndex(article, panelIndex);
-
-    // 듀얼 모드 상태 업데이트
-    this.updateDualModeState();
-
-    // 패널로 스크롤
-    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
-    if (panel) {
-      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-
-    /* ================================================================
-       접근성: 스크린 리더에 패널 열림 알림
-       ================================================================ */
-    const panelLabel = panelIndex === 0 ? "패널 1" : "패널 2 (비교 모드)";
-    this.announceToScreenReader(`${panelLabel}에 "${article.title}" 글이 열렸습니다.`);
-
-    console.log(`📄 패널 ${panelIndex + 1}에 글 선택:`, article.title);
-  }
-
-  /**
-   * 카드 선택 상태 업데이트
-   * - 선택된 카드에 하이라이트 + 패널 번호 표시
-   */
-  updateCardSelectionState() {
-    // 모든 카드 선택 해제
-    document.querySelectorAll(".article-card").forEach((card) => {
-      card.classList.remove("selected", "selected-panel-1", "selected-panel-2");
-    });
-
-    // 패널별 선택 상태 적용
-    this.selectedArticleIds.forEach((articleId, panelIndex) => {
-      if (articleId) {
-        const card = document.querySelector(`[data-article-id="${articleId}"]`);
-        if (card) {
-          card.classList.add("selected", `selected-panel-${panelIndex + 1}`);
-        }
-      }
-    });
-  }
-
-  /**
-   * 상세 패널 렌더링 (인덱스 지정)
-   * @param {Object} article - 글 객체
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  renderDetailPanelByIndex(article, panelIndex = 0) {
-    const suffix = panelIndex === 0 ? "-1" : "-2";
-    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
-
-    if (!panel) {
-      console.warn(`패널 ${panelIndex + 1}를 찾을 수 없습니다.`);
-      return;
-    }
-
-    // 읽기 모드 표시
-    const readMode = document.getElementById(`detail-read-mode${suffix}`);
-    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
-
-    if (readMode) readMode.style.display = "block";
-    if (editMode) editMode.style.display = "none";
-
-    // 데이터 채우기
-    const categoryEl = document.getElementById(`detail-category${suffix}`);
-    const dateEl = document.getElementById(`detail-date${suffix}`);
-    const charCountEl = document.getElementById(`detail-char-count${suffix}`);
-    const titleEl = document.getElementById(`detail-title${suffix}`);
-    const contentEl = document.getElementById(`detail-content${suffix}`);
-
-    if (categoryEl) categoryEl.textContent = article.category || "미분류";
-    if (dateEl) {
-      dateEl.textContent = article.createdAt
-        ? this.formatDateFromFirestore(article.createdAt)
-        : "날짜 없음";
-    }
-    if (charCountEl) {
-      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
-    }
-    if (titleEl) titleEl.textContent = article.title;
-    if (contentEl) contentEl.textContent = article.content;
-
-    // 패널 표시
-    panel.style.display = "block";
-    
-    // 활성 패널 표시
-    if (this.articleDetailPanel1) {
-      this.articleDetailPanel1.classList.toggle("active-panel", panelIndex === 0);
-    }
-    if (this.articleDetailPanel2) {
-      this.articleDetailPanel2.classList.toggle("active-panel", panelIndex === 1);
-    }
-  }
-
-  /**
-   * 상세 패널 닫기 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  closeDetailPanelByIndex(panelIndex = 0) {
-    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
-    
-    if (panel) {
-      panel.style.display = "none";
-      panel.classList.remove("active-panel");
-    }
-
-    // 상태 업데이트
-    this.selectedArticleIds[panelIndex] = null;
-    
-    // 레거시 호환성
-    if (panelIndex === 0) {
-      this.selectedArticleId = null;
-    }
-
-    // 카드 선택 상태 업데이트
-    this.updateCardSelectionState();
-
-    // 듀얼 모드 상태 업데이트
-    this.updateDualModeState();
-
-    console.log(`📄 패널 ${panelIndex + 1} 닫힘`);
-  }
-
-  /**
-   * 듀얼 모드 상태 업데이트
-   * - 두 패널 모두 열려있으면 듀얼 모드 활성화
-   * - 하나만 열려있으면 단일 모드
-   * - 접근성: aria-expanded 및 스크린 리더 알림
-   */
-  updateDualModeState() {
-    const panel1Open = this.selectedArticleIds[0] !== null;
-    const panel2Open = this.selectedArticleIds[1] !== null;
-
-    const wasDualMode = this.isDualMode;
-    this.isDualMode = panel1Open && panel2Open;
-
-    // 컨테이너에 듀얼 모드 클래스 토글
-    if (this.articleDetailContainer) {
-      this.articleDetailContainer.classList.toggle("dual-mode", this.isDualMode);
-    }
-
-    // 구분선 표시/숨김
-    if (this.detailDualDivider) {
-      this.detailDualDivider.style.display = this.isDualMode ? "block" : "none";
-    }
-
-    /* ================================================================
-       접근성: aria-expanded 업데이트
-       ================================================================ */
-    if (this.articleDetailPanel1) {
-      this.articleDetailPanel1.setAttribute("aria-expanded", panel1Open ? "true" : "false");
-    }
-    if (this.articleDetailPanel2) {
-      this.articleDetailPanel2.setAttribute("aria-expanded", panel2Open ? "true" : "false");
-    }
-
-    /* ================================================================
-       접근성: 스크린 리더 알림 (aria-live 영역)
-       ================================================================ */
-    if (this.isDualMode !== wasDualMode) {
-      const message = this.isDualMode 
-        ? "듀얼 모드 활성화: 두 개의 글을 비교할 수 있습니다."
-        : "단일 모드로 전환되었습니다.";
-      this.announceToScreenReader(message);
-    }
-
-    console.log(`듀얼 모드: ${this.isDualMode ? "활성화" : "비활성화"}`);
-  }
-
-  /**
-   * 스크린 리더에 메시지 알림
-   * - aria-live 영역을 통해 동적으로 알림
-   * @param {string} message - 알림 메시지
-   */
-  announceToScreenReader(message) {
-    let announcer = document.getElementById("sr-announcer");
-    
-    if (!announcer) {
-      announcer = document.createElement("div");
-      announcer.id = "sr-announcer";
-      announcer.setAttribute("role", "status");
-      announcer.setAttribute("aria-live", "polite");
-      announcer.setAttribute("aria-atomic", "true");
-      announcer.style.cssText = 
-        "position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;";
-      document.body.appendChild(announcer);
-    }
-    
-    // 약간의 지연 후 메시지 설정 (스크린 리더가 인식하도록)
-    setTimeout(() => {
-      announcer.textContent = message;
-    }, 100);
-  }
-
-
-  /**
-   * 구분선 드래그 기능 초기화
-   */
-  initDualDividerDrag() {
-    if (!this.detailDualDivider || !this.articleDetailContainer) return;
-
-    let isDragging = false;
-    let startX = 0;
-    let startPanel1Width = 0;
-
-    const handleMouseDown = (e) => {
-      if (!this.isDualMode) return;
-      
-      isDragging = true;
-      startX = e.clientX;
-      
-      const panel1 = this.articleDetailPanel1;
-      if (panel1) {
-        startPanel1Width = panel1.getBoundingClientRect().width;
-      }
-      
-      this.detailDualDivider.classList.add("dragging");
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      
-      e.preventDefault();
-    };
-
-    const handleMouseMove = (e) => {
-      if (!isDragging || !this.isDualMode) return;
-
-      const deltaX = e.clientX - startX;
-      const containerWidth = this.articleDetailContainer.getBoundingClientRect().width;
-      const dividerWidth = 4;
-      
-      let newPanel1Width = startPanel1Width + deltaX;
-      
-      // 최소/최대 너비 제한 (20% ~ 80%)
-      const minWidth = containerWidth * 0.2;
-      const maxWidth = containerWidth * 0.8 - dividerWidth;
-      
-      newPanel1Width = Math.max(minWidth, Math.min(maxWidth, newPanel1Width));
-      
-      const panel2Width = containerWidth - newPanel1Width - dividerWidth;
-
-      // Grid 비율 업데이트
-      this.articleDetailContainer.style.gridTemplateColumns = 
-        `${newPanel1Width}px ${dividerWidth}px ${panel2Width}px`;
-    };
-
-    const handleMouseUp = () => {
-      if (!isDragging) return;
-      
-      isDragging = false;
-      this.detailDualDivider.classList.remove("dragging");
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    this.detailDualDivider.addEventListener("mousedown", handleMouseDown);
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-
-    console.log("✅ 듀얼 패널 구분선 드래그 초기화 완료");
-  }
-
-  /**
-   * 수정 모드 진입 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  enterEditModeByIndex(panelIndex = 0) {
-    const articleId = this.selectedArticleIds[panelIndex];
-    if (!articleId) return;
-
-    const article = this.managementArticles.find((a) => a.id === articleId);
-    if (!article) return;
-
-    const suffix = panelIndex === 0 ? "-1" : "-2";
-
-    // 읽기 모드 숨기기, 수정 모드 표시
-    const readMode = document.getElementById(`detail-read-mode${suffix}`);
-    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
-
-    if (readMode) readMode.style.display = "none";
-    if (editMode) editMode.style.display = "block";
-
-    // 입력 필드에 값 설정
-    const titleInput = document.getElementById(`edit-title-input${suffix}`);
-    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
-    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
-
-    if (titleInput) titleInput.value = article.title;
-    if (contentTextarea) contentTextarea.value = article.content;
-    
-    /* ================================================================
-       카테고리 드롭다운 옵션 동적 채우기
-       - 수정 모드 진입 시 현재 글 목록에서 카테고리 추출
-       ================================================================ */
-    if (categorySelect) {
-      // 기존 옵션 초기화
-      categorySelect.innerHTML = "";
-      
-      // 고유 카테고리 목록 추출 ("미분류" 제외)
-      const categories = new Set();
-      this.managementArticles.forEach((a) => {
-        if (a.category && a.category !== "미분류") categories.add(a.category);
-      });
-      
-      // 정렬 후 "미분류"를 맨 마지막에 추가
-      const sortedCategories = Array.from(categories).sort();
-      sortedCategories.push("미분류");
-      
-      // 옵션 추가
-      sortedCategories.forEach((category) => {
-        const option = document.createElement("option");
-        option.value = category;
-        option.textContent = category;
-        categorySelect.appendChild(option);
-      });
-      
-      // 현재 글의 카테고리 선택
-      categorySelect.value = article.category || "미분류";
-    }
-
-    // 레퍼런스 연동 (패널 인덱스 정보 전달)
-    if (window.setCurrentEditingArticle) {
-      window.setCurrentEditingArticle(articleId, panelIndex);
-    }
-
-    this.activePanelIndex = panelIndex;
-    console.log(`✏️ 패널 ${panelIndex + 1} 수정 모드 진입`);
-  }
-
-  /**
-   * 글 삭제 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  async deleteArticleByIndex(panelIndex = 0) {
-    const articleId = this.selectedArticleIds[panelIndex];
-    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
-
-    if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
-
-    try {
-      const articleRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        articleId
-      );
-      await window.firebaseDeleteDoc(articleRef);
-
-      // 로컬 데이터에서 제거
-      this.managementArticles = this.managementArticles.filter(
-        (a) => a.id !== articleId
-      );
-
-      // UI 업데이트
-      this.showMessage("✅ 글이 삭제되었습니다.", "success");
-      this.closeDetailPanelByIndex(panelIndex);
-      await this.loadArticlesForManagement();
-    } catch (error) {
-      console.error("글 삭제 실패:", error);
-      this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
-   * 글 내용 복사 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  async copyArticleContentByIndex(panelIndex = 0) {
-    const articleId = this.selectedArticleIds[panelIndex];
-    if (!articleId) return;
-
-    const article = this.managementArticles.find((a) => a.id === articleId);
-    if (!article) return;
-
-    try {
-      await navigator.clipboard.writeText(article.content);
-      this.showMessage("✅ 클립보드에 복사되었습니다!", "success");
-    } catch (error) {
-      console.error("복사 실패:", error);
-      this.showMessage("❌ 복사 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
-   * 수정 저장 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  async saveArticleEditByIndex(panelIndex = 0) {
-    const articleId = this.selectedArticleIds[panelIndex];
-    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
-
-    const suffix = panelIndex === 0 ? "-1" : "-2";
-    
-    const titleInput = document.getElementById(`edit-title-input${suffix}`);
-    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
-    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
-
-    const newTitle = titleInput?.value?.trim();
-    const newCategory = categorySelect?.value;
-    const newContent = contentTextarea?.value;
-
-    if (!newTitle || !newContent) {
-      this.showMessage("제목과 내용을 입력해주세요.", "warning");
-      return;
-    }
-
-    try {
-      const articleRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        articleId
-      );
-      await window.firebaseUpdateDoc(articleRef, {
-        title: newTitle,
-        topic: newCategory,
-        content: newContent,
-        characterCount: newContent.length,
-        updatedAt: window.firebaseServerTimestamp(),
-      });
-
-      // 로컬 데이터 업데이트
-      const article = this.managementArticles.find((a) => a.id === articleId);
-      if (article) {
-        article.title = newTitle;
-        article.category = newCategory;
-        article.content = newContent;
-      }
-
-      // UI 업데이트
-      this.showMessage("✅ 글이 수정되었습니다.", "success");
-      this.renderDetailPanelByIndex(article, panelIndex);
-      await this.loadArticlesForManagement();
-      
-      // 이 패널 다시 선택
-      this.selectArticleToPanel(articleId, panelIndex);
-    } catch (error) {
-      console.error("글 수정 실패:", error);
-      this.showMessage("❌ 글 수정 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  /**
-   * 수정 취소 (인덱스 지정)
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  cancelArticleEditByIndex(panelIndex = 0) {
-    const articleId = this.selectedArticleIds[panelIndex];
-    if (!articleId) return;
-
-    if (confirm("수정을 취소하시겠습니까?")) {
-      const article = this.managementArticles.find((a) => a.id === articleId);
-      if (article) {
-        this.renderDetailPanelByIndex(article, panelIndex);
-      }
-    }
-  }
-  /* ================================================================ */
-
-
   /**
    * 순서 변경
-   * [Dual Filter] 듀얼 필터링 상태에서도 정확한 순서 변경 지원
    */
   async moveArticleOrder(articleId, direction) {
     if (!this.currentUser || !this.isFirebaseReady) return;
@@ -11500,23 +10266,8 @@ class DualTextWriter {
       const article = this.managementArticles.find((a) => a.id === articleId);
       if (!article) return;
 
-      // [Dual Filter] 현재 필터 상태 가져오기
-      const filterCategory = this.categorySelect?.value || "";
-      const filterSns = this.snsFilterSelect?.value || "";
-
-      // [Dual Filter] 듀얼 필터링 적용
-      let filtered = this.managementArticles;
-      if (filterCategory) {
-        filtered = filtered.filter(
-          (a) => (a.category || "미분류") === filterCategory
-        );
-      }
-      if (filterSns) {
-        filtered = filtered.filter((a) => (a.platformsSNS || "") === filterSns);
-      }
-
       const category = article.category || "미분류";
-      const sameCategoryArticles = filtered
+      const sameCategoryArticles = this.managementArticles
         .filter((a) => (a.category || "미분류") === category)
         .sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
 
@@ -11563,8 +10314,9 @@ class DualTextWriter {
       article.order = targetOrder;
       targetArticle.order = currentOrder;
 
-      // [Dual Filter] UI 리렌더링 (듀얼 필터 적용)
-      this.renderArticleCards(filterCategory, filterSns);
+      // UI 리렌더링
+      const currentCategory = this.categorySelect?.value || "";
+      this.renderArticleCards(currentCategory);
     } catch (error) {
       console.error("순서 변경 실패:", error);
       this.showMessage("❌ 순서 변경 중 오류가 발생했습니다.", "error");
@@ -11674,8 +10426,7 @@ class DualTextWriter {
     const title = this.scriptTitleInput?.value.trim() || "";
     const content = this.scriptContentTextarea?.value.trim() || "";
     const category = this.scriptCategoryInput?.value.trim() || "미분류";
-    // [Dual Filter] llmModel → platformsSNS로 필드명 변경
-    const platformsSNS =
+    const llmModel =
       this.scriptLlmModelSelect?.value === "custom"
         ? this.scriptLlmModelCustom?.value.trim() || ""
         : this.scriptLlmModelSelect?.value || "";
@@ -11715,8 +10466,8 @@ class DualTextWriter {
         createdAt: window.firebaseServerTimestamp(),
         updatedAt: window.firebaseServerTimestamp(),
         order: Date.now(), // 타임스탬프 기반 정렬 (최신 글이 큰 값)
-        // [Dual Filter] SNS 플랫폼 필드 (선택사항)
-        ...(platformsSNS && { platformsSNS: platformsSNS }),
+        // LLM 관련 필드 (선택사항)
+        ...(llmModel && { llmModel: llmModel }),
         ...(llmModelType && { llmModelType: llmModelType }),
       };
 
@@ -11734,11 +10485,6 @@ class DualTextWriter {
       // 카테고리 필터를 "전체 글 보기"로 리셋 (새로 저장된 글이 보이도록)
       if (this.categorySelect) {
         this.categorySelect.value = "";
-      }
-
-      // [Dual Filter] SNS 필터도 리셋
-      if (this.snsFilterSelect) {
-        this.snsFilterSelect.value = "";
       }
 
       // 목록 새로고침
@@ -11893,90 +10639,6 @@ class DualTextWriter {
   }
 
   /**
-   * 듀얼 패널 확대 모드 열기 (패널 인덱스 기반)
-   * - 패널 1 또는 패널 2의 수정 모드에서 확대 모드 열기
-   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
-   */
-  openExpandModeByIndex(panelIndex = 0) {
-    if (!this.contentExpandModal || !this.expandContentTextarea) {
-      console.error("openExpandModeByIndex: 확대 모드 DOM 요소가 없습니다.");
-      return;
-    }
-
-    // 패널 suffix 결정
-    const suffix = panelIndex === 0 ? "-1" : "-2";
-    
-    // 해당 패널이 수정 모드인지 확인
-    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
-    const isEditMode = editMode && editMode.style.display !== "none";
-    
-    if (!isEditMode) {
-      console.warn(`패널 ${panelIndex + 1}이 수정 모드가 아닙니다.`);
-      this.showMessage("⚠️ 수정 모드에서만 확대 기능을 사용할 수 있습니다.", "warning");
-      return;
-    }
-
-    // 해당 패널의 입력 필드 참조
-    const titleInput = document.getElementById(`edit-title-input${suffix}`);
-    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
-    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
-
-    if (!contentTextarea) {
-      console.error(`패널 ${panelIndex + 1}의 내용 textarea를 찾을 수 없습니다.`);
-      return;
-    }
-
-    /* ================================================================
-       확대 모드 컨텍스트 설정 (듀얼 패널용)
-       ================================================================ */
-    this.expandSourceMode = "edit";
-    this.expandSourcePanelIndex = panelIndex; // 듀얼 패널 인덱스 저장
-
-    // 미리보기 업데이트
-    if (this.expandPreviewTitle) {
-      this.expandPreviewTitle.textContent = titleInput?.value || "-";
-    }
-    if (this.expandPreviewCategory) {
-      this.expandPreviewCategory.textContent = categorySelect?.value || "-";
-    }
-
-    // 내용 복사
-    this.expandContentTextarea.value = contentTextarea.value;
-
-    // 카운터 업데이트
-    this.updateExpandContentCounter();
-
-    // 모달 표시
-    this.contentExpandModal.style.display = "block";
-    document.body.style.overflow = "hidden";
-
-    // 접근성: ARIA 속성 업데이트
-    this.contentExpandModal.setAttribute("aria-hidden", "false");
-
-    // 해당 패널의 확대 버튼 aria-expanded 업데이트
-    const expandBtn = document.getElementById(`detail-expand-btn${suffix}`);
-    if (expandBtn) {
-      expandBtn.setAttribute("aria-expanded", "true");
-    }
-
-    // 스크린 리더 알림
-    this.announceToScreenReader(`패널 ${panelIndex + 1} 확대 모드가 열렸습니다.`);
-
-    // 포커스 트랩 및 ESC 핸들러 설정
-    this._setupExpandModeFocusTrap();
-    this._setupExpandModeEscapeHandler();
-
-    // 약간의 지연 후 포커스
-    setTimeout(() => {
-      this.expandContentTextarea.focus();
-      const length = this.expandContentTextarea.value.length;
-      this.expandContentTextarea.setSelectionRange(length, length);
-    }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
-
-    console.log(`🔍 패널 ${panelIndex + 1} 확대 모드 열림`);
-  }
-
-  /**
    * 확대 모드 닫기
    * 접근성: ARIA 속성 업데이트 포함
    * 성능: 대기 중인 timeout 정리
@@ -11994,18 +10656,7 @@ class DualTextWriter {
 
     // 확대 모드의 내용을 원본 textarea에 동기화 (닫을 때 자동 동기화)
     if (this.expandSourceMode === "edit") {
-      /* ================================================================
-         듀얼 패널 지원: expandSourcePanelIndex가 있으면 해당 패널로 동기화
-         ================================================================ */
-      if (this.expandSourcePanelIndex !== undefined) {
-        const suffix = this.expandSourcePanelIndex === 0 ? "-1" : "-2";
-        const targetTextarea = document.getElementById(`edit-content-textarea${suffix}`);
-        if (targetTextarea) {
-          targetTextarea.value = this.expandContentTextarea.value;
-          targetTextarea.dispatchEvent(new Event("input"));
-        }
-      } else if (this.editContentTextarea) {
-        // 레거시 단일 패널
+      if (this.editContentTextarea) {
         this.editContentTextarea.value = this.expandContentTextarea.value;
       }
     } else {
