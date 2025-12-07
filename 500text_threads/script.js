@@ -10938,6 +10938,26 @@ class DualTextWriter {
     this.initDualDividerDrag();
 
     /* ================================================================
+       듀얼 패널 확대 버튼 이벤트 바인딩
+       - detail-expand-btn-1 (패널 1 확대)
+       - detail-expand-btn-2 (패널 2 확대)
+       ================================================================ */
+    const detailExpandBtn1 = document.getElementById("detail-expand-btn-1");
+    const detailExpandBtn2 = document.getElementById("detail-expand-btn-2");
+
+    if (detailExpandBtn1) {
+      detailExpandBtn1.addEventListener("click", () => {
+        this.openExpandModeByIndex(0);
+      });
+    }
+
+    if (detailExpandBtn2) {
+      detailExpandBtn2.addEventListener("click", () => {
+        this.openExpandModeByIndex(1);
+      });
+    }
+
+    /* ================================================================
        접근성: Escape 키로 활성 패널 닫기
        ================================================================ */
     document.addEventListener("keydown", (e) => {
@@ -11832,6 +11852,90 @@ class DualTextWriter {
   }
 
   /**
+   * 듀얼 패널 확대 모드 열기 (패널 인덱스 기반)
+   * - 패널 1 또는 패널 2의 수정 모드에서 확대 모드 열기
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  openExpandModeByIndex(panelIndex = 0) {
+    if (!this.contentExpandModal || !this.expandContentTextarea) {
+      console.error("openExpandModeByIndex: 확대 모드 DOM 요소가 없습니다.");
+      return;
+    }
+
+    // 패널 suffix 결정
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+    
+    // 해당 패널이 수정 모드인지 확인
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+    const isEditMode = editMode && editMode.style.display !== "none";
+    
+    if (!isEditMode) {
+      console.warn(`패널 ${panelIndex + 1}이 수정 모드가 아닙니다.`);
+      this.showMessage("⚠️ 수정 모드에서만 확대 기능을 사용할 수 있습니다.", "warning");
+      return;
+    }
+
+    // 해당 패널의 입력 필드 참조
+    const titleInput = document.getElementById(`edit-title-input${suffix}`);
+    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
+    const contentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+
+    if (!contentTextarea) {
+      console.error(`패널 ${panelIndex + 1}의 내용 textarea를 찾을 수 없습니다.`);
+      return;
+    }
+
+    /* ================================================================
+       확대 모드 컨텍스트 설정 (듀얼 패널용)
+       ================================================================ */
+    this.expandSourceMode = "edit";
+    this.expandSourcePanelIndex = panelIndex; // 듀얼 패널 인덱스 저장
+
+    // 미리보기 업데이트
+    if (this.expandPreviewTitle) {
+      this.expandPreviewTitle.textContent = titleInput?.value || "-";
+    }
+    if (this.expandPreviewCategory) {
+      this.expandPreviewCategory.textContent = categorySelect?.value || "-";
+    }
+
+    // 내용 복사
+    this.expandContentTextarea.value = contentTextarea.value;
+
+    // 카운터 업데이트
+    this.updateExpandContentCounter();
+
+    // 모달 표시
+    this.contentExpandModal.style.display = "block";
+    document.body.style.overflow = "hidden";
+
+    // 접근성: ARIA 속성 업데이트
+    this.contentExpandModal.setAttribute("aria-hidden", "false");
+
+    // 해당 패널의 확대 버튼 aria-expanded 업데이트
+    const expandBtn = document.getElementById(`detail-expand-btn${suffix}`);
+    if (expandBtn) {
+      expandBtn.setAttribute("aria-expanded", "true");
+    }
+
+    // 스크린 리더 알림
+    this.announceToScreenReader(`패널 ${panelIndex + 1} 확대 모드가 열렸습니다.`);
+
+    // 포커스 트랩 및 ESC 핸들러 설정
+    this._setupExpandModeFocusTrap();
+    this._setupExpandModeEscapeHandler();
+
+    // 약간의 지연 후 포커스
+    setTimeout(() => {
+      this.expandContentTextarea.focus();
+      const length = this.expandContentTextarea.value.length;
+      this.expandContentTextarea.setSelectionRange(length, length);
+    }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
+
+    console.log(`🔍 패널 ${panelIndex + 1} 확대 모드 열림`);
+  }
+
+  /**
    * 확대 모드 닫기
    * 접근성: ARIA 속성 업데이트 포함
    * 성능: 대기 중인 timeout 정리
@@ -11849,7 +11953,18 @@ class DualTextWriter {
 
     // 확대 모드의 내용을 원본 textarea에 동기화 (닫을 때 자동 동기화)
     if (this.expandSourceMode === "edit") {
-      if (this.editContentTextarea) {
+      /* ================================================================
+         듀얼 패널 지원: expandSourcePanelIndex가 있으면 해당 패널로 동기화
+         ================================================================ */
+      if (this.expandSourcePanelIndex !== undefined) {
+        const suffix = this.expandSourcePanelIndex === 0 ? "-1" : "-2";
+        const targetTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+        if (targetTextarea) {
+          targetTextarea.value = this.expandContentTextarea.value;
+          targetTextarea.dispatchEvent(new Event("input"));
+        }
+      } else if (this.editContentTextarea) {
+        // 레거시 단일 패널
         this.editContentTextarea.value = this.expandContentTextarea.value;
       }
     } else {
