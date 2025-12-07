@@ -10194,15 +10194,17 @@ class DualTextWriter {
     // 필터용 드롭다운만 필수, 나머지는 옵셔널
     if (!this.categorySelect) return;
 
-    // 고유한 카테고리 목록 추출
-    const categories = new Set(["미분류"]);
+    // 고유한 카테고리 목록 추출 ("미분류" 제외하고 수집)
+    const categories = new Set();
     this.managementArticles.forEach((article) => {
-      if (article.category) {
+      if (article.category && article.category !== "미분류") {
         categories.add(article.category);
       }
     });
 
+    // 정렬 후 "미분류"를 맨 마지막에 추가
     const sortedCategories = Array.from(categories).sort();
+    sortedCategories.push("미분류");
 
     // 카테고리 선택 드롭다운 업데이트 (필터용) - 필수
     this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
@@ -11316,14 +11318,18 @@ class DualTextWriter {
       // 기존 옵션 초기화
       categorySelect.innerHTML = "";
       
-      // 고유 카테고리 목록 추출
-      const categories = new Set(["미분류"]);
+      // 고유 카테고리 목록 추출 ("미분류" 제외)
+      const categories = new Set();
       this.managementArticles.forEach((a) => {
-        if (a.category) categories.add(a.category);
+        if (a.category && a.category !== "미분류") categories.add(a.category);
       });
       
-      // 정렬하여 옵션 추가
-      Array.from(categories).sort().forEach((category) => {
+      // 정렬 후 "미분류"를 맨 마지막에 추가
+      const sortedCategories = Array.from(categories).sort();
+      sortedCategories.push("미분류");
+      
+      // 옵션 추가
+      sortedCategories.forEach((category) => {
         const option = document.createElement("option");
         option.value = category;
         option.textContent = category;
