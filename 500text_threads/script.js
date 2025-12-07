@@ -10191,7 +10191,8 @@ class DualTextWriter {
    * - 듀얼 패널 카테고리 드롭다운 포함
    */
   updateCategoryDropdown() {
-    if (!this.categorySelect || !this.editCategorySelect) return;
+    // 필터용 드롭다운만 필수, 나머지는 옵셔널
+    if (!this.categorySelect) return;
 
     // 고유한 카테고리 목록 추출
     const categories = new Set(["미분류"]);
@@ -10203,7 +10204,7 @@ class DualTextWriter {
 
     const sortedCategories = Array.from(categories).sort();
 
-    // 카테고리 선택 드롭다운 업데이트 (필터용)
+    // 카테고리 선택 드롭다운 업데이트 (필터용) - 필수
     this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
     sortedCategories.forEach((category) => {
       const option = document.createElement("option");
@@ -10212,14 +10213,16 @@ class DualTextWriter {
       this.categorySelect.appendChild(option);
     });
 
-    // 수정 모드 카테고리 드롭다운 업데이트 (레거시)
-    this.editCategorySelect.innerHTML = "";
-    sortedCategories.forEach((category) => {
-      const option = document.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      this.editCategorySelect.appendChild(option);
-    });
+    // 수정 모드 카테고리 드롭다운 업데이트 (레거시) - 옵셔널
+    if (this.editCategorySelect) {
+      this.editCategorySelect.innerHTML = "";
+      sortedCategories.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        this.editCategorySelect.appendChild(option);
+      });
+    }
 
     /* ================================================================
        듀얼 패널 카테고리 드롭다운 업데이트
