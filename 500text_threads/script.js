@@ -1445,11 +1445,24 @@ class DualTextWriter {
       }
     }
 
-    // 트래킹 탭으로 전환 시 데이터 로드
+    /* ============================================================
+     * [Phase 4] 2025-12-07
+     * 트래킹 탭 전환 시 렌더링 보장
+     * - 데이터가 이미 로드되어 있으면 즉시 렌더링 수행
+     * - 데이터가 없으면 loadTrackingPosts() 호출
+     * ============================================================ */
     if (tabName === Constants.TABS.TRACKING) {
-      this.loadTrackingPosts();
-      this.updateTrackingSummary();
-      this.initTrackingChart();
+      // 데이터가 이미 로드되어 있으면 즉시 렌더링
+      if (this.trackingPosts && this.trackingPosts.length > 0) {
+        this.renderTrackingPosts();
+        this.updateTrackingSummary();
+        this.initTrackingChart();
+      } else {
+        // 데이터가 없으면 로드
+        this.loadTrackingPosts();
+        this.updateTrackingSummary();
+        this.initTrackingChart();
+      }
     }
 
     // 글 작성 탭으로 전환할 때는 레퍼런스와 작성 패널이 모두 보임
@@ -4322,6 +4335,12 @@ class DualTextWriter {
   }
 
   // 통합 UI 업데이트 함수 (성능 최적화)
+  /* ============================================================
+   * [Phase 4] 2025-12-07
+   * refreshUI - 트래킹 탭 데이터 로드 문제 해결
+   * - force 모드에서 탭 활성화 여부와 무관하게 렌더링 수행
+   * - 탭 비활성 시 큐에 보관하여 탭 전환 시 처리
+   * ============================================================ */
   refreshUI(options = {}) {
     const {
       savedTexts = false,
@@ -4339,7 +4358,7 @@ class DualTextWriter {
 
     // 강제 업데이트이거나 즉시 실행이 필요한 경우
     if (force) {
-      this.executeUIUpdate();
+      this.executeUIUpdate(true); // force 플래그 전달
       return;
     }
 
@@ -4349,12 +4368,17 @@ class DualTextWriter {
     }
 
     this.debounceTimers.uiUpdate = setTimeout(() => {
-      this.executeUIUpdate();
+      this.executeUIUpdate(false);
     }, 100);
   }
 
-  // UI 업데이트 실행 (내부 함수)
-  executeUIUpdate() {
+  /* ============================================================
+   * [Phase 4] 2025-12-07
+   * executeUIUpdate - force 모드 지원 추가
+   * - force=true: 탭 활성화 여부와 무관하게 모든 큐 항목 렌더링
+   * - force=false: 현재 활성화된 탭에 해당하는 항목만 렌더링
+   * ============================================================ */
+  executeUIUpdate(forceUpdate = false) {
     // 활성 탭 확인
     const savedTab = document.getElementById("saved-tab");
     const trackingTab = document.getElementById("tracking-tab");
@@ -4362,6 +4386,28 @@ class DualTextWriter {
     const isTrackingTabActive =
       trackingTab && trackingTab.classList.contains("active");
 
+    // [force 모드] 탭 활성화 조건 무시하고 모든 큐 항목 렌더링
+    if (forceUpdate) {
+      if (this.updateQueue.savedTexts) {
+        this.renderSavedTexts();
+        this.updateQueue.savedTexts = false;
+      }
+      if (this.updateQueue.trackingPosts) {
+        this.renderTrackingPosts();
+        this.updateQueue.trackingPosts = false;
+      }
+      if (this.updateQueue.trackingSummary) {
+        this.updateTrackingSummary();
+        this.updateQueue.trackingSummary = false;
+      }
+      if (this.updateQueue.trackingChart) {
+        this.updateTrackingChart();
+        this.updateQueue.trackingChart = false;
+      }
+      return;
+    }
+
+    // [일반 모드] 활성 탭에 해당하는 항목만 렌더링
     // 저장된 글 탭 업데이트
     if (this.updateQueue.savedTexts && isSavedTabActive) {
       this.renderSavedTexts();
