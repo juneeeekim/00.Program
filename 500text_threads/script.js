@@ -99,6 +99,9 @@ class DualTextWriter {
     this.referenceSelectionModal = null; // 레퍼런스 선택 모달 DOM
     this.referenceLinkCache = new Map(); // 역방향 조회 캐시 (refId -> editIds[])
 
+    // [Fix] 스크립트 작성 탭 초기화 중복 방지 플래그
+    this.articleManagementInitialized = false;
+
     // Firebase 초기화 대기
     this.waitForFirebase();
 
@@ -1473,7 +1476,11 @@ class DualTextWriter {
     // 스크립트 작성 탭으로 전환 시 데이터 로드
     if (tabName === Constants.TABS.MANAGEMENT) {
       this.loadArticlesForManagement();
-      this.initArticleManagement();
+      // [Fix] 이벤트 리스너 중복 등록 방지 - 초기화는 최초 1회만 실행
+      if (!this.articleManagementInitialized) {
+        this.initArticleManagement();
+        this.articleManagementInitialized = true;
+      }
     }
   }
 
