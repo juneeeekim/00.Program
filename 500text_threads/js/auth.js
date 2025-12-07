@@ -16,31 +16,54 @@ export class AuthManager {
         this.showMessage = callbacks.showMessage || console.log;
     }
 
+    /* ============================================================
+     * [Phase 1-2 Hotfix] 2025-12-07
+     * Firebase 초기화 대기 로직 강화
+     * - Promise 기반으로 변경하여 명확한 성공/실패 반환
+     * - 타임아웃 시 사용자에게 재시도 옵션 안내
+     * - 디버깅을 위한 상세 로그 추가
+     * ============================================================ */
+    
     /**
      * Firebase 초기화 대기
+     * @returns {Promise<boolean>} 초기화 성공 여부
+     * @throws {Error} 타임아웃 시 에러 throw
      */
     async waitForFirebase() {
-        const maxAttempts = 50;
-        let attempts = 0;
-
-        while (attempts < maxAttempts) {
+        const MAX_ATTEMPTS = 50;       // 최대 시도 횟수
+        const POLL_INTERVAL_MS = 100;  // 폴링 간격 (ms)
+        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 5초
+        
+        console.log('[AuthManager] Firebase 초기화 대기 시작...');
+        
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            // Firebase SDK가 전역에 로드되었는지 확인
             if (window.firebaseAuth && window.firebaseDb) {
                 this.auth = window.firebaseAuth;
                 this.db = window.firebaseDb;
                 this.isFirebaseReady = true;
-                console.log('Firebase 초기화 완료 (AuthManager)');
+                
+                console.log(`[AuthManager] ✅ Firebase 초기화 완료 (${attempt * POLL_INTERVAL_MS}ms 소요)`);
                 this.setupAuthStateListener();
-                break;
+                return true;
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
+            
+            // 대기
+            await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
         }
 
-        if (!this.isFirebaseReady) {
-            console.error('Firebase 초기화 실패');
-            this.showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
-        }
+        // 타임아웃 도달: 명시적 에러 처리
+        this.isFirebaseReady = false;
+        const errorMsg = `Firebase 초기화 타임아웃 (${TIMEOUT_MS}ms). 네트워크 연결을 확인하고 페이지를 새로고침해주세요.`;
+        console.error('[AuthManager] ❌', errorMsg);
+        
+        // 사용자에게 재시도 안내 (접근성: role="alert" 로 표시)
+        this.showMessage(errorMsg, 'error');
+        
+        // 에러 throw (호출측에서 catch 가능)
+        throw new Error(errorMsg);
     }
+
 
     /**
      * Firebase Auth 상태 리스너 설정
