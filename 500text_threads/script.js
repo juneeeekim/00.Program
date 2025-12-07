@@ -10187,6 +10187,8 @@ class DualTextWriter {
 
   /**
    * 카테고리 드롭다운 업데이트
+   * - 필터용 드롭다운 + 수정 모드 드롭다운
+   * - 듀얼 패널 카테고리 드롭다운 포함
    */
   updateCategoryDropdown() {
     if (!this.categorySelect || !this.editCategorySelect) return;
@@ -10201,7 +10203,7 @@ class DualTextWriter {
 
     const sortedCategories = Array.from(categories).sort();
 
-    // 카테고리 선택 드롭다운 업데이트
+    // 카테고리 선택 드롭다운 업데이트 (필터용)
     this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
     sortedCategories.forEach((category) => {
       const option = document.createElement("option");
@@ -10210,7 +10212,7 @@ class DualTextWriter {
       this.categorySelect.appendChild(option);
     });
 
-    // 수정 모드 카테고리 드롭다운 업데이트
+    // 수정 모드 카테고리 드롭다운 업데이트 (레거시)
     this.editCategorySelect.innerHTML = "";
     sortedCategories.forEach((category) => {
       const option = document.createElement("option");
@@ -10218,6 +10220,31 @@ class DualTextWriter {
       option.textContent = category;
       this.editCategorySelect.appendChild(option);
     });
+
+    /* ================================================================
+       듀얼 패널 카테고리 드롭다운 업데이트
+       - edit-category-select-1 (패널 1 수정 모드)
+       - edit-category-select-2 (패널 2 수정 모드)
+       ================================================================ */
+    if (this.editCategorySelect1) {
+      this.editCategorySelect1.innerHTML = "";
+      sortedCategories.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        this.editCategorySelect1.appendChild(option);
+      });
+    }
+
+    if (this.editCategorySelect2) {
+      this.editCategorySelect2.innerHTML = "";
+      sortedCategories.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        this.editCategorySelect2.appendChild(option);
+      });
+    }
   }
 
   /**
