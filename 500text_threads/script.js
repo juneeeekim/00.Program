@@ -10540,7 +10540,7 @@ class DualTextWriter {
     const maxChars = 500;
 
     // 글자 수 표시 업데이트
-    this.scriptContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분)`;
+    this.scriptContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분 15초)`;
 
     // 500자 초과 시 경고 스타일 적용
     if (charCount > maxChars) {
@@ -10845,7 +10845,7 @@ class DualTextWriter {
     const maxChars = 500;
 
     // 글자 수 표시 업데이트
-    this.expandContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분)`;
+    this.expandContentCounter.textContent = `(${charCount} / ${maxChars}자는 약 1분 15초)`;
 
     // 500자 초과 시 경고 스타일 적용
     if (charCount > maxChars) {
