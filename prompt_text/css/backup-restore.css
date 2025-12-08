@@ -1,0 +1,425 @@
+/**
+ * ============================================================================
+ * backup-restore.css - 백업/복원 UI 스타일시트
+ * ============================================================================
+ *
+ * @description Firebase 데이터 백업 및 복원 기능 UI 스타일
+ * @version 1.0.0
+ * @author 시니어 개발자, 주니어 개발자, UX/UI 전문가
+ * @date 2025-12-08
+ *
+ * ============================================================================
+ * 구성:
+ * 1. CSS 변수 정의
+ * 2. 데이터 관리 섹션 스타일
+ * 3. 백업 영역 스타일
+ * 4. 복원 영역 스타일
+ * 5. 진행률 표시 스타일
+ * 6. 반응형 레이아웃
+ * 7. 접근성 및 다크모드
+ * ============================================================================
+ */
+
+/* ============================================================================
+   1. CSS 변수 정의
+   ============================================================================ */
+:root {
+  /* 색상 변수 */
+  --backup-primary: #667eea;
+  --backup-primary-hover: #5568d3;
+  --backup-success: #27ae60;
+  --backup-warning: #f39c12;
+  --backup-danger: #e74c3c;
+  --backup-text: #2c3e50;
+  --backup-text-secondary: #7f8c8d;
+  --backup-border: #e1e5e9;
+  --backup-bg: #ffffff;
+  --backup-bg-secondary: #f8f9fa;
+
+  /* 간격 변수 */
+  --backup-spacing-xs: 8px;
+  --backup-spacing-sm: 12px;
+  --backup-spacing-md: 16px;
+  --backup-spacing-lg: 24px;
+
+  /* 테두리 반경 */
+  --backup-radius: 8px;
+  --backup-radius-lg: 12px;
+
+  /* 그림자 */
+  --backup-shadow: 0 4px 12px rgb(0, 0, 0, 0.1);
+  --backup-shadow-hover: 0 6px 16px rgb(102, 126, 234, 0.3);
+}
+
+/* ============================================================================
+   2. 데이터 관리 섹션 스타일
+   ============================================================================ */
+#data-management-section {
+  animation: backupSlideIn 0.3s ease-out;
+  background: var(--backup-bg);
+  border-radius: var(--backup-radius-lg);
+  box-shadow: var(--backup-shadow);
+  margin-bottom: var(--backup-spacing-lg);
+  padding: var(--backup-spacing-lg);
+}
+
+@keyframes backupSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#data-management-section h3 {
+  align-items: center;
+  border-bottom: 2px solid var(--backup-border);
+  color: var(--backup-text);
+  display: flex;
+  font-size: 1.3rem;
+  font-weight: 700;
+  gap: var(--backup-spacing-sm);
+  margin: 0 0 var(--backup-spacing-lg) 0;
+  padding-bottom: var(--backup-spacing-md);
+}
+
+.data-management-content {
+  display: grid;
+  gap: var(--backup-spacing-lg);
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ============================================================================
+   3. 백업 영역 스타일
+   ============================================================================ */
+.backup-area {
+  background: var(--backup-bg-secondary);
+  border: 2px solid var(--backup-border);
+  border-radius: var(--backup-radius);
+  padding: var(--backup-spacing-lg);
+}
+
+.backup-area h4 {
+  color: var(--backup-text);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--backup-spacing-md) 0;
+}
+
+#export-backup-btn {
+  align-items: center;
+  background: var(--backup-primary);
+  border: none;
+  border-radius: var(--backup-radius);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 600;
+  gap: var(--backup-spacing-xs);
+  justify-content: center;
+  padding: var(--backup-spacing-sm) var(--backup-spacing-lg);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+#export-backup-btn:hover {
+  background: var(--backup-primary-hover);
+  box-shadow: var(--backup-shadow-hover);
+  transform: translateY(-2px);
+}
+
+#export-backup-btn:active {
+  transform: translateY(0);
+}
+
+#export-backup-btn:focus {
+  outline: 3px solid var(--backup-primary);
+  outline-offset: 2px;
+}
+
+#export-backup-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.backup-info {
+  color: var(--backup-text-secondary);
+  font-size: 0.85rem;
+  margin-top: var(--backup-spacing-sm);
+}
+
+#last-backup-date {
+  color: var(--backup-text);
+  font-weight: 600;
+}
+
+/* ============================================================================
+   4. 복원 영역 스타일
+   ============================================================================ */
+.restore-area {
+  background: var(--backup-bg-secondary);
+  border: 2px solid var(--backup-border);
+  border-radius: var(--backup-radius);
+  padding: var(--backup-spacing-lg);
+}
+
+.restore-area h4 {
+  color: var(--backup-text);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--backup-spacing-md) 0;
+}
+
+#restore-file-input {
+  background: var(--backup-bg);
+  border: 2px dashed var(--backup-border);
+  border-radius: var(--backup-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: var(--backup-spacing-sm);
+  padding: var(--backup-spacing-sm);
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+#restore-file-input:hover {
+  border-color: var(--backup-primary);
+}
+
+#restore-file-input:focus {
+  border-color: var(--backup-primary);
+  outline: none;
+}
+
+#import-backup-btn {
+  align-items: center;
+  background: var(--backup-success);
+  border: none;
+  border-radius: var(--backup-radius);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 600;
+  gap: var(--backup-spacing-xs);
+  justify-content: center;
+  padding: var(--backup-spacing-sm) var(--backup-spacing-lg);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+#import-backup-btn:hover {
+  background: #219a52;
+  box-shadow: 0 4px 12px rgb(39, 174, 96, 0.3);
+  transform: translateY(-2px);
+}
+
+#import-backup-btn:active {
+  transform: translateY(0);
+}
+
+#import-backup-btn:focus {
+  outline: 3px solid var(--backup-success);
+  outline-offset: 2px;
+}
+
+#import-backup-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.restore-warning {
+  align-items: center;
+  background: #fff3cd;
+  border: 1px solid var(--backup-warning);
+  border-radius: var(--backup-radius);
+  color: #856404;
+  display: flex;
+  font-size: 0.85rem;
+  gap: var(--backup-spacing-xs);
+  margin-top: var(--backup-spacing-sm);
+  padding: var(--backup-spacing-sm);
+}
+
+/* ============================================================================
+   5. 진행률 표시 스타일
+   ============================================================================ */
+.progress-container {
+  background: var(--backup-bg-secondary);
+  border-radius: var(--backup-radius);
+  margin-top: var(--backup-spacing-lg);
+  padding: var(--backup-spacing-md);
+}
+
+.progress-container.hidden {
+  display: none;
+}
+
+.progress-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--backup-spacing-xs);
+}
+
+.progress-label {
+  color: var(--backup-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+#backup-progress-text {
+  color: var(--backup-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+#backup-progress-bar {
+  appearance: none;
+  background: var(--backup-border);
+  border: none;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+#backup-progress-bar::-webkit-progress-bar {
+  background: var(--backup-border);
+  border-radius: 4px;
+}
+
+#backup-progress-bar::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--backup-primary), #764ba2);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+#backup-progress-bar::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--backup-primary), #764ba2);
+  border-radius: 4px;
+}
+
+/* 진행률 애니메이션 */
+@keyframes progressPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.progress-container.active #backup-progress-text {
+  animation: progressPulse 1s ease-in-out infinite;
+}
+
+/* ============================================================================
+   6. 반응형 레이아웃
+   ============================================================================ */
+
+/* 태블릿 (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .data-management-content {
+    gap: var(--backup-spacing-md);
+  }
+}
+
+/* 모바일 (max-width: 768px) */
+@media (max-width: 768px) {
+  #data-management-section {
+    padding: var(--backup-spacing-md);
+  }
+
+  #data-management-section h3 {
+    font-size: 1.1rem;
+  }
+
+  .data-management-content {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-area,
+  .restore-area {
+    padding: var(--backup-spacing-md);
+  }
+
+  #export-backup-btn,
+  #import-backup-btn {
+    padding: var(--backup-spacing-md);
+  }
+}
+
+/* ============================================================================
+   7. 접근성 및 다크모드
+   ============================================================================ */
+
+/* 고대비 모드 */
+@media (prefers-contrast: high) {
+  #export-backup-btn,
+  #import-backup-btn {
+    border: 2px solid currentColor;
+  }
+
+  #restore-file-input {
+    border-width: 3px;
+  }
+}
+
+/* 다크모드 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --backup-bg: #2c3e50;
+    --backup-bg-secondary: #34495e;
+    --backup-text: #ecf0f1;
+    --backup-text-secondary: #bdc3c7;
+    --backup-border: #4a5f7f;
+  }
+
+  .restore-warning {
+    background: #3d3d1a;
+    border-color: #7a7a0f;
+    color: #d4d43a;
+  }
+}
+
+/* 애니메이션 감소 모드 */
+@media (prefers-reduced-motion: reduce) {
+  #data-management-section {
+    animation: none;
+  }
+
+  #export-backup-btn,
+  #import-backup-btn {
+    transition: none;
+  }
+
+  #export-backup-btn:hover,
+  #import-backup-btn:hover {
+    transform: none;
+  }
+
+  .progress-container.active #backup-progress-text {
+    animation: none;
+  }
+}
+
+/* 스크린 리더 전용 */
+.backup-sr-only {
+  border-width: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
