@@ -18379,9 +18379,9 @@ const UrlLinkManager = (function () {
   }
 
   /**
-   * 저장 버튼 핸들러
+   * 저장 버튼 핸들러 (async)
    */
-  function handleSave() {
+  async function handleSave() {
     const linkData = {
       name: elements.urlLinkName.value,
       description: elements.urlLinkDesc.value,
@@ -18389,9 +18389,9 @@ const UrlLinkManager = (function () {
     };
 
     if (editingLinkId) {
-      updateUrlLink(editingLinkId, linkData);
+      await updateUrlLink(editingLinkId, linkData);
     } else {
-      addUrlLink(linkData);
+      await addUrlLink(linkData);
     }
   }
 
@@ -18502,7 +18502,6 @@ const UrlLinkManager = (function () {
   return {
     init,
     loadUrlLinks,
-    saveUrlLinks,
     addUrlLink,
     updateUrlLink,
     deleteUrlLink,
