@@ -493,6 +493,15 @@
           >
             🔍 프롬프트 검색
           </button>
+          <button
+            class="tab-button"
+            data-tab="backup"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-backup"
+          >
+            💾 데이터 관리
+          </button>
         </div>
 
         <!-- 탭 1: 프롬프트 등록 -->
@@ -600,10 +609,17 @@
         </div>
 
         <!-- ============================================================================
-             데이터 관리 섹션 (백업/복원) - Phase 4
+             탭 4: 데이터 관리 (백업/복원) - Tab으로 이동
              ============================================================================ -->
-        <section id="data-management-section" style="margin-top: 24px;">
-          <h3>📦 데이터 백업 및 복원</h3>
+        <div
+          id="tab-backup"
+          class="tab-content"
+          role="tabpanel"
+          aria-labelledby="tab-backup"
+        >
+          <h2 style="font-size: 24px; margin-bottom: 20px; color: #333">
+            💾 데이터 백업 및 복원
+          </h2>
           
           <div class="data-management-content">
             <!-- 백업 영역 -->
@@ -664,7 +680,7 @@
             </div>
             <progress id="backup-progress-bar" max="100" value="0"></progress>
           </div>
-        </section>
+        </div>
       </main>
     </div>
 
