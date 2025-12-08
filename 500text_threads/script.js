@@ -104,6 +104,12 @@ class DualTextWriter {
     // 이벤트 리스너가 여러 번 등록되어 저장 시 중복 글이 생성되는 버그 수정
     this.isArticleManagementInitialized = false;
 
+    // ===== [Dual Panel] 듀얼 패널 상태 관리 =====
+    // 목적: 두 개의 글을 동시에 비교/편집할 수 있는 듀얼 패널 기능 지원
+    // 2025-12-09 Phase 2 추가
+    this.selectedArticleIds = [null, null]; // 각 패널에 선택된 글 ID [패널1, 패널2]
+    this.activePanelIndex = 0; // 현재 활성 패널 인덱스 (0 또는 1)
+    this.isDualMode = false; // 듀얼 모드 활성화 여부
 
     // Firebase 초기화 대기
     this.waitForFirebase();
@@ -9121,16 +9127,26 @@ class DualTextWriter {
     this.managementEmptyState = document.getElementById(
       "management-empty-state"
     );
-    this.articleDetailPanel = document.getElementById("article-detail-panel");
-    this.detailPanelClose = document.getElementById("detail-panel-close");
-    this.detailEditBtn = document.getElementById("detail-edit-btn");
-    this.detailDeleteBtn = document.getElementById("detail-delete-btn");
-    this.detailCopyBtn = document.getElementById("detail-copy-btn");
-    this.editSaveBtn = document.getElementById("edit-article-save-btn");
-    this.editCancelBtn = document.getElementById("edit-article-cancel-btn");
-    this.editTitleInput = document.getElementById("edit-title-input");
-    this.editCategorySelect = document.getElementById("edit-category-select");
-    this.editContentTextarea = document.getElementById("edit-content-textarea");
+    // ===== [Dual Panel] 듀얼 패널 DOM 요소 참조 =====
+    // 2025-12-09 Phase 2 추가
+    this.articleDetailContainer = document.getElementById(
+      "article-detail-container"
+    );
+    this.articleDetailPanel1 = document.getElementById("article-detail-panel-1");
+    this.articleDetailPanel2 = document.getElementById("article-detail-panel-2");
+    this.detailDualDivider = document.getElementById("detail-dual-divider");
+
+    // 패널 1 DOM 요소 참조 (기존 articleDetailPanel → articleDetailPanel1으로 변경)
+    this.articleDetailPanel = this.articleDetailPanel1; // 하위 호환성 유지
+    this.detailPanelClose = document.getElementById("detail-panel-close-1");
+    this.detailEditBtn = document.getElementById("detail-edit-btn-1");
+    this.detailDeleteBtn = document.getElementById("detail-delete-btn-1");
+    this.detailCopyBtn = document.getElementById("detail-copy-btn-1");
+    this.editSaveBtn = document.getElementById("edit-article-save-btn-1");
+    this.editCancelBtn = document.getElementById("edit-article-cancel-btn-1");
+    this.editTitleInput = document.getElementById("edit-title-input-1");
+    this.editCategorySelect = document.getElementById("edit-category-select-1");
+    this.editContentTextarea = document.getElementById("edit-content-textarea-1");
 
     // 새 스크립트 작성 폼 관련 요소
     this.newScriptToggleBtn = document.getElementById("new-script-toggle-btn");
@@ -9258,9 +9274,19 @@ class DualTextWriter {
       });
     }
 
+    // ===== [Dual Panel] 패널 닫기 버튼 이벤트 =====
+    // 패널 1 닫기 버튼
     if (this.detailPanelClose) {
       this.detailPanelClose.addEventListener("click", () => {
-        this.closeDetailPanel();
+        this.closeDetailPanelByIndex(0);
+      });
+    }
+
+    // 패널 2 닫기 버튼
+    const detailPanelClose2 = document.getElementById("detail-panel-close-2");
+    if (detailPanelClose2) {
+      detailPanelClose2.addEventListener("click", () => {
+        this.closeDetailPanelByIndex(1);
       });
     }
 
@@ -9278,7 +9304,30 @@ class DualTextWriter {
 
     if (this.detailCopyBtn) {
       this.detailCopyBtn.addEventListener("click", () => {
-        this.copyArticleContent();
+        this.copyArticleContentByIndex(0);
+      });
+    }
+
+    // ===== [Dual Panel] 패널 2 수정/삭제/복사 버튼 이벤트 =====
+    const detailEditBtn2 = document.getElementById("detail-edit-btn-2");
+    const detailDeleteBtn2 = document.getElementById("detail-delete-btn-2");
+    const detailCopyBtn2 = document.getElementById("detail-copy-btn-2");
+
+    if (detailEditBtn2) {
+      detailEditBtn2.addEventListener("click", () => {
+        this.enterEditModeByIndex(1);
+      });
+    }
+
+    if (detailDeleteBtn2) {
+      detailDeleteBtn2.addEventListener("click", () => {
+        this.deleteArticleByIndex(1);
+      });
+    }
+
+    if (detailCopyBtn2) {
+      detailCopyBtn2.addEventListener("click", () => {
+        this.copyArticleContentByIndex(1);
       });
     }
 
@@ -9451,6 +9500,9 @@ class DualTextWriter {
 
     // 카테고리 드롭다운 업데이트
     this.updateCategoryDropdown();
+
+    // ===== [Dual Panel] 구분선 드래그 초기화 =====
+    this.initDualDividerDrag();
   }
 
   /**
@@ -9875,14 +9927,22 @@ class DualTextWriter {
     card.setAttribute("tabindex", "0");
     card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title}`);
 
-    // 키보드 접근성
-    card.addEventListener("click", () => {
-      this.selectArticle(article.id);
+    // ===== [Dual Panel] 클릭 이벤트 - Ctrl+클릭으로 패널 2에 열기 =====
+    // - 일반 클릭: 패널 1 (인덱스 0)
+    // - Ctrl+클릭 (Windows) 또는 Cmd+클릭 (Mac): 패널 2 (인덱스 1)
+    card.addEventListener("click", (e) => {
+      // Ctrl 또는 Cmd 키가 눌려있는지 확인
+      const panelIndex = (e.ctrlKey || e.metaKey) ? 1 : 0;
+      this.selectArticleToPanel(article.id, panelIndex);
     });
+
+    // ===== [Dual Panel] 키보드 접근성 - Ctrl+Enter로 패널 2에 열기 =====
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        this.selectArticle(article.id);
+        // Ctrl+Enter 또는 Ctrl+Space: 패널 2에 열기
+        const panelIndex = (e.ctrlKey || e.metaKey) ? 1 : 0;
+        this.selectArticleToPanel(article.id, panelIndex);
       }
     });
 
@@ -10009,8 +10069,82 @@ class DualTextWriter {
     return sameCategory[sameCategory.length - 1]?.id !== article.id;
   }
 
+  // ================================================================
+  // [Dual Panel] 듀얼 패널 글 선택 함수
+  // - 특정 패널(0 또는 1)에 글을 선택하여 표시
+  // - Ctrl+클릭으로 두 번째 패널에 글 열기 지원
+  // - 2025-12-09 Phase 3A 구현
+  // ================================================================
+
   /**
-   * 글 선택
+   * 특정 패널에 글 선택
+   * @param {string} articleId - 선택할 글 ID
+   * @param {number} panelIndex - 패널 인덱스 (0: 첫 번째, 1: 두 번째)
+   */
+  selectArticleToPanel(articleId, panelIndex = 0) {
+    // panelIndex 유효성 검사
+    if (panelIndex !== 0 && panelIndex !== 1) {
+      console.warn("[Dual Panel] 유효하지 않은 panelIndex:", panelIndex);
+      panelIndex = 0;
+    }
+
+    // 중복 선택 방지: 같은 글이 다른 패널에 이미 열려있는지 확인
+    const otherPanelIndex = panelIndex === 0 ? 1 : 0;
+    if (this.selectedArticleIds[otherPanelIndex] === articleId) {
+      alert("이미 다른 패널에서 열려있는 글입니다.");
+      return;
+    }
+
+    // 글 데이터 찾기
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) {
+      console.warn("[Dual Panel] 글을 찾을 수 없습니다:", articleId);
+      return;
+    }
+
+    // 이전에 이 패널에 선택된 카드의 하이라이트 제거
+    const previousId = this.selectedArticleIds[panelIndex];
+    if (previousId) {
+      const previousCard = document.querySelector(
+        `[data-article-id="${previousId}"]`
+      );
+      if (previousCard) {
+        previousCard.classList.remove(`selected-panel-${panelIndex + 1}`);
+        previousCard.classList.remove("selected");
+      }
+    }
+
+    // 선택한 카드에 패널별 하이라이트 추가
+    const selectedCard = document.querySelector(
+      `[data-article-id="${articleId}"]`
+    );
+    if (selectedCard) {
+      selectedCard.classList.add(`selected-panel-${panelIndex + 1}`);
+      selectedCard.classList.add("selected");
+    }
+
+    // 상태 업데이트
+    this.selectedArticleIds[panelIndex] = articleId;
+    this.activePanelIndex = panelIndex;
+
+    // 패널에 글 렌더링
+    this.renderDetailPanelByIndex(article, panelIndex);
+
+    // 듀얼 모드 상태 업데이트
+    this.updateDualModeState();
+
+    // 해당 패널로 스크롤
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+    if (panel) {
+      panel.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }
+
+  /**
+   * 글 선택 (하위 호환성 유지 - 기본적으로 패널 0에 선택)
    */
   selectArticle(articleId) {
     // 모든 카드 선택 해제
@@ -10042,8 +10176,205 @@ class DualTextWriter {
     }
   }
 
+  // ================================================================
+  // [Dual Panel] 듀얼 패널 렌더링 함수
+  // - 패널 인덱스에 따라 올바른 DOM 요소에 글 렌더링
+  // - 2025-12-09 Phase 3A 구현
+  // ================================================================
+
   /**
-   * 상세 패널 렌더링
+   * 특정 패널에 글 상세 렌더링
+   * @param {object} article - 글 객체
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  renderDetailPanelByIndex(article, panelIndex = 0) {
+    // panelIndex에 따른 suffix 결정 (0 → -1, 1 → -2)
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+
+    if (!panel) {
+      console.warn("[Dual Panel] 패널을 찾을 수 없습니다:", panelIndex);
+      return;
+    }
+
+    // 읽기 모드 표시, 수정 모드 숨김
+    const readMode = document.getElementById(`detail-read-mode${suffix}`);
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+
+    if (readMode) readMode.style.display = "block";
+    if (editMode) editMode.style.display = "none";
+
+    // 데이터 채우기
+    const categoryEl = document.getElementById(`detail-category${suffix}`);
+    const dateEl = document.getElementById(`detail-date${suffix}`);
+    const charCountEl = document.getElementById(`detail-char-count${suffix}`);
+    const titleEl = document.getElementById(`detail-title${suffix}`);
+    const contentEl = document.getElementById(`detail-content${suffix}`);
+
+    if (categoryEl) {
+      categoryEl.textContent = article.category || "미분류";
+    }
+    if (dateEl) {
+      dateEl.textContent = article.createdAt
+        ? this.formatDateFromFirestore(article.createdAt)
+        : "날짜 없음";
+    }
+    if (charCountEl) {
+      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
+    }
+    if (titleEl) {
+      titleEl.textContent = article.title;
+    }
+    if (contentEl) {
+      contentEl.textContent = article.content;
+    }
+
+    // 패널 표시
+    panel.style.display = "block";
+  }
+
+  /**
+   * 듀얼 모드 상태 업데이트
+   * - 두 패널 모두 열려있으면 듀얼 모드 활성화
+   * - 한 패널만 열려있으면 단일 모드
+   */
+  updateDualModeState() {
+    const panel1Open = this.selectedArticleIds[0] !== null;
+    const panel2Open = this.selectedArticleIds[1] !== null;
+
+    // 이전 모드 저장
+    const wasInDualMode = this.isDualMode;
+
+    // 새 모드 결정
+    this.isDualMode = panel1Open && panel2Open;
+
+    // 컨테이너에 dual-mode 클래스 토글
+    if (this.articleDetailContainer) {
+      if (this.isDualMode) {
+        this.articleDetailContainer.classList.add("dual-mode");
+      } else {
+        this.articleDetailContainer.classList.remove("dual-mode");
+      }
+    }
+
+    // 구분선 표시/숨김
+    if (this.detailDualDivider) {
+      this.detailDualDivider.style.display = this.isDualMode ? "flex" : "none";
+    }
+
+    // 모드 변경 시 스크린 리더 알림 (접근성)
+    if (wasInDualMode !== this.isDualMode) {
+      const message = this.isDualMode
+        ? "듀얼 패널 모드가 활성화되었습니다."
+        : "단일 패널 모드로 전환되었습니다.";
+      this.announceToScreenReader(message);
+    }
+  }
+
+  /**
+   * 스크린 리더 알림 (접근성 지원)
+   * @param {string} message - 알릴 메시지
+   */
+  announceToScreenReader(message) {
+    const announcement = document.createElement("div");
+    announcement.setAttribute("role", "status");
+    announcement.setAttribute("aria-live", "polite");
+    announcement.setAttribute("aria-atomic", "true");
+    announcement.style.cssText = "position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;";
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    
+    // 잠시 후 제거
+    setTimeout(() => {
+      document.body.removeChild(announcement);
+    }, 1000);
+  }
+
+  // ================================================================
+  // [Dual Panel] 구분선 드래그 기능
+  // - 마우스 드래그로 패널 너비 조절
+  // - 최소 20%, 최대 80% 제한
+  // - 2025-12-09 Phase 5 구현
+  // ================================================================
+
+  /**
+   * 듀얼 패널 구분선 드래그 초기화
+   * - initArticleManagement()에서 호출
+   */
+  initDualDividerDrag() {
+    if (!this.detailDualDivider || !this.articleDetailContainer) {
+      return;
+    }
+
+    // 드래그 상태 변수
+    let isDragging = false;
+    let startX = 0;
+    let startLeftPanelWidth = 50; // 초기 비율 (%)
+
+    // 마우스 다운 - 드래그 시작
+    const onMouseDown = (e) => {
+      if (!this.isDualMode) return;
+      
+      isDragging = true;
+      startX = e.clientX;
+      
+      // 현재 패널 1의 너비 비율 계산
+      const containerRect = this.articleDetailContainer.getBoundingClientRect();
+      const panel1Rect = this.articleDetailPanel1.getBoundingClientRect();
+      startLeftPanelWidth = (panel1Rect.width / containerRect.width) * 100;
+      
+      // 드래그 중 시각적 피드백
+      this.detailDualDivider.classList.add("dragging");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      
+      e.preventDefault();
+    };
+
+    // 마우스 이동 - 드래그 중
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const containerRect = this.articleDetailContainer.getBoundingClientRect();
+      const deltaX = e.clientX - startX;
+      const deltaPercent = (deltaX / containerRect.width) * 100;
+      
+      // 새 비율 계산 (최소 20%, 최대 80%)
+      let newLeftPercent = startLeftPanelWidth + deltaPercent;
+      newLeftPercent = Math.max(20, Math.min(80, newLeftPercent));
+      
+      // Grid 비율 적용
+      this.articleDetailContainer.style.gridTemplateColumns = 
+        `${newLeftPercent}% 8px ${100 - newLeftPercent}%`;
+    };
+
+    // 마우스 업 - 드래그 종료
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      
+      isDragging = false;
+      this.detailDualDivider.classList.remove("dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    // 이벤트 리스너 등록
+    this.detailDualDivider.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    
+    // 화면 이탈 처리
+    document.addEventListener("mouseleave", onMouseUp);
+
+    // 더블클릭으로 50:50 리셋
+    this.detailDualDivider.addEventListener("dblclick", () => {
+      if (!this.isDualMode) return;
+      this.articleDetailContainer.style.gridTemplateColumns = "1fr 8px 1fr";
+    });
+  }
+
+  /**
+   * 상세 패널 렌더링 (하위 호환성 - 패널 0에 렌더링)
    */
   renderDetailPanel(article) {
     if (!this.articleDetailPanel) return;
@@ -10084,8 +10415,138 @@ class DualTextWriter {
     this.articleDetailPanel.style.display = "block";
   }
 
+  // ================================================================
+  // [Dual Panel] 패널별 수정/삭제/복사 함수
+  // - 각 패널에서 독립적으로 수정/삭제/복사 기능 제공
+  // - 2025-12-09 Phase 6 구현
+  // ================================================================
+
   /**
-   * 수정 모드 진입
+   * 특정 패널에서 수정 모드 진입
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  enterEditModeByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) {
+      console.warn("[Dual Panel] 선택된 글이 없습니다:", panelIndex);
+      return;
+    }
+
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) return;
+
+    // panelIndex에 따른 suffix 결정
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+
+    // 읽기 모드 숨기기, 수정 모드 표시
+    const readMode = document.getElementById(`detail-read-mode${suffix}`);
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+
+    if (readMode) readMode.style.display = "none";
+    if (editMode) editMode.style.display = "block";
+
+    // 입력 필드에 값 설정
+    const editTitleInput = document.getElementById(`edit-title-input${suffix}`);
+    const editContentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+    const editCategorySelect = document.getElementById(`edit-category-select${suffix}`);
+
+    if (editTitleInput) {
+      editTitleInput.value = article.title;
+    }
+    if (editContentTextarea) {
+      editContentTextarea.value = article.content;
+    }
+    if (editCategorySelect) {
+      // 카테고리 옵션 동적 추가
+      this.populateEditCategorySelect(editCategorySelect, article.category);
+    }
+
+    // 현재 편집 중인 글 ID 설정
+    if (window.setCurrentEditingArticle) {
+      window.setCurrentEditingArticle(articleId);
+    }
+  }
+
+  /**
+   * 특정 패널에서 글 삭제
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async deleteArticleByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) {
+      console.warn("[Dual Panel] 삭제할 수 없습니다:", panelIndex);
+      return;
+    }
+
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) return;
+
+    // 삭제 확인
+    const confirmed = confirm(
+      `"${article.title}"을(를) 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const articleRef = window.firebaseDoc(
+        this.db,
+        "users",
+        this.currentUser.uid,
+        "texts",
+        articleId
+      );
+      await window.firebaseDeleteDoc(articleRef);
+
+      this.showMessage("✅ 글이 삭제되었습니다.", "success");
+
+      // 해당 패널 닫기
+      this.closeDetailPanelByIndex(panelIndex);
+
+      // 목록 갱신
+      await this.loadArticlesForManagement();
+    } catch (error) {
+      console.error("[Dual Panel] 삭제 실패:", error);
+      this.showMessage("❌ 삭제 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  /**
+   * 특정 패널 글 내용 클립보드 복사
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async copyArticleContentByIndex(panelIndex = 0) {
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) {
+      console.warn("[Dual Panel] 복사할 글이 없습니다:", panelIndex);
+      return;
+    }
+
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article || !article.content) {
+      this.showMessage("📋 복사할 내용이 없습니다.", "warning");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(article.content);
+      this.showMessage("📋 클립보드에 복사되었습니다!", "success");
+    } catch (error) {
+      console.error("[Dual Panel] 복사 실패:", error);
+      // 폴백: 임시 textarea 사용
+      const textarea = document.createElement("textarea");
+      textarea.value = article.content;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      this.showMessage("📋 클립보드에 복사되었습니다!", "success");
+    }
+  }
+
+  /**
+   * 수정 모드 진입 (하위 호환성 - 패널 0)
    */
   enterEditMode() {
     if (!this.selectedArticleId) return;
@@ -10265,8 +10726,68 @@ class DualTextWriter {
     }
   }
 
+  // ================================================================
+  // [Dual Panel] 듀얼 패널 닫기 함수
+  // - 특정 패널만 닫고 해당 카드 선택 해제
+  // - 2025-12-09 Phase 3B 구현
+  // ================================================================
+
   /**
-   * 상세 패널 닫기
+   * 특정 패널 닫기
+   * @param {number} panelIndex - 닫을 패널 인덱스 (0 또는 1)
+   */
+  closeDetailPanelByIndex(panelIndex = 0) {
+    // panelIndex 유효성 검사
+    if (panelIndex !== 0 && panelIndex !== 1) {
+      console.warn("[Dual Panel] 유효하지 않은 panelIndex:", panelIndex);
+      panelIndex = 0;
+    }
+
+    // 해당 패널 참조
+    const panel = panelIndex === 0 ? this.articleDetailPanel1 : this.articleDetailPanel2;
+    
+    // 이미 닫혀있는 패널인지 확인
+    if (!panel || panel.style.display === "none") {
+      console.log("[Dual Panel] 패널이 이미 닫혀있습니다:", panelIndex);
+      return;
+    }
+
+    // 패널 숨김
+    panel.style.display = "none";
+
+    // 해당 패널에 선택된 글의 카드 하이라이트 제거
+    const previousId = this.selectedArticleIds[panelIndex];
+    if (previousId) {
+      const previousCard = document.querySelector(
+        `[data-article-id="${previousId}"]`
+      );
+      if (previousCard) {
+        previousCard.classList.remove(`selected-panel-${panelIndex + 1}`);
+        // 다른 패널에서도 선택되어있지 않으면 selected 클래스도 제거
+        const otherPanelIndex = panelIndex === 0 ? 1 : 0;
+        if (this.selectedArticleIds[otherPanelIndex] !== previousId) {
+          previousCard.classList.remove("selected");
+        }
+      }
+    }
+
+    // 상태 업데이트
+    this.selectedArticleIds[panelIndex] = null;
+
+    // 듀얼 모드 상태 업데이트
+    this.updateDualModeState();
+
+    // 활성 패널 인덱스 업데이트 (닫힌 패널이 활성이었다면 다른 패널로 전환)
+    if (this.activePanelIndex === panelIndex) {
+      const otherPanelIndex = panelIndex === 0 ? 1 : 0;
+      if (this.selectedArticleIds[otherPanelIndex] !== null) {
+        this.activePanelIndex = otherPanelIndex;
+      }
+    }
+  }
+
+  /**
+   * 상세 패널 닫기 (하위 호환성 - 패널 0 닫기)
    */
   closeDetailPanel() {
     if (this.articleDetailPanel) {
