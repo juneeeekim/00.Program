@@ -18528,3 +18528,327 @@ document.addEventListener("DOMContentLoaded", () => {
 // 전역 스코프에 노출 (디버깅용)
 window.UrlLinkManager = UrlLinkManager;
 
+/**
+ * 백업 관리자 (BackupManager)
+ * 
+ * Firebase 데이터를 JSON 파일로 내보내기/가져오기 기능을 제공합니다.
+ * 기존 서비스와 완전히 독립적으로 동작합니다.
+ */
+const BackupManager = (function () {
+  // ----------------------------------------
+  // 상태 변수
+  // ----------------------------------------
+  
+  let isFirebaseReady = false;
+  let currentUser = null;
+  let db = null;
+  let selectedFile = null;
+  
+  // DOM 요소 캐시
+  let elements = {};
+
+  // ----------------------------------------
+  // Firebase 데이터 수집 함수
+  // ----------------------------------------
+
+  /**
+   * 모든 사용자 데이터를 Firebase에서 수집
+   * @returns {Promise<Object>} 수집된 데이터 객체
+   */
+  async function collectAllData() {
+    if (!isFirebaseReady || !currentUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+
+    const data = {
+      exportedAt: new Date().toISOString(),
+      userId: currentUser.uid,
+      userEmail: currentUser.email || "익명",
+      texts: [],
+      posts: [],
+      urlLinks: [],
+    };
+
+    try {
+      // 1. texts 컬렉션 수집
+      const textsRef = window.firebaseCollection(db, "users", currentUser.uid, "texts");
+      const textsSnapshot = await window.firebaseGetDocs(textsRef);
+      data.texts = textsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // 2. posts 컬렉션 수집
+      const postsRef = window.firebaseCollection(db, "users", currentUser.uid, "posts");
+      const postsSnapshot = await window.firebaseGetDocs(postsRef);
+      data.posts = postsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // 3. urlLinks 컬렉션 수집
+      const urlLinksRef = window.firebaseCollection(db, "users", currentUser.uid, "urlLinks");
+      const urlLinksSnapshot = await window.firebaseGetDocs(urlLinksRef);
+      data.urlLinks = urlLinksSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      console.log(`✅ 데이터 수집 완료: texts(${data.texts.length}), posts(${data.posts.length}), urlLinks(${data.urlLinks.length})`);
+      return data;
+    } catch (error) {
+      console.error("데이터 수집 실패:", error);
+      throw error;
+    }
+  }
+
+  // ----------------------------------------
+  // 내보내기 함수
+  // ----------------------------------------
+
+  /**
+   * 데이터를 JSON 파일로 내보내기
+   */
+  async function exportData() {
+    updateStatus("export", "⏳ 데이터를 수집하는 중...", "loading");
+
+    try {
+      const data = await collectAllData();
+
+      // JSON 파일 생성
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      
+      // 파일명 생성 (날짜 포함)
+      const date = new Date().toISOString().split("T")[0];
+      const filename = `500text_backup_${date}.json`;
+
+      // 다운로드 링크 생성 및 클릭
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const summary = `📝 texts: ${data.texts.length}개, 📊 posts: ${data.posts.length}개, 🔗 urlLinks: ${data.urlLinks.length}개`;
+      updateStatus("export", `✅ 백업 완료! (${filename})\n${summary}`, "success");
+      showMessage("✅ 백업 파일이 다운로드되었습니다!", "success");
+    } catch (error) {
+      console.error("내보내기 실패:", error);
+      updateStatus("export", `❌ 내보내기 실패: ${error.message}`, "error");
+      showMessage("❌ 백업에 실패했습니다: " + error.message, "error");
+    }
+  }
+
+  // ----------------------------------------
+  // 가져오기 함수
+  // ----------------------------------------
+
+  /**
+   * 선택된 파일의 데이터를 Firebase에 복원
+   */
+  async function importData() {
+    if (!selectedFile) {
+      showMessage("❌ 먼저 JSON 파일을 선택해주세요.", "error");
+      return;
+    }
+
+    if (!isFirebaseReady || !currentUser) {
+      showMessage("❌ 로그인이 필요합니다.", "error");
+      return;
+    }
+
+    // 확인 대화상자
+    if (!confirm("⚠️ 기존 데이터가 복원 데이터로 덮어쓰여질 수 있습니다.\n\n정말로 복원하시겠습니까?")) {
+      return;
+    }
+
+    updateStatus("import", "⏳ 파일을 읽는 중...", "loading");
+
+    try {
+      // 파일 읽기
+      const text = await selectedFile.text();
+      const data = JSON.parse(text);
+
+      // 유효성 검사
+      if (!data.texts && !data.posts && !data.urlLinks) {
+        throw new Error("유효한 백업 파일이 아닙니다.");
+      }
+
+      updateStatus("import", "⏳ 데이터를 복원하는 중...", "loading");
+
+      let restored = { texts: 0, posts: 0, urlLinks: 0 };
+
+      // 1. texts 복원
+      if (data.texts && Array.isArray(data.texts)) {
+        for (const item of data.texts) {
+          const { id, ...docData } = item;
+          const docRef = window.firebaseDoc(db, "users", currentUser.uid, "texts", id);
+          await window.firebaseSetDoc(docRef, docData, { merge: true });
+          restored.texts++;
+        }
+      }
+
+      // 2. posts 복원
+      if (data.posts && Array.isArray(data.posts)) {
+        for (const item of data.posts) {
+          const { id, ...docData } = item;
+          const docRef = window.firebaseDoc(db, "users", currentUser.uid, "posts", id);
+          await window.firebaseSetDoc(docRef, docData, { merge: true });
+          restored.posts++;
+        }
+      }
+
+      // 3. urlLinks 복원
+      if (data.urlLinks && Array.isArray(data.urlLinks)) {
+        for (const item of data.urlLinks) {
+          const { id, ...docData } = item;
+          const docRef = window.firebaseDoc(db, "users", currentUser.uid, "urlLinks", id);
+          await window.firebaseSetDoc(docRef, docData, { merge: true });
+          restored.urlLinks++;
+        }
+      }
+
+      const summary = `📝 texts: ${restored.texts}개, 📊 posts: ${restored.posts}개, 🔗 urlLinks: ${restored.urlLinks}개`;
+      updateStatus("import", `✅ 복원 완료!\n${summary}`, "success");
+      showMessage("✅ 데이터가 성공적으로 복원되었습니다!", "success");
+
+      // 파일 선택 초기화
+      selectedFile = null;
+      elements.fileInput.value = "";
+      elements.fileName.textContent = "선택된 파일 없음";
+      elements.importBtn.disabled = true;
+    } catch (error) {
+      console.error("가져오기 실패:", error);
+      updateStatus("import", `❌ 복원 실패: ${error.message}`, "error");
+      showMessage("❌ 복원에 실패했습니다: " + error.message, "error");
+    }
+  }
+
+  // ----------------------------------------
+  // UI 헬퍼 함수
+  // ----------------------------------------
+
+  /**
+   * 상태 메시지 업데이트
+   */
+  function updateStatus(type, message, status) {
+    const el = type === "export" ? elements.exportStatus : elements.importStatus;
+    if (el) {
+      el.textContent = message;
+      el.className = `backup-status ${status}`;
+    }
+  }
+
+  /**
+   * 파일 선택 핸들러
+   */
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.name.endsWith(".json")) {
+        showMessage("❌ JSON 파일만 선택할 수 있습니다.", "error");
+        elements.fileInput.value = "";
+        return;
+      }
+      selectedFile = file;
+      elements.fileName.textContent = file.name;
+      elements.importBtn.disabled = false;
+      updateStatus("import", "", "");
+    }
+  }
+
+  /**
+   * 메시지 표시 (기존 showMessage 활용)
+   */
+  function showMessage(message, type) {
+    if (window.dualTextWriter && window.dualTextWriter.showMessage) {
+      window.dualTextWriter.showMessage(message, type);
+    } else {
+      console.log(`[${type}] ${message}`);
+      if (type === "error") {
+        alert(message);
+      }
+    }
+  }
+
+  // ----------------------------------------
+  // 초기화
+  // ----------------------------------------
+
+  /**
+   * 백업 탭 초기화
+   */
+  function init() {
+    // DOM 요소 캐시
+    elements = {
+      exportBtn: document.getElementById("backup-export-btn"),
+      exportStatus: document.getElementById("backup-export-status"),
+      fileInput: document.getElementById("backup-file-input"),
+      fileSelectBtn: document.getElementById("backup-file-select-btn"),
+      fileName: document.getElementById("backup-file-name"),
+      importBtn: document.getElementById("backup-import-btn"),
+      importStatus: document.getElementById("backup-import-status"),
+    };
+
+    // 필수 요소 확인
+    if (!elements.exportBtn) {
+      console.warn("백업 탭: DOM 요소를 찾을 수 없습니다.");
+      return false;
+    }
+
+    // Firebase 연동 확인
+    if (window.firebaseDb && window.firebaseAuth) {
+      db = window.firebaseDb;
+      isFirebaseReady = true;
+      
+      // Firebase 인증 상태 리스너
+      window.firebaseOnAuthStateChanged(window.firebaseAuth, (user) => {
+        currentUser = user;
+        if (user) {
+          console.log("✅ 백업 탭: 사용자 로그인됨");
+        } else {
+          console.log("⚠️ 백업 탭: 사용자 로그아웃됨");
+        }
+      });
+    } else {
+      console.warn("백업 탭: Firebase가 준비되지 않았습니다.");
+      isFirebaseReady = false;
+    }
+
+    // 이벤트 바인딩
+    elements.exportBtn.addEventListener("click", exportData);
+    
+    elements.fileSelectBtn.addEventListener("click", () => {
+      elements.fileInput.click();
+    });
+    
+    elements.fileInput.addEventListener("change", handleFileSelect);
+    elements.importBtn.addEventListener("click", importData);
+
+    console.log("✅ 백업 탭 초기화 완료");
+    return true;
+  }
+
+  // 공개 API
+  return {
+    init,
+    exportData,
+    importData,
+  };
+})();
+
+// DOM 로드 완료 시 백업 탭 초기화
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    if (BackupManager.init()) {
+      console.log("✅ BackupManager 초기화 성공");
+    }
+  }, 600);
+});
+
+// 전역 스코프에 노출 (디버깅용)
+window.BackupManager = BackupManager;

@@ -103,6 +103,14 @@
             <span class="tab-icon">🔗</span>
             <span class="tab-text">URL 연결</span>
           </button>
+          <!-- ========================================
+               백업 탭 버튼 (2025-12-08 추가)
+               - 데이터 내보내기/가져오기 (JSON 백업)
+               ======================================== -->
+          <button class="tab-button" data-tab="backup" role="tab" aria-selected="false">
+            <span class="tab-icon">💾</span>
+            <span class="tab-text">백업</span>
+          </button>
         </div>
 
 
@@ -2248,7 +2256,77 @@
           </div>
         </div>
 
+        <!-- ========================================
+             백업 탭 콘텐츠 (2025-12-08 추가)
+             - 데이터 내보내기 (JSON 다운로드)
+             - 데이터 가져오기 (JSON 복원)
+             ======================================== -->
+        <div class="tab-content" id="backup-tab">
+          <div class="backup-container">
+            <!-- 헤더 -->
+            <div class="backup-header">
+              <h2 class="backup-title">💾 데이터 백업 및 복원</h2>
+              <p class="backup-subtitle">Firebase에 저장된 데이터를 JSON 파일로 백업하거나 복원할 수 있습니다.</p>
+            </div>
+
+            <!-- 내보내기 섹션 -->
+            <div class="backup-section">
+              <div class="backup-section-header">
+                <span class="backup-section-icon">📤</span>
+                <h3 class="backup-section-title">데이터 내보내기</h3>
+              </div>
+              <p class="backup-section-desc">현재 저장된 모든 데이터를 JSON 파일로 다운로드합니다.</p>
+              <ul class="backup-data-list">
+                <li>📝 저장된 글 (texts)</li>
+                <li>📊 트래킹 포스트 (posts)</li>
+                <li>🔗 URL 연결 (urlLinks)</li>
+              </ul>
+              <button id="backup-export-btn" class="backup-btn backup-btn-primary">
+                <span class="btn-icon">📥</span>
+                <span>백업 파일 다운로드</span>
+              </button>
+              <p id="backup-export-status" class="backup-status"></p>
+            </div>
+
+            <!-- 가져오기 섹션 -->
+            <div class="backup-section">
+              <div class="backup-section-header">
+                <span class="backup-section-icon">📥</span>
+                <h3 class="backup-section-title">데이터 가져오기</h3>
+              </div>
+              <p class="backup-section-desc">이전에 백업한 JSON 파일을 선택하여 데이터를 복원합니다.</p>
+              <div class="backup-warning">
+                ⚠️ 가져오기 시 기존 데이터가 덮어쓰여질 수 있습니다. 미리 백업을 권장합니다.
+              </div>
+              <div class="backup-file-input-wrapper">
+                <input type="file" id="backup-file-input" accept=".json" style="display: none;">
+                <button id="backup-file-select-btn" class="backup-btn backup-btn-secondary">
+                  <span class="btn-icon">📂</span>
+                  <span>JSON 파일 선택</span>
+                </button>
+                <span id="backup-file-name" class="backup-file-name">선택된 파일 없음</span>
+              </div>
+              <button id="backup-import-btn" class="backup-btn backup-btn-primary" disabled>
+                <span class="btn-icon">📤</span>
+                <span>데이터 복원하기</span>
+              </button>
+              <p id="backup-import-status" class="backup-status"></p>
+            </div>
+
+            <!-- 안내 섹션 -->
+            <div class="backup-info">
+              <h4>💡 백업 안내</h4>
+              <ul>
+                <li>백업 파일은 로컬 PC에 저장되므로 안전하게 보관하세요.</li>
+                <li>정기적인 백업을 권장합니다 (예: 월 1회).</li>
+                <li>복원 시 현재 로그인된 계정에 데이터가 저장됩니다.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <!-- 레퍼런스 불러오기 사이드 패널 -->
+
 
         <div
           id="reference-loader-panel"
