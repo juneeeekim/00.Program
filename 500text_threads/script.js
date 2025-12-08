@@ -17708,6 +17708,7 @@ window.loadArticleReferences = loadArticleReferences;
  * URL 연결 관리자 (UrlLinkManager)
  * 
  * 전역 스코프에서 URL 링크 관리 기능을 제공합니다.
+ * Firebase Firestore를 사용하여 크로스 브라우저/디바이스 동기화를 지원합니다.
  */
 const UrlLinkManager = (function () {
   // ----------------------------------------
@@ -17715,14 +17716,15 @@ const UrlLinkManager = (function () {
   // ----------------------------------------
   
   /**
-   * LocalStorage 키 (버전 관리)
+   * Firestore 컬렉션 이름
+   * 경로: users/{userId}/urlLinks/{linkId}
    * @type {string}
    */
-  const URL_LINK_STORAGE_KEY = "url_links_v1";
+  const URL_LINKS_COLLECTION = "urlLinks";
 
   /**
    * URL 링크 데이터 배열
-   * @type {Array<{id: string, name: string, description: string, url: string, createdAt: number}>}
+   * @type {Array<{id: string, name: string, description: string, url: string, order: number, createdAt: number}>}
    */
   let urlLinks = [];
 
@@ -17732,57 +17734,190 @@ const UrlLinkManager = (function () {
    */
   let editingLinkId = null;
 
+  /**
+   * Firebase 준비 상태 및 사용자 참조
+   */
+  let isFirebaseReady = false;
+  let currentUser = null;
+  let db = null;
+
   // DOM 요소 캐시
   let elements = {};
 
   // ----------------------------------------
-  // 3.2 LocalStorage 연동 함수
+  // 3.2 Firebase Firestore 연동 함수
   // ----------------------------------------
 
   /**
-   * LocalStorage에서 URL 링크 데이터 로드
-   * @returns {Array} URL 링크 배열
+   * Firebase에서 URL 링크 데이터 로드
+   * @returns {Promise<Array>} URL 링크 배열
    */
-  function loadUrlLinks() {
-    try {
-      const stored = localStorage.getItem(URL_LINK_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // 배열인지 확인
-        if (Array.isArray(parsed)) {
-          urlLinks = parsed;
-          console.log(`✅ URL 링크 ${urlLinks.length}개 로드 완료`);
-          return urlLinks;
-        }
-      }
+  async function loadUrlLinks() {
+    // Firebase 준비 확인
+    if (!isFirebaseReady || !currentUser) {
+      console.warn("URL 링크 로드: Firebase가 준비되지 않았거나 로그인되지 않았습니다.");
       urlLinks = [];
+      renderUrlLinks();
+      return urlLinks;
+    }
+
+    try {
+      const linksRef = window.firebaseCollection(
+        db,
+        "users",
+        currentUser.uid,
+        URL_LINKS_COLLECTION
+      );
+
+      // order 필드로 정렬하여 조회
+      const q = window.firebaseQuery(
+        linksRef,
+        window.firebaseOrderBy("order", "asc")
+      );
+
+      const querySnapshot = await window.firebaseGetDocs(q);
+
+      urlLinks = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      console.log(`✅ URL 링크 ${urlLinks.length}개 로드 완료 (Firebase)`);
+      renderUrlLinks();
       return urlLinks;
     } catch (error) {
-      console.error("URL 링크 로드 실패:", error);
+      console.error("Firebase에서 URL 링크 로드 실패:", error);
       urlLinks = [];
+      renderUrlLinks();
       return urlLinks;
     }
   }
 
   /**
-   * LocalStorage에 URL 링크 데이터 저장
-   * @param {Array} links - 저장할 URL 링크 배열
-   * @returns {boolean} 저장 성공 여부
+   * Firebase에 단일 URL 링크 저장 (추가)
+   * @param {Object} linkData - 저장할 URL 링크 데이터
+   * @returns {Promise<string|null>} 저장된 문서 ID 또는 null
    */
-  function saveUrlLinks(links) {
+  async function saveUrlLinkToFirebase(linkData) {
+    if (!isFirebaseReady || !currentUser) {
+      showMessage("❌ 로그인이 필요합니다.", "error");
+      return null;
+    }
+
     try {
-      localStorage.setItem(URL_LINK_STORAGE_KEY, JSON.stringify(links));
-      console.log(`✅ URL 링크 ${links.length}개 저장 완료`);
+      const linksRef = window.firebaseCollection(
+        db,
+        "users",
+        currentUser.uid,
+        URL_LINKS_COLLECTION
+      );
+
+      const docRef = await window.firebaseAddDoc(linksRef, {
+        ...linkData,
+        createdAt: window.firebaseServerTimestamp(),
+      });
+
+      console.log(`✅ URL 링크 저장 완료 (ID: ${docRef.id})`);
+      return docRef.id;
+    } catch (error) {
+      console.error("Firebase에 URL 링크 저장 실패:", error);
+      showMessage("❌ 저장에 실패했습니다: " + error.message, "error");
+      return null;
+    }
+  }
+
+  /**
+   * Firebase에서 URL 링크 수정
+   * @param {string} linkId - 링크 문서 ID
+   * @param {Object} updateData - 수정할 데이터
+   * @returns {Promise<boolean>} 성공 여부
+   */
+  async function updateUrlLinkInFirebase(linkId, updateData) {
+    if (!isFirebaseReady || !currentUser) {
+      showMessage("❌ 로그인이 필요합니다.", "error");
+      return false;
+    }
+
+    try {
+      const linkRef = window.firebaseDoc(
+        db,
+        "users",
+        currentUser.uid,
+        URL_LINKS_COLLECTION,
+        linkId
+      );
+
+      await window.firebaseUpdateDoc(linkRef, {
+        ...updateData,
+        updatedAt: window.firebaseServerTimestamp(),
+      });
+
+      console.log(`✅ URL 링크 수정 완료 (ID: ${linkId})`);
       return true;
     } catch (error) {
-      // QuotaExceededError 처리
-      if (error.name === "QuotaExceededError") {
-        console.error("LocalStorage 용량 초과:", error);
-        showMessage("❌ 저장 공간이 부족합니다. 일부 데이터를 삭제해주세요.", "error");
-      } else {
-        console.error("URL 링크 저장 실패:", error);
-        showMessage("❌ 저장에 실패했습니다: " + error.message, "error");
-      }
+      console.error("Firebase에서 URL 링크 수정 실패:", error);
+      showMessage("❌ 수정에 실패했습니다: " + error.message, "error");
+      return false;
+    }
+  }
+
+  /**
+   * Firebase에서 URL 링크 삭제
+   * @param {string} linkId - 링크 문서 ID
+   * @returns {Promise<boolean>} 성공 여부
+   */
+  async function deleteUrlLinkFromFirebase(linkId) {
+    if (!isFirebaseReady || !currentUser) {
+      showMessage("❌ 로그인이 필요합니다.", "error");
+      return false;
+    }
+
+    try {
+      const linkRef = window.firebaseDoc(
+        db,
+        "users",
+        currentUser.uid,
+        URL_LINKS_COLLECTION,
+        linkId
+      );
+
+      await window.firebaseDeleteDoc(linkRef);
+      console.log(`✅ URL 링크 삭제 완료 (ID: ${linkId})`);
+      return true;
+    } catch (error) {
+      console.error("Firebase에서 URL 링크 삭제 실패:", error);
+      showMessage("❌ 삭제에 실패했습니다: " + error.message, "error");
+      return false;
+    }
+  }
+
+  /**
+   * 모든 URL 링크의 order 값 일괄 업데이트 (순서 변경용)
+   * @returns {Promise<boolean>} 성공 여부
+   */
+  async function updateAllOrdersInFirebase() {
+    if (!isFirebaseReady || !currentUser) {
+      return false;
+    }
+
+    try {
+      // 각 링크의 order 값을 현재 배열 인덱스로 업데이트
+      const updatePromises = urlLinks.map((link, index) => {
+        const linkRef = window.firebaseDoc(
+          db,
+          "users",
+          currentUser.uid,
+          URL_LINKS_COLLECTION,
+          link.id
+        );
+        return window.firebaseUpdateDoc(linkRef, { order: index });
+      });
+
+      await Promise.all(updatePromises);
+      console.log("✅ URL 링크 순서 업데이트 완료");
+      return true;
+    } catch (error) {
+      console.error("URL 링크 순서 업데이트 실패:", error);
       return false;
     }
   }
@@ -17842,11 +17977,11 @@ const UrlLinkManager = (function () {
   }
 
   /**
-   * 새 URL 링크 추가
+   * 새 URL 링크 추가 (Firebase 저장)
    * @param {Object} linkData - { name, description, url }
-   * @returns {boolean} 성공 여부
+   * @returns {Promise<boolean>} 성공 여부
    */
-  function addUrlLink(linkData) {
+  async function addUrlLink(linkData) {
     // 유효성 검사
     if (!linkData.name || !linkData.name.trim()) {
       showMessage("❌ 서비스 명칭을 입력해주세요.", "error");
@@ -17858,40 +17993,36 @@ const UrlLinkManager = (function () {
       return false;
     }
 
-    // 새 링크 생성
-    const newLink = {
-      id: generateId(),
+    // 새 링크 데이터 생성 (order는 현재 배열 길이 = 맨 끝)
+    const newLinkData = {
       name: linkData.name.trim(),
       description: (linkData.description || "").trim(),
       url: validUrl,
-      createdAt: Date.now(),
+      order: urlLinks.length,
     };
 
-    // 배열에 추가
-    urlLinks.push(newLink);
-
-    // 저장
-    if (saveUrlLinks(urlLinks)) {
+    // Firebase에 저장
+    const docId = await saveUrlLinkToFirebase(newLinkData);
+    if (docId) {
       showMessage("✅ URL이 추가되었습니다!", "success");
-      renderUrlLinks();
       hideForm();
+      // 데이터 다시 로드
+      await loadUrlLinks();
       return true;
     }
 
-    // 저장 실패 시 롤백
-    urlLinks.pop();
     return false;
   }
 
   /**
-   * URL 링크 수정
+   * URL 링크 수정 (Firebase 업데이트)
    * @param {string} id - 링크 ID
    * @param {Object} newData - { name, description, url }
-   * @returns {boolean} 성공 여부
+   * @returns {Promise<boolean>} 성공 여부
    */
-  function updateUrlLink(id, newData) {
-    const index = urlLinks.findIndex((link) => link.id === id);
-    if (index === -1) {
+  async function updateUrlLink(id, newData) {
+    const link = urlLinks.find((l) => l.id === id);
+    if (!link) {
       showMessage("❌ 수정할 URL을 찾을 수 없습니다.", "error");
       return false;
     }
@@ -17907,73 +18038,64 @@ const UrlLinkManager = (function () {
       return false;
     }
 
-    // 백업
-    const backup = { ...urlLinks[index] };
-
-    // 수정
-    urlLinks[index] = {
-      ...urlLinks[index],
+    // Firebase에 업데이트
+    const updateData = {
       name: newData.name.trim(),
       description: (newData.description || "").trim(),
       url: validUrl,
     };
 
-    // 저장
-    if (saveUrlLinks(urlLinks)) {
+    const success = await updateUrlLinkInFirebase(id, updateData);
+    if (success) {
       showMessage("✅ URL이 수정되었습니다!", "success");
-      renderUrlLinks();
       hideForm();
+      // 데이터 다시 로드
+      await loadUrlLinks();
       return true;
     }
 
-    // 저장 실패 시 롤백
-    urlLinks[index] = backup;
     return false;
   }
 
   /**
-   * URL 링크 삭제
+   * URL 링크 삭제 (Firebase 삭제)
    * @param {string} id - 링크 ID
-   * @returns {boolean} 성공 여부
+   * @returns {Promise<boolean>} 성공 여부
    */
-  function deleteUrlLink(id) {
-    const index = urlLinks.findIndex((link) => link.id === id);
-    if (index === -1) {
+  async function deleteUrlLink(id) {
+    const link = urlLinks.find((l) => l.id === id);
+    if (!link) {
       showMessage("❌ 삭제할 URL을 찾을 수 없습니다.", "error");
       return false;
     }
 
     // 확인 대화상자
-    const link = urlLinks[index];
     if (!confirm(`"${link.name}" URL을 삭제하시겠습니까?`)) {
       return false;
     }
 
-    // 백업 후 삭제
-    const backup = urlLinks.splice(index, 1)[0];
-
-    // 저장
-    if (saveUrlLinks(urlLinks)) {
+    // Firebase에서 삭제
+    const success = await deleteUrlLinkFromFirebase(id);
+    if (success) {
       showMessage("✅ URL이 삭제되었습니다!", "success");
-      renderUrlLinks();
+      // 데이터 다시 로드
+      await loadUrlLinks();
       return true;
     }
 
-    // 저장 실패 시 롤백
-    urlLinks.splice(index, 0, backup);
     return false;
   }
 
   // ----------------------------------------
-  // 3.3.1 URL 링크 순서 이동 기능
+  // 3.3.1 URL 링크 순서 이동 기능 (Firebase)
   // ----------------------------------------
 
   /**
-   * URL 링크를 위로 이동 (순서 변경)
+   * URL 링크를 위로 이동 (순서 변경 - Firebase)
    * @param {string} id - 링크 ID
-   * @returns {boolean} 성공 여부
+   * @returns {Promise<boolean>} 성공 여부
    */
-  function moveUrlLinkUp(id) {
+  async function moveUrlLinkUp(id) {
     const index = urlLinks.findIndex((link) => link.id === id);
     
     // 첫 번째 항목은 더 위로 이동 불가
@@ -17984,23 +18106,24 @@ const UrlLinkManager = (function () {
     // 배열에서 위치 교환
     [urlLinks[index - 1], urlLinks[index]] = [urlLinks[index], urlLinks[index - 1]];
 
-    // 저장 및 렌더링
-    if (saveUrlLinks(urlLinks)) {
+    // Firebase에 순서 업데이트
+    const success = await updateAllOrdersInFirebase();
+    if (success) {
       renderUrlLinks();
       return true;
     }
 
-    // 저장 실패 시 롤백
+    // 실패 시 롤백
     [urlLinks[index - 1], urlLinks[index]] = [urlLinks[index], urlLinks[index - 1]];
     return false;
   }
 
   /**
-   * URL 링크를 아래로 이동 (순서 변경)
+   * URL 링크를 아래로 이동 (순서 변경 - Firebase)
    * @param {string} id - 링크 ID
-   * @returns {boolean} 성공 여부
+   * @returns {Promise<boolean>} 성공 여부
    */
-  function moveUrlLinkDown(id) {
+  async function moveUrlLinkDown(id) {
     const index = urlLinks.findIndex((link) => link.id === id);
     
     // 마지막 항목은 더 아래로 이동 불가
@@ -18011,13 +18134,14 @@ const UrlLinkManager = (function () {
     // 배열에서 위치 교환
     [urlLinks[index], urlLinks[index + 1]] = [urlLinks[index + 1], urlLinks[index]];
 
-    // 저장 및 렌더링
-    if (saveUrlLinks(urlLinks)) {
+    // Firebase에 순서 업데이트
+    const success = await updateAllOrdersInFirebase();
+    if (success) {
       renderUrlLinks();
       return true;
     }
 
-    // 저장 실패 시 롤백
+    // 실패 시 롤백
     [urlLinks[index], urlLinks[index + 1]] = [urlLinks[index + 1], urlLinks[index]];
     return false;
   }
@@ -18293,7 +18417,7 @@ const UrlLinkManager = (function () {
   // ----------------------------------------
 
   /**
-   * URL 연결 탭 초기화
+   * URL 연결 탭 초기화 (Firebase 연동)
    */
   function init() {
     // DOM 요소 캐시
@@ -18316,8 +18440,31 @@ const UrlLinkManager = (function () {
       return false;
     }
 
-    // 데이터 로드
-    loadUrlLinks();
+    // Firebase 연동 확인
+    if (window.firebaseDb && window.firebaseAuth) {
+      db = window.firebaseDb;
+      isFirebaseReady = true;
+      
+      // Firebase 인증 상태 리스너
+      window.firebaseOnAuthStateChanged(window.firebaseAuth, async (user) => {
+        currentUser = user;
+        if (user) {
+          console.log("✅ URL 연결 탭: 사용자 로그인됨 -", user.uid);
+          // 로그인 시 데이터 로드
+          await loadUrlLinks();
+        } else {
+          console.log("⚠️ URL 연결 탭: 사용자 로그아웃됨");
+          // 로그아웃 시 데이터 초기화
+          urlLinks = [];
+          renderUrlLinks();
+        }
+      });
+    } else {
+      console.warn("URL 연결 탭: Firebase가 준비되지 않았습니다. 잠시 후 다시 시도합니다.");
+      isFirebaseReady = false;
+      // 빈 상태 표시
+      renderUrlLinks();
+    }
 
     // 이벤트 바인딩
     if (elements.addUrlLinkBtn) {
