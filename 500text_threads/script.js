@@ -99,6 +99,12 @@ class DualTextWriter {
     this.referenceSelectionModal = null; // 레퍼런스 선택 모달 DOM
     this.referenceLinkCache = new Map(); // 역방향 조회 캐시 (refId -> editIds[])
 
+    // ===== [Bug Fix] 스크립트 작성 탭 초기화 상태 플래그 =====
+    // 목적: switchTab()에서 탭 전환 시 initArticleManagement() 중복 호출 방지
+    // 이벤트 리스너가 여러 번 등록되어 저장 시 중복 글이 생성되는 버그 수정
+    this.isArticleManagementInitialized = false;
+
+
     // Firebase 초기화 대기
     this.waitForFirebase();
 
@@ -9100,6 +9106,15 @@ class DualTextWriter {
    * 스크립트 작성 기능 초기화
    */
   initArticleManagement() {
+    // ===== [Bug Fix] 중복 실행 방지 =====
+    // 목적: switchTab()에서 탭 전환 시마다 이 함수가 호출되어
+    // 이벤트 리스너가 중복 등록되는 것을 방지
+    // 증상: 저장 버튼 클릭 시 동일한 글이 여러 개 저장되는 버그
+    if (this.isArticleManagementInitialized) {
+      return; // 이미 초기화되었으면 조기 리턴
+    }
+    this.isArticleManagementInitialized = true;
+
     // DOM 요소 참조
     this.categorySelect = document.getElementById("category-select");
     this.articleCardsGrid = document.getElementById("article-cards-grid");

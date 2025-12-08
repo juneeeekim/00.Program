@@ -79,19 +79,20 @@
       <main id="main-content" style="display: none">
         <!-- 탭 기반 인터페이스 -->
         <div class="tab-container">
-          <button class="tab-button active" data-tab="writing">
+          <!-- ===== [Accessibility] 탭 버튼 접근성 속성 추가 ===== -->
+          <button class="tab-button active" data-tab="writing" role="tab" aria-selected="true">
             <span class="tab-icon">✏️</span>
             <span class="tab-text">글 작성</span>
           </button>
-          <button class="tab-button" data-tab="saved">
+          <button class="tab-button" data-tab="saved" role="tab" aria-selected="false">
             <span class="tab-icon">💾</span>
             <span class="tab-text">저장된 글</span>
           </button>
-          <button class="tab-button" data-tab="tracking">
+          <button class="tab-button" data-tab="tracking" role="tab" aria-selected="false">
             <span class="tab-icon">📊</span>
             <span class="tab-text">트래킹</span>
           </button>
-          <button class="tab-button" data-tab="management">
+          <button class="tab-button" data-tab="management" role="tab" aria-selected="false">
             <span class="tab-icon">📋</span>
             <span class="tab-text">스크립트 작성</span>
           </button>
