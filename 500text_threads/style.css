@@ -9047,6 +9047,13 @@ mark {
   background: rgba(220, 53, 69, 0.1);
 }
 
+/* 위로/아래로 이동 버튼 스타일 */
+.url-link-actions .btn-move-up:hover,
+.url-link-actions .btn-move-down:hover {
+  color: #17a2b8;
+  background: rgba(23, 162, 184, 0.1);
+}
+
 /* ----------------------------------------
    2.4 빈 상태 스타일
    ---------------------------------------- */

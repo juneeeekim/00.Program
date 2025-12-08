@@ -17964,6 +17964,64 @@ const UrlLinkManager = (function () {
     return false;
   }
 
+  // ----------------------------------------
+  // 3.3.1 URL 링크 순서 이동 기능
+  // ----------------------------------------
+
+  /**
+   * URL 링크를 위로 이동 (순서 변경)
+   * @param {string} id - 링크 ID
+   * @returns {boolean} 성공 여부
+   */
+  function moveUrlLinkUp(id) {
+    const index = urlLinks.findIndex((link) => link.id === id);
+    
+    // 첫 번째 항목은 더 위로 이동 불가
+    if (index <= 0) {
+      return false;
+    }
+
+    // 배열에서 위치 교환
+    [urlLinks[index - 1], urlLinks[index]] = [urlLinks[index], urlLinks[index - 1]];
+
+    // 저장 및 렌더링
+    if (saveUrlLinks(urlLinks)) {
+      renderUrlLinks();
+      return true;
+    }
+
+    // 저장 실패 시 롤백
+    [urlLinks[index - 1], urlLinks[index]] = [urlLinks[index], urlLinks[index - 1]];
+    return false;
+  }
+
+  /**
+   * URL 링크를 아래로 이동 (순서 변경)
+   * @param {string} id - 링크 ID
+   * @returns {boolean} 성공 여부
+   */
+  function moveUrlLinkDown(id) {
+    const index = urlLinks.findIndex((link) => link.id === id);
+    
+    // 마지막 항목은 더 아래로 이동 불가
+    if (index === -1 || index >= urlLinks.length - 1) {
+      return false;
+    }
+
+    // 배열에서 위치 교환
+    [urlLinks[index], urlLinks[index + 1]] = [urlLinks[index + 1], urlLinks[index]];
+
+    // 저장 및 렌더링
+    if (saveUrlLinks(urlLinks)) {
+      renderUrlLinks();
+      return true;
+    }
+
+    // 저장 실패 시 롤백
+    [urlLinks[index], urlLinks[index + 1]] = [urlLinks[index + 1], urlLinks[index]];
+    return false;
+  }
+
   /**
    * URL 열기 (새 탭)
    * @param {string} id - 링크 ID
@@ -18097,6 +18155,22 @@ const UrlLinkManager = (function () {
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "url-link-actions";
 
+    // 위로 이동 버튼
+    const moveUpBtn = document.createElement("button");
+    moveUpBtn.className = "btn-icon btn-move-up";
+    moveUpBtn.setAttribute("aria-label", `${link.name} 위로 이동`);
+    moveUpBtn.title = "위로 이동";
+    moveUpBtn.textContent = "⬆️";
+    moveUpBtn.addEventListener("click", () => moveUrlLinkUp(link.id));
+
+    // 아래로 이동 버튼
+    const moveDownBtn = document.createElement("button");
+    moveDownBtn.className = "btn-icon btn-move-down";
+    moveDownBtn.setAttribute("aria-label", `${link.name} 아래로 이동`);
+    moveDownBtn.title = "아래로 이동";
+    moveDownBtn.textContent = "⬇️";
+    moveDownBtn.addEventListener("click", () => moveUrlLinkDown(link.id));
+
     // 수정 버튼
     const editBtn = document.createElement("button");
     editBtn.className = "btn-icon btn-edit";
@@ -18113,6 +18187,8 @@ const UrlLinkManager = (function () {
     deleteBtn.textContent = "🗑️";
     deleteBtn.addEventListener("click", () => deleteUrlLink(link.id));
 
+    actionsDiv.appendChild(moveUpBtn);
+    actionsDiv.appendChild(moveDownBtn);
     actionsDiv.appendChild(editBtn);
     actionsDiv.appendChild(deleteBtn);
 
@@ -18283,6 +18359,8 @@ const UrlLinkManager = (function () {
     addUrlLink,
     updateUrlLink,
     deleteUrlLink,
+    moveUrlLinkUp,
+    moveUrlLinkDown,
     openUrlLink,
     renderUrlLinks,
     showAddForm,
