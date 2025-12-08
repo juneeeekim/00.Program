@@ -95,7 +95,16 @@
             <span class="tab-icon">📋</span>
             <span class="tab-text">스크립트 작성</span>
           </button>
+          <!-- ========================================
+               URL 연결 탭 버튼 (2025-12-08 추가)
+               - 자주 사용하는 URL을 관리하고 바로 이동
+               ======================================== -->
+          <button class="tab-button" data-tab="urllink" role="tab" aria-selected="false">
+            <span class="tab-icon">🔗</span>
+            <span class="tab-text">URL 연결</span>
+          </button>
         </div>
+
 
         <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
         <div class="tab-content active" id="writing-tab">
@@ -2131,7 +2140,116 @@
           </div>
         </div>
 
+        <!-- ================================================================
+             URL 연결 탭 콘텐츠 (2025-12-08 추가)
+             - 자주 사용하는 URL을 관리하고 바로 이동하는 기능
+             - 서비스 명칭, 설명, URL을 저장하여 빠른 접근 제공
+             ================================================================ -->
+        <div class="tab-content" id="urllink-tab">
+          <div class="url-link-container">
+            <!-- URL 연결 탭 헤더 -->
+            <div class="url-link-header">
+              <h3>🔗 URL 바로가기</h3>
+              <button
+                id="add-url-link-btn"
+                class="btn btn-primary"
+                aria-label="새 URL 추가"
+                title="새 URL 바로가기 추가"
+              >
+                <span class="btn-icon">➕</span>
+                <span class="btn-text">추가</span>
+              </button>
+            </div>
+
+            <!-- URL 입력 폼 (기본 숨김, 추가/수정 시 표시) -->
+            <div
+              id="url-link-form"
+              class="url-link-form"
+              style="display: none"
+              role="form"
+              aria-label="URL 정보 입력 폼"
+            >
+              <div class="url-link-form-fields">
+                <div class="form-group">
+                  <label for="url-link-name" class="form-label">서비스 명칭 *</label>
+                  <input
+                    id="url-link-name"
+                    type="text"
+                    class="form-input"
+                    placeholder="예: Google Analytics"
+                    maxlength="50"
+                    aria-label="서비스 명칭"
+                    aria-required="true"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="url-link-desc" class="form-label">설명 (선택)</label>
+                  <input
+                    id="url-link-desc"
+                    type="text"
+                    class="form-input"
+                    placeholder="예: 마케팅 데이터 분석"
+                    maxlength="100"
+                    aria-label="서비스 설명"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="url-link-url" class="form-label">URL 주소 *</label>
+                  <input
+                    id="url-link-url"
+                    type="url"
+                    class="form-input"
+                    placeholder="https://example.com"
+                    aria-label="URL 주소"
+                    aria-required="true"
+                  />
+                </div>
+              </div>
+              <div class="url-link-form-actions">
+                <button
+                  id="url-link-save-btn"
+                  class="btn btn-primary"
+                  aria-label="URL 저장"
+                >
+                  💾 저장
+                </button>
+                <button
+                  id="url-link-cancel-btn"
+                  class="btn btn-secondary"
+                  aria-label="입력 취소"
+                >
+                  ❌ 취소
+                </button>
+              </div>
+              <!-- 수정 모드 시 사용할 hidden input -->
+              <input type="hidden" id="url-link-edit-id" value="" />
+            </div>
+
+            <!-- URL 리스트 컨테이너 -->
+            <div
+              id="url-link-list"
+              class="url-link-list"
+              role="list"
+              aria-label="저장된 URL 목록"
+            >
+              <!-- 동적으로 URL 카드가 추가됨 -->
+            </div>
+
+            <!-- 빈 상태 메시지 -->
+            <div
+              id="url-link-empty-state"
+              class="url-link-empty-state"
+              style="display: none"
+            >
+              <p class="empty-icon">🔗</p>
+              <p class="empty-text">자주 방문하는 사이트를 추가해보세요!</p>
+              <p class="empty-hint">추가 버튼을 눌러 URL을 등록하면 한 번의 클릭으로 빠르게 이동할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 레퍼런스 불러오기 사이드 패널 -->
+
         <div
           id="reference-loader-panel"
           class="reference-loader-panel"

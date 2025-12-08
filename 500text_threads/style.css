@@ -8790,3 +8790,374 @@ mark {
   color: #6c757d;
   font-size: 0.9rem;
 }
+
+/* ================================================================
+   [Phase 2] 2025-12-08
+   URL 연결 탭 스타일 (URL Connection Tab Styles)
+   - 카드 기반 레이아웃
+   - 파비콘 표시
+   - 입력 폼 스타일
+   - 반응형 디자인
+   ================================================================ */
+
+/* ----------------------------------------
+   2.1 URL 연결 탭 컨테이너
+   ---------------------------------------- */
+.url-link-container {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* URL 연결 탭 헤더 */
+.url-link-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.url-link-header h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+/* ----------------------------------------
+   2.2 URL 입력 폼 스타일
+   ---------------------------------------- */
+.url-link-form {
+  background: #f8f9fa;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.url-link-form-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.url-link-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.url-link-form .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.url-link-form .form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #e1e5e9;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.url-link-form .form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.url-link-form .form-input::placeholder {
+  color: #adb5bd;
+}
+
+/* 폼 액션 버튼 */
+.url-link-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.url-link-form-actions .btn {
+  min-width: 100px;
+  min-height: 44px;
+}
+
+/* ----------------------------------------
+   2.3 URL 카드 리스트 스타일
+   ---------------------------------------- */
+.url-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* URL 카드 기본 스타일 */
+.url-link-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.url-link-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.url-link-card:focus-within {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* 이동 버튼 (가장 왼쪽) */
+.btn-url-launch {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.btn-url-launch:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-url-launch:active {
+  transform: scale(1.02);
+}
+
+.btn-url-launch:focus {
+  outline: 2px solid #764ba2;
+  outline-offset: 2px;
+}
+
+/* 파비콘 영역 */
+.url-link-favicon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.url-link-favicon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.url-link-favicon .favicon-fallback {
+  font-size: 1.2rem;
+  color: #999;
+}
+
+/* 카드 내용 영역 (Favicon + 텍스트) */
+.url-link-info {
+  flex: 1;
+  min-width: 0; /* Flexbox에서 텍스트 말줄임 허용 */
+}
+
+.url-link-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.url-link-desc {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 카드 액션 버튼 (수정/삭제) */
+.url-link-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.url-link-actions .btn-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.url-link-actions .btn-icon:hover {
+  background: #f0f0f0;
+}
+
+.url-link-actions .btn-edit:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.url-link-actions .btn-delete:hover {
+  color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+}
+
+/* ----------------------------------------
+   2.4 빈 상태 스타일
+   ---------------------------------------- */
+.url-link-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 12px;
+}
+
+.url-link-empty-state .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  color: #adb5bd;
+}
+
+.url-link-empty-state .empty-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 8px 0;
+}
+
+.url-link-empty-state .empty-hint {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ----------------------------------------
+   2.5 반응형 디자인 (768px 이하)
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  .url-link-container {
+    padding: 16px;
+  }
+
+  .url-link-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .url-link-header h3 {
+    font-size: 18px;
+  }
+
+  /* 폼 필드 세로 배치 */
+  .url-link-form-fields {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .url-link-form-actions {
+    flex-direction: column;
+  }
+
+  .url-link-form-actions .btn {
+    width: 100%;
+  }
+
+  /* 카드 레이아웃 조정 */
+  .url-link-card {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .btn-url-launch {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+
+  .url-link-info {
+    flex: 1 1 calc(100% - 70px);
+    order: 1;
+  }
+
+  .url-link-actions {
+    width: 100%;
+    justify-content: flex-end;
+    order: 2;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  /* 파비콘 숨김 (모바일 간소화) */
+  .url-link-favicon {
+    display: none;
+  }
+}
+
+/* ----------------------------------------
+   2.6 터치 영역 최소 크기 보장 (접근성)
+   ---------------------------------------- */
+.url-link-card button,
+.url-link-form button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 포커스 스타일 (접근성) */
+.url-link-card button:focus,
+.url-link-form button:focus,
+.url-link-form .form-input:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+

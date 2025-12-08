@@ -17693,3 +17693,614 @@ function setCurrentEditingArticle(articleId) {
 // 전역 함수로 노출 (기존 코드에서 호출 가능하도록)
 window.setCurrentEditingArticle = setCurrentEditingArticle;
 window.loadArticleReferences = loadArticleReferences;
+
+// ================================================================
+// [Phase 3] 2025-12-08
+// URL 연결 탭 기능 (URL Connection Tab Feature)
+// 
+// - 자주 사용하는 URL을 관리하고 빠르게 접근
+// - LocalStorage 기반 데이터 저장
+// - CRUD 기능 (추가, 조회, 수정, 삭제)
+// - 보안: noopener noreferrer, XSS 방지
+// ================================================================
+
+/**
+ * URL 연결 관리자 (UrlLinkManager)
+ * 
+ * 전역 스코프에서 URL 링크 관리 기능을 제공합니다.
+ */
+const UrlLinkManager = (function () {
+  // ----------------------------------------
+  // 3.1 상수 및 데이터 모델 정의
+  // ----------------------------------------
+  
+  /**
+   * LocalStorage 키 (버전 관리)
+   * @type {string}
+   */
+  const URL_LINK_STORAGE_KEY = "url_links_v1";
+
+  /**
+   * URL 링크 데이터 배열
+   * @type {Array<{id: string, name: string, description: string, url: string, createdAt: number}>}
+   */
+  let urlLinks = [];
+
+  /**
+   * 현재 수정 중인 링크 ID (null이면 추가 모드)
+   * @type {string|null}
+   */
+  let editingLinkId = null;
+
+  // DOM 요소 캐시
+  let elements = {};
+
+  // ----------------------------------------
+  // 3.2 LocalStorage 연동 함수
+  // ----------------------------------------
+
+  /**
+   * LocalStorage에서 URL 링크 데이터 로드
+   * @returns {Array} URL 링크 배열
+   */
+  function loadUrlLinks() {
+    try {
+      const stored = localStorage.getItem(URL_LINK_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // 배열인지 확인
+        if (Array.isArray(parsed)) {
+          urlLinks = parsed;
+          console.log(`✅ URL 링크 ${urlLinks.length}개 로드 완료`);
+          return urlLinks;
+        }
+      }
+      urlLinks = [];
+      return urlLinks;
+    } catch (error) {
+      console.error("URL 링크 로드 실패:", error);
+      urlLinks = [];
+      return urlLinks;
+    }
+  }
+
+  /**
+   * LocalStorage에 URL 링크 데이터 저장
+   * @param {Array} links - 저장할 URL 링크 배열
+   * @returns {boolean} 저장 성공 여부
+   */
+  function saveUrlLinks(links) {
+    try {
+      localStorage.setItem(URL_LINK_STORAGE_KEY, JSON.stringify(links));
+      console.log(`✅ URL 링크 ${links.length}개 저장 완료`);
+      return true;
+    } catch (error) {
+      // QuotaExceededError 처리
+      if (error.name === "QuotaExceededError") {
+        console.error("LocalStorage 용량 초과:", error);
+        showMessage("❌ 저장 공간이 부족합니다. 일부 데이터를 삭제해주세요.", "error");
+      } else {
+        console.error("URL 링크 저장 실패:", error);
+        showMessage("❌ 저장에 실패했습니다: " + error.message, "error");
+      }
+      return false;
+    }
+  }
+
+  // ----------------------------------------
+  // 3.3 CRUD 함수 구현
+  // ----------------------------------------
+
+  /**
+   * 고유 ID 생성
+   * @returns {string} 고유 ID
+   */
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  }
+
+  /**
+   * URL 유효성 검사 및 자동 수정
+   * @param {string} url - URL 문자열
+   * @returns {string|null} 유효한 URL 또는 null
+   */
+  function validateAndFixUrl(url) {
+    if (!url || typeof url !== "string") {
+      return null;
+    }
+
+    let trimmedUrl = url.trim();
+
+    // 빈 문자열 체크
+    if (!trimmedUrl) {
+      return null;
+    }
+
+    // 위험한 프로토콜 차단 (XSS 방지)
+    const dangerousProtocols = ["javascript:", "data:", "vbscript:"];
+    const lowerUrl = trimmedUrl.toLowerCase();
+    for (const protocol of dangerousProtocols) {
+      if (lowerUrl.startsWith(protocol)) {
+        showMessage("❌ 보안상의 이유로 해당 URL을 사용할 수 없습니다.", "error");
+        return null;
+      }
+    }
+
+    // http:// 또는 https:// 없으면 자동 추가
+    if (!trimmedUrl.match(/^https?:\/\//i)) {
+      trimmedUrl = "https://" + trimmedUrl;
+    }
+
+    // URL 형식 검증
+    try {
+      new URL(trimmedUrl);
+      return trimmedUrl;
+    } catch (e) {
+      showMessage("❌ 올바른 URL 형식이 아닙니다.", "error");
+      return null;
+    }
+  }
+
+  /**
+   * 새 URL 링크 추가
+   * @param {Object} linkData - { name, description, url }
+   * @returns {boolean} 성공 여부
+   */
+  function addUrlLink(linkData) {
+    // 유효성 검사
+    if (!linkData.name || !linkData.name.trim()) {
+      showMessage("❌ 서비스 명칭을 입력해주세요.", "error");
+      return false;
+    }
+
+    const validUrl = validateAndFixUrl(linkData.url);
+    if (!validUrl) {
+      return false;
+    }
+
+    // 새 링크 생성
+    const newLink = {
+      id: generateId(),
+      name: linkData.name.trim(),
+      description: (linkData.description || "").trim(),
+      url: validUrl,
+      createdAt: Date.now(),
+    };
+
+    // 배열에 추가
+    urlLinks.push(newLink);
+
+    // 저장
+    if (saveUrlLinks(urlLinks)) {
+      showMessage("✅ URL이 추가되었습니다!", "success");
+      renderUrlLinks();
+      hideForm();
+      return true;
+    }
+
+    // 저장 실패 시 롤백
+    urlLinks.pop();
+    return false;
+  }
+
+  /**
+   * URL 링크 수정
+   * @param {string} id - 링크 ID
+   * @param {Object} newData - { name, description, url }
+   * @returns {boolean} 성공 여부
+   */
+  function updateUrlLink(id, newData) {
+    const index = urlLinks.findIndex((link) => link.id === id);
+    if (index === -1) {
+      showMessage("❌ 수정할 URL을 찾을 수 없습니다.", "error");
+      return false;
+    }
+
+    // 유효성 검사
+    if (!newData.name || !newData.name.trim()) {
+      showMessage("❌ 서비스 명칭을 입력해주세요.", "error");
+      return false;
+    }
+
+    const validUrl = validateAndFixUrl(newData.url);
+    if (!validUrl) {
+      return false;
+    }
+
+    // 백업
+    const backup = { ...urlLinks[index] };
+
+    // 수정
+    urlLinks[index] = {
+      ...urlLinks[index],
+      name: newData.name.trim(),
+      description: (newData.description || "").trim(),
+      url: validUrl,
+    };
+
+    // 저장
+    if (saveUrlLinks(urlLinks)) {
+      showMessage("✅ URL이 수정되었습니다!", "success");
+      renderUrlLinks();
+      hideForm();
+      return true;
+    }
+
+    // 저장 실패 시 롤백
+    urlLinks[index] = backup;
+    return false;
+  }
+
+  /**
+   * URL 링크 삭제
+   * @param {string} id - 링크 ID
+   * @returns {boolean} 성공 여부
+   */
+  function deleteUrlLink(id) {
+    const index = urlLinks.findIndex((link) => link.id === id);
+    if (index === -1) {
+      showMessage("❌ 삭제할 URL을 찾을 수 없습니다.", "error");
+      return false;
+    }
+
+    // 확인 대화상자
+    const link = urlLinks[index];
+    if (!confirm(`"${link.name}" URL을 삭제하시겠습니까?`)) {
+      return false;
+    }
+
+    // 백업 후 삭제
+    const backup = urlLinks.splice(index, 1)[0];
+
+    // 저장
+    if (saveUrlLinks(urlLinks)) {
+      showMessage("✅ URL이 삭제되었습니다!", "success");
+      renderUrlLinks();
+      return true;
+    }
+
+    // 저장 실패 시 롤백
+    urlLinks.splice(index, 0, backup);
+    return false;
+  }
+
+  /**
+   * URL 열기 (새 탭)
+   * @param {string} id - 링크 ID
+   */
+  function openUrlLink(id) {
+    const link = urlLinks.find((l) => l.id === id);
+    if (!link) {
+      showMessage("❌ URL을 찾을 수 없습니다.", "error");
+      return;
+    }
+
+    // 보안: noopener, noreferrer 옵션 적용
+    window.open(link.url, "_blank", "noopener,noreferrer");
+    console.log(`✅ URL 열기: ${link.name} (${link.url})`);
+  }
+
+  // ----------------------------------------
+  // 3.4 렌더링 함수
+  // ----------------------------------------
+
+  /**
+   * URL에서 도메인 추출
+   * @param {string} url - URL 문자열
+   * @returns {string} 도메인
+   */
+  function extractDomain(url) {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname;
+    } catch (e) {
+      return "";
+    }
+  }
+
+  /**
+   * URL 링크 목록 렌더링
+   * - DocumentFragment 사용으로 성능 최적화
+   * - XSS 방지: textContent 사용
+   */
+  function renderUrlLinks() {
+    const listEl = elements.urlLinkList;
+    const emptyEl = elements.urlLinkEmptyState;
+
+    if (!listEl || !emptyEl) {
+      console.warn("URL 링크 렌더링: DOM 요소를 찾을 수 없습니다.");
+      return;
+    }
+
+    // 빈 상태 처리
+    if (urlLinks.length === 0) {
+      listEl.innerHTML = "";
+      emptyEl.style.display = "block";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+
+    // DocumentFragment 사용으로 DOM 조작 최소화
+    const fragment = document.createDocumentFragment();
+
+    urlLinks.forEach((link) => {
+      const card = createUrlLinkCard(link);
+      fragment.appendChild(card);
+    });
+
+    // 한 번에 DOM 업데이트
+    listEl.innerHTML = "";
+    listEl.appendChild(fragment);
+  }
+
+  /**
+   * URL 링크 카드 요소 생성
+   * @param {Object} link - URL 링크 객체
+   * @returns {HTMLElement} 카드 요소
+   */
+  function createUrlLinkCard(link) {
+    const card = document.createElement("div");
+    card.className = "url-link-card";
+    card.setAttribute("role", "listitem");
+    card.dataset.linkId = link.id;
+
+    // 이동 버튼
+    const launchBtn = document.createElement("button");
+    launchBtn.className = "btn-url-launch";
+    launchBtn.setAttribute("aria-label", `${link.name} 열기`);
+    launchBtn.title = `${link.name} 열기`;
+    launchBtn.textContent = "🚀";
+    launchBtn.addEventListener("click", () => openUrlLink(link.id));
+
+    // 파비콘 영역
+    const faviconDiv = document.createElement("div");
+    faviconDiv.className = "url-link-favicon";
+    
+    const domain = extractDomain(link.url);
+    if (domain) {
+      const faviconImg = document.createElement("img");
+      faviconImg.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+      faviconImg.alt = "";
+      faviconImg.loading = "lazy";
+      faviconImg.onerror = function () {
+        this.style.display = "none";
+        const fallback = document.createElement("span");
+        fallback.className = "favicon-fallback";
+        fallback.textContent = "🌐";
+        faviconDiv.appendChild(fallback);
+      };
+      faviconDiv.appendChild(faviconImg);
+    } else {
+      const fallback = document.createElement("span");
+      fallback.className = "favicon-fallback";
+      fallback.textContent = "🌐";
+      faviconDiv.appendChild(fallback);
+    }
+
+    // 정보 영역 (XSS 방지: textContent 사용)
+    const infoDiv = document.createElement("div");
+    infoDiv.className = "url-link-info";
+
+    const nameEl = document.createElement("h4");
+    nameEl.className = "url-link-name";
+    nameEl.textContent = link.name;
+
+    const descEl = document.createElement("p");
+    descEl.className = "url-link-desc";
+    descEl.textContent = link.description || domain;
+
+    infoDiv.appendChild(nameEl);
+    infoDiv.appendChild(descEl);
+
+    // 액션 버튼 영역
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "url-link-actions";
+
+    // 수정 버튼
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn-icon btn-edit";
+    editBtn.setAttribute("aria-label", `${link.name} 수정`);
+    editBtn.title = "수정";
+    editBtn.textContent = "✏️";
+    editBtn.addEventListener("click", () => showEditForm(link.id));
+
+    // 삭제 버튼
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-icon btn-delete";
+    deleteBtn.setAttribute("aria-label", `${link.name} 삭제`);
+    deleteBtn.title = "삭제";
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.addEventListener("click", () => deleteUrlLink(link.id));
+
+    actionsDiv.appendChild(editBtn);
+    actionsDiv.appendChild(deleteBtn);
+
+    // 카드에 요소 추가
+    card.appendChild(launchBtn);
+    card.appendChild(faviconDiv);
+    card.appendChild(infoDiv);
+    card.appendChild(actionsDiv);
+
+    return card;
+  }
+
+  // ----------------------------------------
+  // 3.5 폼 및 이벤트 처리
+  // ----------------------------------------
+
+  /**
+   * 입력 폼 표시 (추가 모드)
+   */
+  function showAddForm() {
+    editingLinkId = null;
+    clearForm();
+    elements.urlLinkForm.style.display = "block";
+    elements.urlLinkName.focus();
+  }
+
+  /**
+   * 입력 폼 표시 (수정 모드)
+   * @param {string} id - 수정할 링크 ID
+   */
+  function showEditForm(id) {
+    const link = urlLinks.find((l) => l.id === id);
+    if (!link) {
+      showMessage("❌ 수정할 URL을 찾을 수 없습니다.", "error");
+      return;
+    }
+
+    editingLinkId = id;
+    elements.urlLinkName.value = link.name;
+    elements.urlLinkDesc.value = link.description || "";
+    elements.urlLinkUrl.value = link.url;
+    elements.urlLinkEditId.value = id;
+    elements.urlLinkForm.style.display = "block";
+    elements.urlLinkName.focus();
+  }
+
+  /**
+   * 입력 폼 숨기기
+   */
+  function hideForm() {
+    editingLinkId = null;
+    clearForm();
+    elements.urlLinkForm.style.display = "none";
+  }
+
+  /**
+   * 폼 입력 초기화
+   */
+  function clearForm() {
+    elements.urlLinkName.value = "";
+    elements.urlLinkDesc.value = "";
+    elements.urlLinkUrl.value = "";
+    elements.urlLinkEditId.value = "";
+  }
+
+  /**
+   * 저장 버튼 핸들러
+   */
+  function handleSave() {
+    const linkData = {
+      name: elements.urlLinkName.value,
+      description: elements.urlLinkDesc.value,
+      url: elements.urlLinkUrl.value,
+    };
+
+    if (editingLinkId) {
+      updateUrlLink(editingLinkId, linkData);
+    } else {
+      addUrlLink(linkData);
+    }
+  }
+
+  /**
+   * 메시지 표시 (기존 showMessage 활용)
+   * @param {string} message - 메시지
+   * @param {string} type - 메시지 유형 (success, error, info)
+   */
+  function showMessage(message, type) {
+    if (window.dualTextWriter && window.dualTextWriter.showMessage) {
+      window.dualTextWriter.showMessage(message, type);
+    } else {
+      console.log(`[${type}] ${message}`);
+      // 폴백: alert 사용
+      if (type === "error") {
+        alert(message);
+      }
+    }
+  }
+
+  // ----------------------------------------
+  // 초기화
+  // ----------------------------------------
+
+  /**
+   * URL 연결 탭 초기화
+   */
+  function init() {
+    // DOM 요소 캐시
+    elements = {
+      addUrlLinkBtn: document.getElementById("add-url-link-btn"),
+      urlLinkForm: document.getElementById("url-link-form"),
+      urlLinkName: document.getElementById("url-link-name"),
+      urlLinkDesc: document.getElementById("url-link-desc"),
+      urlLinkUrl: document.getElementById("url-link-url"),
+      urlLinkSaveBtn: document.getElementById("url-link-save-btn"),
+      urlLinkCancelBtn: document.getElementById("url-link-cancel-btn"),
+      urlLinkEditId: document.getElementById("url-link-edit-id"),
+      urlLinkList: document.getElementById("url-link-list"),
+      urlLinkEmptyState: document.getElementById("url-link-empty-state"),
+    };
+
+    // 필수 요소 확인
+    if (!elements.urlLinkList) {
+      console.warn("URL 연결 탭: DOM 요소를 찾을 수 없습니다. (탭이 렌더링되지 않았을 수 있음)");
+      return false;
+    }
+
+    // 데이터 로드
+    loadUrlLinks();
+
+    // 이벤트 바인딩
+    if (elements.addUrlLinkBtn) {
+      elements.addUrlLinkBtn.addEventListener("click", showAddForm);
+    }
+
+    if (elements.urlLinkSaveBtn) {
+      elements.urlLinkSaveBtn.addEventListener("click", handleSave);
+    }
+
+    if (elements.urlLinkCancelBtn) {
+      elements.urlLinkCancelBtn.addEventListener("click", hideForm);
+    }
+
+    // 키보드 이벤트: Enter로 저장, Esc로 취소
+    if (elements.urlLinkForm) {
+      elements.urlLinkForm.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          handleSave();
+        } else if (e.key === "Escape") {
+          hideForm();
+        }
+      });
+    }
+
+    // 초기 렌더링
+    renderUrlLinks();
+
+    console.log("✅ URL 연결 탭 초기화 완료");
+    return true;
+  }
+
+  // 공개 API
+  return {
+    init,
+    loadUrlLinks,
+    saveUrlLinks,
+    addUrlLink,
+    updateUrlLink,
+    deleteUrlLink,
+    openUrlLink,
+    renderUrlLinks,
+    showAddForm,
+    showEditForm,
+    hideForm,
+  };
+})();
+
+// DOM 로드 완료 시 URL 연결 탭 초기화
+document.addEventListener("DOMContentLoaded", () => {
+  // 약간의 지연 후 초기화 (다른 초기화가 완료된 이후)
+  setTimeout(() => {
+    if (UrlLinkManager.init()) {
+      console.log("✅ UrlLinkManager 초기화 성공");
+    }
+  }, 500);
+});
+
+// 전역 스코프에 노출 (디버깅용)
+window.UrlLinkManager = UrlLinkManager;
+
