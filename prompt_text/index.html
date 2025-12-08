@@ -20,6 +20,7 @@
     <!-- 스타일 -->
     <link rel="stylesheet" href="css/error-toast.css" />
     <link rel="stylesheet" href="css/monitoring-dashboard.css" />
+    <link rel="stylesheet" href="css/backup-restore.css" />
     <style>
       * {
         margin: 0;
@@ -597,8 +598,80 @@
           </div>
           <div id="prompt-search-results"></div>
         </div>
+
+        <!-- ============================================================================
+             데이터 관리 섹션 (백업/복원) - Phase 4
+             ============================================================================ -->
+        <section id="data-management-section" style="margin-top: 24px;">
+          <h3>📦 데이터 백업 및 복원</h3>
+          
+          <div class="data-management-content">
+            <!-- 백업 영역 -->
+            <div class="backup-area">
+              <h4>💾 백업</h4>
+              <button 
+                id="export-backup-btn"
+                aria-label="전체 데이터를 JSON 파일로 백업합니다"
+              >
+                💾 전체 백업 다운로드
+              </button>
+              <p class="backup-info">
+                마지막 백업: <span id="last-backup-date">없음</span>
+              </p>
+            </div>
+
+            <!-- 복원 영역 -->
+            <div class="restore-area">
+              <h4>📥 복원</h4>
+              <label for="restore-file-input" class="backup-sr-only">
+                백업 파일 선택
+              </label>
+              <input 
+                type="file" 
+                id="restore-file-input" 
+                accept=".json"
+                aria-describedby="restore-file-desc"
+              />
+              <p id="restore-file-desc" class="backup-sr-only">
+                JSON 형식의 백업 파일만 지원됩니다
+              </p>
+              <button 
+                id="import-backup-btn"
+                aria-label="선택한 백업 파일에서 데이터를 복원합니다"
+                disabled
+              >
+                📥 백업 복원
+              </button>
+              <p class="restore-warning" role="alert">
+                ⚠️ 복원 시 현재 데이터가 덮어쓰기됩니다.
+              </p>
+            </div>
+          </div>
+
+          <!-- 진행률 표시 -->
+          <div 
+            id="backup-progress" 
+            class="progress-container hidden"
+            role="progressbar"
+            aria-valuenow="0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="백업/복원 진행률"
+          >
+            <div class="progress-header">
+              <span class="progress-label">진행 중...</span>
+              <span id="backup-progress-text">0%</span>
+            </div>
+            <progress id="backup-progress-bar" max="100" value="0"></progress>
+          </div>
+        </section>
       </main>
     </div>
+
+    <!-- =======================================================================
+         BackupManager 스크립트 로드 - Phase 4
+         ======================================================================= -->
+    <script src="js/managers/BackupManager.js"></script>
 
     <!-- 로딩 -->
     <div id="loading">
@@ -888,6 +961,9 @@
           currentUser = user;
           showMainContent();
           loadPromptsForAllTabs();
+          
+          // 백업/복원 기능 초기화 (Phase 4)
+          initBackupRestore();
         } else {
           currentUser = null;
           showAuthSection();
@@ -2609,6 +2685,240 @@
             "너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.",
         };
         return messages[code] || "오류가 발생했습니다. 다시 시도해주세요.";
+      }
+
+      // ============================================================================
+      // 백업/복원 이벤트 핸들러 - Phase 4
+      // ============================================================================
+
+      let backupManager = null;
+
+      /**
+       * 백업/복원 기능 초기화
+       */
+      function initBackupRestore() {
+        try {
+          if (!db || !auth) {
+            console.warn('⚠️ BackupManager: db 또는 auth가 초기화되지 않았습니다.');
+            return;
+          }
+
+          // BackupManager 인스턴스 생성
+          backupManager = new BackupManager(db, auth);
+          
+          // 이벤트 리스너 연결
+          setupBackupEventListeners();
+          
+          console.log('✅ BackupManager 초기화 완료');
+        } catch (error) {
+          console.error('❌ BackupManager 초기화 실패:', error);
+        }
+      }
+
+      /**
+       * 백업/복원 이벤트 리스너 설정
+       */
+      function setupBackupEventListeners() {
+        const exportBtn = document.getElementById('export-backup-btn');
+        const importBtn = document.getElementById('import-backup-btn');
+        const fileInput = document.getElementById('restore-file-input');
+
+        // 백업 버튼 클릭 이벤트
+        if (exportBtn) {
+          exportBtn.addEventListener('click', handleExportBackup);
+        }
+
+        // 파일 선택 이벤트
+        if (fileInput) {
+          fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        // 복원 버튼 클릭 이벤트
+        if (importBtn) {
+          importBtn.addEventListener('click', handleImportBackup);
+        }
+      }
+
+      /**
+       * 백업 내보내기 핸들러
+       */
+      async function handleExportBackup() {
+        try {
+          if (!currentUser) {
+            showError('로그인이 필요합니다.');
+            return;
+          }
+
+          backupManager.setCurrentUser(currentUser);
+          showBackupProgress(true, '백업 생성 중...');
+
+          const meta = await backupManager.downloadBackup();
+          
+          // 마지막 백업 날짜 업데이트
+          const lastBackupDate = document.getElementById('last-backup-date');
+          if (lastBackupDate) {
+            lastBackupDate.textContent = new Date().toLocaleString('ko-KR');
+          }
+
+          hideBackupProgress();
+          showSuccess('백업이 완료되었습니다!');
+          console.log('✅ 백업 완료:', meta);
+
+        } catch (error) {
+          hideBackupProgress();
+          console.error('❌ 백업 실패:', error);
+          showError('백업에 실패했습니다: ' + error.message);
+        }
+      }
+
+      /**
+       * 파일 선택 핸들러
+       */
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        const importBtn = document.getElementById('import-backup-btn');
+        
+        if (file && file.name.endsWith('.json')) {
+          importBtn.disabled = false;
+        } else {
+          importBtn.disabled = true;
+          if (file) {
+            showError('JSON 형식의 파일만 선택할 수 있습니다.');
+          }
+        }
+      }
+
+      /**
+       * 백업 가져오기/복원 핸들러
+       */
+      async function handleImportBackup() {
+        try {
+          if (!currentUser) {
+            showError('로그인이 필요합니다.');
+            return;
+          }
+
+          const fileInput = document.getElementById('restore-file-input');
+          const file = fileInput.files[0];
+
+          if (!file) {
+            showError('백업 파일을 선택해주세요.');
+            return;
+          }
+
+          // 확인 다이얼로그
+          const confirmRestore = confirm(
+            '⚠️ 복원을 진행하시겠습니까?\n\n' +
+            '복원을 진행하면 현재 데이터가 덮어쓰기될 수 있습니다.\n' +
+            '복원 전에 자동으로 현재 데이터를 백업합니다.'
+          );
+
+          if (!confirmRestore) {
+            return;
+          }
+
+          backupManager.setCurrentUser(currentUser);
+          showBackupProgress(true, '복원 전 자동 백업 중...');
+
+          // 복원 전 자동 백업
+          await backupManager.createAutoBackup();
+          
+          showBackupProgress(true, '백업 파일 읽는 중...');
+          const backupData = await backupManager.importData(file);
+
+          // 유효성 검증
+          const validation = backupManager.validateBackup(backupData);
+          if (!validation.isValid) {
+            hideBackupProgress();
+            showError('백업 파일 검증 실패: ' + validation.errors.join(', '));
+            return;
+          }
+
+          // 경고 표시 (있는 경우)
+          if (validation.warnings.length > 0) {
+            console.warn('⚠️ 백업 경고:', validation.warnings);
+          }
+
+          showBackupProgress(true, '데이터 복원 중...');
+          
+          // 복원 진행
+          const result = await backupManager.restoreData(backupData, (percent) => {
+            updateBackupProgress(percent);
+          });
+
+          hideBackupProgress();
+          
+          // 파일 입력 초기화
+          fileInput.value = '';
+          document.getElementById('import-backup-btn').disabled = true;
+
+          showSuccess(
+            `복원이 완료되었습니다!\n` +
+            `프롬프트: ${result.restored.prompts}개\n` +
+            `버전: ${result.restored.versions}개\n` +
+            `실행 이력: ${result.restored.executionHistory}개`
+          );
+
+          // 페이지 새로고침하여 복원된 데이터 반영
+          setTimeout(() => {
+            location.reload();
+          }, 2000);
+
+        } catch (error) {
+          hideBackupProgress();
+          console.error('❌ 복원 실패:', error);
+          showError('복원에 실패했습니다: ' + error.message);
+        }
+      }
+
+      /**
+       * 백업 진행률 표시
+       */
+      function showBackupProgress(show, label = '진행 중...') {
+        const progressContainer = document.getElementById('backup-progress');
+        const progressLabel = progressContainer?.querySelector('.progress-label');
+        
+        if (progressContainer) {
+          if (show) {
+            progressContainer.classList.remove('hidden');
+            progressContainer.classList.add('active');
+          } else {
+            progressContainer.classList.add('hidden');
+            progressContainer.classList.remove('active');
+          }
+        }
+        
+        if (progressLabel) {
+          progressLabel.textContent = label;
+        }
+        
+        updateBackupProgress(0);
+      }
+
+      /**
+       * 백업 진행률 숨기기
+       */
+      function hideBackupProgress() {
+        showBackupProgress(false);
+      }
+
+      /**
+       * 백업 진행률 업데이트
+       */
+      function updateBackupProgress(percent) {
+        const progressBar = document.getElementById('backup-progress-bar');
+        const progressText = document.getElementById('backup-progress-text');
+        const progressContainer = document.getElementById('backup-progress');
+        
+        if (progressBar) {
+          progressBar.value = percent;
+        }
+        if (progressText) {
+          progressText.textContent = `${percent}%`;
+        }
+        if (progressContainer) {
+          progressContainer.setAttribute('aria-valuenow', percent);
+        }
       }
 
       // 페이지 로드 시 초기화
