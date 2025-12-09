@@ -9295,15 +9295,16 @@ class DualTextWriter {
       });
     }
 
+    // ===== [Dual Panel] 패널 1 수정/삭제/복사 버튼 이벤트 =====
     if (this.detailEditBtn) {
       this.detailEditBtn.addEventListener("click", () => {
-        this.enterEditMode();
+        this.enterEditModeByIndex(0);
       });
     }
 
     if (this.detailDeleteBtn) {
       this.detailDeleteBtn.addEventListener("click", () => {
-        this.deleteArticle();
+        this.deleteArticleByIndex(0);
       });
     }
 
