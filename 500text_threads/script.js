@@ -9148,6 +9148,11 @@ class DualTextWriter {
     this.editCategorySelect = document.getElementById("edit-category-select-1");
     this.editContentTextarea = document.getElementById("edit-content-textarea-1");
 
+    // ===== [Dual Panel] 확대 버튼 DOM 참조 =====
+    // 2025-12-09 Phase 1 추가: 듀얼 패널 확대 버튼 기능 구현
+    this.detailExpandBtn1 = document.getElementById("detail-expand-btn-1");
+    this.detailExpandBtn2 = document.getElementById("detail-expand-btn-2");
+
     // 새 스크립트 작성 폼 관련 요소
     this.newScriptToggleBtn = document.getElementById("new-script-toggle-btn");
     this.scriptCreateForm = document.getElementById("script-create-form");
@@ -9328,6 +9333,22 @@ class DualTextWriter {
     if (detailCopyBtn2) {
       detailCopyBtn2.addEventListener("click", () => {
         this.copyArticleContentByIndex(1);
+      });
+    }
+
+    // ===== [Dual Panel] 확대 버튼 이벤트 =====
+    // 2025-12-09 Phase 1 추가: 듀얼 패널 확대 버튼 클릭 이벤트 연결
+    // 패널 1 확대 버튼
+    if (this.detailExpandBtn1) {
+      this.detailExpandBtn1.addEventListener("click", () => {
+        this.openExpandModeByIndex(0);
+      });
+    }
+
+    // 패널 2 확대 버튼
+    if (this.detailExpandBtn2) {
+      this.detailExpandBtn2.addEventListener("click", () => {
+        this.openExpandModeByIndex(1);
       });
     }
 
@@ -11184,6 +11205,94 @@ class DualTextWriter {
     }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
   }
 
+  // ===== [Dual Panel] 듀얼 패널 확대 모드 열기 =====
+  // 2025-12-09 Phase 2 추가: 특정 패널에서 확대 모드 진입
+  /**
+   * 특정 패널에서 확대 모드 진입 (듀얼 패널용)
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  openExpandModeByIndex(panelIndex = 0) {
+    // 필수 DOM 요소 확인
+    if (!this.contentExpandModal || !this.expandContentTextarea) {
+      console.warn("[Dual Panel] 확대 모드 DOM 요소 없음");
+      return;
+    }
+
+    // 패널 인덱스로 글 ID 가져오기
+    const articleId = this.selectedArticleIds[panelIndex];
+    if (!articleId) {
+      console.warn("[Dual Panel] 확대할 글이 없습니다:", panelIndex);
+      this.showMessage("❌ 선택된 글이 없습니다.", "warning");
+      return;
+    }
+
+    // 글 데이터 조회
+    const article = this.managementArticles.find((a) => a.id === articleId);
+    if (!article) {
+      this.showMessage("❌ 글 정보를 찾을 수 없습니다.", "error");
+      return;
+    }
+
+    // 확대 모드 소스 저장 (듀얼 패널)
+    this.expandSourceMode = "dualPanel";
+    this.expandModeArticleId = articleId;
+    this.expandModePanelIndex = panelIndex;
+
+    // 확대 모드 UI에 데이터 로드
+    // 제목 설정
+    if (this.expandPreviewTitle) {
+      this.expandPreviewTitle.textContent = article.title || "제목 없음";
+    }
+
+    // 카테고리 설정
+    if (this.expandPreviewCategory) {
+      this.expandPreviewCategory.textContent = article.category || "미분류";
+    }
+
+    // 내용 설정
+    if (this.expandContentTextarea) {
+      this.expandContentTextarea.value = article.content || "";
+    }
+
+    // 글자 수 카운터 업데이트
+    this.updateExpandContentCounter();
+
+    // 모달 표시
+    this.contentExpandModal.style.display = "block";
+
+    // 접근성: ARIA 속성 업데이트
+    this.contentExpandModal.setAttribute("aria-hidden", "false");
+
+    // ARIA 버튼 상태 업데이트
+    const expandBtn = panelIndex === 0 
+      ? this.detailExpandBtn1 
+      : this.detailExpandBtn2;
+    if (expandBtn) {
+      expandBtn.setAttribute("aria-expanded", "true");
+    }
+
+    // 스크린 리더 사용자를 위한 알림
+    this.announceToScreenReader("확대 모드가 열렸습니다. 패널 " + (panelIndex + 1) + "의 글을 편집합니다.");
+
+    // 접근성: 포커스 트랩 설정 (Tab 키 순환 제한)
+    this._setupExpandModeFocusTrap();
+
+    // 접근성: ESC 키로 모달 닫기
+    this._setupExpandModeEscapeHandler();
+
+    // 약간의 지연 후 포커스 (애니메이션 완료 후)
+    setTimeout(() => {
+      this.expandContentTextarea.focus();
+      // 커서를 끝으로 이동
+      const length = this.expandContentTextarea.value.length;
+      this.expandContentTextarea.setSelectionRange(length, length);
+    }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
+
+    console.log("[Dual Panel] 확대 모드 열림:", { panelIndex, articleId, title: article.title });
+  }
+
+  // ===== [Dual Panel] 확대 모드 닫기 =====
+  // 2025-12-09 Phase 3 추가: 듀얼 패널 상태 복원 포함
   /**
    * 확대 모드 닫기
    * 접근성: ARIA 속성 업데이트 포함
@@ -11201,7 +11310,11 @@ class DualTextWriter {
     }
 
     // 확대 모드의 내용을 원본 textarea에 동기화 (닫을 때 자동 동기화)
-    if (this.expandSourceMode === "edit") {
+    // ===== [Dual Panel] 듀얼 패널 모드 동기화 =====
+    if (this.expandSourceMode === "dualPanel") {
+      // 듀얼 패널 모드: 저장은 별도로 처리
+      console.log("[Dual Panel] 확대 모드 닫힘");
+    } else if (this.expandSourceMode === "edit") {
       if (this.editContentTextarea) {
         this.editContentTextarea.value = this.expandContentTextarea.value;
       }
@@ -11215,13 +11328,24 @@ class DualTextWriter {
     // 접근성: ARIA 속성 업데이트
     this.contentExpandModal.setAttribute("aria-hidden", "true");
 
-    // 열었던 버튼의 aria-expanded 복구
-    const activeBtn =
-      this.expandSourceMode === "edit"
-        ? this.detailExpandBtn
-        : this.expandContentBtn;
-    if (activeBtn) {
-      activeBtn.setAttribute("aria-expanded", "false");
+    // ===== [Dual Panel] ARIA 버튼 상태 복원 =====
+    if (this.expandSourceMode === "dualPanel") {
+      // 듀얼 패널 확대 버튼 aria-expanded 복원
+      if (this.detailExpandBtn1) {
+        this.detailExpandBtn1.setAttribute("aria-expanded", "false");
+      }
+      if (this.detailExpandBtn2) {
+        this.detailExpandBtn2.setAttribute("aria-expanded", "false");
+      }
+    } else {
+      // 기존 로직
+      const activeBtn =
+        this.expandSourceMode === "edit"
+          ? this.detailExpandBtn
+          : this.expandContentBtn;
+      if (activeBtn) {
+        activeBtn.setAttribute("aria-expanded", "false");
+      }
     }
 
     // 스크린 리더 사용자를 위한 알림
@@ -11234,15 +11358,31 @@ class DualTextWriter {
     // 모달 숨기기
     this.contentExpandModal.style.display = "none";
 
-    // 접근성: 원래 포커스 위치로 복귀 (확대 모드 열기 버튼)
-    const focusTarget =
-      this.expandSourceMode === "edit"
-        ? this.detailExpandBtn
-        : this.expandContentBtn;
-    if (focusTarget) {
-      setTimeout(() => {
-        focusTarget.focus();
-      }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
+    // ===== [Dual Panel] 포커스 복원 및 상태 초기화 =====
+    if (this.expandSourceMode === "dualPanel") {
+      const panelIndex = this.expandModePanelIndex;
+      const focusTarget = panelIndex === 0 
+        ? this.detailExpandBtn1 
+        : this.detailExpandBtn2;
+      if (focusTarget) {
+        setTimeout(() => {
+          focusTarget.focus();
+        }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
+      }
+      // 상태 변수 초기화
+      this.expandModeArticleId = null;
+      this.expandModePanelIndex = null;
+    } else {
+      // 기존 로직
+      const focusTarget =
+        this.expandSourceMode === "edit"
+          ? this.detailExpandBtn
+          : this.expandContentBtn;
+      if (focusTarget) {
+        setTimeout(() => {
+          focusTarget.focus();
+        }, DualTextWriter.CONFIG.SCREEN_READER_ANNOUNCE_DELAY_MS);
+      }
     }
   }
 
@@ -11346,10 +11486,69 @@ class DualTextWriter {
     }
   }
 
+  // ===== [Dual Panel] 저장하고 확대 모드 닫기 =====
+  // 2025-12-09 Phase 4 추가: 듀얼 패널 모드 저장 지원
   /**
    * 저장하고 확대 모드 닫기
    */
-  saveAndCloseExpandMode() {
+  async saveAndCloseExpandMode() {
+    // ===== [Dual Panel] 듀얼 패널 모드 저장 =====
+    if (this.expandSourceMode === "dualPanel") {
+      const articleId = this.expandModeArticleId;
+      const panelIndex = this.expandModePanelIndex;
+      const newContent = this.expandContentTextarea?.value || "";
+      
+      if (!articleId) {
+        this.showMessage("❌ 저장할 글을 찾을 수 없습니다.", "error");
+        this.closeExpandMode();
+        return;
+      }
+
+      try {
+        // Firestore에서 글 업데이트
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          this.showMessage("❌ 로그인이 필요합니다.", "error");
+          this.closeExpandMode();
+          return;
+        }
+
+        const docRef = firebase.firestore()
+          .collection("users")
+          .doc(user.uid)
+          .collection("texts")
+          .doc(articleId);
+
+        await docRef.update({
+          content: newContent,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 로컬 데이터 업데이트
+        const article = this.managementArticles.find((a) => a.id === articleId);
+        if (article) {
+          article.content = newContent;
+          article.updatedAt = new Date();
+        }
+
+        // 패널 UI 갱신
+        if (article && panelIndex !== null) {
+          this.renderDetailPanelByIndex(article, panelIndex);
+        }
+
+        this.showMessage("✅ 저장되었습니다.", "success");
+        console.log("[Dual Panel] 확대 모드에서 저장 완료:", { articleId, panelIndex });
+
+      } catch (error) {
+        console.error("[Dual Panel] 저장 실패:", error);
+        this.showMessage("❌ 저장에 실패했습니다.", "error");
+      }
+
+      this.closeExpandMode();
+      return;
+    }
+
+    // ===== 기존 로직: edit 모드 및 new 모드 =====
     // 내용 동기화 (닫기 전에 수행)
     if (this.expandSourceMode === "edit") {
       // 수정 모드로 반환
