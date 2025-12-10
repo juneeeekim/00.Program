@@ -9361,15 +9361,17 @@ class DualTextWriter {
       });
     }
 
+    // ===== [Dual Panel] 패널 1 저장/취소 버튼 이벤트 =====
+    // 2025-12-10 버그 수정: ByIndex 함수 호출로 변경 (suffix 적용된 DOM ID 사용)
     if (this.editSaveBtn) {
       this.editSaveBtn.addEventListener("click", () => {
-        this.saveArticleEdit();
+        this.saveArticleEditByIndex(0);
       });
     }
 
     if (this.editCancelBtn) {
       this.editCancelBtn.addEventListener("click", () => {
-        this.cancelArticleEdit();
+        this.cancelArticleEditByIndex(0);
       });
     }
 
