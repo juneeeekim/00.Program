@@ -9148,6 +9148,14 @@ class DualTextWriter {
     this.editCategorySelect = document.getElementById("edit-category-select-1");
     this.editContentTextarea = document.getElementById("edit-content-textarea-1");
 
+    // ===== [Dual Panel] 패널 2 수정 모드 DOM 참조 =====
+    // 2025-12-10 버그 수정: 패널 2 저장/취소 버튼 이벤트 연결을 위한 DOM 참조 추가
+    this.editSaveBtn2 = document.getElementById("edit-article-save-btn-2");
+    this.editCancelBtn2 = document.getElementById("edit-article-cancel-btn-2");
+    this.editTitleInput2 = document.getElementById("edit-title-input-2");
+    this.editCategorySelect2 = document.getElementById("edit-category-select-2");
+    this.editContentTextarea2 = document.getElementById("edit-content-textarea-2");
+
     // ===== [Dual Panel] 확대 버튼 DOM 참조 =====
     // 2025-12-09 Phase 1 추가: 듀얼 패널 확대 버튼 기능 구현
     this.detailExpandBtn1 = document.getElementById("detail-expand-btn-1");
@@ -9362,6 +9370,20 @@ class DualTextWriter {
     if (this.editCancelBtn) {
       this.editCancelBtn.addEventListener("click", () => {
         this.cancelArticleEdit();
+      });
+    }
+
+    // ===== [Dual Panel] 패널 2 저장/취소 버튼 이벤트 =====
+    // 2025-12-10 버그 수정: 패널 2 수정 모드 저장/취소 기능 연결
+    if (this.editSaveBtn2) {
+      this.editSaveBtn2.addEventListener("click", () => {
+        this.saveArticleEditByIndex(1);
+      });
+    }
+
+    if (this.editCancelBtn2) {
+      this.editCancelBtn2.addEventListener("click", () => {
+        this.cancelArticleEditByIndex(1);
       });
     }
 
@@ -10691,6 +10713,134 @@ class DualTextWriter {
       if (article) {
         this.renderDetailPanel(article);
       }
+    }
+  }
+
+  // ===== [Dual Panel] 패널별 글 수정 저장 =====
+  // 2025-12-10 버그 수정: 패널 2 저장 버튼이 동작하지 않는 문제 해결
+  /**
+   * 특정 패널에서 글 수정 저장
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  async saveArticleEditByIndex(panelIndex = 0) {
+    // 패널 인덱스에 따른 글 ID 가져오기
+    const articleId = this.selectedArticleIds?.[panelIndex] || 
+      (panelIndex === 0 ? this.selectedArticleId : null);
+    
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) {
+      console.warn("[Dual Panel] 저장 불가: 글 ID 또는 인증 정보 없음", { panelIndex, articleId });
+      return;
+    }
+
+    // 패널 인덱스에 따른 suffix 결정
+    const suffix = panelIndex === 0 ? "-1" : "-2";
+    
+    // DOM 요소 참조
+    const editTitleInput = document.getElementById(`edit-title-input${suffix}`);
+    const editContentTextarea = document.getElementById(`edit-content-textarea${suffix}`);
+    const editCategorySelect = document.getElementById(`edit-category-select${suffix}`);
+    
+    const title = editTitleInput?.value.trim() || "";
+    const content = editContentTextarea?.value.trim() || "";
+    const category = editCategorySelect?.value || "미분류";
+
+    // 제목 검증
+    if (!title || title.trim() === "") {
+      this.showMessage("❌ 제목을 입력해주세요.", "error");
+      if (editTitleInput) {
+        editTitleInput.focus();
+      }
+      return;
+    }
+
+    // 내용 검증
+    if (!content) {
+      this.showMessage("❌ 내용을 입력해주세요.", "error");
+      if (editContentTextarea) {
+        editContentTextarea.focus();
+      }
+      return;
+    }
+
+    try {
+      const articleRef = window.firebaseDoc(
+        this.db,
+        "users",
+        this.currentUser.uid,
+        "texts",
+        articleId
+      );
+
+      await window.firebaseUpdateDoc(articleRef, {
+        title: title.trim(),
+        content: content,
+        characterCount: content.length,
+        topic: category,
+        updatedAt: window.firebaseServerTimestamp(),
+      });
+
+      // 로컬 데이터 업데이트
+      const article = this.managementArticles.find((a) => a.id === articleId);
+      if (article) {
+        article.title = title.trim();
+        article.content = content;
+        article.category = category;
+      }
+
+      // UI 업데이트
+      this.showMessage("✅ 글이 수정되었습니다.", "success");
+      await this.loadArticlesForManagement();
+      
+      // 해당 패널 다시 렌더링
+      this.renderDetailPanelByIndex(article, panelIndex);
+
+      // 읽기 모드로 전환
+      const readMode = document.getElementById(`detail-read-mode${suffix}`);
+      const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+      if (readMode) readMode.style.display = "block";
+      if (editMode) editMode.style.display = "none";
+
+      console.log("[Dual Panel] 글 수정 저장 완료:", { panelIndex, articleId, title });
+    } catch (error) {
+      console.error("[Dual Panel] 글 수정 실패:", error);
+      this.showMessage("❌ 글 수정 중 오류가 발생했습니다.", "error");
+    }
+  }
+
+  // ===== [Dual Panel] 패널별 수정 취소 =====
+  // 2025-12-10 버그 수정: 패널 2 취소 버튼이 동작하지 않는 문제 해결
+  /**
+   * 특정 패널에서 수정 취소
+   * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
+   */
+  cancelArticleEditByIndex(panelIndex = 0) {
+    // 패널 인덱스에 따른 글 ID 가져오기
+    const articleId = this.selectedArticleIds?.[panelIndex] || 
+      (panelIndex === 0 ? this.selectedArticleId : null);
+    
+    if (!articleId) {
+      console.warn("[Dual Panel] 취소 불가: 글 ID 없음", { panelIndex });
+      return;
+    }
+
+    if (confirm("수정을 취소하시겠습니까?")) {
+      // 패널 인덱스에 따른 suffix 결정
+      const suffix = panelIndex === 0 ? "-1" : "-2";
+      
+      // 읽기 모드로 전환
+      const readMode = document.getElementById(`detail-read-mode${suffix}`);
+      const editMode = document.getElementById(`detail-edit-mode${suffix}`);
+
+      if (readMode) readMode.style.display = "block";
+      if (editMode) editMode.style.display = "none";
+
+      // 상세 패널 다시 렌더링
+      const article = this.managementArticles.find((a) => a.id === articleId);
+      if (article) {
+        this.renderDetailPanelByIndex(article, panelIndex);
+      }
+
+      console.log("[Dual Panel] 수정 취소:", { panelIndex, articleId });
     }
   }
 
