@@ -11656,23 +11656,27 @@ class DualTextWriter {
       }
 
       try {
-        // Firestore에서 글 업데이트
-        const user = firebase.auth().currentUser;
-        if (!user) {
+        // ===== [Bug Fix] 2025-12-10 Firebase 접근 방식 표준화 =====
+        // 기존: firebase.auth().currentUser, firebase.firestore() 직접 접근
+        // 수정: this.currentUser, window.firebaseDoc() + window.firebaseUpdateDoc() 래퍼 사용
+        if (!this.currentUser || !this.isFirebaseReady) {
           this.showMessage("❌ 로그인이 필요합니다.", "error");
           this.closeExpandMode();
           return;
         }
 
-        const docRef = firebase.firestore()
-          .collection("users")
-          .doc(user.uid)
-          .collection("texts")
-          .doc(articleId);
+        const articleRef = window.firebaseDoc(
+          this.db,
+          "users",
+          this.currentUser.uid,
+          "texts",
+          articleId
+        );
 
-        await docRef.update({
+        await window.firebaseUpdateDoc(articleRef, {
           content: newContent,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          characterCount: newContent.length,
+          updatedAt: window.firebaseServerTimestamp()
         });
 
         // 로컬 데이터 업데이트
