@@ -10513,6 +10513,66 @@ class DualTextWriter {
     }
   }
 
+  // ================================================================
+  // [Bug Fix] 수정 모드 카테고리 드롭다운 채우기
+  // - 2025-12-10 버그 수정: 수정 모드 진입 시 카테고리가 불러와지지 않는 문제 해결
+  // - enterEditModeByIndex()에서 호출하여 카테고리 드롭다운을 채우고 선택
+  // ================================================================
+
+  /**
+   * 수정 모드 카테고리 드롭다운 채우기 및 선택
+   * @param {HTMLSelectElement} selectElement - 카테고리 select 요소
+   * @param {string} selectedCategory - 선택해야 할 카테고리 값
+   */
+  populateEditCategorySelect(selectElement, selectedCategory) {
+    if (!selectElement) {
+      console.warn("[Bug Fix] 카테고리 select 요소를 찾을 수 없습니다.");
+      return;
+    }
+
+    // 현재 카테고리 목록에서 고유한 카테고리 추출
+    const categories = new Set(["미분류"]);
+    this.managementArticles.forEach((article) => {
+      if (article.category) {
+        categories.add(article.category);
+      }
+    });
+
+    // "미분류"를 제외한 카테고리를 알파벳순으로 정렬 후 "미분류"를 맨 뒤에 추가
+    const categoriesArray = Array.from(categories);
+    const otherCategories = categoriesArray.filter(c => c !== "미분류").sort();
+    const sortedCategories = categoriesArray.includes("미분류") 
+      ? [...otherCategories, "미분류"] 
+      : otherCategories;
+
+    // 드롭다운 초기화 및 옵션 추가
+    selectElement.innerHTML = "";
+    sortedCategories.forEach((category) => {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      selectElement.appendChild(option);
+    });
+
+    // 기존 카테고리 선택 (없으면 "미분류" 선택)
+    const categoryToSelect = selectedCategory || "미분류";
+    if (sortedCategories.includes(categoryToSelect)) {
+      selectElement.value = categoryToSelect;
+    } else {
+      // 기존 카테고리가 목록에 없으면 추가 후 선택
+      const newOption = document.createElement("option");
+      newOption.value = categoryToSelect;
+      newOption.textContent = categoryToSelect;
+      selectElement.insertBefore(newOption, selectElement.firstChild);
+      selectElement.value = categoryToSelect;
+    }
+
+    console.log("[Bug Fix] 카테고리 드롭다운 채우기 완료:", {
+      totalCategories: sortedCategories.length,
+      selectedCategory: selectElement.value
+    });
+  }
+
   /**
    * 특정 패널에서 글 삭제
    * @param {number} panelIndex - 패널 인덱스 (0 또는 1)
