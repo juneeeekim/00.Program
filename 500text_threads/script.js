@@ -1601,7 +1601,10 @@ class DualTextWriter {
           const val = e.target.value;
           clearTimeout(this.savedSearchDebounce);
           // debounce로 성능 최적화 (600ms)
-          this.savedSearchDebounce = setTimeout(() => {
+          this.savedSearchDebounce = setTimeout(async () => {
+            // [Hybrid Pagination] 검색 시 전체 데이터 로드 보장
+            await this.ensureAllDataLoaded();
+            
             this.savedSearch = val;
             localStorage.setItem("dtw_saved_search", this.savedSearch);
             // 저장된 글 목록 새로고침
@@ -1796,6 +1799,16 @@ class DualTextWriter {
   }
 
   /**
+   * [Hybrid Pagination] 검색/필터를 위한 전체 데이터 로드 보장
+   */
+  async ensureAllDataLoaded() {
+    if (this.isAllDataLoaded) return;
+
+    this.showMessage("검색/필터를 위해 전체 데이터를 불러옵니다...", "info");
+    await this.loadSavedTextsFromFirestore(true);
+  }
+
+  /**
    * '더 보기' 버튼 및 스피너 상태 업데이트
    */
   updateLoadMoreButtonVisibility() {
@@ -1900,7 +1913,10 @@ class DualTextWriter {
     );
     if (this.referenceTypeFilterSelect) {
       this.referenceTypeFilterSelect.value = this.referenceTypeFilter;
-      this.referenceTypeFilterSelect.onchange = () => {
+      this.referenceTypeFilterSelect.onchange = async () => {
+        // [Hybrid Pagination] 필터 시 전체 데이터 로드 보장
+        await this.ensureAllDataLoaded();
+
         this.referenceTypeFilter = this.referenceTypeFilterSelect.value;
         localStorage.setItem(
           "dualTextWriter_referenceTypeFilter",
@@ -1915,7 +1931,10 @@ class DualTextWriter {
       this.currentTopicFilter =
         localStorage.getItem("dualTextWriter_topicFilter") || "all";
       this.topicFilter.value = this.currentTopicFilter;
-      this.topicFilter.onchange = () => {
+      this.topicFilter.onchange = async () => {
+        // [Hybrid Pagination] 필터 시 전체 데이터 로드 보장
+        await this.ensureAllDataLoaded();
+
         this.currentTopicFilter = this.topicFilter.value;
         localStorage.setItem(
           "dualTextWriter_topicFilter",
@@ -1931,7 +1950,10 @@ class DualTextWriter {
       this.currentSourceFilter =
         localStorage.getItem("dualTextWriter_sourceFilter") || "all";
       this.sourceFilter.value = this.currentSourceFilter;
-      this.sourceFilter.onchange = () => {
+      this.sourceFilter.onchange = async () => {
+        // [Hybrid Pagination] 필터 시 전체 데이터 로드 보장
+        await this.ensureAllDataLoaded();
+
         this.currentSourceFilter = this.sourceFilter.value;
         localStorage.setItem(
           "dualTextWriter_sourceFilter",
@@ -1947,7 +1969,10 @@ class DualTextWriter {
       this.currentSnsFilterMode =
         localStorage.getItem("dualTextWriter_snsFilterMode") || "all";
       this.snsFilterMode.value = this.currentSnsFilterMode;
-      this.snsFilterMode.onchange = () => {
+      this.snsFilterMode.onchange = async () => {
+        // [Hybrid Pagination] 필터 시 전체 데이터 로드 보장
+        await this.ensureAllDataLoaded();
+
         this.currentSnsFilterMode = this.snsFilterMode.value;
         localStorage.setItem(
           "dualTextWriter_snsFilterMode",
@@ -1978,7 +2003,10 @@ class DualTextWriter {
       } else {
         this.snsFilterPlatform.style.display = "block";
       }
-      this.snsFilterPlatform.onchange = () => {
+      this.snsFilterPlatform.onchange = async () => {
+        // [Hybrid Pagination] 필터 시 전체 데이터 로드 보장
+        await this.ensureAllDataLoaded();
+
         this.currentSnsFilterPlatform = this.snsFilterPlatform.value;
         localStorage.setItem(
           "dualTextWriter_snsFilterPlatform",
