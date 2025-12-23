@@ -291,6 +291,11 @@ class DualTextWriter {
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
 
+    // Pagination State
+    this.lastVisibleDoc = null;
+    this.isAllDataLoaded = false;
+    this.PAGE_SIZE = 20;
+
     this.init();
   }
 
@@ -1418,7 +1423,7 @@ class DualTextWriter {
 
     // 저장된 글 탭으로 전환할 때 목록 새로고침
     if (tabName === Constants.TABS.SAVED) {
-      this.loadSavedTexts();
+      this.loadSavedTextsFromFirestore(false);
       this.initSavedFilters();
       // 미트래킹 글 버튼 상태 업데이트
       if (this.updateBatchMigrationButton) {
@@ -1719,6 +1724,115 @@ class DualTextWriter {
     setTimeout(() => {
       this.bindPanelLLMButtons();
     }, 100);
+
+    // '더 보기' 버튼 이벤트
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => this.loadMoreTexts());
+    }
+  }
+
+  /**
+   * 저장된 글 불러오기 (Firestore) - 페이지네이션 지원
+   * @param {boolean} loadAll - 전체 로드 여부 (검색/필터 시 true)
+   */
+  async loadSavedTextsFromFirestore(loadAll = false) {
+    if (!this.currentUser) return;
+
+    try {
+      this.showLoadingSpinner(true);
+
+      if (loadAll) {
+        // 전체 로드 (기존 방식과 유사하지만 DataManager 직접 사용)
+        const texts = await this.dataManager.loadSavedTexts(this.currentUser.uid);
+        this.savedTexts = texts;
+        this.isAllDataLoaded = true;
+        this.lastVisibleDoc = null;
+      } else {
+        // 페이지네이션 로드
+        const result = await this.dataManager.loadSavedTextsPaginated(
+          this.currentUser.uid,
+          this.PAGE_SIZE,
+          this.lastVisibleDoc
+        );
+
+        if (this.lastVisibleDoc === null) {
+          // 첫 페이지
+          this.savedTexts = result.texts;
+        } else {
+          // 더 보기: 중복 제거 후 추가
+          const newTexts = result.texts.filter(
+            (newText) => !this.savedTexts.some((existing) => existing.id === newText.id)
+          );
+          this.savedTexts = [...this.savedTexts, ...newTexts];
+        }
+
+        this.lastVisibleDoc = result.lastVisibleDoc;
+
+        // 더 이상 불러올 데이터가 없으면 플래그 설정
+        if (result.texts.length < this.PAGE_SIZE) {
+          this.isAllDataLoaded = true;
+        }
+      }
+
+      // UI 업데이트
+      this.updateLoadMoreButtonVisibility();
+      this.renderSavedTexts();
+
+    } catch (error) {
+      console.error("저장된 글 로드 실패:", error);
+      this.showMessage("글 목록을 불러오는데 실패했습니다.", "error");
+    } finally {
+      this.showLoadingSpinner(false);
+    }
+  }
+
+  /**
+   * '더 보기' 버튼 클릭 핸들러
+   */
+  async loadMoreTexts() {
+    if (this.isAllDataLoaded) return;
+    await this.loadSavedTextsFromFirestore(false);
+  }
+
+  /**
+   * '더 보기' 버튼 및 스피너 상태 업데이트
+   */
+  updateLoadMoreButtonVisibility() {
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    const spinner = document.getElementById("load-more-container");
+
+    if (loadMoreBtn) {
+      if (this.isAllDataLoaded || this.savedTexts.length === 0) {
+        loadMoreBtn.style.display = "none";
+      } else {
+        loadMoreBtn.style.display = "block";
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = "더 보기";
+      }
+    }
+
+    if (spinner) {
+      spinner.style.display = "none";
+    }
+  }
+
+  /**
+   * 로딩 스피너 표시/숨김
+   */
+  showLoadingSpinner(show) {
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    const spinner = document.getElementById("load-more-container");
+
+    if (show) {
+      if (loadMoreBtn) {
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.textContent = "로딩 중...";
+      }
+      if (spinner) spinner.style.display = "flex";
+    } else {
+      this.updateLoadMoreButtonVisibility();
+    }
   }
 
   // 글자 제한 토글 초기화
@@ -3164,6 +3278,22 @@ class DualTextWriter {
   }
 
   async _renderSavedTextsImpl() {
+    // [Hybrid Pagination] 필터나 검색어 사용 시 전체 데이터 로드
+    const isFiltering =
+      (this.savedSearch && this.savedSearch.trim().length > 0) ||
+      (this.savedFilter === "edit" &&
+        ((this.currentTopicFilter && this.currentTopicFilter !== "all") ||
+         (this.currentSnsFilterMode && this.currentSnsFilterMode !== "all" && this.currentSnsFilterPlatform))) ||
+      ((this.savedFilter === "reference" || this.savedFilter === "reference-used") &&
+        ((this.currentSourceFilter && this.currentSourceFilter !== "all") || 
+         (this.referenceTypeFilter && this.referenceTypeFilter !== "all")));
+
+    if (isFiltering && !this.isAllDataLoaded) {
+      console.log("🔍 필터/검색 감지: 전체 데이터 로드 시작 (Hybrid Pagination)");
+      await this.loadSavedTextsFromFirestore(true);
+      return; // 데이터 로드 후 재렌더링되므로 현재 실행 중단
+    }
+
     // 메모이제이션: 캐시 키 생성 (필터 조건 + 검색어 기반)
     const topicOrSourceFilter =
       this.savedFilter === "edit"
