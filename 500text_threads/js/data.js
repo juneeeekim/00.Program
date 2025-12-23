@@ -86,6 +86,51 @@ export class DataManager {
     }
 
     /**
+     * 저장된 텍스트 목록 페이지네이션 조회 (LTE 최적화)
+     * @param {string} uid - 사용자 UID
+     * @param {number} pageSize - 페이지 크기
+     * @param {Object} lastVisibleDoc - 마지막 문서 커서 (없으면 처음부터)
+     * @returns {Promise<Object>} - { texts: [], lastVisibleDoc: doc }
+     */
+    async loadSavedTextsPaginated(uid, pageSize = 20, lastVisibleDoc = null) {
+        if (!this.db) throw new Error('Firestore not initialized');
+
+        try {
+            const textsRef = window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS);
+            
+            // 쿼리 제약 조건 생성
+            const queryConstraints = [
+                window.firebaseOrderBy('createdAt', 'desc'),
+                window.firebaseLimit(pageSize)
+            ];
+
+            // 커서가 있으면 startAfter 추가
+            if (lastVisibleDoc) {
+                queryConstraints.push(window.firebaseStartAfter(lastVisibleDoc));
+            }
+
+            const q = window.firebaseQuery(textsRef, ...queryConstraints);
+            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            const texts = [];
+            querySnapshot.forEach((doc) => {
+                texts.push({ id: doc.id, ...doc.data() });
+            });
+
+            // 다음 페이지를 위한 커서 (마지막 문서)
+            const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+            return {
+                texts: texts,
+                lastVisibleDoc: lastDoc || null
+            };
+        } catch (error) {
+            console.error('텍스트 페이지네이션 조회 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
      * 텍스트 데이터 업데이트
      * @param {string} uid - 사용자 UID
      * @param {string} textId - 텍스트 문서 ID
