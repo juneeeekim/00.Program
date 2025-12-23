@@ -9373,3 +9373,36 @@ mark {
     flex-direction: column;
   }
 }
+
+/* ========================================
+   LTE Optimization: Pagination UI
+   ======================================== */
+#load-more-container {
+  text-align: center;
+  margin: 20px 0;
+  padding: 10px;
+}
+
+#load-more-btn {
+  min-width: 200px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  border-radius: 25px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+#load-more-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}

@@ -850,6 +850,14 @@
               aria-live="polite"
               aria-label="저장된 글 목록"
             ></div>
+            
+            <!-- 더 보기 버튼 (LTE 최적화) -->
+            <div id="load-more-container" style="display: none;">
+              <button id="load-more-btn" class="btn btn-secondary" aria-label="저장된 글 더 보기">
+                더 보기
+              </button>
+              <div class="loading-spinner" style="display: none;"></div>
+            </div>
           </div>
         </div>
 
@@ -3538,6 +3546,13 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase Pagination Support (LTE Optimization) -->
+    <script type="module">
+      import { limit, startAfter } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+      window.firebaseLimit = limit;
+      window.firebaseStartAfter = startAfter;
+    </script>
 
     <script src="script.js?v=20251103"></script>
 
