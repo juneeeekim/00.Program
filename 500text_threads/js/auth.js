@@ -54,7 +54,7 @@ export class AuthManager {
 
         // 타임아웃 도달: 명시적 에러 처리
         this.isFirebaseReady = false;
-        const errorMsg = `Firebase 초기화 타임아웃 (${TIMEOUT_MS}ms). 네트워크 연결을 확인하고 페이지를 새로고침해주세요.`;
+        const errorMsg = `Firebase 초기화 타임아웃 (${TIMEOUT_MS}ms). 네트워크 연결 상태가 좋지 않을 수 있습니다.`;
         console.error('[AuthManager] ❌', errorMsg);
         
         // 사용자에게 재시도 안내 (접근성: role="alert" 로 표시)
