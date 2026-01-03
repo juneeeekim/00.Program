@@ -1,4 +1,5 @@
 import { Constants } from './constants.js';
+import { withRetry } from './utils.js';
 
 /**
  * 데이터 관리 클래스
@@ -73,7 +74,8 @@ export class DataManager {
                 window.firebaseOrderBy('createdAt', 'desc')
             );
             
-            const querySnapshot = await window.firebaseGetDocs(q);
+            
+            const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
             const texts = [];
             querySnapshot.forEach((doc) => {
                 texts.push({ id: doc.id, ...doc.data() });
@@ -110,7 +112,7 @@ export class DataManager {
             }
 
             const q = window.firebaseQuery(textsRef, ...queryConstraints);
-            const querySnapshot = await window.firebaseGetDocs(q);
+            const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
             
             const texts = [];
             querySnapshot.forEach((doc) => {
