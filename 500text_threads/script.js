@@ -112,30 +112,8 @@ class DualTextWriter {
     this.activePanelIndex = 0; // 현재 활성 패널 인덱스 (0 또는 1)
     this.isDualMode = false; // 듀얼 모드 활성화 여부
 
-    // Firebase 초기화 대기 및 로딩 화면 제어
-    this.waitForFirebase()
-      .then(() => {
-        console.log("DualTextWriter: Firebase initialized successfully.");
-        const overlay = document.getElementById("app-loading-overlay");
-        if (overlay) overlay.classList.add("hidden");
-      })
-      .catch((error) => {
-        console.error("DualTextWriter: Firebase initialization failed.", error);
-        // 실패하더라도 사용자가 이용할 수 있게 로딩 화면 제거
-        const overlay = document.getElementById("app-loading-overlay");
-        if (overlay) {
-             overlay.innerHTML = '<div style="color:white; text-align:center;"><h3>접속이 지연되고 있습니다.</h3><button onclick="document.getElementById(\'app-loading-overlay\').classList.add(\'hidden\')" style="padding:10px; margin-top:10px; background:white; color:black; border:none; border-radius:5px;">닫기</button></div>';
-        }
-      });
-
-    // 안전장치: 10초가 지나도 로딩 화면이 있으면 강제로 닫기 버튼 표시
-    setTimeout(() => {
-        const overlay = document.getElementById("app-loading-overlay");
-        if (overlay && !overlay.classList.contains("hidden")) {
-             console.warn("DualTextWriter: Force enabling overlay close button due to timeout.");
-             overlay.innerHTML = '<div style="color:white; text-align:center;"><h3>접속이 지연되고 있습니다.</h3><button onclick="document.getElementById(\'app-loading-overlay\').classList.add(\'hidden\')" style="padding:10px; margin-top:10px; background:white; color:black; border:none; border-radius:5px;">닫기</button></div>';
-        }
-    }, 10000);
+    // Firebase 초기화 대기
+    this.waitForFirebase();
 
     // Firebase 설정 안내
     this.showFirebaseSetupNotice();
