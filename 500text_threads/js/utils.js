@@ -70,3 +70,39 @@ export function formatDate(dateObj) {
         hour12: true
     });
 }
+
+/**
+ * 지수 백오프를 적용한 재시도 유틸리티
+ * @param {Function} fn - 실행할 비동기 함수
+ * @param {number} maxRetries - 최대 재시도 횟수 (기본값: 3)
+ * @param {number} baseDelayMs - 기본 대기 시간 (기본값: 1000ms)
+ */
+export async function withRetry(fn, maxRetries = 3, baseDelayMs = 1000) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries;
+      // Firestore 에러 코드 중 재시도 가능한 것들
+      const retryableCodes = [
+        "unavailable", // 서비스 일시 불가
+        "resource-exhausted", // 할당량 초과
+        "deadline-exceeded", // 타임아웃
+        "aborted", // 트랜잭션 충돌
+        "internal", // 내부 오류
+      ];
+      
+      const isRetryable = retryableCodes.includes(error.code) || 
+                          error.message === 'Failed to fetch' || // 네트워크 오류
+                          !error.code; // 코드가 없는 일반 네트워크 에러 가정
+
+      if (isLastAttempt || !isRetryable) {
+        throw error;
+      }
+
+      const delayMs = baseDelayMs * Math.pow(2, attempt);
+      console.warn(`[Retry] 시도 ${attempt + 1}/${maxRetries} (${delayMs}ms 후 재시도)... 에러: ${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
