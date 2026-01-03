@@ -3,6 +3,7 @@ import {
   escapeHtml,
   debounce,
   formatDate,
+  withRetry,
 } from "./js/utils.js";
 import { AuthManager } from "./js/auth.js";
 import { Constants } from "./js/constants.js";
@@ -112,7 +113,10 @@ class DualTextWriter {
     this.isDualMode = false; // 듀얼 모드 활성화 여부
 
     // Firebase 초기화 대기
-    this.waitForFirebase();
+    this.waitForFirebase().then(() => {
+        const overlay = document.getElementById("app-loading-overlay");
+        if(overlay) overlay.classList.add("hidden");
+    });
 
     // Firebase 설정 안내
     this.showFirebaseSetupNotice();
@@ -3550,7 +3554,7 @@ class DualTextWriter {
                 postsRef,
                 window.firebaseWhere("sourceTextId", "==", item.id)
               );
-              const querySnapshot = await window.firebaseGetDocs(q);
+              const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
               if (!querySnapshot.empty) {
                 const postDoc = querySnapshot.docs[0];
@@ -5431,7 +5435,7 @@ class DualTextWriter {
         postsRef,
         window.firebaseWhere("sourceTextId", "==", id)
       );
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       const connectedPosts = [];
       querySnapshot.forEach((doc) => {
@@ -6313,7 +6317,7 @@ class DualTextWriter {
       }
 
       const q = window.firebaseQuery(textsRef, ...queryConstraints);
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       this.savedTexts = [];
       // 캐시 무효화 (데이터 로드 시)
@@ -13474,7 +13478,7 @@ DualTextWriter.prototype.loadTrackingPosts = async function () {
       postsRef,
       window.firebaseOrderBy("postedAt", "desc")
     );
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     this.trackingPosts = [];
     querySnapshot.forEach((doc) => {
@@ -14731,7 +14735,7 @@ DualTextWriter.prototype.openTrackingModal = async function (textId = null) {
               this.currentTrackingTextId
             )
           );
-          const querySnapshot = await window.firebaseGetDocs(q);
+          const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
           if (!querySnapshot.empty) {
             const postDoc = querySnapshot.docs[0];
@@ -14970,7 +14974,7 @@ DualTextWriter.prototype.saveTrackingDataFromSavedText = async function () {
       postsRef,
       window.firebaseWhere("sourceTextId", "==", this.currentTrackingTextId)
     );
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     let postId;
     let postData;
@@ -15972,7 +15976,7 @@ DualTextWriter.prototype.editTrackingMetric = async function (
         postsRef,
         window.firebaseWhere("sourceTextId", "==", textId)
       );
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       if (!querySnapshot.empty) {
         const postDoc = querySnapshot.docs[0];
@@ -16106,7 +16110,7 @@ DualTextWriter.prototype.updateTrackingDataItem = async function () {
         postsRef,
         window.firebaseWhere("sourceTextId", "==", textId)
       );
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       if (querySnapshot.empty) {
         this.showMessage("❌ 포스트를 찾을 수 없습니다.", "error");
@@ -16281,7 +16285,7 @@ DualTextWriter.prototype.deleteTrackingDataItem = async function () {
         postsRef,
         window.firebaseWhere("sourceTextId", "==", textId)
       );
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       if (querySnapshot.empty) {
         this.showMessage("❌ 포스트를 찾을 수 없습니다.", "error");
@@ -17677,7 +17681,7 @@ DualTextWriter.prototype.checkExistingPostForText = async function (textId) {
       postsRef,
       window.firebaseWhere("sourceTextId", "==", textId)
     );
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     const existingPosts = [];
     querySnapshot.forEach((doc) => {
@@ -17750,7 +17754,7 @@ DualTextWriter.prototype.checkReferenceUsage = async function (
       window.firebaseWhere("sourceTextId", "==", referenceTextId)
     );
 
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     // 사용 횟수 계산 (쿼리 결과의 문서 개수)
     const usageCount = querySnapshot.size;
@@ -17832,7 +17836,7 @@ DualTextWriter.prototype.checkMultipleReferenceUsage = async function (
       window.firebaseWhere("sourceType", "==", "reference")
     );
 
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     // 사용 횟수 계산을 위한 Map 초기화 (모든 ID에 대해 0으로 초기화)
     const usageMap = new Map();
@@ -18081,7 +18085,7 @@ DualTextWriter.prototype.unmarkReferenceAsUsed = async function (
       window.firebaseWhere("sourceTextId", "==", referenceTextId),
       window.firebaseWhere("sourceType", "==", "reference")
     );
-    const querySnapshot = await window.firebaseGetDocs(q);
+    const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
     if (querySnapshot.empty) {
       console.warn(
@@ -18256,7 +18260,7 @@ DualTextWriter.prototype.showBatchMigrationConfirm = async function () {
           postsRef,
           window.firebaseWhere("sourceTextId", "==", textItem.id)
         );
-        const querySnapshot = await window.firebaseGetDocs(q);
+        const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
         hasTracking = !querySnapshot.empty;
       } catch (error) {
         console.error("트래킹 확인 실패:", error);
@@ -18885,7 +18889,7 @@ const UrlLinkManager = (function () {
         window.firebaseOrderBy("order", "asc")
       );
 
-      const querySnapshot = await window.firebaseGetDocs(q);
+      const querySnapshot = await withRetry(() => window.firebaseGetDocs(q));
 
       urlLinks = querySnapshot.docs.map((doc) => ({
         id: doc.id,
