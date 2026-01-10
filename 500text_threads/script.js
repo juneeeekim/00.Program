@@ -2018,16 +2018,30 @@ class DualTextWriter {
       };
     }
 
-    // SNS 플랫폼 목록 초기화
-    this.updateSnsFilterOptions();
+    // SNS 플랫폼 목록 초기화 (에러 발생 시에도 탭 초기화가 진행되도록 보호)
+    try {
+      this.updateSnsFilterOptions();
+    } catch (e) {
+      console.error("SNS 필터 옵션 업데이트 실패:", e);
+    }
 
-    // 활성 상태 복원
-    buttons.forEach((btn) => {
-      const filter = btn.getAttribute("data-filter");
-      const isActive = filter === this.savedFilter;
-      btn.classList.toggle("active", isActive);
-      btn.setAttribute("aria-selected", isActive ? "true" : "false");
-    });
+    // 활성 상태 복원 (강제 동기화)
+    try {
+      buttons.forEach((btn) => {
+        const filter = btn.getAttribute("data-filter");
+        const isActive = filter === this.savedFilter;
+        // HTML에 박제된 class="active"가 있더라도 JS 상태에 맞춰 강제 재설정
+        if (isActive) {
+          btn.classList.add("active");
+          btn.setAttribute("aria-selected", "true");
+        } else {
+          btn.classList.remove("active");
+          btn.setAttribute("aria-selected", "false");
+        }
+      });
+    } catch (e) {
+      console.error("필터 버튼 상태 동기화 실패:", e);
+    }
 
     // 클릭 이벤트 바인딩
     buttons.forEach((btn) => {
@@ -3367,15 +3381,18 @@ class DualTextWriter {
     if (this.savedFilter === "edit") {
       list = list.filter((item) => item.type === "edit");
     } else if (this.savedFilter === "reference") {
-      // 레퍼런스 탭에는 사용 안된 레퍼런스(usageCount === 0)만 표시
-      // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
-      // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
-      list = list.filter((item) => (item.type || "edit") === "reference");
+      // 레퍼런스 탭: 작성 글(type='edit')은 절대 보이면 안 됨
+      // type이 'reference'인 것만 엄격하게 필터링
+      list = list.filter((item) => {
+        const type = item.type || "edit";
+        return type === "reference";
+      });
     } else if (this.savedFilter === "reference-used") {
-      // 사용된 레퍼런스만 필터링 (usageCount > 0)
-      // 주의: usageCount는 나중에 checkMultipleReferenceUsage()로 확인되므로,
-      // 여기서는 type만 체크하고 실제 필터링은 사용 여부 확인 후 수행
-      list = list.filter((item) => (item.type || "edit") === "reference");
+      // 사용된 레퍼런스 탭: 작성 글 제외
+      list = list.filter((item) => {
+        const type = item.type || "edit";
+        return type === "reference";
+      });
     }
 
     // 레퍼런스 유형 필터 적용 (structure/idea)
