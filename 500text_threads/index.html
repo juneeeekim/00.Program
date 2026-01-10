@@ -12,6 +12,9 @@
     <meta name="format-detection" content="telephone=no" />
     <title>500자 미만 글 작성기</title>
     <link rel="stylesheet" href="style.css?v=20251103" />
+
+    <!-- ===== [P3-01] 모바일 디버깅 헬퍼 (URL에 ?debug=true 추가시 활성화) ===== -->
+    <script src="js/mobile-debug.js?v=20260110"></script>
   </head>
   <body>
     <div class="container">
@@ -3550,17 +3553,21 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Firebase Pagination Support (LTE Optimization) -->
-    <script type="module">
-      import { limit, startAfter } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-      window.firebaseLimit = limit;
-      window.firebaseStartAfter = startAfter;
-    </script>
+    <!-- ============================================================
+         [P1-02] Firebase Pagination 중복 블록 제거됨 (2026-01-10)
+         - 이미 2961-3003줄에서 Firebase 10.7.1 버전으로 설정됨
+         - 9.22.0 버전과의 충돌 방지
+         ============================================================ -->
 
-    <script src="script.js?v=20251103"></script>
+    <!-- ============================================================
+         [P1-01] Main Script (ES Module Only) (2026-01-10)
+         - 기존: script.js 중복 로드 (일반 + module) 제거
+         - 수정: type="module"만 사용하여 ES Module import 보장
+         - iOS WebKit 호환성 개선
+         ============================================================ -->
+    <script type="module" src="script.js?v=20260110"></script>
 
-    <!-- Main Script -->
-    <script type="module" src="script.js"></script>
+    <!-- Test Firebase (개발용) -->
     <script src="test-firebase.js"></script>
   </body>
 </html>
