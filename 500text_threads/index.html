@@ -2947,8 +2947,13 @@
         signOut,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      // ============================================
+      // [P3-FIX] iOS Safari / 모바일 Firestore 연결 안정성 개선
+      // ============================================
       import {
-        getFirestore,
+        initializeFirestore,
+        persistentLocalCache,
+        persistentMultipleTabManager,
         collection,
         addDoc,
         getDocs,
@@ -2979,10 +2984,22 @@
       // Firebase 초기화
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
 
-      // 오프라인 지속성 코드는 초기화 문제를 일으켜 잠시 비활성화함
-      // enableIndexedDbPersistence(db)...
+      // ============================================
+      // [P3-FIX] 모바일 Firestore 연결 안정성 개선
+      // ============================================
+      // 문제: iOS Safari, Android에서 WebChannel 연결 불안정 → 데이터 로드 실패
+      // 해결: experimentalAutoDetectLongPolling으로 자동 폴백
+      // - WebSocket 가능 시: WebSocket 사용 (빠름)
+      // - WebSocket 불안정 시: Long Polling으로 자동 전환 (안정적)
+      // ============================================
+      const db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true,
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+      console.log('✅ Firestore 초기화 완료 (Long Polling 자동 감지 활성화)');
 
       // 전역 변수로 설정
       window.firebaseAuth = auth;
