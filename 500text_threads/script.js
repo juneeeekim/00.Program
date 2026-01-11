@@ -3611,6 +3611,15 @@ class DualTextWriter {
       return;
     }
 
+    // [불필요한 렌더링 방지] Firebase 인증 완료 전 또는 데이터 미로드 상태에서 빈 배열 렌더링 스킵
+    if (
+      (!Array.isArray(this.savedTexts) || this.savedTexts.length === 0) &&
+      (!this.currentUser || !this.isFirebaseReady)
+    ) {
+      console.log("renderSavedTexts: 인증 대기 중 - 렌더링 스킵");
+      return;
+    }
+
     console.log("renderSavedTexts 호출됨:", this.savedTexts);
 
     // 필터 적용
