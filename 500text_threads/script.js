@@ -51,6 +51,11 @@ class DualTextWriter {
     // 포커스 관리 지연 시간
     FOCUS_MANAGEMENT_DELAY_MS: 50, // 포커스 관리 지연 시간 (ms)
     SCREEN_READER_ANNOUNCE_DELAY_MS: 100, // 스크린 리더 알림 지연 시간 (ms)
+
+    // ============================================================
+    // [P3-01] 메모리 최적화 설정 (2026-01-11)
+    // ============================================================
+    MAX_CACHED_ITEMS: 500, // 최대 캐시 항목 수 (메모리 최적화)
   };
 
   /**
@@ -114,6 +119,38 @@ class DualTextWriter {
 
     // Firebase 초기화 대기
     this.waitForFirebase();
+
+    // ============================================================
+    // [P2-02] 글로벌 에러 핸들러 (2026-01-10)
+    // - 목적: iOS 디버깅 및 런타임 에러 추적
+    // - window.onerror: 동기 에러 핸들러
+    // - window.onunhandledrejection: Promise 에러 핸들러
+    // ============================================================
+    if (typeof window !== "undefined" && !window._globalErrorHandlerSet) {
+      window._globalErrorHandlerSet = true;
+      
+      window.onerror = (message, source, lineno, colno, error) => {
+        console.error("[Global Error]", {
+          message,
+          source,
+          lineno,
+          colno,
+          errorName: error?.name,
+          errorStack: error?.stack?.slice(0, 500),
+        });
+        // 기본 에러 처리 계속 진행
+        return false;
+      };
+
+      window.onunhandledrejection = (event) => {
+        console.error("[Unhandled Promise Rejection]", {
+          reason: event.reason?.message || event.reason,
+          stack: event.reason?.stack?.slice(0, 500),
+        });
+      };
+      
+      console.log("[P2-02] ✅ 글로벌 에러 핸들러 등록 완료");
+    }
 
     // Firebase 설정 안내
     this.showFirebaseSetupNotice();
@@ -297,7 +334,197 @@ class DualTextWriter {
     this.isAllDataLoaded = false;
     this.PAGE_SIZE = 20;
 
+    // [P1-02] 오프라인 상태 감지 (2026-01-11)
+    this.setupOfflineDetection();
+
+    // [P3-02] 메모리 최적화 (2026-01-11)
+    this.setupMemoryOptimization();
+
     this.init();
+  }
+
+  // ============================================================
+  // [P1-02] 오프라인 상태 감지 및 UI 표시 (2026-01-11)
+  // ============================================================
+  setupOfflineDetection() {
+    // navigator.onLine은 초기값일 뿐, 이벤트로 확실히 처리
+    this.isOffline = !navigator.onLine;
+
+    window.addEventListener('online', () => {
+      this.isOffline = false;
+      this.showMessage('온라인 상태로 전환되었습니다.', 'success');
+      this.hideOfflineIndicator();
+      // 재연결 시 보류 중인 작업 동기화 시도 (Phase 2에서 구현 가능)
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOffline = true;
+      this.showMessage('오프라인 상태입니다. 변경사항은 로컬에 저장됩니다.', 'warning');
+      this.showOfflineIndicator();
+    });
+
+    // 초기 상태가 오프라인이면 인디케이터 표시
+    if (this.isOffline) {
+      this.showOfflineIndicator();
+    }
+  }
+
+  showOfflineIndicator() {
+    if (document.getElementById('offline-indicator')) return;
+    
+    const indicator = document.createElement('div');
+    indicator.id = 'offline-indicator';
+    indicator.className = 'offline-indicator';
+    indicator.innerHTML = '📡 오프라인 모드';
+    indicator.setAttribute('role', 'status');
+    indicator.setAttribute('aria-live', 'polite');
+    
+    document.body.appendChild(indicator);
+  }
+
+  hideOfflineIndicator() {
+    const indicator = document.getElementById('offline-indicator');
+    if (indicator) indicator.remove();
+  }
+
+  // ============================================================
+  // [P2-01] 에러 유형 분류 및 처리 (2026-01-11)
+  // ============================================================
+  handleError(error, context = 'unknown') {
+    let userMessage = '';
+    let showRetry = false;
+    
+    // Firebase 에러 코드 분류
+    switch (error?.code) {
+      case 'permission-denied':
+        userMessage = '권한이 없습니다. 로그인 상태를 확인해주세요.';
+        break;
+      case 'unavailable':
+      case 'network-error':
+        userMessage = '네트워크 연결을 확인해주세요.';
+        showRetry = true;
+        break;
+      case 'resource-exhausted':
+        userMessage = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+        showRetry = true;
+        break;
+      case 'not-found':
+        userMessage = '요청한 데이터를 찾을 수 없습니다.';
+        break;
+      default:
+        if (!navigator.onLine) {
+          userMessage = '인터넷 연결이 없습니다.';
+          showRetry = true;
+        } else {
+          userMessage = error?.message || '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+          showRetry = true;
+        }
+    }
+    
+    // 에러 로깅
+    console.error(`[${context}]`, error);
+    
+    // 사용자 메시지 표시
+    if (showRetry) {
+      this.showErrorWithRetry(userMessage, context);
+    } else {
+      this.showMessage(userMessage, 'error');
+    }
+  }
+
+  // [P2-02] 재시도 버튼 포함 에러 알림
+  showErrorWithRetry(message, context) {
+    // 기존 에러 알림 제거
+    const existing = document.querySelector('.error-notification');
+    if (existing) existing.remove();
+    
+    const container = document.createElement('div');
+    container.className = 'error-notification';
+    container.innerHTML = `
+      <div class="error-content">
+        <span class="error-icon">⚠️</span>
+        <span class="error-text">${message}</span>
+      </div>
+      <button class="retry-btn">🔄 다시 시도</button>
+      <button class="close-btn">✕</button>
+    `;
+    
+    // 이벤트 리스너
+    container.querySelector('.retry-btn').onclick = () => {
+      container.remove();
+      this.retryLastAction(context);
+    };
+    container.querySelector('.close-btn').onclick = () => {
+      container.remove();
+    };
+    
+    document.body.appendChild(container);
+    
+    // 10초 후 자동 제거
+    setTimeout(() => {
+      if (container.parentElement) container.remove();
+    }, 10000);
+  }
+
+  // 재시도 로직
+  retryLastAction(context) {
+    console.log(`[Retry] ${context} 작업 재시도`);
+    switch (context) {
+      case 'loadSavedTexts':
+        this.loadSavedTextsHybrid(this.lastVisibleDoc); // 페이지네이션 고려
+        break;
+      case 'loadTrackingPosts':
+        this.loadTrackingPosts();
+        break;
+      default:
+        this.showMessage('재시도할 작업을 찾을 수 없습니다.', 'warning');
+    }
+  }
+
+  // ============================================================
+  // [P3-01] 메모리 최적화 - 최대 캐시 항목 수 제한 (2026-01-11)
+  // ============================================================
+  /**
+   * 캐시된 savedTexts 배열의 크기를 제한하여 메모리를 최적화합니다.
+   * 
+   * - MAX_CACHED_ITEMS(500)를 초과하는 항목은 오래된 것부터 제거
+   * - slice()로 새 배열을 생성하여 불변성 유지
+   * - isAllDataLoaded를 false로 설정하여 필요 시 재로드 가능
+   */
+  optimizeSavedTextsMemory() {
+    const max = DualTextWriter.CONFIG.MAX_CACHED_ITEMS;
+
+    if (this.savedTexts.length > max) {
+      const removeCount = this.savedTexts.length - max;
+      // 오래된 항목(앞에서부터) 제거하여 최신 항목 유지
+      this.savedTexts = this.savedTexts.slice(removeCount);
+      this.isAllDataLoaded = false; // 다시 로드 필요 표시
+      console.info(`[Memory] ${removeCount}개 항목 제거됨 (현재: ${this.savedTexts.length})`);
+    }
+  }
+
+  // ============================================================
+  // [P3-02] 페이지 비활성화 시 메모리 정리 (2026-01-11)
+  // ============================================================
+  /**
+   * 페이지가 백그라운드로 전환될 때 자동으로 메모리를 정리합니다.
+   * - visibilitychange 이벤트를 사용하여 탭 전환 감지
+   * - 백그라운드 상태에서 캐시 크기 최적화 및 렌더 캐시 해제
+   */
+  setupMemoryOptimization() {
+    // 이벤트 리스너 중복 등록 방지
+    if (this._memoryOptimizationBound) return;
+    this._memoryOptimizationBound = true;
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.optimizeSavedTextsMemory();
+        this.renderSavedTextsCache = null; // 렌더 캐시 해제
+        console.info('[Memory] 백그라운드 메모리 최적화 완료');
+      }
+    });
+    
+    console.log('[P3-02] ✅ 메모리 최적화 이벤트 리스너 등록 완료');
   }
 
   /**
@@ -1784,8 +2011,8 @@ class DualTextWriter {
       this.renderSavedTexts();
 
     } catch (error) {
-      console.error("저장된 글 로드 실패:", error);
-      this.showMessage("글 목록을 불러오는데 실패했습니다.", "error");
+      // [P2-04] 에러 핸들링 개선 (2026-01-11)
+      this.handleError(error, 'loadSavedTexts');
     } finally {
       this.showLoadingSpinner(false);
     }
@@ -1799,14 +2026,28 @@ class DualTextWriter {
     await this.loadSavedTextsFromFirestore(false);
   }
 
+    // ============================================================
+  // [P4-01] 전체 데이터 로드 시 진행률 표시 (2026-01-11)
+  // ============================================================
   /**
    * [Hybrid Pagination] 검색/필터를 위한 전체 데이터 로드 보장
+   * 
+   * - 로드 시작 시 현재 로드된 개수 표시
+   * - 로드 완료 후 전체 개수 표시
    */
   async ensureAllDataLoaded() {
     if (this.isAllDataLoaded) return;
 
-    this.showMessage("검색/필터를 위해 전체 데이터를 불러옵니다...", "info");
+    // 진행률 표시 시작
+    const loaded = this.savedTexts.length;
+    const progressMsg = `데이터 로드 중... (${loaded}개 로드됨)`;
+    this.showMessage(progressMsg, "info");
+
+    // 전체 로드
     await this.loadSavedTextsFromFirestore(true);
+
+    // 완료 메시지
+    this.showMessage(`전체 ${this.savedTexts.length}개 데이터 로드 완료`, "success");
   }
 
   /**
@@ -13543,20 +13784,15 @@ DualTextWriter.prototype.loadTrackingPosts = async function () {
       force: true,
     });
   } catch (error) {
-    // Firebase 데이터 로드 실패 시 에러 처리
-    console.error("[loadTrackingPosts] Failed to load tracking posts:", error);
+    // [P2-04] 에러 핸들링 개선 (2026-01-11)
+    this.handleError(error, 'loadTrackingPosts');
     this.trackingPosts = [];
-    // 사용자에게 에러 메시지 표시
-    this.showMessage(
-      "트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.",
-      "error"
-    );
     // 빈 상태 표시
     if (this.trackingPostsList) {
       this.trackingPostsList.innerHTML = `
                 <div class="tracking-post-no-data" style="text-align: center; padding: 40px 20px;">
                     <span class="no-data-icon" style="font-size: 3rem; display: block; margin-bottom: 16px;">📭</span>
-                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.</span>
+                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 재시도 버튼을 클릭해주세요.</span>
                 </div>
             `;
     }
@@ -19969,10 +20205,20 @@ const BackupManager = (function () {
   };
 })();
 
-// DOM 로드 완료 시 백업 탭 초기화
+// DOM 로드 완료 시 초기화
 document.addEventListener("DOMContentLoaded", () => {
+  // [P1-Fix] 메인 앱 초기화 (2026-01-11)
+  // 인스턴스를 window.dualTextWriter에 할당하여 HTML inline event handler 지원
+  try {
+    window.dualTextWriter = new DualTextWriter();
+    console.log("✅ DualTextWriter 초기화 및 전역 할당 완료");
+  } catch (e) {
+    console.error("❌ DualTextWriter 초기화 실패:", e);
+  }
+
+  // 백업 매니저 (지연 초기화)
   setTimeout(() => {
-    if (BackupManager.init()) {
+    if (typeof BackupManager !== 'undefined' && BackupManager.init()) {
       console.log("✅ BackupManager 초기화 성공");
     }
   }, 600);

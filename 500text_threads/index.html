@@ -2969,6 +2969,7 @@
         limit,
         startAfter,
         writeBatch,
+        CACHE_SIZE_UNLIMITED,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       // Firebase 설정 (실제 사용 시 Firebase Console에서 발급받은 설정으로 교체)
@@ -2986,20 +2987,42 @@
       const auth = getAuth(app);
 
       // ============================================
-      // [P3-FIX] 모바일 Firestore 연결 안정성 개선
+      // [P3-FIX v3] iOS 호환성 개선 (2026-01-11)
       // ============================================
-      // 문제: iOS Safari, Android에서 WebChannel 연결 불안정 → 데이터 로드 실패
-      // 해결: experimentalAutoDetectLongPolling으로 자동 폴백
-      // - WebSocket 가능 시: WebSocket 사용 (빠름)
-      // - WebSocket 불안정 시: Long Polling으로 자동 전환 (안정적)
+      // iOS Safari에서 persistentMultipleTabManager 호환성 문제로 인해
+      // iOS/iPadOS 환경에서는 멀티 탭 동기화를 비활성화하고 안정성 모드 사용
+      // Android/PC에서는 기존 멀티 탭 동기화 기능 유지
       // ============================================
+
+      // Step 1: iOS/iPadOS 디바이스 감지
+      const isIOS_UA = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // iPadOS 13+는 Mac으로 위장하므로 터치 포인트로 추가 확인
+      const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+      const isIOS = isIOS_UA || isIPadOS;
+
+      // Step 2: 환경에 따른 캐시 설정 분기
+      let cacheSettings;
+      if (isIOS) {
+        // [iOS] 안정성 모드: 멀티 탭 동기화 비활성화
+        console.log('🍎 iOS/iPad environment detected: Disabling multi-tab manager for stability.');
+        cacheSettings = persistentLocalCache({
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED
+        });
+      } else {
+        // [Non-iOS] 고성능 모드: 멀티 탭 실시간 동기화 활성화
+        console.log('🤖 Desktop/Android environment: Enabling multi-tab manager.');
+        cacheSettings = persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED
+        });
+      }
+
+      // Step 3: Firestore 초기화
       const db = initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager()
-        })
+        experimentalForceLongPolling: true, // LTE 최적화 유지 (절대 삭제 금지)
+        localCache: cacheSettings
       });
-      console.log('✅ Firestore 초기화 완료 (Long Polling 자동 감지 활성화)');
+      console.log('✅ Firestore 초기화 완료 (LongPolling + OfflineCache)');
 
       // 전역 변수로 설정
       window.firebaseAuth = auth;
