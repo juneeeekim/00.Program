@@ -2297,6 +2297,10 @@ class DualTextWriter {
 
     // 초기 표시 상태
     this.updateReferenceTypeFilterVisibility();
+
+    // [BUG FIX] 필터 UI 초기화 후 반드시 렌더링 호출
+    // 이전 버그: 필터 버튼 UI는 업데이트되지만 실제 목록은 렌더링되지 않아 불일치 발생
+    this.renderSavedTexts();
   }
 
   setSavedFilter(filter) {
