@@ -117,8 +117,12 @@ class DualTextWriter {
     this.activePanelIndex = 0; // 현재 활성 패널 인덱스 (0 또는 1)
     this.isDualMode = false; // 듀얼 모드 활성화 여부
 
-    // Firebase 초기화 대기
-    this.waitForFirebase();
+    // ============================================================
+    // [P2-01] Firebase 초기화 순서 개선 (2026-01-12)
+    // - 기존: waitForFirebase() 호출 → authManager 생성 (순서 오류)
+    // - 개선: authManager 생성 후 waitForFirebase() 호출
+    // - waitForFirebase() 호출은 authManager 생성 후 327번 줄에서 수행
+    // ============================================================
 
     // ============================================================
     // [P2-02] 글로벌 에러 핸들러 (2026-01-10)
@@ -325,6 +329,9 @@ class DualTextWriter {
       },
       showMessage: (msg, type) => this.showMessage(msg, type),
     });
+
+    // [P2-01] Firebase 초기화 대기 (authManager 생성 후 호출)
+    this.waitForFirebase();
 
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
@@ -1610,12 +1617,30 @@ class DualTextWriter {
     this.initExpandModal();
   }
 
-  // [Refactoring] AuthManager로 위임
+  // ============================================================
+  // [P2-03] Firebase 초기화 - AuthManager 위임 (2026-01-12)
+  // - 목적: 코드 중복 제거 및 관심사 분리
+  // - 방식: this.authManager.waitForFirebase() 호출
+  // - 이전: 직접 폴링 (P1-01에서 임시 적용)
+  // ============================================================
   async waitForFirebase() {
-    await this.authManager.waitForFirebase();
-    this.auth = this.authManager.auth;
-    this.db = this.authManager.db;
-    this.isFirebaseReady = this.authManager.isFirebaseReady;
+    try {
+      // AuthManager에게 Firebase 초기화 위임
+      await this.authManager.waitForFirebase();
+      
+      // AuthManager에서 초기화된 값 가져오기
+      this.auth = this.authManager.auth;
+      this.db = this.authManager.db;
+      this.isFirebaseReady = this.authManager.isFirebaseReady;
+      
+      console.log('[DualTextWriter] ✅ Firebase 초기화 완료 (AuthManager 위임)');
+      return true;
+    } catch (error) {
+      // 초기화 실패 시 graceful degradation
+      console.error('[DualTextWriter] ❌ Firebase 초기화 실패:', error);
+      this.isFirebaseReady = false;
+      return false;
+    }
   }
 
   // [Refactoring] AuthManager에서 처리하므로 제거 또는 래핑
@@ -2996,13 +3021,31 @@ class DualTextWriter {
 
   // Firebase 기반 인증으로 대체됨
   // Firebase Google 로그인 처리
-  // Firebase Google 로그인 처리
+  // ============================================================
+  // [A-01] Google 로그인 중복 클릭 방지 (2026-01-12)
+  // - 목적: auth/popup-blocked 및 auth/cancelled-popup-request 오류 방지
+  // - 방식: 버튼 disabled 상태로 중복 클릭 차단
+  // ============================================================
   async googleLogin() {
+    // 중복 클릭 방지: 버튼 비활성화
+    const googleLoginBtn = document.getElementById("google-login-btn");
+    if (googleLoginBtn) {
+      googleLoginBtn.disabled = true;
+      googleLoginBtn.style.opacity = "0.6";
+      googleLoginBtn.style.cursor = "not-allowed";
+    }
+
     if (!this.isFirebaseReady) {
       this.showMessage(
         "Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.",
         "error"
       );
+      // 버튼 복원
+      if (googleLoginBtn) {
+        googleLoginBtn.disabled = false;
+        googleLoginBtn.style.opacity = "1";
+        googleLoginBtn.style.cursor = "pointer";
+      }
       return;
     }
 
@@ -3018,15 +3061,27 @@ class DualTextWriter {
         `${user.displayName || user.email}님, Google 로그인으로 환영합니다!`,
         "success"
       );
+      // 로그인 성공 시 버튼 복원 (UI가 전환되지만 안전을 위해)
     } catch (error) {
       console.error("Google 로그인 실패:", error);
       if (error.code === "auth/popup-closed-by-user") {
         this.showMessage("로그인이 취소되었습니다.", "info");
+      } else if (error.code === "auth/popup-blocked") {
+        this.showMessage("팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.", "error");
+      } else if (error.code === "auth/cancelled-popup-request") {
+        this.showMessage("이전 로그인 요청이 취소되었습니다. 다시 시도해주세요.", "info");
       } else {
         this.showMessage(
           "Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.",
           "error"
         );
+      }
+    } finally {
+      // 버튼 복원 (성공/실패 모두)
+      if (googleLoginBtn) {
+        googleLoginBtn.disabled = false;
+        googleLoginBtn.style.opacity = "1";
+        googleLoginBtn.style.cursor = "pointer";
       }
     }
   }
@@ -16736,6 +16791,14 @@ DualTextWriter.prototype.initTrackingChart = function () {
   }
 
   try {
+    // [BugFix] ownerDocument 오류 방지 (2026-01-12)
+    // - Canvas가 DOM에 연결되어 있고 부모 요소가 유효한지 확인
+    if (!this.trackingChartCanvas.isConnected || 
+        !this.trackingChartCanvas.parentElement) {
+      console.warn("[initTrackingChart] Canvas not connected to DOM, deferring initialization");
+      return;
+    }
+
     const ctx = this.trackingChartCanvas.getContext("2d");
     if (!ctx) {
       console.error("[initTrackingChart] Failed to get 2D context");
@@ -16746,10 +16809,23 @@ DualTextWriter.prototype.initTrackingChart = function () {
       return;
     }
 
-    // 기존 차트가 있다면 제거 (메모리 누수 방지)
+    // ============================================================
+    // [BugFix] Canvas 재사용 오류 방지 (2026-01-12)
+    // - 문제: "Canvas is already in use" 오류 발생
+    // - 원인: this.trackingChart가 null이어도 Chart.js 내부 레지스트리에 남아있음
+    // - 해결: Chart.getChart(canvas) API로 기존 차트 확실히 제거
+    // ============================================================
+    
+    // 방법 1: this.trackingChart 인스턴스 확인
     if (this.trackingChart) {
       this.trackingChart.destroy();
       this.trackingChart = null;
+    }
+    
+    // 방법 2: Chart.js 내부 레지스트리에서 확인 (Chart.js 3.x+)
+    const existingChart = Chart.getChart(this.trackingChartCanvas);
+    if (existingChart) {
+      existingChart.destroy();
     }
 
     // Chart.js 초기화: responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
