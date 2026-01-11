@@ -330,8 +330,9 @@ class DualTextWriter {
       showMessage: (msg, type) => this.showMessage(msg, type),
     });
 
-    // [P2-01] Firebase 초기화 대기 (authManager 생성 후 호출)
-    this.waitForFirebase();
+    // [P2-04] Firebase 초기화는 init()에서 수행 (2026-01-12)
+    // - 기존: constructor에서 waitForFirebase() 호출 후 init()에서도 중복 호출
+    // - 수정: init()에서만 await로 호출하여 중복 데이터 로딩 방지
 
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
