@@ -5070,6 +5070,14 @@ class DualTextWriter {
           const nowExpanded = contentEl.classList.toggle("expanded");
           button.textContent = nowExpanded ? "접기" : "더보기";
           button.setAttribute("aria-expanded", nowExpanded ? "true" : "false");
+          // [DEBUG] 토글 상태 확인 로그
+          console.log("[Toggle Debug]", {
+            itemId,
+            nowExpanded,
+            hasExpandedClass: contentEl.classList.contains("expanded"),
+            contentElStyle: window.getComputedStyle(contentEl).display,
+            contentElOverflow: window.getComputedStyle(contentEl).overflow,
+          });
           try {
             // 통일된 스키마: card:{itemId}:expanded
             localStorage.setItem(
@@ -5079,6 +5087,8 @@ class DualTextWriter {
           } catch (e) {
             /* ignore quota */
           }
+        } else {
+          console.error("[Toggle Error] contentEl not found for itemId:", itemId);
         }
       } else if (action === "edit") {
         const type = button.getAttribute("data-type");

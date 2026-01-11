@@ -2129,10 +2129,11 @@ header h1 {
 }
 
 .saved-item-content.expanded {
-  display: block;
-  -webkit-line-clamp: initial;
-  line-clamp: initial;
-  overflow: visible;
+  display: block !important;
+  -webkit-line-clamp: initial !important;
+  line-clamp: initial !important;
+  overflow: visible !important;
+  max-height: none !important; /* [FIX] 높이 제한 해제 */
   width: 100%; /* 紐낆떆???덈퉬 ?ㅼ젙?쇰줈 肄섑뀗痢?媛먯떥湲?蹂댁옣 */
   clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
   margin-bottom: 24px; /* 異⑸텇??媛꾧꺽 */
@@ -3511,11 +3512,16 @@ header h1 {
     }
     
     .saved-item-content.expanded {
-        width: 100%; /* 紐⑤컮?쇱뿉?쒕룄 紐낆떆???덈퉬 ?ㅼ젙 */
-        clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
+        width: 100%; /* 모바일에서도 명시적 너비 설정 */
+        max-height: none !important; /* [FIX] 모바일 max-height 제한 해제 */
+        clear: both; /* float 요소의 간섭 방지 */
         margin-bottom: 20px;
         padding-bottom: 12px;
-        box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
+        box-sizing: border-box; /* 패딩 포함 너비 계산 */
+        -webkit-line-clamp: initial !important; /* [FIX] line-clamp 해제 */
+        line-clamp: initial !important;
+        overflow: visible !important; /* [FIX] 오버플로우 해제 */
+        display: block !important; /* [FIX] -webkit-box 오버라이드 */
     }
     
     .saved-item-toggle {
