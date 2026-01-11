@@ -3633,7 +3633,11 @@ class DualTextWriter {
     list = list.filter((item) => (item.type || "edit") !== "script");
 
     if (this.savedFilter === "edit") {
-      list = list.filter((item) => item.type === "edit");
+      // type이 undefined/null인 경우도 'edit'로 간주 (레거시 데이터 호환성)
+      list = list.filter((item) => {
+        const type = item.type || "edit";
+        return type === "edit";
+      });
     } else if (this.savedFilter === "reference") {
       // 레퍼런스 탭: 작성 글(type='edit')은 절대 보이면 안 됨
       // type이 'reference'인 것만 엄격하게 필터링
