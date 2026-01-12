@@ -1,11 +1,11 @@
 /**
  * Admin Dashboard - Main JavaScript
  *
- * 격리 전략 (Isolation Strategy):
- * - IIFE 패턴으로 전역 오염 방지
- * - 'use strict' 모드 사용
- * - Firebase Custom Claims 기반 인증
- * - 최소한의 전역 노출 (window.AdminDashboard만)
+ * 격리 ?�략 (Isolation Strategy):
+ * - IIFE ?�턴?�로 ?�역 ?�염 방�?
+ * - 'use strict' 모드 ?�용
+ * - Firebase Custom Claims 기반 ?�증
+ * - 최소?�의 ?�역 ?�출 (window.AdminDashboard�?
  *
  * @version 2.0.0 - Phase 2: Security & Authentication
  * @date 2025-11-25
@@ -14,9 +14,22 @@
 (function () {
   "use strict";
 
+  // ============================================================
+  // [P4-06] ?�경�?로깅 ?�틸리티 (IIFE ?��???
+  // - ?�로?�션 ?�경?�서 콘솔 로그 ?�출 방�?
+  // - ?�러 로그????�� 출력 (모니?�링 ?�요)
+  // ============================================================
+  const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const logger = {
+    log: (...args) => { if (isDev) logger.log(...args); },
+    warn: (...args) => { if (isDev) logger.warn(...args); },
+    error: (...args) => { logger.error(...args); }, // ??�� 출력
+    debug: (...args) => { if (isDev) console.debug(...args); },
+  };
+
   /**
-   * AdminDashboard 클래스
-   * 관리자 대시보드의 모든 기능을 관리하는 메인 클래스
+   * AdminDashboard ?�래??
+   * 관리자 ?�?�보?�의 모든 기능??관리하??메인 ?�래??
    */
   class AdminDashboard {
     constructor() {
@@ -27,130 +40,130 @@
       this.currentUser = null;
       this.mainChart = null;
 
-      // Chart.js 로드 확인
+      // Chart.js 로드 ?�인
       this.checkDependencies();
 
-      // Firebase 초기화 및 인증 체크
+      // Firebase 초기??�??�증 체크
       this.initFirebase();
     }
 
     /**
-     * 의존성 라이브러리 확인
+     * ?�존???�이브러�??�인
      */
     checkDependencies() {
       if (typeof Chart === "undefined") {
-        console.warn("⚠️ Chart.js가 로드되지 않았습니다.");
+        logger.warn("?�️ Chart.js가 로드?��? ?�았?�니??");
         return false;
       }
 
-      console.log("✅ Chart.js 로드 완료:", Chart.version);
+      logger.log("??Chart.js 로드 ?�료:", Chart.version);
 
       if (typeof firebase === "undefined") {
-        console.error("❌ Firebase SDK가 로드되지 않았습니다.");
+        logger.error("??Firebase SDK가 로드?��? ?�았?�니??");
         return false;
       }
 
-      console.log("✅ Firebase SDK 로드 완료");
+      logger.log("??Firebase SDK 로드 ?�료");
       return true;
     }
 
     /**
-     * Firebase 초기화
+     * Firebase 초기??
      */
     async initFirebase() {
       try {
-        console.log("🔧 Firebase 초기화 중...");
+        logger.log("?�� Firebase 초기??�?..");
 
-        // Firebase가 이미 초기화되어 있는지 확인
+        // Firebase가 ?��? 초기?�되???�는지 ?�인
         if (firebase.apps.length === 0) {
-          console.warn("⚠️ Firebase가 초기화되지 않았습니다.");
-          console.warn(
-            "📝 firebase-config.js에서 Firebase를 초기화해야 합니다."
+          logger.warn("?�️ Firebase가 초기?�되지 ?�았?�니??");
+          logger.warn(
+            "?�� firebase-config.js?�서 Firebase�?초기?�해???�니??"
           );
-          this.redirectToMain("Firebase 초기화 필요");
+          this.redirectToMain("Firebase 초기???�요");
           return;
         }
 
         this.auth = firebase.auth();
         this.db = firebase.firestore();
 
-        console.log("✅ Firebase 초기화 완료");
+        logger.log("??Firebase 초기???�료");
 
-        // 인증 상태 변경 감지
+        // ?�증 ?�태 변�?감�?
         this.auth.onAuthStateChanged((user) => {
           if (user) {
-            console.log("👤 사용자 로그인 감지:", user.email);
+            logger.log("?�� ?�용??로그??감�?:", user.email);
             this.checkAdminAccess(user);
           } else {
-            console.warn("⚠️ 로그인되지 않음");
-            this.redirectToMain("로그인이 필요합니다");
+            logger.warn("?�️ 로그?�되지 ?�음");
+            this.redirectToMain("로그?�이 ?�요?�니??);
           }
         });
       } catch (error) {
-        console.error("❌ Firebase 초기화 실패:", error);
-        this.redirectToMain("Firebase 초기화 실패");
+        logger.error("??Firebase 초기???�패:", error);
+        this.redirectToMain("Firebase 초기???�패");
       }
     }
 
     /**
-     * 관리자 권한 확인
-     * Custom Claims에서 admin 권한 확인
+     * 관리자 권한 ?�인
+     * Custom Claims?�서 admin 권한 ?�인
      */
     async checkAdminAccess(user) {
       try {
-        console.log("🔐 관리자 권한 확인 중...");
+        logger.log("?�� 관리자 권한 ?�인 �?..");
 
-        // ID 토큰 가져오기 (Custom Claims 포함)
+        // ID ?�큰 가?�오�?(Custom Claims ?�함)
         const idTokenResult = await user.getIdTokenResult();
 
-        console.log("🔍 Custom Claims:", idTokenResult.claims);
+        logger.log("?�� Custom Claims:", idTokenResult.claims);
 
-        // Custom Claims에서 admin 권한 확인
+        // Custom Claims?�서 admin 권한 ?�인
         if (idTokenResult.claims.admin === true) {
-          console.log("✅ 관리자 권한 확인됨");
+          logger.log("??관리자 권한 ?�인??);
           this.currentUser = user;
           this.init();
         } else {
-          console.warn("⚠️ 관리자 권한 없음");
-          console.warn("📝 이 사용자에게 관리자 권한을 부여하려면:");
-          console.warn(`   firebase functions:shell`);
-          console.warn(`   setAdminClaim({uid: '${user.uid}'})`);
-          this.redirectToMain("관리자 권한이 필요합니다");
+          logger.warn("?�️ 관리자 권한 ?�음");
+          logger.warn("?�� ???�용?�에�?관리자 권한??부?�하?�면:");
+          logger.warn(`   firebase functions:shell`);
+          logger.warn(`   setAdminClaim({uid: '${user.uid}'})`);
+          this.redirectToMain("관리자 권한???�요?�니??);
         }
       } catch (error) {
-        console.error("❌ 권한 확인 실패:", error);
-        this.redirectToMain("권한 확인 실패");
+        logger.error("??권한 ?�인 ?�패:", error);
+        this.redirectToMain("권한 ?�인 ?�패");
       }
     }
 
     /**
-     * 메인 페이지로 리다이렉트
-     * @param {string} reason - 리다이렉트 사유
+     * 메인 ?�이지�?리다?�렉??
+     * @param {string} reason - 리다?�렉???�유
      */
     redirectToMain(reason) {
-      console.warn(`🚫 접근 차단: ${reason}`);
+      logger.warn(`?�� ?�근 차단: ${reason}`);
 
-      // 사용자에게 알림
+      // ?�용?�에�??�림
       alert(
-        `접근이 거부되었습니다.\n\n사유: ${reason}\n\n메인 페이지로 이동합니다.`
+        `?�근??거�??�었?�니??\n\n?�유: ${reason}\n\n메인 ?�이지�??�동?�니??`
       );
 
-      // 히스토리 남기지 않고 리다이렉트 (뒤로가기 방지)
+      // ?�스?�리 ?�기지 ?�고 리다?�렉??(?�로가�?방�?)
       window.location.replace("../index.html");
     }
 
     /**
-     * 대시보드 초기화 (관리자 권한 확인 후에만 실행)
+     * ?�?�보??초기??(관리자 권한 ?�인 ?�에�??�행)
      */
     init() {
       if (this.initialized) {
-        console.warn("⚠️ AdminDashboard가 이미 초기화되었습니다.");
+        logger.warn("?�️ AdminDashboard가 ?��? 초기?�되?�습?�다.");
         return;
       }
 
-      console.log("🚀 AdminDashboard 초기화 시작...");
+      logger.log("?? AdminDashboard 초기???�작...");
 
-      // DOM 로드 확인
+      // DOM 로드 ?�인
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => this.setup());
       } else {
@@ -159,52 +172,52 @@
     }
 
     /**
-     * 대시보드 설정
+     * ?�?�보???�정
      */
     setup() {
-      console.log("⚙️ AdminDashboard 설정 중...");
+      logger.log("?�️ AdminDashboard ?�정 �?..");
 
-      // 환경 정보 출력
+      // ?�경 ?�보 출력
       this.logEnvironment();
 
-      // 사용자 정보 표시
+      // ?�용???�보 ?�시
       this.displayUserInfo();
 
-      // 전역 변수 오염 체크
+      // ?�역 변???�염 체크
       this.checkGlobalPollution();
 
-      // 네비게이션 설정
+      // ?�비게이???�정
       this.setupNavigation();
 
-      // Chart.js 초기화
+      // Chart.js 초기??
       this.initializeCharts();
 
-      // 이벤트 리스너 설정
+      // ?�벤??리스???�정
       this.setupEventListeners();
 
-      // 6-3. 필터 설정
+      // 6-3. ?�터 ?�정
       this.setupFilters();
 
-      // 데이터 로드
+      // ?�이??로드
       this.loadDashboardData();
 
-      // 6-4. 게시물 목록 로드
+      // 6-4. 게시�?목록 로드
       this.loadPosts();
 
       this.initialized = true;
-      console.log("✅ AdminDashboard 초기화 완료");
-      console.log("📊 관리자 대시보드가 준비되었습니다.");
+      logger.log("??AdminDashboard 초기???�료");
+      logger.log("?�� 관리자 ?�?�보?��? 준비되?�습?�다.");
     }
 
     /**
-     * 네비게이션 설정
+     * ?�비게이???�정
      */
     setupNavigation() {
       const navButtons = document.querySelectorAll(".admin-nav__item");
       const sections = document.querySelectorAll(".admin-section");
 
       if (navButtons.length === 0) {
-        console.warn("⚠️ 네비게이션 버튼을 찾을 수 없습니다.");
+        logger.warn("?�️ ?�비게이??버튼??찾을 ???�습?�다.");
         return;
       }
 
@@ -212,34 +225,34 @@
         button.addEventListener("click", () => {
           const targetSection = button.dataset.section;
 
-          // 모든 버튼 비활성화
+          // 모든 버튼 비활?�화
           navButtons.forEach((btn) => {
             btn.classList.remove("admin-nav__item--active");
             btn.setAttribute("aria-selected", "false");
           });
 
-          // 클릭된 버튼 활성화
+          // ?�릭??버튼 ?�성??
           button.classList.add("admin-nav__item--active");
           button.setAttribute("aria-selected", "true");
 
-          // 모든 섹션 숨기기
+          // 모든 ?�션 ?�기�?
           sections.forEach((section) => {
             section.classList.add("admin-hidden");
             section.setAttribute("aria-hidden", "true");
           });
 
-          // 선택된 섹션 표시
+          // ?�택???�션 ?�시
           const activeSection = document.getElementById(
             `admin-${targetSection}`
           );
           if (activeSection) {
             activeSection.classList.remove("admin-hidden");
             activeSection.setAttribute("aria-hidden", "false");
-            console.log(`📍 섹션 전환: ${targetSection}`);
+            logger.log(`?�� ?�션 ?�환: ${targetSection}`);
           }
         });
 
-        // 키보드 접근성
+        // ?�보???�근??
         button.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -248,11 +261,11 @@
         });
       });
 
-      console.log("✅ 네비게이션 설정 완료");
+      logger.log("???�비게이???�정 ?�료");
     }
 
     /**
-     * Chart.js 초기화 (6-2)
+     * Chart.js 초기??(6-2)
      */
     initializeCharts() {
       const canvas = document.getElementById("admin-chart-main");
@@ -260,7 +273,7 @@
 
       if (typeof Chart === "undefined") return;
 
-      // CSS 변수 가져오기
+      // CSS 변??가?�오�?
       const styles = getComputedStyle(document.documentElement);
       const primaryColor =
         styles.getPropertyValue("--admin-chart-primary").trim() || "#667eea";
@@ -275,7 +288,7 @@
           labels: [],
           datasets: [
             {
-              label: "활성 사용자",
+              label: "?�성 ?�용??,
               data: [],
               borderColor: primaryColor,
               backgroundColor: bgColor,
@@ -301,11 +314,11 @@
         },
       });
 
-      console.log("✅ Chart.js 차트 생성 완료");
+      logger.log("??Chart.js 차트 ?�성 ?�료");
     }
 
     /**
-     * 필터 설정 (6-3)
+     * ?�터 ?�정 (6-3)
      */
     setupFilters() {
       const startDateInput = document.getElementById("filter-start-date");
@@ -314,7 +327,7 @@
 
       if (!startDateInput || !endDateInput || !resetBtn) return;
 
-      // 기본값: 최근 1개월
+      // 기본�? 최근 1개월
       const today = new Date();
       const lastMonth = new Date();
       lastMonth.setMonth(today.getMonth() - 1);
@@ -325,17 +338,17 @@
       const handleFilterChange = () => {
         const start = startDateInput.value;
         const end = endDateInput.value;
-        console.log(`📅 필터 변경: ${start} ~ ${end}`);
+        logger.log(`?�� ?�터 변�? ${start} ~ ${end}`);
 
-        // 필터 변경 알림 (접근성)
+        // ?�터 변�??�림 (?�근??
         const announcement = document.createElement("div");
         announcement.setAttribute("aria-live", "polite");
-        announcement.classList.add("sr-only"); // 화면엔 안보이게
-        announcement.textContent = `기간이 ${start}부터 ${end}까지로 변경되었습니다.`;
+        announcement.classList.add("sr-only"); // ?�면???�보?�게
+        announcement.textContent = `기간??${start}부??${end}까�?�?변경되?�습?�다.`;
         document.body.appendChild(announcement);
         setTimeout(() => announcement.remove(), 1000);
 
-        // 게시물 목록 다시 로드
+        // 게시�?목록 ?�시 로드
         this.loadPosts(start, end);
       };
 
@@ -348,7 +361,7 @@
         handleFilterChange();
       });
     /**
-     * 게시물 목록 로드 (6-4)
+     * 게시�?목록 로드 (6-4)
      */
     async loadPosts(startDate = null, endDate = null, isNextPage = false) {
       const listContainer = document.getElementById("post-list-content");
@@ -356,7 +369,7 @@
       if (!listContainer) return;
 
       if (!isNextPage) {
-        listContainer.innerHTML = '<p class="admin-loading">게시물 데이터 로딩 중...</p>';
+        listContainer.innerHTML = '<p class="admin-loading">게시�??�이??로딩 �?..</p>';
         if (paginationContainer) paginationContainer.innerHTML = '';
         this.lastVisible = null;
       }
@@ -385,7 +398,7 @@
 
         if (snapshot.empty) {
           if (!isNextPage) {
-            listContainer.innerHTML = '<p class="admin-no-data">게시물이 없습니다.</p>';
+            listContainer.innerHTML = '<p class="admin-no-data">게시물이 ?�습?�다.</p>';
           } else {
             const loadMoreBtn = document.getElementById("load-more-btn");
             if (loadMoreBtn) loadMoreBtn.style.display = "none";
@@ -404,19 +417,19 @@
           if (loadMoreBtn) loadMoreBtn.style.display = "none";
         }
       } catch (error) {
-        console.error("❌ 게시물 로드 실패:", error);
+        logger.error("??게시�?로드 ?�패:", error);
         if (error.code === "failed-precondition") {
           listContainer.innerHTML =
-            '<p class="admin-error-text">인덱스 생성이 필요합니다. 콘솔을 확인하세요.</p>';
+            '<p class="admin-error-text">?�덱???�성???�요?�니?? 콘솔???�인?�세??</p>';
         } else {
           listContainer.innerHTML =
-            '<p class="admin-error-text">게시물을 불러오는데 실패했습니다.</p>';
+            '<p class="admin-error-text">게시물을 불러?�는???�패?�습?�다.</p>';
         }
       }
     }
 
     /**
-     * 게시물 목록 렌더링 (6-4)
+     * 게시�?목록 ?�더�?(6-4)
      */
     renderPostList(docs, isAppend = false) {
       const listContainer = document.getElementById("post-list-content");
@@ -438,15 +451,15 @@
           </div>
           <div class="admin-post-info">
             <a href="#" class="admin-post-title">${this.escapeHtml(
-              data.content || "내용 없음"
+              data.content || "?�용 ?�음"
             )}</a>
             <div class="admin-post-meta">
-              <span>📅 ${date}</span>
-              <span>🏷️ ${data.topic || "미지정"}</span>
+              <span>?�� ${date}</span>
+              <span>?���?${data.topic || "미�???}</span>
             </div>
           </div>
           <div class="admin-post-stats">
-            <div class="admin-post-views">👁️ ${views}</div>
+            <div class="admin-post-views">?���?${views}</div>
           </div>
         `;
         listContainer.appendChild(item);
@@ -462,7 +475,7 @@
       const btn = document.createElement("button");
       btn.id = "load-more-btn";
       btn.className = "admin-btn admin-btn--outline";
-      btn.textContent = "더 보기 👇";
+      btn.textContent = "??보기 ?��";
       btn.onclick = () => this.loadPosts(startDate, endDate, true);
 
       paginationContainer.appendChild(btn);
@@ -471,13 +484,13 @@
     getPlatformIcon(platform) {
       switch (platform.toLowerCase()) {
         case "twitter":
-          return "🐦";
+          return "?��";
         case "instagram":
-          return "📷";
+          return "?��";
         case "facebook":
-          return "📘";
+          return "?��";
         default:
-          return "📝";
+          return "?��";
       }
     }
 
@@ -502,10 +515,10 @@
     }
 
     /**
-     * 대시보드 데이터 로드
+     * ?�?�보???�이??로드
      */
     /**
-     * 이벤트 리스너 설정
+     * ?�벤??리스???�정
      */
     setupEventListeners() {
       const refreshBtn = document.getElementById("refresh-stats-btn");
@@ -515,12 +528,12 @@
     }
 
     /**
-     * 대시보드 데이터 로드 (Read-Only)
-     * admin_stats 컬렉션에서 집계된 데이터를 읽어옵니다.
+     * ?�?�보???�이??로드 (Read-Only)
+     * admin_stats 컬렉?�에??집계???�이?��? ?�어?�니??
      */
     async loadDashboardData() {
       this.showLoading();
-      // 스켈레톤 표시 (6-2)
+      // ?�켈?�톤 ?�시 (6-2)
       const skeleton = document.getElementById("chart-skeleton");
       const chartContainer = document.querySelector(".admin-chart-container");
       if (skeleton && chartContainer) {
@@ -529,9 +542,9 @@
       }
 
       try {
-        console.log("📊 대시보드 데이터 로딩 중...");
+        logger.log("?�� ?�?�보???�이??로딩 �?..");
 
-        // 저장된 통계 데이터 읽기 (1회 Read)
+        // ?�?�된 ?�계 ?�이???�기 (1??Read)
         const statsDoc = await this.db
           .collection("admin_stats")
           .doc("summary")
@@ -540,18 +553,18 @@
         if (statsDoc.exists) {
           const data = statsDoc.data();
           this.renderStats(data);
-          console.log("✅ 대시보드 데이터 로드 완료 (Cached)");
+          logger.log("???�?�보???�이??로드 ?�료 (Cached)");
         } else {
-          // 데이터가 없으면 갱신 유도
+          // ?�이?��? ?�으�?갱신 ?�도
           this.showNoDataState();
-          console.log("ℹ️ 저장된 통계 데이터가 없습니다.");
+          logger.log("?�️ ?�?�된 ?�계 ?�이?��? ?�습?�다.");
         }
       } catch (error) {
-        console.error("❌ 데이터 로드 실패:", error);
-        this.showError("데이터를 불러오는데 실패했습니다.");
+        logger.error("???�이??로드 ?�패:", error);
+        this.showError("?�이?��? 불러?�는???�패?�습?�다.");
       } finally {
         this.hideLoading();
-        // 스켈레톤 숨기기 (6-2)
+        // ?�켈?�톤 ?�기�?(6-2)
         const skeleton = document.getElementById("chart-skeleton");
         const chartContainer = document.querySelector(".admin-chart-container");
         if (skeleton && chartContainer) {
@@ -562,30 +575,30 @@
     }
 
     /**
-     * 데이터 갱신 (Write - Admin Only)
-     * 전체 데이터를 집계하여 admin_stats에 저장합니다.
+     * ?�이??갱신 (Write - Admin Only)
+     * ?�체 ?�이?��? 집계?�여 admin_stats???�?�합?�다.
      */
     async refreshStats() {
       if (
         !confirm(
-          "전체 데이터를 집계하시겠습니까?\n데이터 양에 따라 시간이 걸릴 수 있습니다."
+          "?�체 ?�이?��? 집계?�시겠습?�까?\n?�이???�에 ?�라 ?�간??걸릴 ???�습?�다."
         )
       )
         return;
 
       this.setRefreshing(true);
       try {
-        console.log("🔄 데이터 집계 시작...");
+        logger.log("?�� ?�이??집계 ?�작...");
 
-        // 1. 전체 사용자 조회
+        // 1. ?�체 ?�용??조회
         const usersSnapshot = await this.db.collection("users").get();
         let totalTexts = 0;
         let totalPosts = 0;
 
-        // 월별 활동 집계용 객체 (Key: 'YYYY-MM', Value: count)
+        // ?�별 ?�동 집계??객체 (Key: 'YYYY-MM', Value: count)
         const monthlyCounts = {};
 
-        // 최근 6개월 라벨 생성
+        // 최근 6개월 ?�벨 ?�성
         const today = new Date();
         const last6Months = [];
         for (let i = 5; i >= 0; i--) {
@@ -595,17 +608,17 @@
             "0"
           )}`;
           last6Months.push(key);
-          monthlyCounts[key] = 0; // 초기화
+          monthlyCounts[key] = 0; // 초기??
         }
 
-        console.log(`   - 사용자 ${usersSnapshot.size}명 처리 중...`);
+        logger.log(`   - ?�용??${usersSnapshot.size}�?처리 �?..`);
 
-        // 2. 각 사용자의 데이터 집계 (병렬 처리)
+        // 2. �??�용?�의 ?�이??집계 (병렬 처리)
         const promises = usersSnapshot.docs.map(async (doc) => {
           const texts = await doc.ref.collection("texts").get();
           const posts = await doc.ref.collection("posts").get();
 
-          // 텍스트 작성일 집계
+          // ?�스???�성??집계
           texts.docs.forEach((textDoc) => {
             const data = textDoc.data();
             if (data.createdAt) {
@@ -628,14 +641,14 @@
           totalPosts += r.posts;
         });
 
-        // 3. 차트 데이터 변환
+        // 3. 차트 ?�이??변??
         const chartLabels = last6Months.map((key) => {
           const [year, month] = key.split("-");
-          return `${month}월`;
+          return `${month}??;
         });
         const chartValues = last6Months.map((key) => monthlyCounts[key]);
 
-        // 4. 통계 데이터 구성
+        // 4. ?�계 ?�이??구성
         const statsData = {
           totalUsers: usersSnapshot.size,
           totalTexts,
@@ -647,34 +660,34 @@
           },
         };
 
-        // 5. 저장
+        // 5. ?�??
         await this.db.collection("admin_stats").doc("summary").set(statsData);
 
-        // 6. UI 업데이트
+        // 6. UI ?�데?�트
         const renderData = { ...statsData, lastUpdated: new Date() };
         this.renderStats(renderData);
 
-        console.log("✅ 데이터 집계 및 저장 완료");
-        console.log("📊 월별 데이터:", monthlyCounts);
-        alert("데이터가 성공적으로 갱신되었습니다.");
+        logger.log("???�이??집계 �??�???�료");
+        logger.log("?�� ?�별 ?�이??", monthlyCounts);
+        alert("?�이?��? ?�공?�으�?갱신?�었?�니??");
       } catch (error) {
-        console.error("❌ 데이터 갱신 실패:", error);
-        alert("데이터 갱신 중 오류가 발생했습니다: " + error.message);
+        logger.error("???�이??갱신 ?�패:", error);
+        alert("?�이??갱신 �??�류가 발생?�습?�다: " + error.message);
       } finally {
         this.setRefreshing(false);
       }
     }
 
     /**
-     * 통계 데이터 렌더링
+     * ?�계 ?�이???�더�?
      */
     renderStats(data) {
-      // 숫자 업데이트
+      // ?�자 ?�데?�트
       this.animateValue("total-users", data.totalUsers || 0);
       this.animateValue("total-texts", data.totalTexts || 0);
       this.animateValue("total-posts", data.totalPosts || 0);
 
-      // 마지막 업데이트 시간
+      // 마�?�??�데?�트 ?�간
       const timeEl = document.getElementById("last-updated-time");
       if (timeEl) {
         const date =
@@ -684,25 +697,25 @@
         timeEl.textContent = date.toLocaleString();
       }
 
-      // 차트 업데이트
+      // 차트 ?�데?�트
       if (data.monthlyActivity && this.mainChart) {
         this.updateChartData(data.monthlyActivity);
       }
     }
 
     /**
-     * 숫자 카운트 애니메이션
+     * ?�자 카운???�니메이??
      */
     animateValue(id, end) {
       const obj = document.getElementById(id);
       if (!obj) return;
 
-      // 간단한 애니메이션 없이 바로 설정 (오류 방지)
+      // 간단???�니메이???�이 바로 ?�정 (?�류 방�?)
       obj.textContent = end.toLocaleString();
     }
 
     /**
-     * 차트 데이터 업데이트
+     * 차트 ?�이???�데?�트
      */
     updateChartData(monthlyData) {
       if (!this.mainChart) return;
@@ -713,7 +726,7 @@
     }
 
     /**
-     * 로딩 상태 표시
+     * 로딩 ?�태 ?�시
      */
     showLoading() {
       const elements = ["total-users", "total-texts", "total-posts"];
@@ -727,7 +740,7 @@
     }
 
     /**
-     * 로딩 상태 숨김
+     * 로딩 ?�태 ?��?
      */
     hideLoading() {
       const elements = ["total-users", "total-texts", "total-posts"];
@@ -740,7 +753,7 @@
     }
 
     /**
-     * 갱신 중 상태 설정
+     * 갱신 �??�태 ?�정
      */
     setRefreshing(isRefreshing) {
       const btn = document.getElementById("refresh-stats-btn");
@@ -748,17 +761,17 @@
 
       if (isRefreshing) {
         btn.disabled = true;
-        btn.innerHTML = "🔄 집계 중...";
+        btn.innerHTML = "?�� 집계 �?..";
         btn.classList.add("spin");
       } else {
         btn.disabled = false;
-        btn.innerHTML = "🔄 데이터 갱신";
+        btn.innerHTML = "?�� ?�이??갱신";
         btn.classList.remove("spin");
       }
     }
 
     /**
-     * 데이터 없음 상태 표시
+     * ?�이???�음 ?�태 ?�시
      */
     showNoDataState() {
       const elements = ["total-users", "total-texts", "total-posts"];
@@ -769,63 +782,63 @@
         }
       });
 
-      // 알림 (선택 사항)
-      // alert('표시할 데이터가 없습니다. [데이터 갱신] 버튼을 눌러주세요.');
+      // ?�림 (?�택 ?�항)
+      // alert('?�시???�이?��? ?�습?�다. [?�이??갱신] 버튼???�러주세??');
     }
 
     /**
-     * 에러 메시지 표시
+     * ?�러 메시지 ?�시
      */
     showError(message) {
       const elements = ["total-users", "total-texts", "total-posts"];
       elements.forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
-          el.textContent = "오류";
+          el.textContent = "?�류";
           el.classList.add("admin-error-text");
         }
       });
-      console.error(message);
+      logger.error(message);
     }
 
     /**
-     * 환경 정보 로깅
+     * ?�경 ?�보 로깅
      */
     logEnvironment() {
-      console.group("📊 Admin Dashboard Environment");
-      console.log("Version:", this.version);
-      console.log(
+      console.group("?�� Admin Dashboard Environment");
+      logger.log("Version:", this.version);
+      logger.log(
         "Chart.js:",
         typeof Chart !== "undefined" ? Chart.version : "Not loaded"
       );
-      console.log(
+      logger.log(
         "Firebase:",
         firebase.apps.length > 0 ? "Initialized" : "Not initialized"
       );
-      console.log("User Agent:", navigator.userAgent);
-      console.log("Screen Size:", `${window.innerWidth}x${window.innerHeight}`);
+      logger.log("User Agent:", navigator.userAgent);
+      logger.log("Screen Size:", `${window.innerWidth}x${window.innerHeight}`);
       console.groupEnd();
     }
 
     /**
-     * 사용자 정보 표시
+     * ?�용???�보 ?�시
      */
     displayUserInfo() {
       if (!this.currentUser) {
-        console.warn("⚠️ 사용자 정보 없음");
+        logger.warn("?�️ ?�용???�보 ?�음");
         return;
       }
 
-      console.group("👤 관리자 정보");
-      console.log("UID:", this.currentUser.uid);
-      console.log("Email:", this.currentUser.email || "없음");
-      console.log("Display Name:", this.currentUser.displayName || "없음");
-      console.log("Email Verified:", this.currentUser.emailVerified);
+      console.group("?�� 관리자 ?�보");
+      logger.log("UID:", this.currentUser.uid);
+      logger.log("Email:", this.currentUser.email || "?�음");
+      logger.log("Display Name:", this.currentUser.displayName || "?�음");
+      logger.log("Email Verified:", this.currentUser.emailVerified);
       console.groupEnd();
     }
 
     /**
-     * 전역 변수 오염 체크
+     * ?�역 변???�염 체크
      */
     checkGlobalPollution() {
       const adminGlobals = Object.keys(window).filter(
@@ -833,20 +846,20 @@
       );
 
       if (adminGlobals.length > 0) {
-        console.warn("⚠️ 전역 변수 오염 감지:", adminGlobals);
+        logger.warn("?�️ ?�역 변???�염 감�?:", adminGlobals);
         return false;
       }
 
-      console.log("✅ 전역 변수 오염 없음");
+      logger.log("???�역 변???�염 ?�음");
       return true;
     }
   }
 
-  // 전역 노출 (최소화)
+  // ?�역 ?�출 (최소??
   window.AdminDashboard = AdminDashboard;
 
-  // 자동 초기화
+  // ?�동 초기??
   const dashboard = new AdminDashboard();
 
-  console.log("✅ Admin Dashboard 모듈 로드 완료");
+  logger.log("??Admin Dashboard 모듈 로드 ?�료");
 })();
