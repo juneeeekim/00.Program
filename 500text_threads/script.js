@@ -162,6 +162,7 @@ class DualTextWriter {
     // 사용자 인증 관련 요소들
     this.usernameInput = document.getElementById("username-input");
     this.loginBtn = document.getElementById("login-btn");
+    this.googleLoginBtn = document.getElementById("google-login-btn"); // [P2-FIX] 구글 로그인 버튼 추가
     this.logoutBtn = document.getElementById("logout-btn");
     this.refreshBtn = document.getElementById("refresh-btn");
     this.loginForm = document.getElementById("login-form");
@@ -376,6 +377,8 @@ class DualTextWriter {
       this.showOfflineIndicator();
     }
   }
+
+
 
   showOfflineIndicator() {
     if (document.getElementById('offline-indicator')) return;
@@ -1706,23 +1709,35 @@ class DualTextWriter {
 
   bindEvents() {
     // 사용자 인증 이벤트
-    this.loginBtn.addEventListener("click", () => this.login());
-    this.logoutBtn.addEventListener("click", () => this.logout());
+    this.loginBtn.addEventListener("click", () => {
+        const username = this.usernameInput.value;
+        if (username) {
+            this.authManager.login(username);
+        } else {
+            this.uiManager.showMessage("사용자명을 입력해주세요.", "warning");
+        }
+    });
+    this.logoutBtn.addEventListener("click", () => this.authManager.logout());
 
     // 새로고침 버튼 이벤트 리스너 (PC 전용)
     if (this.refreshBtn) {
-      this.refreshBtn.addEventListener("click", () => this.refreshAllData());
+      this.refreshBtn.addEventListener("click", () => {
+          this.loadUserData();
+          this.showUserInterface();
+      });
     }
     this.usernameInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
-        this.login();
+        const username = this.usernameInput.value;
+        if (username) {
+            this.authManager.login(username);
+        }
       }
     });
 
     // Google 로그인 이벤트
-    const googleLoginBtn = document.getElementById("google-login-btn");
-    if (googleLoginBtn) {
-      googleLoginBtn.addEventListener("click", () => this.googleLogin());
+    if (this.googleLoginBtn) {
+      this.googleLoginBtn.addEventListener("click", () => this.authManager.loginWithGoogle());
     }
 
     // 탭 이벤트 리스너 설정
