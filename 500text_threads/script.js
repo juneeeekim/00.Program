@@ -9,6 +9,7 @@ import { AuthManager } from "./js/auth.js";
 import { Constants } from "./js/constants.js";
 import { DataManager } from "./js/data.js";
 import { UIManager } from "./js/ui.js";
+import { logger } from "./js/logger.js";
 
 /**
  * 500 Text Threads - Main Script
@@ -345,7 +346,7 @@ class DualTextWriter {
           }
         } catch (e) {
           // 입력 중 오류가 있어도 무시하고 힌트 숨김
-          console.warn("실시간 중복 체크 중 경고:", e);
+          logger.warn("실시간 중복 체크 중 경고:", e);
           this.hideInlineDuplicateHint();
         }
       }, DEBOUNCE_MS);
@@ -3091,6 +3092,16 @@ class DualTextWriter {
           );
           // 에러 로그만 기록하고 저장은 계속 진행
         }
+      }
+
+      // ========================================
+      // [P3-05] 익명 사용자 저장 제한 체크 (클라이언트 사이드 UX 개선)
+      // - Firestore 규칙에서도 차단하지만, 클라이언트에서 먼저 체크하여
+      //   사용자에게 친절한 안내 메시지를 제공합니다.
+      // ========================================
+      if (this.currentUser?.isAnonymous) {
+        this.showMessage('글을 저장하려면 Google 계정으로 로그인해주세요.', 'warning');
+        return;
       }
 
       // Firestore에 저장
