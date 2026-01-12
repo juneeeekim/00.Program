@@ -1604,7 +1604,56 @@ class DualTextWriter {
     });
   }
 
+  /**
+   * [Safety] 시스템 무결성 검사
+   * 필수 DOM 요소 및 설정이 존재하는지 확인하고, 누락 시 배포 중단(경고창) 처리
+   */
+  validateIntegrity() {
+    const criticalElements = [
+      { id: "url-link-list", name: "URL 목록 영역" },
+      { id: "url-link-empty-state", name: "URL 빈 상태 표시" },
+      { id: "add-url-link-btn", name: "URL 추가 버튼" },
+      { id: "login-btn", name: "로그인 버튼" },
+      { id: "google-login-btn", name: "구글 로그인 버튼" },
+      { id: "hashtag-settings-btn", name: "해시태그 설정 버튼" },
+      { id: "expand-btn", name: "확대 모드 버튼" }
+    ];
+
+    const missing = [];
+    criticalElements.forEach(item => {
+      if (!document.getElementById(item.id)) {
+        missing.push(`${item.name} (#${item.id})`);
+      }
+    });
+
+    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+      missing.push("Firebase 설정 (firebaseConfig)");
+    }
+
+    if (missing.length > 0) {
+      const errorMsg = `
+        <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:white; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
+          <h1 style="color:#ff4444; font-size:2rem; margin-bottom:20px;">🚨 치명적 오류: 필수 요소 누락</h1>
+          <p style="font-size:1.2rem; margin-bottom:10px;">사이트의 핵심 기능이 손상되어 실행을 중단합니다.</p>
+          <ul style="text-align:left; background:#333; padding:20px; border-radius:8px; list-style:none;">
+            ${missing.map(m => `<li style="color:#ffaaaa; padding:5px 0;">❌ 누락됨: ${m}</li>`).join('')}
+          </ul>
+          <p style="margin-top:20px; color:#aaa;">관리자에게 문의하거나 페이지를 새로고침하세요.</p>
+          <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; cursor:pointer;">새로고침</button>
+        </div>
+      `;
+      document.body.innerHTML += errorMsg;
+      console.error("❌ [Critical Integrity Failure] Missing elements:", missing);
+      throw new Error("System Integrity Check Failed: " + missing.join(", "));
+    }
+    console.log("✅ 시스템 무결성 검사 통과: 모든 필수 요소 확인됨");
+    return true;
+  }
+
   async init() {
+    // [Safety] 무결성 검사 수행 (실패 시 실행 중단)
+    this.validateIntegrity();
+
     this.bindEvents();
     await this.waitForFirebase();
     this.setupAuthStateListener();
@@ -1621,6 +1670,10 @@ class DualTextWriter {
     this.initReferenceLoader();
     // 확대 모드 초기화
     this.initExpandModal();
+    // [Fix] 스크립트 작성(Article Management) 기능 초기화
+    this.initArticleManagement();
+    // [Fix] URL 링크 관리자 컴포넌트 초기화
+    this.initUrlLinkManager();
   }
 
   // ============================================================
