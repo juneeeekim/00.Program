@@ -12,15 +12,6 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // ============================================================
-    // Helper function: 익명 사용자 여부 확인 (P3-01)
-    // - 익명 로그인 사용자의 쓰기 작업 제한을 위한 함수
-    // - sign_in_provider가 'anonymous'가 아닌 경우 true 반환
-    // ============================================================
-    function isNotAnonymous() {
-      return request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-    
     // Helper function: Validate text data structure
     function isValidTextData() {
       let data = request.resource.data;
@@ -56,44 +47,38 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
       
-      // ============================================================
-      // User texts subcollection (P3-02)
-      // - 익명 사용자는 읽기만 가능, 쓰기(생성/수정/삭제) 불가
-      // - Google 로그인 사용자만 텍스트 생성/수정/삭제 가능
-      // ============================================================
+      // User texts subcollection
       match /texts/{textId} {
-        // 읽기는 익명 사용자도 허용 (기존 데이터 조회 가능)
+        // Allow read to owner
         allow read: if isOwner(userId);
         
-        // 생성: 소유자 + 비익명 사용자 + 유효한 데이터
-        allow create: if isOwner(userId) && isNotAnonymous() && isValidTextData();
+        // Allow create with validation
+        allow create: if isOwner(userId) && isValidTextData();
         
-        // 수정: 소유자 + 비익명 사용자 + 유효한 데이터 + createdAt 불변
-        allow update: if isOwner(userId) && isNotAnonymous() && isValidTextData()
-          && request.resource.data.createdAt == resource.data.createdAt;
+        // Allow update to owner with validation
+        allow update: if isOwner(userId) 
+          && isValidTextData()
+          && request.resource.data.createdAt == resource.data.createdAt; // Prevent createdAt modification
         
-        // 삭제: 소유자 + 비익명 사용자
-        allow delete: if isOwner(userId) && isNotAnonymous();
+        // Allow delete to owner
+        allow delete: if isOwner(userId);
       }
       
-      // ============================================================
-      // User tracking posts subcollection (P3-03)
-      // - 익명 사용자는 읽기만 가능, 쓰기(생성/수정/삭제) 불가
-      // - Google 로그인 사용자만 포스트 생성/수정/삭제 가능
-      // ============================================================
+      // User tracking posts subcollection
       match /posts/{postId} {
-        // 읽기는 익명 사용자도 허용 (기존 데이터 조회 가능)
+        // Allow read to owner
         allow read: if isOwner(userId);
         
-        // 생성: 소유자 + 비익명 사용자 + 유효한 데이터
-        allow create: if isOwner(userId) && isNotAnonymous() && isValidPostData();
+        // Allow create with validation
+        allow create: if isOwner(userId) && isValidPostData();
         
-        // 수정: 소유자 + 비익명 사용자 + 유효한 데이터 + createdAt 불변
-        allow update: if isOwner(userId) && isNotAnonymous() && isValidPostData()
-          && request.resource.data.createdAt == resource.data.createdAt;
+        // Allow update to owner with validation
+        allow update: if isOwner(userId) 
+          && isValidPostData()
+          && request.resource.data.createdAt == resource.data.createdAt; // Prevent createdAt modification
         
-        // 삭제: 소유자 + 비익명 사용자
-        allow delete: if isOwner(userId) && isNotAnonymous();
+        // Allow delete to owner
+        allow delete: if isOwner(userId);
       }
     }
     
