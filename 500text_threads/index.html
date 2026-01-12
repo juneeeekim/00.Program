@@ -1803,6 +1803,49 @@
           </div>
         </div>
 
+        <!-- [Fix] 레퍼런스 선택 모달 (누락된 요소 복원) -->
+        <div id="reference-selection-modal" class="modal-overlay">
+            <div class="modal-container reference-modal">
+                <div class="modal-header">
+                    <h3>📚 레퍼런스 선택</h3>
+                    <button class="close-btn" onclick="closeModal('reference-selection-modal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="reference-search-bar">
+                        <input type="text" id="reference-search-input" placeholder="레퍼런스 검색..." class="form-input">
+                        <button id="reference-type-filter-btn" class="btn btn-secondary">필터</button>
+                    </div>
+                    <!-- 태그 필터 영역 -->
+                    <div id="selected-references-tags" class="selected-tags-container"></div>
+                    
+                    <div class="reference-list-container">
+                        <div id="reference-selection-list" class="reference-list">
+                            <!-- JS로 렌더링됨 -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span class="selection-count">선택됨: <span id="modal-selected-count">0</span>개</span>
+                    <button class="btn btn-secondary" onclick="closeModal('reference-selection-modal')">취소</button>
+                    <button id="confirm-reference-selection-btn" class="btn btn-primary">확인</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 레퍼런스 타입 필터 모달 (서브 모달) -->
+        <div id="reference-type-filter-modal" class="modal-overlay" style="z-index: 10001;">
+            <div class="modal-container small-modal">
+                <div class="modal-header">
+                    <h4>필터 설정</h4>
+                    <button class="close-btn" onclick="closeModal('reference-type-filter-modal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- 필터 옵션들... -->
+                    <div>기능 준비중</div>
+                </div>
+            </div>
+        </div>
+
         <!-- ... 기타 모달들 (내용 확장 모달, 복사 모달 등) ... -->
 
         <!-- 임시 저장 상태 표시 -->
