@@ -1,5 +1,6 @@
 import { Constants } from './constants.js';
 import { withRetry } from './utils.js';
+import { logger } from './logger.js';
 
 /**
  * 데이터 관리 클래스
@@ -34,7 +35,7 @@ export class DataManager {
                 loginMethod: 'username'
             });
         } catch (error) {
-            console.error('사용자 프로필 저장 실패:', error);
+            logger.error('사용자 프로필 저장 실패:', error);
             throw error;
         }
     }
@@ -44,9 +45,22 @@ export class DataManager {
      * @param {string} uid - 사용자 UID
      * @param {Object} textData - 저장할 텍스트 데이터 객체
      * @returns {Promise<Object>} - 저장된 문서 참조
+     * @throws {Error} ANONYMOUS_USER_RESTRICTED - 익명 사용자 저장 제한
      */
     async saveText(uid, textData) {
         if (!this.db) throw new Error('Firestore not initialized');
+
+        // ========================================
+        // [P3-04] 익명 사용자 체크 (클라이언트 사이드 UX 개선)
+        // - Firestore 규칙에서도 차단하지만, 클라이언트에서 먼저 체크하여
+        //   사용자에게 친절한 안내 메시지를 제공합니다.
+        // - window.firebaseAuth?.currentUser로 null 안전 접근
+        // ========================================
+        const currentUser = window.firebaseAuth?.currentUser;
+        if (currentUser?.isAnonymous) {
+            // UI 메시지는 호출부에서 처리하도록 에러 throw
+            throw new Error('ANONYMOUS_USER_RESTRICTED');
+        }
 
         try {
             const docRef = await window.firebaseAddDoc(
@@ -55,7 +69,7 @@ export class DataManager {
             );
             return docRef;
         } catch (error) {
-            console.error('텍스트 저장 실패:', error);
+            logger.error('텍스트 저장 실패:', error);
             throw error;
         }
     }
@@ -82,7 +96,7 @@ export class DataManager {
             });
             return texts;
         } catch (error) {
-            console.error('텍스트 목록 조회 실패:', error);
+            logger.error('텍스트 목록 조회 실패:', error);
             throw error;
         }
     }
@@ -127,7 +141,7 @@ export class DataManager {
                 lastVisibleDoc: lastDoc || null
             };
         } catch (error) {
-            console.error('텍스트 페이지네이션 조회 실패:', error);
+            logger.error('텍스트 페이지네이션 조회 실패:', error);
             throw error;
         }
     }
@@ -148,7 +162,7 @@ export class DataManager {
                 updatedAt: window.firebaseServerTimestamp()
             });
         } catch (error) {
-            console.error('텍스트 업데이트 실패:', error);
+            logger.error('텍스트 업데이트 실패:', error);
             throw error;
         }
     }
@@ -164,7 +178,7 @@ export class DataManager {
         try {
             await window.firebaseDeleteDoc(window.firebaseDoc(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS, textId));
         } catch (error) {
-            console.error('텍스트 삭제 실패:', error);
+            logger.error('텍스트 삭제 실패:', error);
             throw error;
         }
     }
@@ -180,7 +194,7 @@ export class DataManager {
             const value = localStorage.getItem(key);
             return value !== null ? value : defaultValue;
         } catch (e) {
-            console.error(`LocalStorage read error (${key}):`, e);
+            logger.error(`LocalStorage read error (${key}):`, e);
             return defaultValue;
         }
     }
@@ -194,7 +208,7 @@ export class DataManager {
         try {
             localStorage.setItem(key, value);
         } catch (e) {
-            console.error(`LocalStorage write error (${key}):`, e);
+            logger.error(`LocalStorage write error (${key}):`, e);
         }
     }
 
@@ -209,7 +223,7 @@ export class DataManager {
             const value = localStorage.getItem(key);
             return value ? JSON.parse(value) : defaultValue;
         } catch (e) {
-            console.error(`LocalStorage JSON read error (${key}):`, e);
+            logger.error(`LocalStorage JSON read error (${key}):`, e);
             return defaultValue;
         }
     }
@@ -223,7 +237,7 @@ export class DataManager {
         try {
             localStorage.setItem(key, JSON.stringify(value));
         } catch (e) {
-            console.error(`LocalStorage JSON write error (${key}):`, e);
+            logger.error(`LocalStorage JSON write error (${key}):`, e);
         }
     }
 
@@ -235,7 +249,7 @@ export class DataManager {
         try {
             localStorage.removeItem(key);
         } catch (e) {
-            console.error(`LocalStorage remove error (${key}):`, e);
+            logger.error(`LocalStorage remove error (${key}):`, e);
         }
     }
 }

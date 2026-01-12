@@ -3,6 +3,8 @@
  * @module Auth
  */
 
+import { logger } from './logger.js';
+
 export class AuthManager {
     constructor(callbacks) {
         this.auth = null;
@@ -30,16 +32,11 @@ export class AuthManager {
      * @throws {Error} 타임아웃 시 에러 throw
      */
     async waitForFirebase() {
-        // ============================================================
-        // [P2-01] Firebase 초기화 타임아웃 연장 (2026-01-10)
-        // - 기존: 50회 × 100ms = 5초 타임아웃
-        // - 수정: 100회 × 100ms = 10초 타임아웃 (LTE 네트워크 대응)
-        // ============================================================
-        const MAX_ATTEMPTS = 100;      // 최대 시도 횟수 (LTE 대응: 50 → 100)
+        const MAX_ATTEMPTS = 50;       // 최대 시도 횟수
         const POLL_INTERVAL_MS = 100;  // 폴링 간격 (ms)
-        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 10초
+        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 5초
         
-        console.log('[AuthManager] Firebase 초기화 대기 시작...');
+        logger.log('[AuthManager] Firebase 초기화 대기 시작...');
         
         for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             // Firebase SDK가 전역에 로드되었는지 확인
@@ -48,7 +45,7 @@ export class AuthManager {
                 this.db = window.firebaseDb;
                 this.isFirebaseReady = true;
                 
-                console.log(`[AuthManager] ✅ Firebase 초기화 완료 (${attempt * POLL_INTERVAL_MS}ms 소요)`);
+                logger.log(`[AuthManager] ✅ Firebase 초기화 완료 (${attempt * POLL_INTERVAL_MS}ms 소요)`);
                 this.setupAuthStateListener();
                 return true;
             }
@@ -60,7 +57,7 @@ export class AuthManager {
         // 타임아웃 도달: 명시적 에러 처리
         this.isFirebaseReady = false;
         const errorMsg = `Firebase 초기화 타임아웃 (${TIMEOUT_MS}ms). 네트워크 연결 상태가 좋지 않을 수 있습니다.`;
-        console.error('[AuthManager] ❌', errorMsg);
+        logger.error('[AuthManager] ❌', errorMsg);
         
         // 사용자에게 재시도 안내 (접근성: role="alert" 로 표시)
         this.showMessage(errorMsg, 'error');
@@ -79,11 +76,11 @@ export class AuthManager {
         window.firebaseOnAuthStateChanged(this.auth, (user) => {
             if (user) {
                 this.currentUser = user;
-                console.log('사용자 로그인:', user.displayName || user.uid);
+                logger.log('사용자 로그인:', user.displayName || user.uid);
                 this.onLogin(user);
             } else {
                 this.currentUser = null;
-                console.log('사용자 로그아웃');
+                logger.log('사용자 로그아웃');
                 this.onLogout();
             }
         });
@@ -110,31 +107,8 @@ export class AuthManager {
             return { success: true, user };
 
         } catch (error) {
-            console.error('사용자명 로그인 실패:', error);
+            logger.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
-            return { success: false, error };
-        }
-    }
-
-    /**
-     * 구글 로그인 처리
-     */
-    async loginWithGoogle() {
-        if (!this.isFirebaseReady) {
-            this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
-            return;
-        }
-
-        try {
-            const provider = new window.firebaseGoogleAuthProvider();
-            const result = await window.firebaseSignInWithPopup(this.auth, provider);
-            const user = result.user;
-            
-            console.log('Google 로그인 성공:', user.displayName);
-            return { success: true, user };
-        } catch (error) {
-            console.error('Google 로그인 실패:', error);
-            this.showMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.', 'error');
             return { success: false, error };
         }
     }
@@ -148,7 +122,7 @@ export class AuthManager {
             this.showMessage('로그아웃되었습니다.', 'info');
             return true;
         } catch (error) {
-            console.error('로그아웃 실패:', error);
+            logger.error('로그아웃 실패:', error);
             this.showMessage('로그아웃 중 오류가 발생했습니다.', 'error');
             return false;
         }
