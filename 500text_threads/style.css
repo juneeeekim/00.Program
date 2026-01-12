@@ -2129,11 +2129,10 @@ header h1 {
 }
 
 .saved-item-content.expanded {
-  display: block !important;
-  -webkit-line-clamp: initial !important;
-  line-clamp: initial !important;
-  overflow: visible !important;
-  max-height: none !important; /* [FIX] 높이 제한 해제 */
+  display: block;
+  -webkit-line-clamp: initial;
+  line-clamp: initial;
+  overflow: visible;
   width: 100%; /* 紐낆떆???덈퉬 ?ㅼ젙?쇰줈 肄섑뀗痢?媛먯떥湲?蹂댁옣 */
   clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
   margin-bottom: 24px; /* 異⑸텇??媛꾧꺽 */
@@ -3512,16 +3511,11 @@ header h1 {
     }
     
     .saved-item-content.expanded {
-        width: 100%; /* 모바일에서도 명시적 너비 설정 */
-        max-height: none !important; /* [FIX] 모바일 max-height 제한 해제 */
-        clear: both; /* float 요소의 간섭 방지 */
+        width: 100%; /* 紐⑤컮?쇱뿉?쒕룄 紐낆떆???덈퉬 ?ㅼ젙 */
+        clear: both; /* float ?붿냼???媛꾩꽠 諛⑹? */
         margin-bottom: 20px;
         padding-bottom: 12px;
-        box-sizing: border-box; /* 패딩 포함 너비 계산 */
-        -webkit-line-clamp: initial !important; /* [FIX] line-clamp 해제 */
-        line-clamp: initial !important;
-        overflow: visible !important; /* [FIX] 오버플로우 해제 */
-        display: block !important; /* [FIX] -webkit-box 오버라이드 */
+        box-sizing: border-box; /* ?⑤뵫 ?ы븿 ?덈퉬 怨꾩궛 */
     }
     
     .saved-item-toggle {
@@ -9449,85 +9443,3 @@ mark {
     color: #555;
     font-weight: 500;
 }
-
-/* ============================================================
-   [P1-03] 오프라인 인디케이터 (2026-01-11)
-   ============================================================ */
-.offline-indicator {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  background: #ff9800;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 10000;
-  animation: pulse 2s infinite;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* ============================================================
-   [P2-03] 에러 알림 (재시도 버튼 포함) (2026-01-11)
-   ============================================================ */
-.error-notification {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ffebee;
-  border: 1px solid #ef5350;
-  border-radius: 8px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 10000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from { transform: translateX(-50%) translateY(100%); opacity: 0; }
-  to { transform: translateX(-50%) translateY(0); opacity: 1; }
-}
-
-.error-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.error-icon { font-size: 18px; }
-.error-text { color: #c62828; font-weight: 500; }
-
-.retry-btn {
-  background: #2196f3;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.retry-btn:hover { background: #1976d2; }
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: #666;
-  padding: 0 4px;
-}
-
-.close-btn:hover { color: #333; }
-

@@ -51,11 +51,6 @@ class DualTextWriter {
     // 포커스 관리 지연 시간
     FOCUS_MANAGEMENT_DELAY_MS: 50, // 포커스 관리 지연 시간 (ms)
     SCREEN_READER_ANNOUNCE_DELAY_MS: 100, // 스크린 리더 알림 지연 시간 (ms)
-
-    // ============================================================
-    // [P3-01] 메모리 최적화 설정 (2026-01-11)
-    // ============================================================
-    MAX_CACHED_ITEMS: 500, // 최대 캐시 항목 수 (메모리 최적화)
   };
 
   /**
@@ -117,54 +112,15 @@ class DualTextWriter {
     this.activePanelIndex = 0; // 현재 활성 패널 인덱스 (0 또는 1)
     this.isDualMode = false; // 듀얼 모드 활성화 여부
 
-    // ============================================================
-    // [P2-01] Firebase 초기화 순서 개선 (2026-01-12)
-    // - 기존: waitForFirebase() 호출 → authManager 생성 (순서 오류)
-    // - 개선: authManager 생성 후 waitForFirebase() 호출
-    // - waitForFirebase() 호출은 authManager 생성 후 327번 줄에서 수행
-    // ============================================================
+    // Firebase 초기화 대기
+    this.waitForFirebase();
 
-    // ============================================================
-    // [P2-02] 글로벌 에러 핸들러 (2026-01-10)
-    // - 목적: iOS 디버깅 및 런타임 에러 추적
-    // - window.onerror: 동기 에러 핸들러
-    // - window.onunhandledrejection: Promise 에러 핸들러
-    // ============================================================
-    if (typeof window !== "undefined" && !window._globalErrorHandlerSet) {
-      window._globalErrorHandlerSet = true;
-      
-      window.onerror = (message, source, lineno, colno, error) => {
-        console.error("[Global Error]", {
-          message,
-          source,
-          lineno,
-          colno,
-          errorName: error?.name,
-          errorStack: error?.stack?.slice(0, 500),
-        });
-        // 기본 에러 처리 계속 진행
-        return false;
-      };
-
-      window.onunhandledrejection = (event) => {
-        console.error("[Unhandled Promise Rejection]", {
-          reason: event.reason?.message || event.reason,
-          stack: event.reason?.stack?.slice(0, 500),
-        });
-      };
-      
-      console.log("[P2-02] ✅ 글로벌 에러 핸들러 등록 완료");
-    }
-
-    // Firebase 설정 안내 (설정이 없을 때만 표시)
-    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-      this.showFirebaseSetupNotice();
-    }
+    // Firebase 설정 안내
+    this.showFirebaseSetupNotice();
 
     // 사용자 인증 관련 요소들
     this.usernameInput = document.getElementById("username-input");
     this.loginBtn = document.getElementById("login-btn");
-    this.googleLoginBtn = document.getElementById("google-login-btn"); // [P2-FIX] 구글 로그인 버튼 추가
     this.logoutBtn = document.getElementById("logout-btn");
     this.refreshBtn = document.getElementById("refresh-btn");
     this.loginForm = document.getElementById("login-form");
@@ -333,10 +289,6 @@ class DualTextWriter {
       showMessage: (msg, type) => this.showMessage(msg, type),
     });
 
-    // [P2-04] Firebase 초기화는 init()에서 수행 (2026-01-12)
-    // - 기존: constructor에서 waitForFirebase() 호출 후 init()에서도 중복 호출
-    // - 수정: init()에서만 await로 호출하여 중복 데이터 로딩 방지
-
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
 
@@ -345,199 +297,7 @@ class DualTextWriter {
     this.isAllDataLoaded = false;
     this.PAGE_SIZE = 20;
 
-    // [P1-02] 오프라인 상태 감지 (2026-01-11)
-    this.setupOfflineDetection();
-
-    // [P3-02] 메모리 최적화 (2026-01-11)
-    this.setupMemoryOptimization();
-
     this.init();
-  }
-
-  // ============================================================
-  // [P1-02] 오프라인 상태 감지 및 UI 표시 (2026-01-11)
-  // ============================================================
-  setupOfflineDetection() {
-    // navigator.onLine은 초기값일 뿐, 이벤트로 확실히 처리
-    this.isOffline = !navigator.onLine;
-
-    window.addEventListener('online', () => {
-      this.isOffline = false;
-      this.showMessage('온라인 상태로 전환되었습니다.', 'success');
-      this.hideOfflineIndicator();
-      // 재연결 시 보류 중인 작업 동기화 시도 (Phase 2에서 구현 가능)
-    });
-
-    window.addEventListener('offline', () => {
-      this.isOffline = true;
-      this.showMessage('오프라인 상태입니다. 변경사항은 로컬에 저장됩니다.', 'warning');
-      this.showOfflineIndicator();
-    });
-
-    // 초기 상태가 오프라인이면 인디케이터 표시
-    if (this.isOffline) {
-      this.showOfflineIndicator();
-    }
-  }
-
-
-
-  showOfflineIndicator() {
-    if (document.getElementById('offline-indicator')) return;
-    
-    const indicator = document.createElement('div');
-    indicator.id = 'offline-indicator';
-    indicator.className = 'offline-indicator';
-    indicator.innerHTML = '📡 오프라인 모드';
-    indicator.setAttribute('role', 'status');
-    indicator.setAttribute('aria-live', 'polite');
-    
-    document.body.appendChild(indicator);
-  }
-
-  hideOfflineIndicator() {
-    const indicator = document.getElementById('offline-indicator');
-    if (indicator) indicator.remove();
-  }
-
-  // ============================================================
-  // [P2-01] 에러 유형 분류 및 처리 (2026-01-11)
-  // ============================================================
-  handleError(error, context = 'unknown') {
-    let userMessage = '';
-    let showRetry = false;
-    
-    // Firebase 에러 코드 분류
-    switch (error?.code) {
-      case 'permission-denied':
-        userMessage = '권한이 없습니다. 로그인 상태를 확인해주세요.';
-        break;
-      case 'unavailable':
-      case 'network-error':
-        userMessage = '네트워크 연결을 확인해주세요.';
-        showRetry = true;
-        break;
-      case 'resource-exhausted':
-        userMessage = '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
-        showRetry = true;
-        break;
-      case 'not-found':
-        userMessage = '요청한 데이터를 찾을 수 없습니다.';
-        break;
-      default:
-        if (!navigator.onLine) {
-          userMessage = '인터넷 연결이 없습니다.';
-          showRetry = true;
-        } else {
-          userMessage = error?.message || '오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-          showRetry = true;
-        }
-    }
-    
-    // 에러 로깅
-    console.error(`[${context}]`, error);
-    
-    // 사용자 메시지 표시
-    if (showRetry) {
-      this.showErrorWithRetry(userMessage, context);
-    } else {
-      this.showMessage(userMessage, 'error');
-    }
-  }
-
-  // [P2-02] 재시도 버튼 포함 에러 알림
-  showErrorWithRetry(message, context) {
-    // 기존 에러 알림 제거
-    const existing = document.querySelector('.error-notification');
-    if (existing) existing.remove();
-    
-    const container = document.createElement('div');
-    container.className = 'error-notification';
-    container.innerHTML = `
-      <div class="error-content">
-        <span class="error-icon">⚠️</span>
-        <span class="error-text">${message}</span>
-      </div>
-      <button class="retry-btn">🔄 다시 시도</button>
-      <button class="close-btn">✕</button>
-    `;
-    
-    // 이벤트 리스너
-    container.querySelector('.retry-btn').onclick = () => {
-      container.remove();
-      this.retryLastAction(context);
-    };
-    container.querySelector('.close-btn').onclick = () => {
-      container.remove();
-    };
-    
-    document.body.appendChild(container);
-    
-    // 10초 후 자동 제거
-    setTimeout(() => {
-      if (container.parentElement) container.remove();
-    }, 10000);
-  }
-
-  // 재시도 로직
-  retryLastAction(context) {
-    console.log(`[Retry] ${context} 작업 재시도`);
-    switch (context) {
-      case 'loadSavedTexts':
-        this.loadSavedTextsHybrid(this.lastVisibleDoc); // 페이지네이션 고려
-        break;
-      case 'loadTrackingPosts':
-        this.loadTrackingPosts();
-        break;
-      default:
-        this.showMessage('재시도할 작업을 찾을 수 없습니다.', 'warning');
-    }
-  }
-
-  // ============================================================
-  // [P3-01] 메모리 최적화 - 최대 캐시 항목 수 제한 (2026-01-11)
-  // ============================================================
-  /**
-   * 캐시된 savedTexts 배열의 크기를 제한하여 메모리를 최적화합니다.
-   * 
-   * - MAX_CACHED_ITEMS(500)를 초과하는 항목은 오래된 것부터 제거
-   * - slice()로 새 배열을 생성하여 불변성 유지
-   * - isAllDataLoaded를 false로 설정하여 필요 시 재로드 가능
-   */
-  optimizeSavedTextsMemory() {
-    const max = DualTextWriter.CONFIG.MAX_CACHED_ITEMS;
-
-    if (this.savedTexts.length > max) {
-      const removeCount = this.savedTexts.length - max;
-      // 오래된 항목(앞에서부터) 제거하여 최신 항목 유지
-      this.savedTexts = this.savedTexts.slice(removeCount);
-      this.isAllDataLoaded = false; // 다시 로드 필요 표시
-      console.info(`[Memory] ${removeCount}개 항목 제거됨 (현재: ${this.savedTexts.length})`);
-    }
-  }
-
-  // ============================================================
-  // [P3-02] 페이지 비활성화 시 메모리 정리 (2026-01-11)
-  // ============================================================
-  /**
-   * 페이지가 백그라운드로 전환될 때 자동으로 메모리를 정리합니다.
-   * - visibilitychange 이벤트를 사용하여 탭 전환 감지
-   * - 백그라운드 상태에서 캐시 크기 최적화 및 렌더 캐시 해제
-   */
-  setupMemoryOptimization() {
-    // 이벤트 리스너 중복 등록 방지
-    if (this._memoryOptimizationBound) return;
-    this._memoryOptimizationBound = true;
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        this.optimizeSavedTextsMemory();
-        this.renderSavedTextsCache = null; // 렌더 캐시 해제
-        console.info('[Memory] 백그라운드 메모리 최적화 완료');
-      }
-    });
-    
-    console.log('[P3-02] ✅ 메모리 최적화 이벤트 리스너 등록 완료');
   }
 
   /**
@@ -1185,102 +945,59 @@ class DualTextWriter {
   /**
    * 내용 확대 모드 초기화
    */
-  /**
-   * [Fix] 글 상세 패널 확대 모드 초기화 (패널 확장 방식)
-   * - 기존의 모달 방식(content-expand-modal) 대신 패널 확장(expanded class) 방식 사용
-   * - toolbar의 #expand-btn과 연동
-   */
   initExpandModal() {
-    this.articleDetailPanel = document.getElementById("article-detail-container");
-    this.detailExpandBtn = document.getElementById("expand-btn");
-    
-    // 필수 요소 체크
-    if (!this.articleDetailPanel || !this.detailExpandBtn) {
-       // 요소가 없을 수 있음 (다른 탭 등). 조용히 리턴하거나 경고.
-       // validateIntegrity에서 이미 체크했으므로 여기서는 존재한다고 가정 가능하나 안전하게.
-       if (!this.detailExpandBtn) console.warn("⚠️ 확대 버튼(#expand-btn)을 찾을 수 없습니다.");
-       return;
-    }
+    this.expandModal = document.getElementById("content-expand-modal");
+    this.detailExpandBtn = document.getElementById("detail-expand-btn");
+    this.expandModalCloseBtn = document.getElementById("expand-modal-close");
+    this.expandContentTextarea = document.getElementById(
+      "expand-content-textarea"
+    );
 
-    // 확대 버튼 이벤트 리스너
-    this.detailExpandBtn.addEventListener("click", () => {
-      this.toggleDetailPanelExpand();
-    });
+    // 열기 버튼 이벤트 - initArticleManagement 또는 DOMContentLoaded에서 처리됨
+    // if (this.detailExpandBtn) {
+    //   this.detailExpandBtn.addEventListener("click", () => {
+    //     this.openExpandModal();
+    //   });
+    // }
+
+    // 닫기 버튼 이벤트
+    if (this.expandModalCloseBtn) {
+      this.expandModalCloseBtn.addEventListener("click", () => {
+        this.closeExpandModal();
+      });
+    }
 
     // ESC 키로 닫기
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && this.articleDetailPanel.classList.contains("expanded")) {
-        // 레퍼런스 로더나 다른 상위 모달이 열려있지 않은 경우에만 닫기
-        // (간단화를 위해 그냥 닫기 시도)
-        this.toggleDetailPanelExpand(false); // 강제 축소
+      if (
+        e.key === "Escape" &&
+        this.expandModal &&
+        this.expandModal.style.display === "block"
+      ) {
+        // 레퍼런스 로더가 열려있으면 레퍼런스 로더가 먼저 닫힘 (z-index 확인)
+        if (
+          this.referenceLoaderPanel &&
+          this.referenceLoaderPanel.style.display === "block"
+        ) {
+          return; // 레퍼런스 로더의 ESC 핸들러가 처리하도록 함
+        }
+        this.closeExpandModal();
       }
     });
-  }
+    if (!this.expandModal) return;
 
-  /**
-   * 상세 패널 확대/축소 토글
-   * @param {boolean} [forceState] - 강제 상태 설정 (true: 확대, false: 축소)
-   */
-  toggleDetailPanelExpand(forceState) {
-    if (!this.articleDetailPanel) return;
-
-    const isExpanded = this.articleDetailPanel.classList.contains("expanded");
-    const newState = forceState !== undefined ? forceState : !isExpanded;
-
-    if (newState) {
-      // 확대
-      this.articleDetailPanel.classList.add("expanded");
-      if (this.detailExpandBtn) {
-          this.detailExpandBtn.setAttribute("aria-expanded", "true");
-          this.detailExpandBtn.classList.add("active");
-          this.detailExpandBtn.title = "확대 모드 닫기 (ESC)";
-      }
-      document.body.style.overflow = "hidden"; // 배경 스크롤 방지
-      this.addDetailPanelOverlay();
-    } else {
-      // 축소
-      this.articleDetailPanel.classList.remove("expanded");
-      if (this.detailExpandBtn) {
-          this.detailExpandBtn.setAttribute("aria-expanded", "false");
-          this.detailExpandBtn.classList.remove("active");
-          this.detailExpandBtn.title = "전체 화면으로 보기";
-      }
-      document.body.style.overflow = ""; // 배경 스크롤 복원
-      this.removeDetailPanelOverlay();
+    // 변경된 내용을 상세 패널(수정 모드)에 반영
+    const editContentTextarea = document.getElementById(
+      "edit-content-textarea"
+    );
+    if (editContentTextarea && this.expandContentTextarea) {
+      editContentTextarea.value = this.expandContentTextarea.value;
+      // input 이벤트 트리거하여 글자수 등 업데이트
+      editContentTextarea.dispatchEvent(new Event("input"));
     }
-  }
 
-  /**
-   * 오버레이 추가 (확대 모드 시 배경 어둡게)
-   */
-  addDetailPanelOverlay() {
-    let overlay = document.querySelector(".detail-panel-overlay");
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.className = "detail-panel-overlay";
-      document.body.appendChild(overlay);
-      
-      // 오버레이 클릭 시 축소
-      overlay.addEventListener("click", () => this.toggleDetailPanelExpand(false));
-    }
-    // animation frame을 사용하여 transition 효과 적용 가능
-    setTimeout(() => overlay.classList.add("active"), 10);
-  }
-
-  /**
-   * 오버레이 제거
-   */
-  removeDetailPanelOverlay() {
-    const overlay = document.querySelector(".detail-panel-overlay");
-    if (overlay) {
-      overlay.classList.remove("active");
-      // transition 후 제거 (0.3s)
-      setTimeout(() => {
-        if (!overlay.classList.contains("active") && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-        }
-      }, 300);
-    }
+    this.expandModal.style.display = "none";
+    document.body.style.overflow = ""; // 배경 스크롤 복원
   }
 
   /**
@@ -1647,56 +1364,7 @@ class DualTextWriter {
     });
   }
 
-  /**
-   * [Safety] 시스템 무결성 검사
-   * 필수 DOM 요소 및 설정이 존재하는지 확인하고, 누락 시 배포 중단(경고창) 처리
-   */
-  validateIntegrity() {
-    const criticalElements = [
-      { id: "url-link-list", name: "URL 목록 영역" },
-      { id: "url-link-empty-state", name: "URL 빈 상태 표시" },
-      { id: "add-url-link-btn", name: "URL 추가 버튼" },
-      { id: "login-btn", name: "로그인 버튼" },
-      { id: "google-login-btn", name: "구글 로그인 버튼" },
-      { id: "hashtag-settings-btn", name: "해시태그 설정 버튼" },
-      { id: "expand-btn", name: "확대 모드 버튼" }
-    ];
-
-    const missing = [];
-    criticalElements.forEach(item => {
-      if (!document.getElementById(item.id)) {
-        missing.push(`${item.name} (#${item.id})`);
-      }
-    });
-
-    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
-      missing.push("Firebase 설정 (firebaseConfig)");
-    }
-
-    if (missing.length > 0) {
-      const errorMsg = `
-        <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:white; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
-          <h1 style="color:#ff4444; font-size:2rem; margin-bottom:20px;">🚨 치명적 오류: 필수 요소 누락</h1>
-          <p style="font-size:1.2rem; margin-bottom:10px;">사이트의 핵심 기능이 손상되어 실행을 중단합니다.</p>
-          <ul style="text-align:left; background:#333; padding:20px; border-radius:8px; list-style:none;">
-            ${missing.map(m => `<li style="color:#ffaaaa; padding:5px 0;">❌ 누락됨: ${m}</li>`).join('')}
-          </ul>
-          <p style="margin-top:20px; color:#aaa;">관리자에게 문의하거나 페이지를 새로고침하세요.</p>
-          <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; cursor:pointer;">새로고침</button>
-        </div>
-      `;
-      document.body.innerHTML += errorMsg;
-      console.error("❌ [Critical Integrity Failure] Missing elements:", missing);
-      throw new Error("System Integrity Check Failed: " + missing.join(", "));
-    }
-    console.log("✅ 시스템 무결성 검사 통과: 모든 필수 요소 확인됨");
-    return true;
-  }
-
   async init() {
-    // [Safety] 무결성 검사 수행 (실패 시 실행 중단)
-    this.validateIntegrity();
-
     this.bindEvents();
     await this.waitForFirebase();
     this.setupAuthStateListener();
@@ -1713,70 +1381,14 @@ class DualTextWriter {
     this.initReferenceLoader();
     // 확대 모드 초기화
     this.initExpandModal();
-    // [Fix] 스크립트 작성(Article Management) 기능 초기화
-    this.initArticleManagement();
-    // [Fix] URL 링크 관리자 컴포넌트 초기화
-    this.initUrlLinkManager();
   }
 
-  /**
-   * [Fix] URL 링크 관리자 초기화
-   * - 기존의 독립적인 클로저/모듈 패턴을 DualTextWriter 메서드로 통합
-   * - script.js 하단의 독립 함수들을 this.urlManager로 바인딩
-   */
-  initUrlLinkManager() {
-    // 하단에 정의된 URL 관리 함수들을 모듈로 묶어서 초기화
-    // 주의: script.js 구조상 하단에 함수들이 전역(혹은 모듈 스코프)으로 정의되어 있음
-    // 이를 여기서 호출하여 초기화함.
-    
-    // 만약 URL 관리 코드가 class 외부에 있다면, 여기서 그 로직을 수행하거나
-    // 해당 로직이 반환하는 객체를 받아야 함.
-    // 현재 코드 구조(Step 407)를 보면, 'function init()'이 19961라인에 있고,
-    // 마지막에 'return { init, ... }'를 반환하는 IIFE 구조로 추정됨.
-    // 하지만 view_file에서는 'function init()'만 보였고, 그것을 감싸는 IIFE 시작 부분이 안 보였음.
-    // 만약 IIFE가 아니라면... 전역 함수일 수 있음.
-    
-    // [Safety Check] 전역 스코프에 UrlLinkManager가 있는지 확인
-    if (typeof UrlLinkManager !== 'undefined') {
-        this.urlManager = UrlLinkManager;
-        this.urlManager.init();
-        console.log("✅ UrlLinkManager 모듈 초기화 완료");
-    } else {
-        // 만약 모듈이 아니라면, 직접 하단에 정의된 함수를 호출해야 함.
-        // 하지만 'init()'이라는 이름은 DualTextWriter.init과 충돌함.
-        // script.js 하단의 코드가 어떻게 실행되는지 확인 필요.
-        // 현재 추정: 하단 코드는 실행되지 않은 채로 정의만 되어 있음.
-        
-        // 해결책: 하단의 코드를 DualTextWriter의 메서드로 편입하거나,
-        // 여기서 새로운 UrlLinkManager 인스턴스를 생성해야 함.
-        console.warn("⚠️ UrlLinkManager를 찾을 수 없습니다. script.js 구조 확인 필요.");
-    }
-  }
-
-  // ============================================================
-  // [P2-03] Firebase 초기화 - AuthManager 위임 (2026-01-12)
-  // - 목적: 코드 중복 제거 및 관심사 분리
-  // - 방식: this.authManager.waitForFirebase() 호출
-  // - 이전: 직접 폴링 (P1-01에서 임시 적용)
-  // ============================================================
+  // [Refactoring] AuthManager로 위임
   async waitForFirebase() {
-    try {
-      // AuthManager에게 Firebase 초기화 위임
-      await this.authManager.waitForFirebase();
-      
-      // AuthManager에서 초기화된 값 가져오기
-      this.auth = this.authManager.auth;
-      this.db = this.authManager.db;
-      this.isFirebaseReady = this.authManager.isFirebaseReady;
-      
-      console.log('[DualTextWriter] ✅ Firebase 초기화 완료 (AuthManager 위임)');
-      return true;
-    } catch (error) {
-      // 초기화 실패 시 graceful degradation
-      console.error('[DualTextWriter] ❌ Firebase 초기화 실패:', error);
-      this.isFirebaseReady = false;
-      return false;
-    }
+    await this.authManager.waitForFirebase();
+    this.auth = this.authManager.auth;
+    this.db = this.authManager.db;
+    this.isFirebaseReady = this.authManager.isFirebaseReady;
   }
 
   // [Refactoring] AuthManager에서 처리하므로 제거 또는 래핑
@@ -1841,35 +1453,23 @@ class DualTextWriter {
 
   bindEvents() {
     // 사용자 인증 이벤트
-    this.loginBtn.addEventListener("click", () => {
-        const username = this.usernameInput.value;
-        if (username) {
-            this.authManager.login(username);
-        } else {
-            this.uiManager.showMessage("사용자명을 입력해주세요.", "warning");
-        }
-    });
-    this.logoutBtn.addEventListener("click", () => this.authManager.logout());
+    this.loginBtn.addEventListener("click", () => this.login());
+    this.logoutBtn.addEventListener("click", () => this.logout());
 
     // 새로고침 버튼 이벤트 리스너 (PC 전용)
     if (this.refreshBtn) {
-      this.refreshBtn.addEventListener("click", () => {
-          this.loadUserData();
-          this.showUserInterface();
-      });
+      this.refreshBtn.addEventListener("click", () => this.refreshAllData());
     }
     this.usernameInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
-        const username = this.usernameInput.value;
-        if (username) {
-            this.authManager.login(username);
-        }
+        this.login();
       }
     });
 
     // Google 로그인 이벤트
-    if (this.googleLoginBtn) {
-      this.googleLoginBtn.addEventListener("click", () => this.authManager.loginWithGoogle());
+    const googleLoginBtn = document.getElementById("google-login-btn");
+    if (googleLoginBtn) {
+      googleLoginBtn.addEventListener("click", () => this.googleLogin());
     }
 
     // 탭 이벤트 리스너 설정
@@ -2184,8 +1784,8 @@ class DualTextWriter {
       this.renderSavedTexts();
 
     } catch (error) {
-      // [P2-04] 에러 핸들링 개선 (2026-01-11)
-      this.handleError(error, 'loadSavedTexts');
+      console.error("저장된 글 로드 실패:", error);
+      this.showMessage("글 목록을 불러오는데 실패했습니다.", "error");
     } finally {
       this.showLoadingSpinner(false);
     }
@@ -2199,28 +1799,14 @@ class DualTextWriter {
     await this.loadSavedTextsFromFirestore(false);
   }
 
-    // ============================================================
-  // [P4-01] 전체 데이터 로드 시 진행률 표시 (2026-01-11)
-  // ============================================================
   /**
    * [Hybrid Pagination] 검색/필터를 위한 전체 데이터 로드 보장
-   * 
-   * - 로드 시작 시 현재 로드된 개수 표시
-   * - 로드 완료 후 전체 개수 표시
    */
   async ensureAllDataLoaded() {
     if (this.isAllDataLoaded) return;
 
-    // 진행률 표시 시작
-    const loaded = this.savedTexts.length;
-    const progressMsg = `데이터 로드 중... (${loaded}개 로드됨)`;
-    this.showMessage(progressMsg, "info");
-
-    // 전체 로드
+    this.showMessage("검색/필터를 위해 전체 데이터를 불러옵니다...", "info");
     await this.loadSavedTextsFromFirestore(true);
-
-    // 완료 메시지
-    this.showMessage(`전체 ${this.savedTexts.length}개 데이터 로드 완료`, "success");
   }
 
   /**
@@ -2470,10 +2056,6 @@ class DualTextWriter {
 
     // 초기 표시 상태
     this.updateReferenceTypeFilterVisibility();
-
-    // [BUG FIX] 필터 UI 초기화 후 반드시 렌더링 호출
-    // 이전 버그: 필터 버튼 UI는 업데이트되지만 실제 목록은 렌더링되지 않아 불일치 발생
-    this.renderSavedTexts();
   }
 
   setSavedFilter(filter) {
@@ -2557,7 +2139,6 @@ class DualTextWriter {
     // 레퍼런스 글(type === 'reference')에서만 고유한 소스(주제) 목록 추출
     const sources = new Set();
     this.savedTexts.forEach((item) => {
-
       // 레퍼런스 글만 필터링
       if (
         (item.type || "edit") === "reference" &&
@@ -3170,31 +2751,13 @@ class DualTextWriter {
 
   // Firebase 기반 인증으로 대체됨
   // Firebase Google 로그인 처리
-  // ============================================================
-  // [A-01] Google 로그인 중복 클릭 방지 (2026-01-12)
-  // - 목적: auth/popup-blocked 및 auth/cancelled-popup-request 오류 방지
-  // - 방식: 버튼 disabled 상태로 중복 클릭 차단
-  // ============================================================
+  // Firebase Google 로그인 처리
   async googleLogin() {
-    // 중복 클릭 방지: 버튼 비활성화
-    const googleLoginBtn = document.getElementById("google-login-btn");
-    if (googleLoginBtn) {
-      googleLoginBtn.disabled = true;
-      googleLoginBtn.style.opacity = "0.6";
-      googleLoginBtn.style.cursor = "not-allowed";
-    }
-
     if (!this.isFirebaseReady) {
       this.showMessage(
         "Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.",
         "error"
       );
-      // 버튼 복원
-      if (googleLoginBtn) {
-        googleLoginBtn.disabled = false;
-        googleLoginBtn.style.opacity = "1";
-        googleLoginBtn.style.cursor = "pointer";
-      }
       return;
     }
 
@@ -3210,27 +2773,15 @@ class DualTextWriter {
         `${user.displayName || user.email}님, Google 로그인으로 환영합니다!`,
         "success"
       );
-      // 로그인 성공 시 버튼 복원 (UI가 전환되지만 안전을 위해)
     } catch (error) {
       console.error("Google 로그인 실패:", error);
       if (error.code === "auth/popup-closed-by-user") {
         this.showMessage("로그인이 취소되었습니다.", "info");
-      } else if (error.code === "auth/popup-blocked") {
-        this.showMessage("팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.", "error");
-      } else if (error.code === "auth/cancelled-popup-request") {
-        this.showMessage("이전 로그인 요청이 취소되었습니다. 다시 시도해주세요.", "info");
       } else {
         this.showMessage(
           "Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.",
           "error"
         );
-      }
-    } finally {
-      // 버튼 복원 (성공/실패 모두)
-      if (googleLoginBtn) {
-        googleLoginBtn.disabled = false;
-        googleLoginBtn.style.opacity = "1";
-        googleLoginBtn.style.cursor = "pointer";
       }
     }
   }
@@ -3815,15 +3366,6 @@ class DualTextWriter {
       return;
     }
 
-    // [불필요한 렌더링 방지] Firebase 인증 완료 전 또는 데이터 미로드 상태에서 빈 배열 렌더링 스킵
-    if (
-      (!Array.isArray(this.savedTexts) || this.savedTexts.length === 0) &&
-      (!this.currentUser || !this.isFirebaseReady)
-    ) {
-      console.log("renderSavedTexts: 인증 대기 중 - 렌더링 스킵");
-      return;
-    }
-
     console.log("renderSavedTexts 호출됨:", this.savedTexts);
 
     // 필터 적용
@@ -3837,11 +3379,7 @@ class DualTextWriter {
     list = list.filter((item) => (item.type || "edit") !== "script");
 
     if (this.savedFilter === "edit") {
-      // type이 undefined/null인 경우도 'edit'로 간주 (레거시 데이터 호환성)
-      list = list.filter((item) => {
-        const type = item.type || "edit";
-        return type === "edit";
-      });
+      list = list.filter((item) => item.type === "edit");
     } else if (this.savedFilter === "reference") {
       // 레퍼런스 탭: 작성 글(type='edit')은 절대 보이면 안 됨
       // type이 'reference'인 것만 엄격하게 필터링
@@ -5218,14 +4756,6 @@ class DualTextWriter {
           const nowExpanded = contentEl.classList.toggle("expanded");
           button.textContent = nowExpanded ? "접기" : "더보기";
           button.setAttribute("aria-expanded", nowExpanded ? "true" : "false");
-          // [DEBUG] 토글 상태 확인 로그
-          console.log("[Toggle Debug]", {
-            itemId,
-            nowExpanded,
-            hasExpandedClass: contentEl.classList.contains("expanded"),
-            contentElStyle: window.getComputedStyle(contentEl).display,
-            contentElOverflow: window.getComputedStyle(contentEl).overflow,
-          });
           try {
             // 통일된 스키마: card:{itemId}:expanded
             localStorage.setItem(
@@ -5235,8 +4765,6 @@ class DualTextWriter {
           } catch (e) {
             /* ignore quota */
           }
-        } else {
-          console.error("[Toggle Error] contentEl not found for itemId:", itemId);
         }
       } else if (action === "edit") {
         const type = button.getAttribute("data-type");
@@ -14015,15 +13543,20 @@ DualTextWriter.prototype.loadTrackingPosts = async function () {
       force: true,
     });
   } catch (error) {
-    // [P2-04] 에러 핸들링 개선 (2026-01-11)
-    this.handleError(error, 'loadTrackingPosts');
+    // Firebase 데이터 로드 실패 시 에러 처리
+    console.error("[loadTrackingPosts] Failed to load tracking posts:", error);
     this.trackingPosts = [];
+    // 사용자에게 에러 메시지 표시
+    this.showMessage(
+      "트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.",
+      "error"
+    );
     // 빈 상태 표시
     if (this.trackingPostsList) {
       this.trackingPostsList.innerHTML = `
                 <div class="tracking-post-no-data" style="text-align: center; padding: 40px 20px;">
                     <span class="no-data-icon" style="font-size: 3rem; display: block; margin-bottom: 16px;">📭</span>
-                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 재시도 버튼을 클릭해주세요.</span>
+                    <span class="no-data-text" style="color: #666; font-size: 0.95rem;">데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.</span>
                 </div>
             `;
     }
@@ -16950,14 +16483,6 @@ DualTextWriter.prototype.initTrackingChart = function () {
   }
 
   try {
-    // [BugFix] ownerDocument 오류 방지 (2026-01-12)
-    // - Canvas가 DOM에 연결되어 있고 부모 요소가 유효한지 확인
-    if (!this.trackingChartCanvas.isConnected || 
-        !this.trackingChartCanvas.parentElement) {
-      console.warn("[initTrackingChart] Canvas not connected to DOM, deferring initialization");
-      return;
-    }
-
     const ctx = this.trackingChartCanvas.getContext("2d");
     if (!ctx) {
       console.error("[initTrackingChart] Failed to get 2D context");
@@ -16968,23 +16493,10 @@ DualTextWriter.prototype.initTrackingChart = function () {
       return;
     }
 
-    // ============================================================
-    // [BugFix] Canvas 재사용 오류 방지 (2026-01-12)
-    // - 문제: "Canvas is already in use" 오류 발생
-    // - 원인: this.trackingChart가 null이어도 Chart.js 내부 레지스트리에 남아있음
-    // - 해결: Chart.getChart(canvas) API로 기존 차트 확실히 제거
-    // ============================================================
-    
-    // 방법 1: this.trackingChart 인스턴스 확인
+    // 기존 차트가 있다면 제거 (메모리 누수 방지)
     if (this.trackingChart) {
       this.trackingChart.destroy();
       this.trackingChart = null;
-    }
-    
-    // 방법 2: Chart.js 내부 레지스트리에서 확인 (Chart.js 3.x+)
-    const existingChart = Chart.getChart(this.trackingChartCanvas);
-    if (existingChart) {
-      existingChart.destroy();
     }
 
     // Chart.js 초기화: responsive: true로 설정되어 있어 부모 컨테이너 크기에 맞춰 자동 조절
@@ -18972,7 +18484,111 @@ window.deleteTrackingDataItem = function () {
   }
 };
 
+console.log("DualTextWriter initialized (Module Mode)");
 
+// ========================================
+// 글 상세 패널 확대 모드 기능
+// ========================================
+
+/**
+ * 글 상세 패널 확대 모드 초기화
+ * - 확대 버튼 클릭 이벤트
+ * - ESC 키로 닫기
+ * - 오버레이 클릭으로 닫기
+ */
+document.addEventListener("DOMContentLoaded", () => {
+  const detailExpandBtn = document.getElementById("detail-expand-btn");
+  const articleDetailPanel = document.getElementById("article-detail-panel");
+  const detailPanelClose = document.getElementById("detail-panel-close");
+
+  if (!detailExpandBtn || !articleDetailPanel) {
+    console.warn("글 상세 패널 확대 모드: 필수 요소를 찾을 수 없습니다.");
+    return;
+  }
+
+  /**
+   * 확대 모드 토글 함수
+   */
+  function toggleDetailPanelExpand() {
+    const isExpanded = articleDetailPanel.classList.contains("expanded");
+
+    if (isExpanded) {
+      // 축소
+      articleDetailPanel.classList.remove("expanded");
+      detailExpandBtn.setAttribute("aria-expanded", "false");
+      detailExpandBtn.title = "전체 화면 확대 (ESC로 닫기)";
+      document.body.style.overflow = "";
+      removeDetailPanelOverlay();
+    } else {
+      // 확대
+      articleDetailPanel.classList.add("expanded");
+      detailExpandBtn.setAttribute("aria-expanded", "true");
+      detailExpandBtn.title = "확대 모드 닫기 (ESC)";
+      document.body.style.overflow = "hidden";
+      addDetailPanelOverlay();
+    }
+  }
+
+  /**
+   * 오버레이 추가 함수
+   */
+  function addDetailPanelOverlay() {
+    let overlay = document.querySelector(".detail-panel-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "detail-panel-overlay";
+      document.body.appendChild(overlay);
+
+      // 오버레이 클릭 시 축소
+      overlay.addEventListener("click", toggleDetailPanelExpand);
+    }
+    overlay.classList.add("active");
+  }
+
+  /**
+   * 오버레이 제거 함수
+   */
+  function removeDetailPanelOverlay() {
+    const overlay = document.querySelector(".detail-panel-overlay");
+    if (overlay) {
+      overlay.classList.remove("active");
+    }
+  }
+
+  // 확대 버튼 클릭 이벤트 -> 모달 확대 모드로 변경
+  detailExpandBtn.addEventListener("click", () => {
+    if (window.dualTextWriter) {
+      window.dualTextWriter.openExpandMode();
+    } else {
+      console.error("DualTextWriter 인스턴스를 찾을 수 없습니다.");
+    }
+  });
+
+  // ESC 키로 확대 모드 닫기
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (
+        articleDetailPanel &&
+        articleDetailPanel.classList.contains("expanded")
+      ) {
+        toggleDetailPanelExpand();
+      }
+    }
+  });
+
+  // 패널 닫기 버튼 클릭 시 확대 모드도 해제
+  if (detailPanelClose) {
+    const originalCloseHandler = detailPanelClose.onclick;
+    detailPanelClose.addEventListener("click", () => {
+      // 확대 모드가 활성화되어 있으면 먼저 해제
+      if (articleDetailPanel.classList.contains("expanded")) {
+        toggleDetailPanelExpand();
+      }
+    });
+  }
+
+  console.log("✅ 글 상세 패널 확대 모드 초기화 완료");
+});
 
 // ========================================
 // 글 상세 패널 레퍼런스 기능
@@ -19209,7 +18825,7 @@ window.loadArticleReferences = loadArticleReferences;
 // ================================================================
 // [Phase 3] 2025-12-08
 // URL 연결 탭 기능 (URL Connection Tab Feature)
-//
+// 
 // - 자주 사용하는 URL을 관리하고 빠르게 접근
 // - LocalStorage 기반 데이터 저장
 // - CRUD 기능 (추가, 조회, 수정, 삭제)
@@ -20025,7 +19641,6 @@ const UrlLinkManager = (function () {
     showEditForm,
     hideForm,
   };
-
 })();
 
 // DOM 로드 완료 시 URL 연결 탭 초기화
@@ -20354,20 +19969,10 @@ const BackupManager = (function () {
   };
 })();
 
-// DOM 로드 완료 시 초기화
+// DOM 로드 완료 시 백업 탭 초기화
 document.addEventListener("DOMContentLoaded", () => {
-  // [P1-Fix] 메인 앱 초기화 (2026-01-11)
-  // 인스턴스를 window.dualTextWriter에 할당하여 HTML inline event handler 지원
-  try {
-    window.dualTextWriter = new DualTextWriter();
-    console.log("✅ DualTextWriter 초기화 및 전역 할당 완료");
-  } catch (e) {
-    console.error("❌ DualTextWriter 초기화 실패:", e);
-  }
-
-  // 백업 매니저 (지연 초기화)
   setTimeout(() => {
-    if (typeof BackupManager !== 'undefined' && BackupManager.init()) {
+    if (BackupManager.init()) {
       console.log("✅ BackupManager 초기화 성공");
     }
   }, 600);

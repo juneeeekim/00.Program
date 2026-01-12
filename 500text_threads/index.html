@@ -11,10 +11,7 @@
     />
     <meta name="format-detection" content="telephone=no" />
     <title>500자 미만 글 작성기</title>
-    <link rel="stylesheet" href="style.css?v=20260112" />
-
-    <!-- ===== [P3-01] 모바일 디버그 헬퍼 (URL에 debug=true 추가 시 활성화) ===== -->
-    <script src="js/mobile-debug.js?v=20260110"></script>
+    <link rel="stylesheet" href="style.css?v=20251103" />
   </head>
   <body>
     <div class="container">
@@ -25,17 +22,12 @@
         <!-- 사용자 인증 섹션 -->
         <div class="user-auth-section" id="user-auth-section">
           <div class="login-form" id="login-form">
-            <h3>👤 안전한 로그인</h3>
+            <h3>🔐 안전한 로그인</h3>
 
             <!-- Google 로그인 버튼 -->
             <div class="google-login-section">
               <button id="google-login-btn" class="btn btn-google">
-                <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M23.52 12.212c0-.86-.063-1.674-.207-2.454H12v4.613h6.505c-.266 1.49-1.077 2.768-2.316 3.636v2.99h3.722c2.196-2.022 3.513-5.06 3.513-8.705l-.013-.08z"/>
-                    <path d="M12 24c3.24 0 5.957-1.073 7.942-2.906l-3.778-2.932c-1.073.743-2.45 1.15-3.903 1.15-2.948 0-5.503-1.92-6.524-4.664H2.008v3.085C4.04 21.737 7.746 24 12 24z"/>
-                    <path d="M5.476 14.648c-.27-.81-.42-1.674-.42-2.565 0-.904.148-1.782.433-2.613V6.362H2.038A11.975 11.975 0 0 0 0 12c0 1.95.47 3.8 1.306 5.467l4.17-3.818z"/>
-                    <path d="M12 4.773c1.725 0 3.32.593 4.545 1.764l3.418-3.418C17.747 1.107 15.068 0 12 0 7.746 0 4.04 2.264 2.01 6.362l3.754 3.023C6.772 6.787 9.213 4.773 12 4.773z"/>
-                </svg>
+                <span class="google-icon">🔍</span>
                 Google로 로그인
               </button>
               <p class="google-note">Google 계정으로 안전하게 로그인하세요</p>
@@ -59,9 +51,7 @@
                   기존 방식 로그인
                 </button>
               </div>
-              <p class="auth-note">
-                기존 사용자명으로 로그인 (보안 낮음, 비권장)
-              </p>
+              <p class="auth-note">기존 사용자명으로 로그인 (보안 수준 낮음)</p>
             </div>
           </div>
 
@@ -90,39 +80,19 @@
         <!-- 탭 기반 인터페이스 -->
         <div class="tab-container">
           <!-- ===== [Accessibility] 탭 버튼 접근성 속성 추가 ===== -->
-          <button
-            class="tab-button active"
-            data-tab="writing"
-            role="tab"
-            aria-selected="true"
-          >
-            <span class="tab-icon">✍️</span>
+          <button class="tab-button active" data-tab="writing" role="tab" aria-selected="true">
+            <span class="tab-icon">✏️</span>
             <span class="tab-text">글 작성</span>
           </button>
-          <button
-            class="tab-button"
-            data-tab="saved"
-            role="tab"
-            aria-selected="false"
-          >
+          <button class="tab-button" data-tab="saved" role="tab" aria-selected="false">
             <span class="tab-icon">💾</span>
             <span class="tab-text">저장된 글</span>
           </button>
-          <button
-            class="tab-button"
-            data-tab="tracking"
-            role="tab"
-            aria-selected="false"
-          >
-            <span class="tab-icon">📈</span>
+          <button class="tab-button" data-tab="tracking" role="tab" aria-selected="false">
+            <span class="tab-icon">📊</span>
             <span class="tab-text">트래킹</span>
           </button>
-          <button
-            class="tab-button"
-            data-tab="management"
-            role="tab"
-            aria-selected="false"
-          >
+          <button class="tab-button" data-tab="management" role="tab" aria-selected="false">
             <span class="tab-icon">📋</span>
             <span class="tab-text">스크립트 작성</span>
           </button>
@@ -130,12 +100,7 @@
                URL 연결 탭 버튼 (2025-12-08 추가)
                - 자주 사용하는 URL을 관리하고 바로 이동
                ======================================== -->
-          <button
-            class="tab-button"
-            data-tab="urllink"
-            role="tab"
-            aria-selected="false"
-          >
+          <button class="tab-button" data-tab="urllink" role="tab" aria-selected="false">
             <span class="tab-icon">🔗</span>
             <span class="tab-text">URL 연결</span>
           </button>
@@ -143,16 +108,12 @@
                백업 탭 버튼 (2025-12-08 추가)
                - 데이터 내보내기/가져오기 (JSON 백업)
                ======================================== -->
-          <button
-            class="tab-button"
-            data-tab="backup"
-            role="tab"
-            aria-selected="false"
-          >
-            <span class="tab-icon">📦</span>
+          <button class="tab-button" data-tab="backup" role="tab" aria-selected="false">
+            <span class="tab-icon">💾</span>
             <span class="tab-text">백업</span>
           </button>
         </div>
+
 
         <!-- 글 작성 탭 콘텐츠 (레퍼런스 + 작성 통합) -->
         <div class="tab-content active" id="writing-tab">
@@ -169,11 +130,6 @@
                   gap: 10px;
                 "
               >
-                <!-- [UI FIX] 해시태그 설정 버튼 추가 -->
-                <button id="hashtag-settings-btn" class="btn btn-secondary btn-sm" title="해시태그 설정">
-                    # 설정
-                </button>
-                
                 <span style="font-weight: 600; color: #333; font-size: 0.9rem"
                   >글자 제한:</span
                 >
@@ -200,12 +156,8 @@
                     1,000자
                   </button>
                 </div>
-                
-                <!-- [UI FIX] 확대 모드 버튼 추가 -->
-                <button id="expand-btn" class="btn btn-secondary btn-sm" title="전체 화면으로 보기">
-                    ⤢ 확대
-                </button>
               </div>
+
               <!-- SNS 플랫폼 선택 영역 (글자 제한과 같은 행) -->
               <div
                 class="sns-platform-collapsible"
@@ -219,12 +171,13 @@
                   aria-controls="sns-platform-content"
                   aria-label="SNS 플랫폼 선택 영역 펼치기/접기"
                 >
-                  <span class="toggle-icon">▼</span>
-                  <span class="toggle-text">📌 SNS 플랫폼 선택 (선택사항)</span>
+                  <span class="toggle-icon">▶</span>
+                  <span class="toggle-text">📱 SNS 플랫폼 선택 (선택사항)</span>
                   <span class="toggle-count" id="sns-platform-count"
-                    >(0개 선택)</span
+                    >(0개 선택됨)</span
                   >
                 </button>
+
                 <div
                   id="sns-platform-content"
                   class="collapse-content"
@@ -247,8 +200,8 @@
             <!-- 레퍼런스 글 패널 -->
             <div class="writing-panel left-panel">
               <div class="panel-header">
-                <h3>📚 레퍼런스 글</h3>
-                <!-- 소스 입력 필드를 헤더 안으로 추가 -->
+                <h3>📖 레퍼런스 글</h3>
+                <!-- 소스 입력 필드를 헤더 내부로 추가 -->
                 <div class="topic-input-group topic-input-group--header">
                   <label
                     for="ref-topic-input"
@@ -259,7 +212,7 @@
                     type="text"
                     id="ref-topic-input"
                     class="topic-input topic-input--header"
-                    placeholder="예: 마크 주커버그, 개발블로그, 유튜브 등"
+                    placeholder="예: 마케팅, 개발일지, 일상 등"
                     maxlength="50"
                     aria-label="소스 입력 (선택사항)"
                     aria-required="false"
@@ -272,11 +225,13 @@
                   <span class="unit">자</span>
                 </div>
               </div>
+
               <textarea
                 id="ref-text-input"
                 placeholder="참고할 레퍼런스 글을 입력하세요..."
                 maxlength="500"
               ></textarea>
+
               <div class="progress-bar">
                 <div id="ref-progress-fill" class="progress-fill"></div>
               </div>
@@ -299,13 +254,14 @@
                     TXT 다운로드
                   </button>
                 </div>
+
                 <div class="control-group advanced-actions">
                   <div class="llm-validation-dropdown">
                     <button
                       class="btn btn-llm-main btn-mobile"
                       data-panel="reference"
                     >
-                      🤖 LLM 검토
+                      🔍 LLM 검증
                     </button>
                     <div class="llm-dropdown-menu">
                       <button
@@ -315,7 +271,7 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">🟢</span>
+                            <span class="llm-icon">🤖</span>
                             <span class="llm-name">ChatGPT</span>
                             <span class="llm-description"
                               >창의적이고 자연스러운 글쓰기</span
@@ -330,7 +286,7 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">✨</span>
+                            <span class="llm-icon">💎</span>
                             <span class="llm-name">Gemini</span>
                             <span class="llm-description"
                               >균형잡힌 분석과 제안</span
@@ -348,7 +304,7 @@
                             <span class="llm-icon">🔍</span>
                             <span class="llm-name">Perplexity</span>
                             <span class="llm-description"
-                              >정확한 사실 확인과 검색</span
+                              >정확한 사실 확인과 검증</span
                             >
                           </div>
                         </div>
@@ -363,7 +319,7 @@
                             <span class="llm-icon">🚀</span>
                             <span class="llm-name">Grok</span>
                             <span class="llm-description"
-                              >유머러스하고 트렌디한 어조</span
+                              >유머러스하고 트렌디한 스타일</span
                             >
                           </div>
                         </div>
@@ -375,17 +331,17 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">🧠</span>
+                            <span class="llm-icon">🟣</span>
                             <span class="llm-name">Claude</span>
                             <span class="llm-description"
-                              >긴 형식 글쓰기·긴 문맥 강점</span
+                              >형식 엄수·긴 문맥 강점</span
                             >
                           </div>
                         </div>
                       </button>
                     </div>
                   </div>
-                  <!-- 레퍼런스 유형 선택을 LLM 검토 오른쪽으로 이동 -->
+                  <!-- 레퍼런스 유형 선택을 LLM 검증 오른쪽으로 이동 -->
                   <div
                     class="reference-type-group"
                     aria-label="레퍼런스 유형 선택"
@@ -420,7 +376,7 @@
             <div class="writing-panel right-panel">
               <div class="panel-header">
                 <h3>✏️ 수정/작성 글</h3>
-                <!-- 주제 입력 필드를 헤더 안으로 이동 -->
+                <!-- 주제 입력 필드를 헤더 내부로 이동 -->
                 <div class="topic-input-group topic-input-group--header">
                   <label
                     for="edit-topic-input"
@@ -431,7 +387,7 @@
                     type="text"
                     id="edit-topic-input"
                     class="topic-input topic-input--header"
-                    placeholder="예: 마케팅, 개발회고, 일상 등"
+                    placeholder="예: 마케팅, 개발일지, 일상 등"
                     maxlength="50"
                     aria-label="주제 입력 (선택사항)"
                     aria-required="false"
@@ -444,11 +400,13 @@
                   <span class="unit">자</span>
                 </div>
               </div>
+
               <textarea
                 id="edit-text-input"
                 placeholder="레퍼런스를 참고해서 새로운 글을 작성하세요..."
                 maxlength="500"
               ></textarea>
+
               <div class="progress-bar">
                 <div id="edit-progress-fill" class="progress-fill"></div>
               </div>
@@ -471,13 +429,14 @@
                     TXT 다운로드
                   </button>
                 </div>
+
                 <div class="control-group advanced-actions">
                   <div class="llm-validation-dropdown">
                     <button
                       class="btn btn-llm-main btn-mobile"
                       data-panel="writing"
                     >
-                      🤖 LLM 검토
+                      🔍 LLM 검증
                     </button>
                     <div class="llm-dropdown-menu">
                       <button
@@ -487,7 +446,7 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">🟢</span>
+                            <span class="llm-icon">🤖</span>
                             <span class="llm-name">ChatGPT</span>
                             <span class="llm-description"
                               >창의적이고 자연스러운 글쓰기</span
@@ -502,7 +461,7 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">✨</span>
+                            <span class="llm-icon">💎</span>
                             <span class="llm-name">Gemini</span>
                             <span class="llm-description"
                               >균형잡힌 분석과 제안</span
@@ -520,7 +479,7 @@
                             <span class="llm-icon">🔍</span>
                             <span class="llm-name">Perplexity</span>
                             <span class="llm-description"
-                              >정확한 사실 확인과 검색</span
+                              >정확한 사실 확인과 검증</span
                             >
                           </div>
                         </div>
@@ -535,7 +494,7 @@
                             <span class="llm-icon">🚀</span>
                             <span class="llm-name">Grok</span>
                             <span class="llm-description"
-                              >유머러스하고 트렌디한 어조</span
+                              >유머러스하고 트렌디한 스타일</span
                             >
                           </div>
                         </div>
@@ -547,10 +506,10 @@
                       >
                         <div class="llm-option-content">
                           <div class="llm-option-header">
-                            <span class="llm-icon">🧠</span>
+                            <span class="llm-icon">🟣</span>
                             <span class="llm-name">Claude</span>
                             <span class="llm-description"
-                              >긴 형식 글쓰기·긴 문맥 강점</span
+                              >형식 엄수·긴 문맥 강점</span
                             >
                           </div>
                         </div>
@@ -568,7 +527,7 @@
             </div>
           </div>
 
-          <!-- 참고 레퍼런스 섹션 (아래에 있는 패널) -->
+          <!-- 참고 레퍼런스 섹션 (접을 수 있는 패널) -->
           <div class="reference-link-collapsible">
             <button
               id="reference-collapse-toggle"
@@ -578,12 +537,13 @@
               aria-controls="reference-link-content"
               aria-label="참고 레퍼런스 선택 영역 펼치기/접기"
             >
-              <span class="toggle-icon">▼</span>
-              <span class="toggle-text">🔗 참고 레퍼런스 선택 (선택사항)</span>
+              <span class="toggle-icon">▶</span>
+              <span class="toggle-text">📚 참고 레퍼런스 선택 (선택사항)</span>
               <span class="toggle-count" id="collapse-ref-count"
-                >(0개 선택)</span
+                >(0개 선택됨)</span
               >
             </button>
+
             <div
               id="reference-link-content"
               class="collapse-content"
@@ -597,11 +557,14 @@
                   aria-label="참고 레퍼런스 선택"
                   aria-describedby="selected-references-description"
                 >
-                  <span class="icon">🔍</span>
+                  <span class="icon">🔗</span>
                   <span class="text">레퍼런스 선택</span>
-                  <span class="count" id="selected-ref-count">(0개 선택)</span>
+                  <span class="count" id="selected-ref-count"
+                    >(0개 선택됨)</span
+                  >
                 </button>
-                <!-- 선택한 레퍼런스 태그 표시 영역 -->
+
+                <!-- 선택된 레퍼런스 태그 표시 영역 -->
                 <div
                   id="selected-references-tags"
                   class="reference-tags"
@@ -610,8 +573,9 @@
                 >
                   <!-- 동적으로 태그 추가됨 -->
                 </div>
+
                 <span id="selected-references-description" class="sr-only">
-                  선택한 레퍼런스가 태그로 표시되며, X 버튼을 클릭하여 제거할 수
+                  선택된 레퍼런스는 태그로 표시되며, X 버튼을 클릭하여 제거할 수
                   있습니다.
                 </span>
               </div>
@@ -622,7 +586,7 @@
         <!-- 저장된 글 탭 콘텐츠 -->
         <div class="tab-content" id="saved-tab">
           <div class="saved-texts">
-            <h3>💾 저장된 글</h3>
+            <h3>저장된 글</h3>
             <div class="saved-filters">
               <div
                 class="segmented-control"
@@ -651,14 +615,14 @@
                   role="tab"
                   aria-selected="false"
                 >
-                  📚 레퍼런스
+                  📖 레퍼런스
                 </button>
                 <button
                   class="segment-btn"
                   data-filter="reference-used"
                   role="tab"
                   aria-selected="false"
-                  aria-label="사용된 레퍼런스 표시"
+                  aria-label="사용된 레퍼런스만 표시"
                 >
                   ✅ 사용됨
                 </button>
@@ -678,231 +642,221 @@
               >
                 🗑️ 휴지통
               </button>
-            </div>
 
-            <!-- 검색 입력 필드 -->
-            <div
-              class="saved-search"
-              style="margin-top: 12px; margin-bottom: 12px"
-            >
-              <input
-                id="saved-search"
-                type="text"
-                placeholder="내용/주제 검색 (공백으로 여러 개)"
-                aria-label="저장된 글 검색"
-                style="
-                  width: 100%;
-                  padding: 10px 12px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
-                  box-sizing: border-box;
-                "
-              />
-            </div>
-
-            <!-- 주제 필터 (작성 글용) -->
-            <div
-              class="topic-filter-group"
-              id="topic-filter-group"
-              style="
-                display: none;
-                align-items: center;
-                gap: 8px;
-                margin-top: 12px;
-              "
-            >
-              <label
-                for="topic-filter"
-                class="topic-filter-label"
-                style="
-                  font-weight: 600;
-                  color: #333;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
-                "
-                >주제 필터:</label
+              <!-- 검색 입력 필드 -->
+              <div
+                class="saved-search"
+                style="margin-top: 12px; margin-bottom: 12px"
               >
-              <select
-                id="topic-filter"
-                class="topic-filter-select"
-                aria-label="주제 필터"
+                <input
+                  id="saved-search"
+                  type="text"
+                  placeholder="내용/주제 검색 (공백으로 여러 개)"
+                  aria-label="저장된 글 검색"
+                  style="
+                    width: 100%;
+                    padding: 10px 12px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                    box-sizing: border-box;
+                  "
+                />
+              </div>
+              <!-- 주제 필터 (작성 글용) -->
+              <div
+                class="topic-filter-group"
+                id="topic-filter-group"
                 style="
-                  padding: 8px 10px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
-                "
-              >
-                <option value="all">전체 주제</option>
-                <!-- 동적으로 주제 목록이 채워짐 -->
-              </select>
-            </div>
-
-            <!-- SNS 플랫폼 필터 (작성 글용) -->
-            <div
-              class="sns-filter-group"
-              id="sns-filter-group"
-              style="
-                display: none;
-                align-items: center;
-                gap: 8px;
-                margin-top: 12px;
-              "
-            >
-              <label
-                for="sns-filter-mode"
-                class="sns-filter-label"
-                style="
-                  font-weight: 600;
-                  color: #333;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
-                "
-                >SNS 필터:</label
-              >
-              <select
-                id="sns-filter-mode"
-                class="sns-filter-mode-select"
-                aria-label="SNS 필터 모드"
-                style="
-                  padding: 8px 10px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
-                "
-              >
-                <option value="all">전체</option>
-                <option value="has">특정 SNS에 올린 글</option>
-                <option value="not-has">특정 SNS에 올리지 않은 글</option>
-              </select>
-              <select
-                id="sns-filter-platform"
-                class="sns-filter-platform-select"
-                aria-label="SNS 플랫폼 선택"
-                style="
-                  padding: 8px 10px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
                   display: none;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 12px;
                 "
               >
-                <option value="">플랫폼 선택</option>
-                <!-- 동적으로 SNS 플랫폼 목록이 채워짐 -->
-              </select>
-            </div>
-
-            <!-- 소스 필터 (레퍼런스 글용) -->
-            <div
-              class="source-filter-group"
-              id="source-filter-group"
-              style="
-                display: none;
-                align-items: center;
-                gap: 8px;
-                margin-top: 12px;
-              "
-            >
-              <label
-                for="source-filter"
-                class="source-filter-label"
+                <label
+                  for="topic-filter"
+                  class="topic-filter-label"
+                  style="
+                    font-weight: 600;
+                    color: #333;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                  "
+                  >주제 필터:</label
+                >
+                <select
+                  id="topic-filter"
+                  class="topic-filter-select"
+                  aria-label="주제 필터"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <option value="all">전체 주제</option>
+                  <!-- 동적으로 주제 목록이 채워짐 -->
+                </select>
+              </div>
+              <!-- SNS 플랫폼 필터 (작성 글용) -->
+              <div
+                class="sns-filter-group"
+                id="sns-filter-group"
                 style="
-                  font-weight: 600;
-                  color: #333;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
+                  display: none;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 12px;
                 "
-                >소스 필터:</label
               >
-              <select
-                id="source-filter"
-                class="source-filter-select"
-                aria-label="소스 필터"
+                <label
+                  for="sns-filter-mode"
+                  class="sns-filter-label"
+                  style="
+                    font-weight: 600;
+                    color: #333;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                  "
+                  >SNS 필터:</label
+                >
+                <select
+                  id="sns-filter-mode"
+                  class="sns-filter-mode-select"
+                  aria-label="SNS 필터 모드"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <option value="all">전체</option>
+                  <option value="has">특정 SNS에 올린 글</option>
+                  <option value="not-has">특정 SNS에 올리지 않은 글</option>
+                </select>
+                <select
+                  id="sns-filter-platform"
+                  class="sns-filter-platform-select"
+                  aria-label="SNS 플랫폼 선택"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                    display: none;
+                  "
+                >
+                  <option value="">플랫폼 선택</option>
+                  <!-- 동적으로 SNS 플랫폼 목록이 채워짐 -->
+                </select>
+              </div>
+              <!-- 소스 필터 (레퍼런스 글용) -->
+              <div
+                class="source-filter-group"
+                id="source-filter-group"
                 style="
-                  padding: 8px 10px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
+                  display: none;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 12px;
                 "
               >
-                <option value="all">전체 소스</option>
-                <!-- 동적으로 소스 목록이 채워짐 -->
-              </select>
-            </div>
-
-            <!-- 레퍼런스 유형 필터 -->
-            <div
-              class="reference-type-filter"
-              id="reference-type-filter-container"
-              style="
-                display: none;
-                align-items: center;
-                gap: 8px;
-                margin-top: 12px;
-              "
-            >
-              <span
+                <label
+                  for="source-filter"
+                  class="source-filter-label"
+                  style="
+                    font-weight: 600;
+                    color: #333;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                  "
+                  >소스 필터:</label
+                >
+                <select
+                  id="source-filter"
+                  class="source-filter-select"
+                  aria-label="소스 필터"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <option value="all">전체 소스</option>
+                  <!-- 동적으로 소스 목록이 채워짐 -->
+                </select>
+              </div>
+              <!-- 레퍼런스 유형 필터 -->
+              <div
+                class="reference-type-filter"
+                id="reference-type-filter-container"
                 style="
-                  font-weight: 600;
-                  color: #333;
-                  font-size: 0.9rem;
-                  line-height: 1.5;
+                  display: none;
+                  align-items: center;
+                  gap: 8px;
+                  margin-top: 12px;
                 "
-                >유형:</span
               >
-              <select
-                id="reference-type-filter"
-                aria-label="레퍼런스 유형 필터"
+                <span
+                  style="
+                    font-weight: 600;
+                    color: #333;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                  "
+                  >유형:</span
+                >
+                <select
+                  id="reference-type-filter"
+                  aria-label="레퍼런스 유형 필터"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <option value="all">전체</option>
+                  <option value="structure">구조</option>
+                  <option value="idea">아이디어</option>
+                </select>
+              </div>
+              <div
+                class="migration-tools"
                 style="
-                  padding: 8px 10px;
-                  border: 2px solid #e1e5e9;
-                  border-radius: 8px;
-                  font-size: 0.9rem;
+                  margin-top: 15px;
+                  display: flex;
+                  justify-content: flex-end;
+                  gap: 10px;
                 "
               >
-                <option value="all">전체</option>
-                <option value="structure">구조</option>
-                <option value="idea">아이디어</option>
-              </select>
+                <button
+                  id="batch-migration-btn"
+                  class="btn btn-secondary btn-small"
+                  title="모든 저장된 글을 트래킹 포스트로 변환"
+                  style="font-size: 0.85rem; padding: 8px 16px"
+                >
+                  📊 모든 글 트래킹 시작
+                </button>
+              </div>
             </div>
-
-            <div
-              class="migration-tools"
-              style="
-                margin-top: 15px;
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-              "
-            >
-              <button
-                id="batch-migration-btn"
-                class="btn btn-secondary btn-small"
-                title="모든 저장된 글을 트래킹 포스트로 변환"
-                style="font-size: 0.85rem; padding: 8px 16px"
-              >
-                🛠️ 모든 글 트래킹 시작
-              </button>
-            </div>
-
             <div
               id="saved-list"
               role="region"
               aria-live="polite"
               aria-label="저장된 글 목록"
             ></div>
-
-            <!-- 더보기 버튼 (LTE 최적화) -->
-            <div id="load-more-container" style="display: none">
-              <button
-                id="load-more-btn"
-                class="btn btn-secondary"
-                aria-label="저장된 글 더보기"
-              >
-                더보기
+            
+            <!-- 더 보기 버튼 (LTE 최적화) -->
+            <div id="load-more-container" style="display: none;">
+              <button id="load-more-btn" class="btn btn-secondary" aria-label="저장된 글 더 보기">
+                더 보기
               </button>
-              <div class="loading-spinner" style="display: none"></div>
+              <div class="loading-spinner" style="display: none;"></div>
             </div>
           </div>
         </div>
@@ -910,53 +864,51 @@
         <!-- 트래킹 탭 콘텐츠 -->
         <div class="tab-content" id="tracking-tab">
           <div class="tracking-dashboard">
-            <h3>📈 트래킹 대시보드</h3>
-
+            <h3>📊 트래킹 대시보드</h3>
             <div class="tracking-summary">
               <div class="summary-card">
-                <div class="summary-icon">📝</div>
+                <div class="summary-icon">📈</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 포스트</div>
+                  <div class="summary-label">총 포스팅</div>
                   <div class="summary-value" id="total-posts">0</div>
                 </div>
               </div>
               <div class="summary-card">
-                <div class="summary-icon">👁️</div>
+                <div class="summary-icon">👀</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 조회수</div>
+                  <div class="summary-label">현재 조회수</div>
                   <div class="summary-value" id="total-views">0</div>
                 </div>
               </div>
               <div class="summary-card">
                 <div class="summary-icon">❤️</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 좋아요</div>
+                  <div class="summary-label">현재 좋아요</div>
                   <div class="summary-value" id="total-likes">0</div>
                 </div>
               </div>
               <div class="summary-card">
                 <div class="summary-icon">💬</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 댓글</div>
+                  <div class="summary-label">현재 댓글</div>
                   <div class="summary-value" id="total-comments">0</div>
                 </div>
               </div>
               <div class="summary-card">
-                <div class="summary-icon">🔗</div>
+                <div class="summary-icon">🔁</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 공유</div>
+                  <div class="summary-label">현재 공유</div>
                   <div class="summary-value" id="total-shares">0</div>
                 </div>
               </div>
               <div class="summary-card">
                 <div class="summary-icon">👥</div>
                 <div class="summary-content">
-                  <div class="summary-label">총 팔로워</div>
+                  <div class="summary-label">현재 팔로우</div>
                   <div class="summary-value" id="total-follows">0</div>
                 </div>
               </div>
             </div>
-
             <div class="tracking-chart-container">
               <div
                 class="chart-header"
@@ -979,7 +931,7 @@
                   "
                   id="chart-post-title"
                 >
-                  전체 포스트 - 합계 추이
+                  전체 포스트 현재값 합계 추이
                 </div>
                 <div
                   class="chart-header-update"
@@ -989,7 +941,6 @@
                   최근 업데이트: -
                 </div>
               </div>
-
               <div
                 class="chart-controls"
                 style="
@@ -1065,7 +1016,6 @@
                     </button>
                   </div>
                 </div>
-
                 <div
                   class="chart-range-toggle"
                   style="display: flex; gap: 8px; align-items: center"
@@ -1107,7 +1057,7 @@
                         justify-content: center;
                       "
                     >
-                      1주
+                      📅
                     </button>
                     <button
                       id="chart-range-30d"
@@ -1134,7 +1084,7 @@
                         justify-content: center;
                       "
                     >
-                      1달
+                      📊
                     </button>
                     <button
                       id="chart-range-all"
@@ -1161,23 +1111,22 @@
                         justify-content: center;
                       "
                     >
-                      전체
+                      📈
                     </button>
                   </div>
                 </div>
-
                 <div
                   class="chart-scale-toggle"
                   style="display: flex; gap: 8px; align-items: center"
                 >
                   <span
                     style="font-weight: 600; color: #333; font-size: 0.95rem"
-                    >축 스케일:</span
+                    >스케일:</span
                   >
                   <div
                     class="scale-toggle-buttons"
                     role="group"
-                    aria-label="축 스케일 모드 선택"
+                    aria-label="스케일 모드 선택"
                     style="
                       display: flex;
                       background: #f1f3f5;
@@ -1189,7 +1138,7 @@
                       id="chart-scale-combined"
                       class="scale-toggle-btn active"
                       onclick="dualTextWriter.setScaleMode('combined')"
-                      aria-label="공동 축 스케일 모드"
+                      aria-label="공동 스케일 모드"
                       aria-pressed="true"
                       role="button"
                       tabindex="0"
@@ -1211,7 +1160,7 @@
                       id="chart-scale-split"
                       class="scale-toggle-btn"
                       onclick="dualTextWriter.setScaleMode('split')"
-                      aria-label="분리 축 스케일 모드"
+                      aria-label="분리 스케일 모드"
                       aria-pressed="false"
                       role="button"
                       tabindex="0"
@@ -1231,7 +1180,6 @@
                     </button>
                   </div>
                 </div>
-
                 <div
                   id="post-selector-container"
                   class="post-selector-container"
@@ -1301,12 +1249,11 @@
                         margin-top: 4px;
                       "
                     >
-                      <!-- 포스트 목록이 동적으로 추가됨 -->
+                      <!-- 포스트 목록이 여기에 동적으로 추가됨 -->
                     </div>
                   </div>
                 </div>
               </div>
-
               <div
                 class="chart-legend-tabs"
                 role="group"
@@ -1350,7 +1297,7 @@
                   "
                   onclick="dualTextWriter.toggleLegend(this, 0)"
                 >
-                  👁️ 조회수
+                  👀 조회수
                 </button>
                 <button
                   class="legend-tab"
@@ -1422,13 +1369,13 @@
                   "
                   onclick="dualTextWriter.toggleLegend(this, 3)"
                 >
-                  🔗 공유
+                  🔄 공유
                 </button>
                 <button
                   class="legend-tab"
                   data-dataset="4"
                   data-axis="y2"
-                  aria-label="팔로워 데이터셋 표시/숨김 토글"
+                  aria-label="팔로우 데이터셋 표시/숨김 토글"
                   aria-pressed="true"
                   role="button"
                   tabindex="0"
@@ -1446,10 +1393,9 @@
                   "
                   onclick="dualTextWriter.toggleLegend(this, 4)"
                 >
-                  👥 팔로워
+                  👥 팔로우
                 </button>
               </div>
-
               <canvas
                 id="tracking-chart"
                 role="img"
@@ -1457,7 +1403,6 @@
                 aria-describedby="chart-header"
               ></canvas>
             </div>
-
             <div
               class="tracking-filters sticky"
               style="
@@ -1469,9 +1414,6 @@
                 flex-wrap: wrap;
               "
             >
-              <!-- 필터 내용 생략 - 너무 길어서 핵심 구조는 유지하면서 불필요한 중복 스타일은 CSS로 처리되어야 하지만 인라인으로 되어 있어 일부 생략 후 스크립트로 동작 확인 -->
-              <!-- 공간상 여기까지만 복원하고 나머지는 생략하지 않고 꼼꼼히 넣어야 하는데 토큰 제한 때문에... -->
-              <!-- 핵심적인 필터들 -->
               <div class="tracking-search" style="flex: 1; min-width: 220px">
                 <input
                   id="tracking-search"
@@ -1486,8 +1428,6 @@
                   "
                 />
               </div>
-              <!-- ... 기타 필터들 ... -->
-              <!-- 복잡한 필터 UI는 스크립트에서 동적으로 제어되므로 ID만 정확하면 됨 -->
               <div style="display: flex; gap: 6px; align-items: center">
                 <span style="font-weight: 600; color: #333; font-size: 0.9rem"
                   >정렬:</span
@@ -1506,15 +1446,291 @@
                     <option value="updatedDesc">최신 업데이트순</option>
                     <option value="updatedAsc">오래된 업데이트순</option>
                   </optgroup>
-                  <!-- 다른 옵션들 -->
                   <optgroup label="조회수">
                     <option value="viewsDesc">조회수 높은순</option>
                     <option value="viewsAsc">조회수 낮은순</option>
                   </optgroup>
+                  <optgroup label="좋아요">
+                    <option value="likesDesc">좋아요 높은순</option>
+                    <option value="likesAsc">좋아요 낮은순</option>
+                  </optgroup>
+                  <optgroup label="댓글">
+                    <option value="commentsDesc">댓글 많은순</option>
+                    <option value="commentsAsc">댓글 적은순</option>
+                  </optgroup>
+                  <optgroup label="공유">
+                    <option value="sharesDesc">공유 많은순</option>
+                    <option value="sharesAsc">공유 적은순</option>
+                  </optgroup>
+                  <optgroup label="팔로우">
+                    <option value="followsDesc">팔로우 많은순</option>
+                    <option value="followsAsc">팔로우 적은순</option>
+                  </optgroup>
+                  <optgroup label="입력 횟수">
+                    <option value="entriesDesc">입력 횟수 많은순</option>
+                    <option value="entriesAsc">입력 횟수 적은순</option>
+                  </optgroup>
+                  <optgroup label="기타">
+                    <option value="favoritesFirst">즐겨찾기 먼저</option>
+                  </optgroup>
                 </select>
               </div>
+              <div style="display: flex; gap: 6px; align-items: center">
+                <span style="font-weight: 600; color: #333; font-size: 0.9rem"
+                  >상태:</span
+                >
+                <select
+                  id="tracking-status-filter"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                >
+                  <option value="all">전체</option>
+                  <option value="active">활성만</option>
+                  <option value="inactive">비활성만</option>
+                  <option value="hasData">데이터 있음</option>
+                  <option value="noData">데이터 없음</option>
+                </select>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 6px;
+                  align-items: center;
+                  flex-wrap: wrap;
+                "
+              >
+                <span style="font-weight: 600; color: #333; font-size: 0.9rem"
+                  >업데이트:</span
+                >
+                <input
+                  id="tracking-updated-from"
+                  type="date"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                />
+                <span style="color: #888">~</span>
+                <input
+                  id="tracking-updated-to"
+                  type="date"
+                  style="
+                    padding: 8px 10px;
+                    border: 2px solid #e1e5e9;
+                    border-radius: 8px;
+                    font-size: 0.9rem;
+                  "
+                />
+                <button
+                  id="tracking-date-clear"
+                  class="btn btn-secondary"
+                  style="padding: 8px 10px; border-radius: 8px"
+                >
+                  초기화
+                </button>
+              </div>
+              <div class="range-filter-container">
+                <div
+                  class="range-filter-header"
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    cursor: pointer;
+                    user-select: none;
+                  "
+                  onclick="dualTextWriter.toggleRangeFilter()"
+                >
+                  <span style="font-weight: 600; color: #333; font-size: 0.9rem"
+                    >범위:</span
+                  >
+                  <button
+                    class="range-filter-toggle"
+                    id="range-filter-toggle"
+                    aria-label="범위 필터 접기/펼치기"
+                    aria-expanded="false"
+                    style="
+                      background: transparent;
+                      border: none;
+                      cursor: pointer;
+                      padding: 4px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: #667eea;
+                      font-size: 0.9rem;
+                    "
+                  >
+                    <span class="toggle-icon">▼</span>
+                  </button>
+                </div>
+                <div
+                  class="range-filter-content"
+                  id="range-filter-content"
+                  style="
+                    display: none;
+                    margin-top: 12px;
+                    padding: 12px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border: 1px solid #e1e5e9;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      gap: 8px;
+                      align-items: center;
+                      flex-wrap: wrap;
+                    "
+                  >
+                    <input
+                      id="min-views"
+                      type="number"
+                      min="0"
+                      placeholder="조회수 ≥"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="max-views"
+                      type="number"
+                      min="0"
+                      placeholder="조회수 ≤"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="min-likes"
+                      type="number"
+                      min="0"
+                      placeholder="좋아요 ≥"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="max-likes"
+                      type="number"
+                      min="0"
+                      placeholder="좋아요 ≤"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="min-comments"
+                      type="number"
+                      min="0"
+                      placeholder="댓글 ≥"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="max-comments"
+                      type="number"
+                      min="0"
+                      placeholder="댓글 ≤"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="min-shares"
+                      type="number"
+                      min="0"
+                      placeholder="공유 ≥"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="max-shares"
+                      type="number"
+                      min="0"
+                      placeholder="공유 ≤"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="min-follows"
+                      type="number"
+                      min="0"
+                      placeholder="팔로우 ≥"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <input
+                      id="max-follows"
+                      type="number"
+                      min="0"
+                      placeholder="팔로우 ≤"
+                      style="
+                        width: 110px;
+                        padding: 8px 10px;
+                        border: 2px solid #e1e5e9;
+                        border-radius: 8px;
+                        font-size: 0.9rem;
+                      "
+                    />
+                    <button
+                      id="export-csv"
+                      class="btn btn-primary"
+                      style="padding: 8px 12px; border-radius: 8px"
+                    >
+                      CSV 내보내기
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-
             <div class="tracking-posts-list" id="tracking-posts-list">
               <!-- 트래킹 중인 포스트 목록 -->
             </div>
@@ -1525,7 +1741,8 @@
         <div class="tab-content" id="management-tab">
           <div class="article-management">
             <h3>📋 스크립트 작성</h3>
-            <!-- 새 스크립트 작성 버튼 및 폼 -->
+
+            <!-- 새 스크립트 생성 버튼 및 폼 -->
             <div class="script-create-section">
               <button
                 id="new-script-toggle-btn"
@@ -1534,26 +1751,27 @@
                 aria-controls="script-create-form"
                 aria-label="새 스크립트 작성 폼 열기/닫기"
               >
-                <span class="btn-icon">＋</span>
-                <span class="btn-text">새 스크립트 작성</span>
+                <span class="btn-icon">✨</span>
+                <span class="btn-text">새 스크립트 생성</span>
                 <span class="toggle-arrow">▼</span>
               </button>
+
               <div
                 id="script-create-form"
                 class="script-create-form"
                 aria-hidden="true"
                 style="display: none"
               >
-                <!-- 폼 내용 -->
                 <div class="form-header">
-                  <h4>📝 새 스크립트 작성</h4>
+                  <h4>✨ 새 스크립트 생성</h4>
                 </div>
+
                 <div class="form-body">
-                  <!-- 제목, 내용, 카테고리 등 입력 필드 -->
+                  <!-- 제목 -->
                   <div class="form-group">
-                    <label for="script-title-input" class="form-label"
-                      >제목 <span class="required">*</span></label
-                    >
+                    <label for="script-title-input" class="form-label">
+                      제목 <span class="required">*</span>
+                    </label>
                     <input
                       type="text"
                       id="script-title-input"
@@ -1564,63 +1782,175 @@
                       maxlength="200"
                     />
                   </div>
-                  <!-- ... -->
-                  <!-- 저장/취소 버튼 -->
-                  <div class="form-footer">
-                    <button
-                      id="script-save-btn"
-                      class="btn btn-primary"
-                      aria-label="스크립트 저장"
-                    >
-                      <span class="btn-icon">💾</span>
-                      <span class="btn-text">저장</span>
-                    </button>
-                    <button
-                      id="script-cancel-btn"
-                      class="btn btn-secondary"
-                      aria-label="작성 취소"
-                    >
-                      <span class="btn-icon">✕</span>
-                      <span class="btn-text">취소</span>
-                    </button>
+
+                  <!-- 내용 -->
+                  <div class="form-group">
+                    <div class="form-label-with-action">
+                      <label for="script-content-textarea" class="form-label">
+                        내용 <span class="required">*</span>
+                        <span id="script-content-counter" class="char-counter"
+                          >(0 / 500자는 약 1분 15초)</span
+                        >
+                      </label>
+                      <div class="content-actions">
+                        <button
+                          type="button"
+                          id="expand-content-btn"
+                          class="btn-expand-content"
+                          aria-label="내용 확대 모드"
+                          title="전체 화면 확대 모드 (ESC로 닫기)"
+                        >
+                          <span class="btn-icon">🔍</span>
+                          <span class="btn-text">확대</span>
+                        </button>
+                        <button
+                          type="button"
+                          id="load-reference-btn"
+                          class="btn-load-reference"
+                          aria-label="레퍼런스 불러오기"
+                          title="저장된 글 또는 트래킹에서 레퍼런스 불러오기"
+                        >
+                          <span class="btn-icon">📥</span>
+                          <span class="btn-text">불러오기</span>
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      id="script-content-textarea"
+                      class="form-textarea"
+                      placeholder="스크립트 내용을 입력하세요..."
+                      aria-label="스크립트 내용 입력"
+                      aria-required="true"
+                      rows="12"
+                    ></textarea>
                   </div>
+
+                  <!-- 카테고리 -->
+                  <div class="form-group">
+                    <label for="script-category-input" class="form-label">
+                      카테고리
+                    </label>
+                    <input
+                      type="text"
+                      id="script-category-input"
+                      class="form-input"
+                      placeholder="예: 날짜_풀링컨텐츠, 날짜_키컨텐츠 등"
+                      aria-label="카테고리 입력"
+                      list="category-suggestions"
+                      maxlength="50"
+                    />
+                    <datalist id="category-suggestions">
+                      <!-- 동적으로 카테고리 제안 추가됨 -->
+                    </datalist>
+                  </div>
+
+                  <!-- 사용 SNS -->
+                  <div class="form-group">
+                    <label for="script-llm-model-select" class="form-label">
+                      사용 SNS
+                    </label>
+                    <div class="llm-model-wrapper">
+                      <select
+                        id="script-llm-model-select"
+                        class="form-select"
+                        aria-label="사용 SNS 선택"
+                      >
+                        <option value="">선택하세요</option>
+                        <option value="유튜브 스크립트">유튜브 스크립트</option>
+                        <option value="네이버 블로그 스크립트">
+                          네이버 블로그 스크립트
+                        </option>
+                        <option value="전자책 스크립트">전자책 스크립트</option>
+                        <option value="인스타그램 스크립트">
+                          인스타그램 스크립트
+                        </option>
+                        <option value="페이스북 스크립트">
+                          페이스북 스크립트
+                        </option>
+                        <option value="트위터(X) 스크립트">
+                          트위터(X) 스크립트
+                        </option>
+                        <option value="틱톡 스크립트">틱톡 스크립트</option>
+                        <option value="링크드인 스크립트">
+                          링크드인 스크립트
+                        </option>
+                        <option value="카카오톡 채널 스크립트">
+                          카카오톡 채널 스크립트
+                        </option>
+                        <option value="custom">직접 입력</option>
+                      </select>
+                      <input
+                        type="text"
+                        id="script-llm-model-custom"
+                        class="form-input form-input-custom"
+                        placeholder="SNS 플랫폼 직접 입력"
+                        aria-label="사용 SNS 직접 입력"
+                        style="display: none"
+                        maxlength="100"
+                      />
+                    </div>
+                    <small class="form-help">
+                      사용할 SNS 플랫폼을 선택하거나 직접 입력해주세요.
+                    </small>
+                  </div>
+
+                  <!-- LLM 모델 유형 -->
+                  <div class="form-group">
+                    <label for="script-llm-type-input" class="form-label">
+                      LLM 모델 유형
+                    </label>
+                    <input
+                      type="text"
+                      id="script-llm-type-input"
+                      class="form-input"
+                      placeholder="일반"
+                      aria-label="LLM 모델 유형 입력"
+                      value="일반"
+                      maxlength="50"
+                    />
+                    <small class="form-help">
+                      싱킹 모델 / 일반 모델 / 기타 세부 모드를 자유롭게
+                      입력해주세요.
+                    </small>
+                  </div>
+                </div>
+
+                <div class="form-footer">
+                  <button
+                    id="script-save-btn"
+                    class="btn btn-primary"
+                    aria-label="스크립트 저장"
+                  >
+                    <span class="btn-icon">💾</span>
+                    <span class="btn-text">저장</span>
+                  </button>
+                  <button
+                    id="script-cancel-btn"
+                    class="btn btn-secondary"
+                    aria-label="작성 취소"
+                  >
+                    <span class="btn-icon">❌</span>
+                    <span class="btn-text">취소</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- Dual Panel 영역 -->
-            <div id="article-detail-container" class="article-detail-container">
-              <!-- Panel 1 -->
-              <div
-                id="article-detail-panel-1"
-                class="article-detail-panel"
-                style="display: none"
-                role="region"
-                aria-label="글 상세 정보 (패널 1)"
-                data-panel-index="0"
+            <!-- 카테고리 선택 드롭다운 -->
+            <div class="management-filters">
+              <label for="category-select" class="sr-only">카테고리 선택</label>
+              <select
+                id="category-select"
+                class="category-select"
+                aria-label="카테고리별 글 필터링"
+                aria-describedby="category-select-description"
               >
-                <!-- 상세 내용 -->
-              </div>
-              <!-- Divider -->
-              <div
-                id="detail-dual-divider"
-                class="detail-dual-divider"
-                role="separator"
-                style="display: none"
-              >
-                <div class="detail-dual-divider-handle"></div>
-              </div>
-              <!-- Panel 2 -->
-              <div
-                id="article-detail-panel-2"
-                class="article-detail-panel"
-                style="display: none"
-                role="region"
-                aria-label="글 상세 정보 (패널 2)"
-                data-panel-index="1"
-              >
-                <!-- 상세 내용 -->
-              </div>
+                <option value="">전체 글 보기</option>
+                <!-- 동적으로 카테고리 추가됨 -->
+              </select>
+              <span id="category-select-description" class="sr-only">
+                카테고리를 선택하면 해당 카테고리의 글만 표시됩니다.
+              </span>
             </div>
 
             <!-- 글 카드 그리드 -->
@@ -1630,7 +1960,9 @@
               role="region"
               aria-label="글 목록"
               aria-live="polite"
-            ></div>
+            >
+              <!-- 동적으로 카드가 추가됨 -->
+            </div>
 
             <!-- 빈 상태 메시지 -->
             <div
@@ -1640,12 +1972,408 @@
             >
               <p>표시할 글이 없습니다.</p>
             </div>
+
+            <!-- ================================================================
+                 [Dual Panel] 듀얼 글 상세 패널 시스템
+                 - 두 개의 글을 동시에 비교/편집할 수 있는 레이아웃
+                 - Ctrl+클릭으로 두 번째 패널에 글 열기
+                 - 2025-12-09 Phase 1 구현
+                 ================================================================ -->
+            <div
+              id="article-detail-container"
+              class="article-detail-container"
+            >
+              <!-- ========== 패널 1 (기본 패널) ========== -->
+              <div
+                id="article-detail-panel-1"
+                class="article-detail-panel"
+                style="display: none"
+                role="region"
+                aria-label="글 상세 정보 (패널 1)"
+                data-panel-index="0"
+              >
+
+              <div class="detail-panel-header">
+                <h4 id="detail-panel-title-1">📄 글 상세 정보</h4>
+                <div class="detail-panel-actions">
+                  <button
+                    type="button"
+                    id="detail-expand-btn-1"
+                    class="btn-icon btn-expand"
+                    aria-label="전체 화면 확대 모드"
+                    title="전체 화면 확대 (ESC로 닫기)"
+                    aria-expanded="false"
+                  >
+                    🔍
+                  </button>
+                  <button
+                    id="detail-panel-close-1"
+                    class="btn-icon"
+                    aria-label="상세 패널 닫기"
+                    title="닫기"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <!-- 읽기 모드 -->
+              <div id="detail-read-mode-1" class="detail-mode">
+                <div class="detail-meta">
+                  <span id="detail-category-1" class="detail-badge"></span>
+                  <span id="detail-date-1" class="detail-date"></span>
+                  <span id="detail-char-count-1" class="detail-char-count"></span>
+                  <span
+                    id="detail-view-count-1"
+                    class="detail-view-count"
+                    style="display: none"
+                  ></span>
+                </div>
+                <h5 id="detail-title-1" class="detail-title"></h5>
+                <div id="detail-content-1" class="detail-content"></div>
+                <div class="detail-actions">
+                  <button
+                    id="detail-edit-btn-1"
+                    class="btn btn-primary"
+                    aria-label="글 수정하기"
+                  >
+                    ✏️ 수정하기
+                  </button>
+                  <button
+                    id="detail-delete-btn-1"
+                    class="btn btn-danger"
+                    aria-label="글 삭제하기"
+                  >
+                    🗑️ 삭제하기
+                  </button>
+                  <button
+                    id="detail-copy-btn-1"
+                    class="btn btn-secondary"
+                    aria-label="글 내용 복사하기"
+                  >
+                    📋 복사
+                  </button>
+                </div>
+              </div>
+
+              <!-- 수정 모드 -->
+              <div
+                id="detail-edit-mode-1"
+                class="detail-mode"
+                style="display: none"
+              >
+                <!-- 확대 모드 전용: 2열 레이아웃 컨테이너 -->
+                <div class="detail-edit-container">
+                  <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
+                  <div
+                    class="detail-reference-panel"
+                    id="detail-reference-panel-1"
+                  >
+                    <div class="detail-reference-header">
+                      <h5>📚 참고 레퍼런스</h5>
+                      <button
+                        type="button"
+                        id="detail-load-reference-btn-1"
+                        class="btn btn-small"
+                        aria-label="레퍼런스 추가"
+                        title="레퍼런스 추가"
+                      >
+                        📥 추가
+                      </button>
+                    </div>
+                    <div
+                      class="detail-reference-content"
+                      id="detail-reference-content-1"
+                    >
+                      <div class="detail-reference-empty">
+                        <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
+                        <p class="detail-reference-hint">
+                          확대 모드에서 레퍼런스를 참고하며 수정하세요.
+                        </p>
+                      </div>
+                      <div
+                        id="detail-reference-list-1"
+                        class="detail-reference-list"
+                        style="display: none"
+                      >
+                        <!-- 동적으로 레퍼런스 추가됨 -->
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 드래그 가능한 구분선 -->
+                  <div class="detail-split-divider" id="detail-split-divider-1">
+                    <div class="detail-divider-handle"></div>
+                  </div>
+
+                  <!-- 오른쪽: 수정 폼 -->
+                  <div class="detail-edit-form">
+                    <div class="edit-form-group">
+                      <label for="edit-title-input" class="edit-label"
+                        >제목</label
+                      >
+                      <input
+                        type="text"
+                        id="edit-title-input-1"
+                        class="edit-input"
+                        aria-label="글 제목 입력"
+                        aria-required="true"
+                        maxlength="200"
+                      />
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-category-select" class="edit-label"
+                        >카테고리</label
+                      >
+                      <select
+                        id="edit-category-select-1"
+                        class="edit-select"
+                        aria-label="카테고리 선택"
+                        aria-required="false"
+                      >
+                        <!-- 동적으로 카테고리 추가됨 -->
+                      </select>
+                    </div>
+                    <div class="edit-form-group">
+                      <label for="edit-content-textarea" class="edit-label"
+                        >내용</label
+                      >
+                      <textarea
+                        id="edit-content-textarea-1"
+                        class="edit-textarea"
+                        aria-label="글 내용 입력"
+                        aria-required="true"
+                        rows="10"
+                      ></textarea>
+                    </div>
+                    <div class="edit-actions">
+                      <button
+                        id="edit-article-save-btn-1"
+                        class="btn btn-primary"
+                        aria-label="수정 내용 저장"
+                      >
+                        💾 저장
+                      </button>
+                      <button
+                        id="edit-article-cancel-btn-1"
+                        class="btn btn-secondary"
+                        aria-label="수정 취소"
+                      >
+                        ❌ 취소
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+              <!-- ========== [Dual Panel] 패널 1 끝 ========== -->
+
+              <!-- ========== [Dual Panel] 듀얼 모드 구분선 ========== -->
+              <div
+                id="detail-dual-divider"
+                class="detail-dual-divider"
+                role="separator"
+                aria-orientation="vertical"
+                style="display: none"
+              >
+                <div class="detail-dual-divider-handle"></div>
+              </div>
+
+              <!-- ========== [Dual Panel] 패널 2 (두 번째 패널) ========== -->
+              <div
+                id="article-detail-panel-2"
+                class="article-detail-panel"
+                style="display: none"
+                role="region"
+                aria-label="글 상세 정보 (패널 2)"
+                data-panel-index="1"
+              >
+                <div class="detail-panel-header">
+                  <h4 id="detail-panel-title-2">📄 글 상세 정보</h4>
+                  <div class="detail-panel-actions">
+                    <button
+                      type="button"
+                      id="detail-expand-btn-2"
+                      class="btn-icon btn-expand"
+                      aria-label="전체 화면 확대 모드"
+                      title="전체 화면 확대 (ESC로 닫기)"
+                      aria-expanded="false"
+                    >
+                      🔍
+                    </button>
+                    <button
+                      id="detail-panel-close-2"
+                      class="btn-icon"
+                      aria-label="상세 패널 닫기"
+                      title="닫기"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 읽기 모드 -->
+                <div id="detail-read-mode-2" class="detail-mode">
+                  <div class="detail-meta">
+                    <span id="detail-category-2" class="detail-badge"></span>
+                    <span id="detail-date-2" class="detail-date"></span>
+                    <span id="detail-char-count-2" class="detail-char-count"></span>
+                    <span
+                      id="detail-view-count-2"
+                      class="detail-view-count"
+                      style="display: none"
+                    ></span>
+                  </div>
+                  <h5 id="detail-title-2" class="detail-title"></h5>
+                  <div id="detail-content-2" class="detail-content"></div>
+                  <div class="detail-actions">
+                    <button
+                      id="detail-edit-btn-2"
+                      class="btn btn-primary"
+                      aria-label="글 수정하기"
+                    >
+                      ✏️ 수정하기
+                    </button>
+                    <button
+                      id="detail-delete-btn-2"
+                      class="btn btn-danger"
+                      aria-label="글 삭제하기"
+                    >
+                      🗑️ 삭제하기
+                    </button>
+                    <button
+                      id="detail-copy-btn-2"
+                      class="btn btn-secondary"
+                      aria-label="글 내용 복사하기"
+                    >
+                      📋 복사
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 수정 모드 -->
+                <div
+                  id="detail-edit-mode-2"
+                  class="detail-mode"
+                  style="display: none"
+                >
+                  <div class="detail-edit-container">
+                    <!-- 왼쪽: 레퍼런스 패널 (확대 모드에서만 표시) -->
+                    <div
+                      class="detail-reference-panel"
+                      id="detail-reference-panel-2"
+                    >
+                      <div class="detail-reference-header">
+                        <h5>📚 참고 레퍼런스</h5>
+                        <button
+                          type="button"
+                          id="detail-load-reference-btn-2"
+                          class="btn btn-small"
+                          aria-label="레퍼런스 추가"
+                          title="레퍼런스 추가"
+                        >
+                          📥 추가
+                        </button>
+                      </div>
+                      <div
+                        class="detail-reference-content"
+                        id="detail-reference-content-2"
+                      >
+                        <div class="detail-reference-empty">
+                          <p>이 글과 연결된 레퍼런스가 표시됩니다.</p>
+                          <p class="detail-reference-hint">
+                            확대 모드에서 레퍼런스를 참고하며 수정하세요.
+                          </p>
+                        </div>
+                        <div
+                          id="detail-reference-list-2"
+                          class="detail-reference-list"
+                          style="display: none"
+                        >
+                          <!-- 동적으로 레퍼런스 추가됨 -->
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 드래그 가능한 구분선 -->
+                    <div class="detail-split-divider" id="detail-split-divider-2">
+                      <div class="detail-divider-handle"></div>
+                    </div>
+
+                    <!-- 오른쪽: 수정 폼 -->
+                    <div class="detail-edit-form">
+                      <div class="edit-form-group">
+                        <label for="edit-title-input-2" class="edit-label"
+                          >제목</label
+                        >
+                        <input
+                          type="text"
+                          id="edit-title-input-2"
+                          class="edit-input"
+                          aria-label="글 제목 입력"
+                          aria-required="true"
+                          maxlength="200"
+                        />
+                      </div>
+                      <div class="edit-form-group">
+                        <label for="edit-category-select-2" class="edit-label"
+                          >카테고리</label
+                        >
+                        <select
+                          id="edit-category-select-2"
+                          class="edit-select"
+                          aria-label="카테고리 선택"
+                          aria-required="false"
+                        >
+                          <!-- 동적으로 카테고리 추가됨 -->
+                        </select>
+                      </div>
+                      <div class="edit-form-group">
+                        <label for="edit-content-textarea-2" class="edit-label"
+                          >내용</label
+                        >
+                        <textarea
+                          id="edit-content-textarea-2"
+                          class="edit-textarea"
+                          aria-label="글 내용 입력"
+                          aria-required="true"
+                          rows="10"
+                        ></textarea>
+                      </div>
+                      <div class="edit-actions">
+                        <button
+                          id="edit-article-save-btn-2"
+                          class="btn btn-primary"
+                          aria-label="수정 내용 저장"
+                        >
+                          💾 저장
+                        </button>
+                        <button
+                          id="edit-article-cancel-btn-2"
+                          class="btn btn-secondary"
+                          aria-label="수정 취소"
+                        >
+                          ❌ 취소
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- ========== [Dual Panel] 패널 2 끝 ========== -->
+            </div>
+            <!-- ========== [Dual Panel] 컨테이너 끝 ========== -->
           </div>
         </div>
 
-        <!-- URL 연결 탭 콘텐츠 -->
+
+        <!-- ================================================================
+             URL 연결 탭 콘텐츠 (2025-12-08 추가)
+             - 자주 사용하는 URL을 관리하고 바로 이동하는 기능
+             - 서비스 명칭, 설명, URL을 저장하여 빠른 접근 제공
+             ================================================================ -->
         <div class="tab-content" id="urllink-tab">
           <div class="url-link-container">
+            <!-- URL 연결 탭 헤더 -->
             <div class="url-link-header">
               <h3>🔗 URL 바로가기</h3>
               <button
@@ -1654,11 +2382,12 @@
                 aria-label="새 URL 추가"
                 title="새 URL 바로가기 추가"
               >
-                <span class="btn-icon">＋</span>
+                <span class="btn-icon">➕</span>
                 <span class="btn-text">추가</span>
               </button>
             </div>
 
+            <!-- URL 입력 폼 (기본 숨김, 추가/수정 시 표시) -->
             <div
               id="url-link-form"
               class="url-link-form"
@@ -1666,12 +2395,9 @@
               role="form"
               aria-label="URL 정보 입력 폼"
             >
-              <!-- URL 입력 필드들 -->
               <div class="url-link-form-fields">
                 <div class="form-group">
-                  <label for="url-link-name" class="form-label"
-                    >서비스 명칭 *</label
-                  >
+                  <label for="url-link-name" class="form-label">서비스 명칭 *</label>
                   <input
                     id="url-link-name"
                     type="text"
@@ -1682,11 +2408,19 @@
                     aria-required="true"
                   />
                 </div>
-                <!-- ... Description, URL ... -->
                 <div class="form-group">
-                  <label for="url-link-url" class="form-label"
-                    >URL 주소 *</label
-                  >
+                  <label for="url-link-desc" class="form-label">설명 (선택)</label>
+                  <input
+                    id="url-link-desc"
+                    type="text"
+                    class="form-input"
+                    placeholder="예: 마케팅 데이터 분석"
+                    maxlength="100"
+                    aria-label="서비스 설명"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="url-link-url" class="form-label">URL 주소 *</label>
                   <input
                     id="url-link-url"
                     type="url"
@@ -1698,258 +2432,1135 @@
                 </div>
               </div>
               <div class="url-link-form-actions">
-                <button id="url-link-save-btn" class="btn btn-primary">
-                  저장
+                <button
+                  id="url-link-save-btn"
+                  class="btn btn-primary"
+                  aria-label="URL 저장"
+                >
+                  💾 저장
                 </button>
-                <button id="url-link-cancel-btn" class="btn btn-secondary">
-                  취소
+                <button
+                  id="url-link-cancel-btn"
+                  class="btn btn-secondary"
+                  aria-label="입력 취소"
+                >
+                  ❌ 취소
                 </button>
               </div>
+              <!-- 수정 모드 시 사용할 hidden input -->
               <input type="hidden" id="url-link-edit-id" value="" />
             </div>
 
-            <!-- 빈 상태 표시 -->
-            <div id="url-link-empty-state" class="url-link-empty-state" style="display: none;">
-                <p>등록된 URL이 없습니다.</p>
-                <p class="sub-text">자주 사용하는 서비스(예: GPT, Gemini)를 등록해보세요!</p>
+            <!-- URL 리스트 컨테이너 -->
+            <div
+              id="url-link-list"
+              class="url-link-list"
+              role="list"
+              aria-label="저장된 URL 목록"
+            >
+              <!-- 동적으로 URL 카드가 추가됨 -->
             </div>
 
-            <div id="url-link-list" class="url-link-list" role="list"></div>
+            <!-- 빈 상태 메시지 -->
+            <div
+              id="url-link-empty-state"
+              class="url-link-empty-state"
+              style="display: none"
+            >
+              <p class="empty-icon">🔗</p>
+              <p class="empty-text">자주 방문하는 사이트를 추가해보세요!</p>
+              <p class="empty-hint">추가 버튼을 눌러 URL을 등록하면 한 번의 클릭으로 빠르게 이동할 수 있습니다.</p>
+            </div>
           </div>
         </div>
 
-        <!-- 백업 탭 콘텐츠 -->
+        <!-- ========================================
+             백업 탭 콘텐츠 (2025-12-08 추가)
+             - 데이터 내보내기 (JSON 다운로드)
+             - 데이터 가져오기 (JSON 복원)
+             ======================================== -->
         <div class="tab-content" id="backup-tab">
           <div class="backup-container">
+            <!-- 헤더 -->
             <div class="backup-header">
               <h2 class="backup-title">💾 데이터 백업 및 복원</h2>
-              <p class="backup-subtitle">
-                Firebase에 저장된 데이터를 JSON 파일로 백업하거나 복원할 수
-                있습니다.
-              </p>
+              <p class="backup-subtitle">Firebase에 저장된 데이터를 JSON 파일로 백업하거나 복원할 수 있습니다.</p>
             </div>
 
-            <!-- 내보내기 -->
+            <!-- 내보내기 섹션 -->
             <div class="backup-section">
-              <!-- ... Export UI ... -->
-              <button
-                id="backup-export-btn"
-                class="backup-btn backup-btn-primary"
-              >
-                <span class="btn-icon">⬇️</span>
+              <div class="backup-section-header">
+                <span class="backup-section-icon">📤</span>
+                <h3 class="backup-section-title">데이터 내보내기</h3>
+              </div>
+              <p class="backup-section-desc">현재 저장된 모든 데이터를 JSON 파일로 다운로드합니다.</p>
+              <ul class="backup-data-list">
+                <li>📝 저장된 글 (texts)</li>
+                <li>📊 트래킹 포스트 (posts)</li>
+                <li>🔗 URL 연결 (urlLinks)</li>
+              </ul>
+              <button id="backup-export-btn" class="backup-btn backup-btn-primary">
+                <span class="btn-icon">📥</span>
                 <span>백업 파일 다운로드</span>
               </button>
+              <p id="backup-export-status" class="backup-status"></p>
             </div>
 
-            <!-- 가져오기 -->
+            <!-- 가져오기 섹션 -->
             <div class="backup-section">
-              <!-- ... Import UI ... -->
+              <div class="backup-section-header">
+                <span class="backup-section-icon">📥</span>
+                <h3 class="backup-section-title">데이터 가져오기</h3>
+              </div>
+              <p class="backup-section-desc">이전에 백업한 JSON 파일을 선택하여 데이터를 복원합니다.</p>
+              <div class="backup-warning">
+                ⚠️ 가져오기 시 기존 데이터가 덮어쓰여질 수 있습니다. 미리 백업을 권장합니다.
+              </div>
               <div class="backup-file-input-wrapper">
-                <input
-                  type="file"
-                  id="backup-file-input"
-                  accept=".json"
-                  style="display: none"
-                />
-                <button
-                  id="backup-file-select-btn"
-                  class="backup-btn backup-btn-secondary"
-                >
+                <input type="file" id="backup-file-input" accept=".json" style="display: none;">
+                <button id="backup-file-select-btn" class="backup-btn backup-btn-secondary">
                   <span class="btn-icon">📂</span>
                   <span>JSON 파일 선택</span>
                 </button>
+                <span id="backup-file-name" class="backup-file-name">선택된 파일 없음</span>
               </div>
-              <button
-                id="backup-import-btn"
-                class="backup-btn backup-btn-primary"
-                disabled
-              >
-                <span class="btn-icon">⬆️</span>
+              <button id="backup-import-btn" class="backup-btn backup-btn-primary" disabled>
+                <span class="btn-icon">📤</span>
                 <span>데이터 복원하기</span>
               </button>
+              <p id="backup-import-status" class="backup-status"></p>
+            </div>
+
+            <!-- 안내 섹션 -->
+            <div class="backup-info">
+              <h4>💡 백업 안내</h4>
+              <ul>
+                <li>백업 파일은 로컬 PC에 저장되므로 안전하게 보관하세요.</li>
+                <li>정기적인 백업을 권장합니다 (예: 월 1회).</li>
+                <li>복원 시 현재 로그인된 계정에 데이터가 저장됩니다.</li>
+              </ul>
             </div>
           </div>
         </div>
 
-        <!-- [UI FIX] 확대 모드 모달 (추가됨) -->
-        <div id="expand-modal" class="expand-modal" style="display: none;">
-            <div class="expand-modal-content">
-                <div class="expand-header">
-                    <h2>📝 전체 화면 작성</h2>
-                    <button id="close-expand-btn" class="close-btn">×</button>
-                </div>
-                <div class="expand-body">
-                    <div class="expand-typing-area">
-                        <textarea id="expand-textarea" placeholder="여기에 글을 작성하세요..."></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- 레퍼런스 불러오기 사이드 패널 -->
 
-        <!-- 레퍼런스 불러오기 모달 등 기타 모달들 -->
+
         <div
           id="reference-loader-panel"
           class="reference-loader-panel"
           role="dialog"
+          aria-modal="true"
+          aria-labelledby="reference-loader-title"
           style="display: none"
         >
           <div class="reference-loader-overlay"></div>
           <div class="reference-loader-content">
             <div class="reference-loader-header">
-              <h3>📚 레퍼런스 불러오기</h3>
-              <button id="reference-loader-close" class="btn-icon">×</button>
+              <h3 id="reference-loader-title">📚 레퍼런스 불러오기</h3>
+              <button
+                id="reference-loader-close"
+                class="btn-icon"
+                aria-label="사이드 패널 닫기"
+                title="닫기"
+              >
+                ×
+              </button>
             </div>
-            <!-- ... Content ... -->
+
+            <div class="reference-loader-tabs">
+              <button
+                class="reference-tab active"
+                data-tab="saved"
+                aria-selected="true"
+                aria-controls="reference-saved-content"
+              >
+                저장된 글
+              </button>
+              <button
+                class="reference-tab"
+                data-tab="tracking"
+                aria-selected="false"
+                aria-controls="reference-tracking-content"
+              >
+                트래킹
+              </button>
+            </div>
+
+            <div class="reference-loader-body">
+              <!-- 최근 사용 -->
+              <div
+                id="reference-recent-section"
+                class="reference-section"
+                style="display: none"
+              >
+                <h4 class="reference-section-title">⚡ 최근 사용</h4>
+                <div id="reference-recent-list" class="reference-list">
+                  <!-- 동적으로 추가됨 -->
+                </div>
+              </div>
+
+              <!-- 검색 -->
+              <div class="reference-search-section">
+                <input
+                  type="text"
+                  id="reference-loader-search-input"
+                  class="reference-search-input"
+                  placeholder="제목 또는 내용으로 검색..."
+                  aria-label="레퍼런스 검색"
+                />
+              </div>
+
+              <!-- 필터 (트래킹 탭일 때만 표시) -->
+              <div
+                id="reference-tracking-filters"
+                class="reference-filters"
+                style="display: none"
+              >
+                <select
+                  id="reference-category-filter"
+                  class="reference-filter-select"
+                >
+                  <option value="">전체 카테고리</option>
+                </select>
+                <select
+                  id="reference-sort-filter"
+                  class="reference-filter-select"
+                >
+                  <option value="recent">최신순</option>
+                  <option value="views">조회수 높은순</option>
+                  <option value="likes">좋아요 높은순</option>
+                  <option value="follows">팔로우 높은순</option>
+                </select>
+              </div>
+
+              <!-- 저장된 글 목록 -->
+              <div
+                id="reference-saved-content"
+                class="reference-content active"
+                role="tabpanel"
+              >
+                <div id="reference-saved-list" class="reference-list">
+                  <!-- 동적으로 추가됨 -->
+                </div>
+                <div
+                  id="reference-saved-empty"
+                  class="reference-empty"
+                  style="display: none"
+                >
+                  <p>표시할 글이 없습니다.</p>
+                </div>
+              </div>
+
+              <!-- 트래킹 목록 -->
+              <div
+                id="reference-tracking-content"
+                class="reference-content"
+                role="tabpanel"
+                style="display: none"
+              >
+                <div id="reference-tracking-list" class="reference-list">
+                  <!-- 동적으로 추가됨 -->
+                </div>
+                <div
+                  id="reference-tracking-empty"
+                  class="reference-empty"
+                  style="display: none"
+                >
+                  <p>표시할 트래킹 포스트가 없습니다.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- [Fix] 레퍼런스 선택 모달 (누락된 요소 복원) -->
-        <div id="reference-selection-modal" class="modal-overlay">
-            <div class="modal-container reference-modal">
-                <div class="modal-header">
-                    <h3>📚 레퍼런스 선택</h3>
-                    <button class="close-btn" onclick="closeModal('reference-selection-modal')">×</button>
+        <!-- 내용 확대 모드 모달 -->
+        <div
+          id="content-expand-modal"
+          class="content-expand-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expand-modal-title"
+          aria-describedby="expand-modal-description"
+          style="display: none"
+        >
+          <div class="expand-modal-overlay"></div>
+          <div class="expand-modal-content">
+            <div class="expand-modal-header">
+              <h2 id="expand-modal-title" class="sr-only">내용 확대 모드</h2>
+              <p id="expand-modal-description" class="sr-only">
+                내용을 확대하여 작성하고 레퍼런스를 추가할 수 있는 모드입니다.
+                ESC 키를 눌러 닫을 수 있습니다.
+              </p>
+              <div class="expand-modal-preview">
+                <div class="expand-preview-item">
+                  <span class="expand-preview-label">제목:</span>
+                  <span id="expand-preview-title" class="expand-preview-value"
+                    >-</span
+                  >
                 </div>
-                <div class="modal-body">
-                    <div class="reference-search-bar">
-                        <input type="text" id="reference-search-input" placeholder="레퍼런스 검색..." class="form-input">
-                        <button id="reference-type-filter-btn" class="btn btn-secondary">필터</button>
-                    </div>
-                    <!-- 태그 필터 영역 -->
-                    <div id="selected-references-tags" class="selected-tags-container"></div>
-                    
-                    <div class="reference-list-container">
-                        <div id="reference-selection-list" class="reference-list">
-                            <!-- JS로 렌더링됨 -->
-                        </div>
-                    </div>
+                <div class="expand-preview-item">
+                  <span class="expand-preview-label">카테고리:</span>
+                  <span
+                    id="expand-preview-category"
+                    class="expand-preview-value"
+                    >-</span
+                  >
                 </div>
-                <div class="modal-footer">
-                    <span class="selection-count">선택됨: <span id="modal-selected-count">0</span>개</span>
-                    <button class="btn btn-secondary" onclick="closeModal('reference-selection-modal')">취소</button>
-                    <button id="confirm-reference-selection-btn" class="btn btn-primary">확인</button>
-                </div>
+              </div>
+              <button
+                id="expand-modal-close"
+                class="btn-icon expand-close-btn"
+                aria-label="확대 모드 닫기"
+                title="ESC 키로도 닫을 수 있습니다"
+              >
+                ×
+              </button>
             </div>
+
+            <div class="expand-modal-body">
+              <div class="expand-split-container">
+                <!-- 왼쪽: 레퍼런스 영역 -->
+                <div class="expand-reference-panel" id="expand-reference-panel">
+                  <div class="expand-reference-header">
+                    <h4 class="expand-reference-title">📚 레퍼런스</h4>
+                    <div class="expand-reference-actions">
+                      <button
+                        type="button"
+                        id="expand-load-reference-btn"
+                        class="btn-load-reference btn-small"
+                        aria-label="레퍼런스 불러오기"
+                        title="저장된 글 또는 트래킹에서 레퍼런스 불러오기"
+                      >
+                        <span class="btn-icon">📥</span>
+                        <span class="btn-text">불러오기</span>
+                      </button>
+                      <button
+                        type="button"
+                        id="expand-toggle-reference-btn"
+                        class="btn-icon btn-toggle"
+                        aria-label="레퍼런스 영역 접기/펼치기"
+                        aria-expanded="true"
+                        title="접기/펼치기"
+                      >
+                        ◀
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    class="expand-reference-content"
+                    id="expand-reference-content"
+                    role="region"
+                    aria-label="레퍼런스 목록"
+                  >
+                    <div
+                      class="expand-reference-empty"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <p>레퍼런스를 불러오면 여기에 표시됩니다.</p>
+                      <p class="expand-reference-hint">
+                        📥 버튼을 클릭하여 레퍼런스를 추가하세요.
+                      </p>
+                    </div>
+                    <div
+                      id="expand-reference-list"
+                      class="expand-reference-list"
+                      role="list"
+                      aria-label="추가된 레퍼런스 목록"
+                      style="display: none"
+                    >
+                      <!-- 동적으로 레퍼런스 추가됨 -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 드래그 가능한 구분선 -->
+                <div
+                  class="expand-split-divider"
+                  id="expand-split-divider"
+                  role="separator"
+                  aria-label="영역 크기 조절"
+                >
+                  <div class="expand-divider-handle"></div>
+                </div>
+
+                <!-- 오른쪽: 내용 작성 영역 -->
+                <div class="expand-content-panel">
+                  <div class="expand-content-wrapper">
+                    <label
+                      for="expand-content-textarea"
+                      class="expand-content-label"
+                    >
+                      내용 <span class="required">*</span>
+                      <span id="expand-content-counter" class="char-counter"
+                        >(0 / 500자는 약 1분 15초)</span
+                      >
+                    </label>
+                    <textarea
+                      id="expand-content-textarea"
+                      class="expand-content-textarea"
+                      placeholder="이곳에는 내용 글씨 작성"
+                      aria-label="스크립트 내용 입력 (확대 모드)"
+                      aria-required="true"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="expand-modal-footer">
+              <div class="expand-footer-info">
+                <span class="expand-footer-hint"
+                  >💡 ESC 키를 눌러 닫을 수 있습니다</span
+                >
+              </div>
+              <div class="expand-footer-actions">
+                <button
+                  id="expand-save-btn"
+                  class="btn btn-primary"
+                  aria-label="저장하고 닫기"
+                >
+                  <span class="btn-icon">💾</span>
+                  <span class="btn-text">저장하고 닫기</span>
+                </button>
+                <button
+                  id="expand-close-btn"
+                  class="btn btn-secondary"
+                  aria-label="닫기"
+                >
+                  <span class="btn-text">닫기</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- 레퍼런스 타입 필터 모달 (서브 모달) -->
-        <div id="reference-type-filter-modal" class="modal-overlay" style="z-index: 10001;">
-            <div class="modal-container small-modal">
-                <div class="modal-header">
-                    <h4>필터 설정</h4>
-                    <button class="close-btn" onclick="closeModal('reference-type-filter-modal')">×</button>
-                </div>
-                <div class="modal-body">
-                    <!-- 필터 옵션들... -->
-                    <div>기능 준비중</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ... 기타 모달들 (내용 확장 모달, 복사 모달 등) ... -->
-
-        <!-- 임시 저장 상태 표시 -->
+        <!-- 임시 저장 상태 -->
         <div class="temp-save-status" id="temp-save-status">
-          <span id="temp-save-indicator">✅</span>
+          <span id="temp-save-indicator">💾</span>
           <span id="temp-save-text">임시 저장됨</span>
+        </div>
+
+        <!-- 해시태그 설정 바 -->
+        <div class="hashtag-settings-bar" id="hashtag-settings-bar">
+          <span class="hashtag-label">추천 해시태그:</span>
+          <span id="current-hashtags-display" class="hashtags-display"
+            >#writing #content #threads</span
+          >
+          <button
+            id="hashtag-settings-btn"
+            class="btn btn-hashtag-settings btn-mobile"
+            title="해시태그 설정"
+          >
+            ⚙️ 설정
+          </button>
         </div>
       </main>
     </div>
-    <!-- Firebase SDK (9.x.x compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
 
-    <script>
-        // Firebase 설정 (복구됨)
-        window.firebaseConfig = {
-            apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
-            authDomain: "text-threads.firebaseapp.com",
-            projectId: "text-threads",
-            storageBucket: "text-threads.firebasestorage.app",
-            messagingSenderId: "84225903613",
-            appId: "1:84225903613:web:e0909478d5a334d7046794",
-        };
-        // Firebase 초기화
-        const app = firebase.initializeApp(window.firebaseConfig);
-        console.log("✅ Firebase 초기화 완료 (인덱스)");
+    <!-- 레퍼런스 선택 모달 -->
+    <div
+      id="reference-selection-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reference-modal-title"
+      style="display: none"
+    >
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 id="reference-modal-title">📚 참고 레퍼런스 선택</h3>
+          <button class="close-btn" type="button" aria-label="모달 닫기">
+            ×
+          </button>
+        </div>
 
-        // [Fix] auth.js와 호환성을 위한 전역 헬퍼 함수 매핑
-        // firebase-init.js가 없으므로 여기서 직접 정의
-        window.firebaseAuth = firebase.auth();
-        window.firebaseDb = firebase.firestore();
-        
-        // Auth Functions
-        window.firebaseOnAuthStateChanged = (auth, observer) => auth.onAuthStateChanged(observer);
-        window.firebaseSignInAnonymously = (auth) => auth.signInAnonymously();
-        window.firebaseSignOut = (auth) => auth.signOut();
-        window.firebaseGoogleAuthProvider = firebase.auth.GoogleAuthProvider;
-        window.firebaseSignInWithPopup = (auth, provider) => auth.signInWithPopup(provider);
-        
-        // Firestore Functions (data.js 사용)
-        window.firebaseCollection = (db, ...paths) => firebase.firestore().collection(paths.join('/')); 
-        // Note: data.js uses collection(db, 'users', uid, 'texts') -> actually compat SDK uses db.collection()
-        // But data.js seems to use modular-like syntax wrapped in globals?
-        // Let's check data.js syntax.
-        // data.js uses: window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS)
-        // This looks like it expects a function that constructs a collection reference.
-        // Compat SDK: db.collection("users").doc(uid).collection("texts")
-        // Since paths usage in data.js is (db, col, doc, col), it's constructing a deeper path.
-        // Actually, let's make it robust:
-        window.firebaseCollection = (db, ...args) => {
-            // args: [collection, doc, collection] -> path: "collection/doc/collection"
-            // Filter out db from args if passed as first arg in data.js call (data.js calls it with db as first arg)
-            // But here the signature has db.
-            // data.js calls: window.firebaseCollection(this.db, 'users', uid, 'texts')
-            // args will be ['users', uid, 'texts']
-            const path = args.join('/');
-            return db.collection(path);
-        };
-        
-        window.firebaseAddDoc = (collectionRef, data) => collectionRef.add(data);
-        window.firebaseDoc = (db, ...args) => {
-             // data.js: window.firebaseDoc(this.db, 'users', uid, 'texts', textId)
-             // args: ['users', uid, 'texts', textId]
-             const path = args.join('/');
-             return db.doc(path);
-        };
-        window.firebaseUpdateDoc = (docRef, data) => docRef.update(data);
-        window.firebaseDeleteDoc = (docRef) => docRef.delete();
-        window.firebaseGetDocs = (query) => query.get();
-        window.firebaseQuery = (ref, ...constraints) => {
-             // In compat v9, query constraints are chained formatted? No, compat uses .where().orderBy()
-             // data.js uses: window.firebaseQuery(colRef, window.firebaseOrderBy(...), window.firebaseLimit(...))
-             // This suggests data.js was written for MODULAR SDK usage style but using windows globals??
-             // Or compat masquerading as modular.
-             // If data.js passes "window.firebaseOrderBy('createdAt', 'desc')", what does that return?
-             // If it returns a function that takes a query and returns a query, that's modular style.
-             // Compat style: ref.orderBy(...)
-             
-             // WE ARE USING COMPAT SDK IN INDEX.HTML (v9 compat)
-             // But js/data.js seems to be written for "globalized modular wrappers".
-             
-             let q = ref;
-             constraints.forEach(constraint => {
-                 if (typeof constraint === 'function') {
-                     q = constraint(q);
-                 }
-             });
-             return q;
-        };
-        
-        window.firebaseOrderBy = (field, direction) => (query) => query.orderBy(field, direction);
-        window.firebaseLimit = (limit) => (query) => query.limit(limit);
-        window.firebaseStartAfter = (doc) => (query) => query.startAfter(doc);
-        window.firebaseServerTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+        <div class="modal-body">
+          <!-- 검색 -->
+          <div class="search-box">
+            <input
+              type="text"
+              id="reference-search-input"
+              placeholder="레퍼런스 검색..."
+              aria-label="레퍼런스 검색"
+            />
+            <span class="search-icon">🔍</span>
+          </div>
+
+          <!-- 필터 (레퍼런스 타입) -->
+          <div class="filter-section">
+            <label for="reference-type-filter-modal">타입 필터:</label>
+            <select
+              id="reference-type-filter-modal"
+              aria-label="레퍼런스 타입 필터"
+            >
+              <option value="all">전체</option>
+              <option value="structure">구조</option>
+              <option value="idea">아이디어</option>
+            </select>
+          </div>
+
+          <!-- 레퍼런스 목록 -->
+          <div
+            id="reference-selection-list"
+            class="reference-list"
+            role="listbox"
+            aria-label="선택 가능한 레퍼런스 목록"
+          >
+            <!-- 동적으로 체크박스 항목 추가됨 -->
+          </div>
+
+          <!-- 선택 개수 표시 -->
+          <div class="selection-count" aria-live="polite" aria-atomic="true">
+            선택됨: <span id="modal-selected-count">0</span>개
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button
+            id="confirm-reference-selection-btn"
+            class="primary-btn"
+            type="button"
+            aria-label="선택 완료"
+          >
+            완료
+          </button>
+          <button class="cancel-btn" type="button" aria-label="선택 취소">
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import {
+        getAuth,
+        signInWithPopup,
+        GoogleAuthProvider,
+        signInAnonymously,
+        signOut,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        getDocs,
+        getDoc,
+        updateDoc,
+        deleteDoc,
+        doc,
+        query,
+        where,
+        orderBy,
+        serverTimestamp,
+        Timestamp,
+        limit,
+        startAfter,
+        writeBatch,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+      // Firebase 설정 (실제 사용 시 Firebase Console에서 발급받은 설정으로 교체)
+      const firebaseConfig = {
+        apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
+        authDomain: "text-threads.firebaseapp.com",
+        projectId: "text-threads",
+        storageBucket: "text-threads.firebasestorage.app",
+        messagingSenderId: "84225903613",
+        appId: "1:84225903613:web:e0909478d5a334d7046794",
+      };
+
+      // Firebase 초기화
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // 오프라인 지속성 코드는 초기화 문제를 일으켜 잠시 비활성화함
+      // enableIndexedDbPersistence(db)...
+
+      // 전역 변수로 설정
+      window.firebaseAuth = auth;
+      window.firebaseDb = db;
+      window.firebaseSignInWithPopup = signInWithPopup;
+      window.firebaseGoogleAuthProvider = GoogleAuthProvider;
+      window.firebaseSignInAnonymously = signInAnonymously;
+      window.firebaseSignOut = signOut;
+      window.firebaseOnAuthStateChanged = onAuthStateChanged;
+      window.firebaseCollection = collection;
+      window.firebaseAddDoc = addDoc;
+      window.firebaseGetDocs = getDocs;
+      window.firebaseGetDoc = getDoc;
+      window.firebaseUpdateDoc = updateDoc;
+      window.firebaseDeleteDoc = deleteDoc;
+      window.firebaseDoc = doc;
+      window.firebaseQuery = query;
+      window.firebaseWhere = where;
+      window.firebaseOrderBy = orderBy;
+      window.firebaseLimit = limit;
+      window.firebaseStartAfter = startAfter;
+      window.firebaseServerTimestamp = serverTimestamp;
+      window.firebaseTimestamp = (date) => Timestamp.fromDate(date);
+      window.firebaseWriteBatch = writeBatch;
     </script>
-    
-    
-    <!-- 기존 Firebase 초기화 코드가 필요함. 일단 아래 스크립트로 대체 -->
-    <!-- script src="js/firebase-init.js" removed as it does not exist -->
-    <script src="js/auth.js" type="module"></script>
-    <script src="js/data.js" type="module"></script>
-    <script src="js/ui.js" type="module"></script>
-    <script src="script.js" type="module"></script>
+
+    <!-- 모달들 -->
+    <div id="copy-modal" class="modal">
+      <div class="modal-content">
+        <h3>복사 완료</h3>
+        <p>클립보드에 복사되었습니다!</p>
+        <button class="btn-primary" onclick="closeModal('copy-modal')">
+          확인
+        </button>
+      </div>
+    </div>
+
+    <!-- 마이그레이션 진행률 모달 -->
+    <div
+      id="migration-progress-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="migration-progress-title"
+      style="display: none"
+    >
+      <div class="modal-content" style="max-width: 480px; padding: 32px">
+        <h3
+          id="migration-progress-title"
+          style="margin: 0 0 16px 0; font-size: 1.3rem; color: #2c3e50"
+        >
+          🔄 레퍼런스 해시 마이그레이션 중...
+        </h3>
+        <p
+          class="migration-progress-description"
+          style="
+            margin: 0 0 24px 0;
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            line-height: 1.6;
+          "
+        >
+          중복 체크 성능 개선을 위해 데이터를 업데이트하고 있습니다.
+        </p>
+
+        <!-- 진행률 바 -->
+        <div
+          class="progress-bar-container"
+          role="progressbar"
+          aria-valuenow="0"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          style="
+            width: 100%;
+            height: 24px;
+            background: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+          "
+        >
+          <div
+            class="progress-bar"
+            id="migration-progress-bar"
+            style="
+              width: 0%;
+              height: 100%;
+              background: linear-gradient(90deg, #3498db, #2ecc71);
+              transition: width 0.3s ease;
+              border-radius: 12px;
+            "
+          ></div>
+        </div>
+
+        <!-- 진행 상태 텍스트 -->
+        <p
+          class="migration-progress-text"
+          id="migration-progress-text"
+          aria-live="polite"
+          style="
+            margin: 16px 0 0 0;
+            text-align: center;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2c3e50;
+          "
+        >
+          0 / 0 완료 (0%)
+        </p>
+
+        <!-- 주의사항 -->
+        <p
+          class="migration-warning"
+          style="
+            margin: 24px 0 0 0;
+            padding: 12px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            color: #856404;
+            font-size: 0.9rem;
+            line-height: 1.5;
+          "
+        >
+          ⚠️ <strong>마이그레이션 중에는 페이지를 닫지 마세요.</strong><br />
+          작업이 완료될 때까지 잠시만 기다려주세요.
+        </p>
+      </div>
+    </div>
+
+    <!-- 트래킹 데이터 입력 모달 -->
+    <div id="tracking-modal" class="modal bottom-sheet">
+      <div class="modal-content">
+        <div class="sheet-handle"></div>
+        <h3>📊 트래킹 데이터 입력</h3>
+        <div class="tracking-form">
+          <div class="form-group">
+            <label for="tracking-date">📅 날짜</label>
+            <div class="date-selector-tabs">
+              <button type="button" class="date-tab active" data-date="today">
+                오늘
+              </button>
+              <button type="button" class="date-tab" data-date="yesterday">
+                어제
+              </button>
+              <button type="button" class="date-tab" data-date="custom">
+                직접입력
+              </button>
+            </div>
+            <input
+              type="date"
+              id="tracking-date"
+              required
+              style="margin-top: 8px; display: none"
+            />
+          </div>
+          <div class="form-group">
+            <label for="tracking-views">👀 조회수</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-views"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-views"
+                min="0"
+                placeholder="조회수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-views"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-likes">❤️ 좋아요</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-likes"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-likes"
+                min="0"
+                placeholder="좋아요 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-likes"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-comments">💬 댓글</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-comments"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-comments"
+                min="0"
+                placeholder="댓글 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-comments"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-shares">🔄 공유</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-shares"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-shares"
+                min="0"
+                placeholder="공유 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-shares"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-follows">👥 팔로우</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-follows"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-follows"
+                min="0"
+                placeholder="팔로우 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-follows"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-notes">📝 메모</label>
+            <textarea
+              id="tracking-notes"
+              placeholder="추가 메모 (선택사항)"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeModal('tracking-modal')">
+            취소
+          </button>
+          <button class="btn-primary" onclick="saveTrackingData()">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 트래킹 데이터 수정 모달 -->
+    <div id="tracking-edit-modal" class="modal bottom-sheet">
+      <div class="modal-content">
+        <div class="sheet-handle"></div>
+        <h3>✏️ 트래킹 데이터 수정</h3>
+        <div class="tracking-form">
+          <div class="form-group">
+            <label for="tracking-edit-date">📅 날짜</label>
+            <div class="date-selector-tabs">
+              <button type="button" class="date-tab" data-date="today">
+                오늘
+              </button>
+              <button type="button" class="date-tab" data-date="yesterday">
+                어제
+              </button>
+              <button type="button" class="date-tab active" data-date="custom">
+                직접입력
+              </button>
+            </div>
+            <input
+              type="date"
+              id="tracking-edit-date"
+              required
+              style="margin-top: 8px"
+            />
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-views">👀 조회수</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-views"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-edit-views"
+                min="0"
+                placeholder="조회수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-views"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-likes">❤️ 좋아요</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-likes"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-edit-likes"
+                min="0"
+                placeholder="좋아요 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-likes"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-comments">💬 댓글</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-comments"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-edit-comments"
+                min="0"
+                placeholder="댓글 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-comments"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-shares">🔄 공유</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-shares"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-edit-shares"
+                min="0"
+                placeholder="공유 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-shares"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-follows">👥 팔로우</label>
+            <div class="number-input-group">
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-follows"
+                data-action="decrease"
+                aria-label="감소"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id="tracking-edit-follows"
+                min="0"
+                placeholder="팔로우 수를 입력하세요"
+              />
+              <button
+                type="button"
+                class="number-stepper"
+                data-target="tracking-edit-follows"
+                data-action="increase"
+                aria-label="증가"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tracking-edit-notes">📝 메모</label>
+            <textarea
+              id="tracking-edit-notes"
+              placeholder="추가 메모 (선택사항)"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-danger" onclick="deleteTrackingDataItem()">
+            삭제
+          </button>
+          <button
+            class="btn-secondary"
+            onclick="closeModal('tracking-edit-modal')"
+          >
+            취소
+          </button>
+          <button class="btn-primary" onclick="updateTrackingDataItem()">
+            수정
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 메트릭 관리 모달 -->
+    <div id="metrics-manage-modal" class="modal bottom-sheet">
+      <div class="modal-content">
+        <div class="sheet-handle"></div>
+        <h3>📊 메트릭 관리</h3>
+        <div id="metrics-manage-content" class="metrics-manage-content">
+          <!-- 메트릭 목록이 여기에 동적으로 표시됩니다 -->
+        </div>
+        <div
+          class="modal-actions"
+          style="
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e5e9;
+          "
+        >
+          <button
+            class="btn btn-secondary"
+            onclick="closeModal('metrics-manage-modal')"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 휴지통 모달 -->
+    <div id="trash-bin-modal" class="modal">
+      <div class="modal-content trash-bin-content">
+        <div class="modal-header">
+          <h3>🗑️ 휴지통</h3>
+          <button
+            class="close-btn"
+            onclick="window.dualTextWriter.closeTrashBin()"
+            aria-label="닫기"
+          >
+            &times;
+          </button>
+        </div>
+        <div id="trash-bin-list" class="trash-bin-list" role="list">
+          <!-- 삭제된 항목이 여기에 표시됩니다 -->
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn-secondary"
+            onclick="window.dualTextWriter.closeTrashBin()"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase Pagination Support (LTE Optimization) -->
+    <script type="module">
+      import { limit, startAfter } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+      window.firebaseLimit = limit;
+      window.firebaseStartAfter = startAfter;
+    </script>
+
+    <script src="script.js?v=20251103"></script>
+
+    <!-- Main Script -->
+    <script type="module" src="script.js"></script>
+    <script src="test-firebase.js"></script>
   </body>
 </html>
