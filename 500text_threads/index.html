@@ -1781,5 +1781,32 @@
         </div>
       </main>
     </div>
+    <!-- Firebase SDK (9.x.x compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+
+    <script>
+        // Firebase 설정 (복구됨)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
+            authDomain: "text-threads.firebaseapp.com",
+            projectId: "text-threads",
+            storageBucket: "text-threads.firebasestorage.app",
+            messagingSenderId: "84225903613",
+            appId: "1:84225903613:web:e0909478d5a334d7046794",
+        };
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        console.log("✅ Firebase 초기화 완료 (인덱스)");
+    </script>
+    
+    <!-- 기존 Firebase 초기화 코드가 필요함. 일단 아래 스크립트로 대체 -->
+    <script src="js/firebase-init.js"></script>
+    <script src="js/auth.js" type="module"></script>
+    <script src="js/data.js" type="module"></script>
+    <script src="js/ui.js" type="module"></script>
+    <script src="script.js" type="module"></script>
   </body>
 </html>
