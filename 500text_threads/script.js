@@ -156,8 +156,10 @@ class DualTextWriter {
       console.log("[P2-02] ✅ 글로벌 에러 핸들러 등록 완료");
     }
 
-    // Firebase 설정 안내
-    this.showFirebaseSetupNotice();
+    // Firebase 설정 안내 (설정이 없을 때만 표시)
+    if (!window.firebaseConfig || !window.firebaseConfig.apiKey) {
+      this.showFirebaseSetupNotice();
+    }
 
     // 사용자 인증 관련 요소들
     this.usernameInput = document.getElementById("username-input");
@@ -2425,6 +2427,7 @@ class DualTextWriter {
     // 레퍼런스 글(type === 'reference')에서만 고유한 소스(주제) 목록 추출
     const sources = new Set();
     this.savedTexts.forEach((item) => {
+
       // 레퍼런스 글만 필터링
       if (
         (item.type || "edit") === "reference" &&

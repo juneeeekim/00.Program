@@ -169,6 +169,11 @@
                   gap: 10px;
                 "
               >
+                <!-- [UI FIX] 해시태그 설정 버튼 추가 -->
+                <button id="hashtag-settings-btn" class="btn btn-secondary btn-sm" title="해시태그 설정">
+                    # 설정
+                </button>
+                
                 <span style="font-weight: 600; color: #333; font-size: 0.9rem"
                   >글자 제한:</span
                 >
@@ -195,6 +200,11 @@
                     1,000자
                   </button>
                 </div>
+                
+                <!-- [UI FIX] 확대 모드 버튼 추가 -->
+                <button id="expand-btn" class="btn btn-secondary btn-sm" title="전체 화면으로 보기">
+                    ⤢ 확대
+                </button>
               </div>
               <!-- SNS 플랫폼 선택 영역 (글자 제한과 같은 행) -->
               <div
@@ -1755,6 +1765,21 @@
           </div>
         </div>
 
+        <!-- [UI FIX] 확대 모드 모달 (추가됨) -->
+        <div id="expand-modal" class="expand-modal" style="display: none;">
+            <div class="expand-modal-content">
+                <div class="expand-header">
+                    <h2>📝 전체 화면 작성</h2>
+                    <button id="close-expand-btn" class="close-btn">×</button>
+                </div>
+                <div class="expand-body">
+                    <div class="expand-typing-area">
+                        <textarea id="expand-textarea" placeholder="여기에 글을 작성하세요..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 레퍼런스 불러오기 모달 등 기타 모달들 -->
         <div
           id="reference-loader-panel"
@@ -1789,7 +1814,7 @@
 
     <script>
         // Firebase 설정 (복구됨)
-        const firebaseConfig = {
+        window.firebaseConfig = {
             apiKey: "AIzaSyDtaeQY_XdmaYcybY-S0LmDMuCC_gonJyw",
             authDomain: "text-threads.firebaseapp.com",
             projectId: "text-threads",
@@ -1798,12 +1823,81 @@
             appId: "1:84225903613:web:e0909478d5a334d7046794",
         };
         // Firebase 초기화
-        firebase.initializeApp(firebaseConfig);
+        const app = firebase.initializeApp(window.firebaseConfig);
         console.log("✅ Firebase 초기화 완료 (인덱스)");
+
+        // [Fix] auth.js와 호환성을 위한 전역 헬퍼 함수 매핑
+        // firebase-init.js가 없으므로 여기서 직접 정의
+        window.firebaseAuth = firebase.auth();
+        window.firebaseDb = firebase.firestore();
+        
+        // Auth Functions
+        window.firebaseOnAuthStateChanged = (auth, observer) => auth.onAuthStateChanged(observer);
+        window.firebaseSignInAnonymously = (auth) => auth.signInAnonymously();
+        window.firebaseSignOut = (auth) => auth.signOut();
+        window.firebaseGoogleAuthProvider = firebase.auth.GoogleAuthProvider;
+        window.firebaseSignInWithPopup = (auth, provider) => auth.signInWithPopup(provider);
+        
+        // Firestore Functions (data.js 사용)
+        window.firebaseCollection = (db, ...paths) => firebase.firestore().collection(paths.join('/')); 
+        // Note: data.js uses collection(db, 'users', uid, 'texts') -> actually compat SDK uses db.collection()
+        // But data.js seems to use modular-like syntax wrapped in globals?
+        // Let's check data.js syntax.
+        // data.js uses: window.firebaseCollection(this.db, Constants.COLLECTIONS.USERS, uid, Constants.COLLECTIONS.TEXTS)
+        // This looks like it expects a function that constructs a collection reference.
+        // Compat SDK: db.collection("users").doc(uid).collection("texts")
+        // Since paths usage in data.js is (db, col, doc, col), it's constructing a deeper path.
+        // Actually, let's make it robust:
+        window.firebaseCollection = (db, ...args) => {
+            // args: [collection, doc, collection] -> path: "collection/doc/collection"
+            // Filter out db from args if passed as first arg in data.js call (data.js calls it with db as first arg)
+            // But here the signature has db.
+            // data.js calls: window.firebaseCollection(this.db, 'users', uid, 'texts')
+            // args will be ['users', uid, 'texts']
+            const path = args.join('/');
+            return db.collection(path);
+        };
+        
+        window.firebaseAddDoc = (collectionRef, data) => collectionRef.add(data);
+        window.firebaseDoc = (db, ...args) => {
+             // data.js: window.firebaseDoc(this.db, 'users', uid, 'texts', textId)
+             // args: ['users', uid, 'texts', textId]
+             const path = args.join('/');
+             return db.doc(path);
+        };
+        window.firebaseUpdateDoc = (docRef, data) => docRef.update(data);
+        window.firebaseDeleteDoc = (docRef) => docRef.delete();
+        window.firebaseGetDocs = (query) => query.get();
+        window.firebaseQuery = (ref, ...constraints) => {
+             // In compat v9, query constraints are chained formatted? No, compat uses .where().orderBy()
+             // data.js uses: window.firebaseQuery(colRef, window.firebaseOrderBy(...), window.firebaseLimit(...))
+             // This suggests data.js was written for MODULAR SDK usage style but using windows globals??
+             // Or compat masquerading as modular.
+             // If data.js passes "window.firebaseOrderBy('createdAt', 'desc')", what does that return?
+             // If it returns a function that takes a query and returns a query, that's modular style.
+             // Compat style: ref.orderBy(...)
+             
+             // WE ARE USING COMPAT SDK IN INDEX.HTML (v9 compat)
+             // But js/data.js seems to be written for "globalized modular wrappers".
+             
+             let q = ref;
+             constraints.forEach(constraint => {
+                 if (typeof constraint === 'function') {
+                     q = constraint(q);
+                 }
+             });
+             return q;
+        };
+        
+        window.firebaseOrderBy = (field, direction) => (query) => query.orderBy(field, direction);
+        window.firebaseLimit = (limit) => (query) => query.limit(limit);
+        window.firebaseStartAfter = (doc) => (query) => query.startAfter(doc);
+        window.firebaseServerTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
     </script>
     
+    
     <!-- 기존 Firebase 초기화 코드가 필요함. 일단 아래 스크립트로 대체 -->
-    <script src="js/firebase-init.js"></script>
+    <!-- script src="js/firebase-init.js" removed as it does not exist -->
     <script src="js/auth.js" type="module"></script>
     <script src="js/data.js" type="module"></script>
     <script src="js/ui.js" type="module"></script>
