@@ -30,9 +30,14 @@ export class AuthManager {
      * @throws {Error} 타임아웃 시 에러 throw
      */
     async waitForFirebase() {
-        const MAX_ATTEMPTS = 50;       // 최대 시도 횟수
+        // ============================================================
+        // [P2-01] Firebase 초기화 타임아웃 연장 (2026-01-10)
+        // - 기존: 50회 × 100ms = 5초 타임아웃
+        // - 수정: 100회 × 100ms = 10초 타임아웃 (LTE 네트워크 대응)
+        // ============================================================
+        const MAX_ATTEMPTS = 100;      // 최대 시도 횟수 (LTE 대응: 50 → 100)
         const POLL_INTERVAL_MS = 100;  // 폴링 간격 (ms)
-        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 5초
+        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 10초
         
         console.log('[AuthManager] Firebase 초기화 대기 시작...');
         
@@ -107,6 +112,29 @@ export class AuthManager {
         } catch (error) {
             console.error('사용자명 로그인 실패:', error);
             this.showMessage('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
+            return { success: false, error };
+        }
+    }
+
+    /**
+     * 구글 로그인 처리
+     */
+    async loginWithGoogle() {
+        if (!this.isFirebaseReady) {
+            this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
+            return;
+        }
+
+        try {
+            const provider = new window.firebaseGoogleAuthProvider();
+            const result = await window.firebaseSignInWithPopup(this.auth, provider);
+            const user = result.user;
+            
+            console.log('Google 로그인 성공:', user.displayName);
+            return { success: true, user };
+        } catch (error) {
+            console.error('Google 로그인 실패:', error);
+            this.showMessage('Google 로그인에 실패했습니다. 다시 시도해주세요.', 'error');
             return { success: false, error };
         }
     }
