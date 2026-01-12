@@ -113,10 +113,8 @@ class DualTextWriter {
     this.activePanelIndex = 0; // 현재 활성 패널 인덱스 (0 또는 1)
     this.isDualMode = false; // 듀얼 모드 활성화 여부
 
-    // Firebase 초기화 대기
-    this.waitForFirebase();
-
     // Firebase 설정 안내
+    // Note: Firebase 초기화는 init()에서 await로 처리됨
     this.showFirebaseSetupNotice();
 
     // 사용자 인증 관련 요소들
@@ -2754,6 +2752,8 @@ class DualTextWriter {
   // Firebase Google 로그인 처리
   // Firebase Google 로그인 처리
   async googleLogin() {
+    console.log("[googleLogin] 시작, isFirebaseReady:", this.isFirebaseReady);
+    
     if (!this.isFirebaseReady) {
       this.showMessage(
         "Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.",
@@ -2762,10 +2762,19 @@ class DualTextWriter {
       return;
     }
 
+    // Google Auth Provider 확인
+    if (!window.firebaseGoogleAuthProvider) {
+      console.error("[googleLogin] GoogleAuthProvider가 로드되지 않았습니다.");
+      this.showMessage("Google 로그인 기능을 불러오지 못했습니다. 페이지를 새로고침해주세요.", "error");
+      return;
+    }
+
     try {
+      console.log("[googleLogin] Google 로그인 팝업 시작...");
       const provider = new window.firebaseGoogleAuthProvider();
       const result = await window.firebaseSignInWithPopup(this.auth, provider);
       const user = result.user;
+      console.log("[googleLogin] 로그인 성공:", user.displayName || user.email);
 
       // 기존 로컬 데이터 마이그레이션 확인
       await this.checkAndMigrateLocalData(user.uid);
@@ -2775,12 +2784,24 @@ class DualTextWriter {
         "success"
       );
     } catch (error) {
-      console.error("Google 로그인 실패:", error);
+      console.error("[googleLogin] Google 로그인 실패:", error);
+      console.error("[googleLogin] 에러 코드:", error.code);
+      console.error("[googleLogin] 에러 메시지:", error.message);
+      
       if (error.code === "auth/popup-closed-by-user") {
         this.showMessage("로그인이 취소되었습니다.", "info");
+      } else if (error.code === "auth/popup-blocked") {
+        this.showMessage("팝업이 차단되었습니다. 팝업 차단을 해제해주세요.", "error");
+      } else if (error.code === "auth/cancelled-popup-request") {
+        this.showMessage("이전 로그인 요청이 취소되었습니다. 다시 시도해주세요.", "info");
+      } else if (error.code === "auth/network-request-failed") {
+        this.showMessage("네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.", "error");
+      } else if (error.code === "auth/operation-not-allowed") {
+        this.showMessage("Google 로그인이 비활성화되어 있습니다. 관리자에게 문의하세요.", "error");
+        console.error("[googleLogin] Firebase Console에서 Google 로그인 제공자를 활성화해야 합니다.");
       } else {
         this.showMessage(
-          "Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.",
+          `Google 로그인에 실패했습니다: ${error.message || '알 수 없는 오류'}`,
           "error"
         );
       }
