@@ -9443,3 +9443,79 @@ mark {
     color: #555;
     font-weight: 500;
 }
+
+
+/* ============================================
+   [P5-01] 2026-01-13: 오프라인 상태 감지 UI
+   - 오프라인 시 화면 상단에 배너 표시
+   - 온라인 복귀 시 자동 숨김
+   ============================================ */
+
+/* 오프라인 인디케이터 배너 */
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+.offline-indicator.visible {
+  display: flex;
+}
+
+.offline-indicator__icon {
+  font-size: 18px;
+}
+
+.offline-indicator__text {
+  margin: 0;
+}
+
+/* 오프라인 인디케이터 슬라이드 애니메이션 */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 오프라인 상태일 때 body에 패딩 추가 (배너 공간 확보) */
+body.offline-mode {
+  padding-top: 48px;
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .offline-indicator {
+    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+  }
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .offline-indicator {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  body.offline-mode {
+    padding-top: 44px;
+  }
+}

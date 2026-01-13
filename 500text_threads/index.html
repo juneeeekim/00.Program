@@ -14,6 +14,12 @@
     <link rel="stylesheet" href="style.css?v=20251103" />
   </head>
   <body>
+    <!-- [P5-01] 2026-01-13: 오프라인 상태 감지 UI -->
+    <div id="offline-indicator" class="offline-indicator" role="alert" aria-live="polite" aria-hidden="true">
+      <span class="offline-indicator__icon" aria-hidden="true">📡</span>
+      <p class="offline-indicator__text">오프라인 상태입니다. 일부 기능이 제한됩니다.</p>
+    </div>
+    
     <div class="container">
       <header>
         <h1>📝 500자 미만 글 작성기</h1>
@@ -2944,8 +2950,15 @@
         signOut,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      /* ========================================
+       * [P1-01] Firebase Firestore Import 구문
+       * - initializeFirestore: 오프라인 캐시 설정을 위한 초기화 함수
+       * - persistentLocalCache: iOS LTE/5G 환경 안정성 개선용 로컬 캐시
+       * - 수정일: 2026-01-13
+       * ======================================== */
       import {
-        getFirestore,
+        initializeFirestore,
+        persistentLocalCache,
         collection,
         addDoc,
         getDocs,
@@ -2976,7 +2989,32 @@
       // Firebase 초기화
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      
+      /* ========================================
+       * [P1-02] iOS/iPadOS 디바이스 감지 로직
+       * - iPad Pro의 macOS 위장 대응 포함
+       * - navigator.maxTouchPoints로 터치 디바이스 구분
+       * - 수정일: 2026-01-13
+       * ======================================== */
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      console.log(isIOS ? '🍎 iOS 환경 감지' : '🤖 Non-iOS 환경');
+      
+      // 전역 변수로 iOS 감지 결과 노출 (다른 스크립트에서 활용 가능)
+      window.isIOSDevice = isIOS;
+      
+      /* ========================================
+       * [P1-03] Firestore 초기화 - iOS LTE/5G 환경 데이터 로드 문제 해결
+       * - experimentalForceLongPolling: WebSocket 대신 Long Polling 사용 (통신사 NAT 우회)
+       * - persistentLocalCache: 오프라인 캐시 활성화 (50MB 제한)
+       * - 수정일: 2026-01-13
+       * ======================================== */
+      const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,  // 🔴 LTE/5G 필수 설정
+        localCache: persistentLocalCache({
+          cacheSizeBytes: 50 * 1024 * 1024  // 50MB
+        })
+      });
 
       // 오프라인 지속성 코드는 초기화 문제를 일으켜 잠시 비활성화함
       // enableIndexedDbPersistence(db)...
@@ -3557,10 +3595,9 @@
       window.firebaseStartAfter = startAfter;
     </script>
 
-    <script src="script.js?v=20251103"></script>
-
-    <!-- Main Script -->
-    <script type="module" src="script.js"></script>
+    <!-- Main Script (ES Module) -->
+    <!-- [P2-01] 2026-01-13: 중복 로드 제거, ES Module만 유지 -->
+    <script type="module" src="script.js?v=20260113"></script>
     <script src="test-firebase.js"></script>
   </body>
 </html>
