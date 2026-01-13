@@ -32,9 +32,15 @@ export class AuthManager {
      * @throws {Error} 타임아웃 시 에러 throw
      */
     async waitForFirebase() {
-        const MAX_ATTEMPTS = 50;       // 최대 시도 횟수
+        /* ============================================================
+         * [P3-01] 2026-01-13: LTE/5G 환경 고려하여 타임아웃 연장
+         * - 기존: 50회 × 100ms = 5초
+         * - 변경: 100회 × 100ms = 10초
+         * - 사유: 모바일 네트워크(LTE) 환경에서 초기화 지연 대응
+         * ============================================================ */
+        const MAX_ATTEMPTS = 100;      // 최대 시도 횟수 (50 → 100)
         const POLL_INTERVAL_MS = 100;  // 폴링 간격 (ms)
-        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 5초
+        const TIMEOUT_MS = MAX_ATTEMPTS * POLL_INTERVAL_MS; // 총 10초
         
         logger.log('[AuthManager] Firebase 초기화 대기 시작...');
         
