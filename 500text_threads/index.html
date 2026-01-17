@@ -11,7 +11,8 @@
     />
     <meta name="format-detection" content="telephone=no" />
     <title>500자 미만 글 작성기</title>
-    <link rel="stylesheet" href="style.css?v=20251103" />
+    <!-- [P2-03] 2026-01-17: CSS 캐시 버스팅 버전 업데이트 -->
+    <link rel="stylesheet" href="style.css?v=20260117" />
   </head>
   <body>
     <!-- [P5-01] 2026-01-13: 오프라인 상태 감지 UI -->
@@ -3588,16 +3589,11 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Firebase Pagination Support (LTE Optimization) -->
-    <script type="module">
-      import { limit, startAfter } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-      window.firebaseLimit = limit;
-      window.firebaseStartAfter = startAfter;
-    </script>
-
     <!-- Main Script (ES Module) -->
     <!-- [P2-01] 2026-01-13: 중복 로드 제거, ES Module만 유지 -->
-    <script type="module" src="script.js?v=20260113"></script>
-    <script src="test-firebase.js"></script>
+    <!-- [P1-01] 2026-01-17: Firebase 9.22.0 중복 import 제거 (Line 3040-3041에서 이미 설정됨) -->
+    <!-- [P2-02] 2026-01-17: 캐시 버스팅 버전 업데이트 (리팩토링 완료) -->
+    <!-- [P3-01] 2026-01-17: test-firebase.js 제거 (프로덕션 배포 시 불필요) -->
+    <script type="module" src="script.js?v=20260117"></script>
   </body>
 </html>
