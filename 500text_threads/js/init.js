@@ -139,6 +139,21 @@ export class TabManager {
                     app.initArticleManagement();
                 }
                 break;
+
+            case Constants.TABS.URLLINK:
+                // [2026-01-18] URL 연결 탭: URL 링크 로드
+                if (app.urlLinkManager) {
+                    app.urlLinkManager.init();
+                    app.urlLinkManager.loadUrlLinks();
+                }
+                break;
+
+            case Constants.TABS.BACKUP:
+                // [2026-01-18] 백업 탭: BackupManager 초기화
+                if (app.backupManager) {
+                    app.backupManager.init();
+                }
+                break;
         }
     }
 
