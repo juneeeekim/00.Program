@@ -401,9 +401,12 @@ export class TrackingManager {
    * - this.app.db: Firestore 인스턴스
    * - window.firebaseCollection, firebaseQuery, firebaseOrderBy, firebaseGetDocs
    */
-  async loadTrackingPosts() {
+  async loadTrackingPosts(retryCount = 0) {
+    // [P1-04] retryCount 변수 사용 확인
+    const isFirstAttempt = retryCount === 0;
+
     // 사전 조건 검사: 사용자 인증 및 Firebase 준비 상태
-    if (!this.app.currentUser || !this.app.isFirebaseReady) {
+     if (!this.app.currentUser || !this.app.isFirebaseReady) {
       console.warn('[TrackingManager] loadTrackingPosts: 사용자 미인증 또는 Firebase 미준비');
       return;
     }
@@ -500,22 +503,33 @@ export class TrackingManager {
           postLoadError?.message || postLoadError);
       }
     } catch (error) {
+      // ===== [iOS Patch] 2026-01-18: iOS용 권한 오류 자동 재시도 =====
+      if (error.code === "permission-denied" && isFirstAttempt) {
+        logger.warn("[iOS Patch] 트래킹 권한 부족(Permission Denied) 감지. 1초 후 재시도합니다...");
+        if (this.app.showMessage) {
+            this.app.showMessage("📊 트래킹 상태를 동기화 중입니다...", "info"); // [UX] 친절한 메시지 추가
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return this.loadTrackingPosts(retryCount + 1);
+      }
+
       // ===== [2026-01-18] 에러 로깅 개선: error 객체 직렬화 문제 해결 =====
       // Error 객체는 JSON.stringify로 직렬화 시 빈 객체 {}로 표시됨
       const errorMessage = error?.message || error?.toString() || 'Unknown error';
-      const errorStack = error?.stack || '';
       console.error("[TrackingManager] loadTrackingPosts 실패:", errorMessage);
-      if (errorStack) {
-        console.error("[TrackingManager] Stack trace:", errorStack);
-      }
+      
       this.trackingPosts = [];  // 에러 시 빈 배열로 초기화
 
       // 사용자에게 에러 메시지 표시
       if (this.app.showMessage) {
-        this.app.showMessage(
-          "트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.",
-          "error"
-        );
+        if (error.code === "permission-denied") {
+            this.app.showMessage("📊 트래킹 데이터 접근 권한을 확인 중입니다. 잠시 후 새로고침 해주세요.", "warning");
+        } else {
+            this.app.showMessage(
+              "트래킹 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.",
+              "error"
+            );
+        }
       }
 
       // 빈 상태 표시

@@ -15,10 +15,15 @@
  * [작성자] URL Link Implementation Team
  */
 
+import { logger } from './logger.js';
+import { Constants } from './constants.js';
+
+/**
+ * URL 링크 관리 클래스
+ */
 export class UrlLinkManager {
   /**
-   * UrlLinkManager 생성자
-   * @param {Object} mainApp - DualTextWriter 인스턴스 참조
+   * @param {object} mainApp - DualTextWriter 인스턴스 참조
    */
   constructor(mainApp) {
     this.mainApp = mainApp;
@@ -27,13 +32,19 @@ export class UrlLinkManager {
     this.editingId = null;
     this.initialized = false; // [2026-01-18] 초기화 여부 플래그
 
-    // DOM 요소 캐싱
+    // DOM 요소 참조
     this.listContainer = null;
     this.emptyState = null;
     this.form = null;
     this.addBtn = null;
+    this.saveBtn = null;
+    this.cancelBtn = null;
+    this.nameInput = null;
+    this.descInput = null;
+    this.urlInput = null;
+    this.editIdInput = null;
 
-    console.log('✅ [UrlLinkManager] 인스턴스 생성 완료 (초기화 대기)');
+    logger.log('✅ [UrlLinkManager] 인스턴스 생성 완료 (초기화 대기)');
   }
 
   /**
@@ -44,16 +55,16 @@ export class UrlLinkManager {
     if (this.initialized) return true; // 이미 초기화됨
 
     this._cacheDOM();
-    
+
     // 필수 요소 확인
-    if (!this.addBtn || !this.listContainer) {
-      console.warn('[UrlLinkManager] 필수 DOM 요소를 찾을 수 없습니다. (URL 연결 탭이 아직 렌더링되지 않았을 수 있음)');
+    if (!this.listContainer || !this.addBtn || !this.saveBtn) {
+      logger.warn('[UrlLinkManager] 필수 DOM 요소를 찾을 수 없습니다. (ID: url-link-list, add-url-link-btn, url-link-save-btn)');
       return false;
     }
 
     this._bindEvents();
     this.initialized = true;
-    console.log('✅ [UrlLinkManager] DOM 바인딩 및 이벤트 초기화 완료');
+    logger.log('✅ [UrlLinkManager] DOM 바인딩 및 이벤트 초기화 완료');
     return true;
   }
 
@@ -98,7 +109,10 @@ export class UrlLinkManager {
   /**
    * Firebase에서 URL 링크 로드
    */
-  async loadUrlLinks() {
+  async loadUrlLinks(retryCount = 0) {
+    // [iOS Patch] retryCount 및 초기화 상태 확인
+    const isFirstAttempt = retryCount === 0;
+
     // [2026-01-18] 아직 초기화 전이라면 초기화 시도
     if (!this.initialized) {
       if (!this.init()) return; 
@@ -162,7 +176,23 @@ export class UrlLinkManager {
       this.renderUrlLinks();
 
     } catch (error) {
+       // ===== [iOS Patch] 2026-01-18: iOS용 권한 오류 자동 재시도 =====
+       if (error.code === "permission-denied" && isFirstAttempt) {
+         logger.warn("[iOS Patch] URL 링크 권한 부족 감지. 1초 후 재시도합니다...");
+         if (app.showMessage) {
+             app.showMessage("🔗 링크 목록을 불러오는 중입니다...", "info"); // [UX] 친절한 메시지 추가
+         }
+         await new Promise((resolve) => setTimeout(resolve, 1000));
+         this.isLoading = false; // 재시도를 위해 플래그 해제
+         return this.loadUrlLinks(retryCount + 1);
+       }
+
       console.error('[UrlLinkManager] URL 링크 로드 실패:', error?.message || error);
+      
+      if (error.code === "permission-denied") {
+          app.showMessage("🔗 URL 링크 접근 권한을 확인 중입니다. 잠시만 기다려주세요.", "warning");
+      }
+      
       this._showEmptyState();
     } finally {
       this.isLoading = false;
@@ -171,10 +201,14 @@ export class UrlLinkManager {
 
   /**
    * URL 링크 저장 (추가 또는 수정)
+   * @param {number} retryCount - 재시도 횟수
    */
-  async saveUrlLink() {
+  async saveUrlLink(retryCount = 0) {
+    const isFirstAttempt = retryCount === 0;
     const app = this.mainApp;
+    
     if (!app.currentUser || !app.isFirebaseReady) {
+      logger.warn('[UrlLinkManager] 저장 실패: 로그인이 필요하거나 Firebase 미준비');
       app.showMessage('❌ 로그인이 필요합니다.', 'error');
       return;
     }
@@ -185,24 +219,25 @@ export class UrlLinkManager {
     const url = this.urlInput?.value?.trim();
     const editId = this.editIdInput?.value;
 
-    if (!name) {
-      app.showMessage('❌ 서비스 명칭을 입력해주세요.', 'error');
-      this.nameInput?.focus();
+    if (!name || !url) {
+      app.showMessage('❌ 모든 필수 항목을 입력해주세요.', 'error');
       return;
     }
 
-    if (!url) {
-      app.showMessage('❌ URL 주소를 입력해주세요.', 'error');
-      this.urlInput?.focus();
+    // URL 유효성 검사 (프로토콜 자동 수정 시도)
+    let validatedUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        validatedUrl = 'https://' + url;
+        logger.log(`[UrlLinkManager] URL 프로토콜 보정: ${url} -> ${validatedUrl}`);
+    }
+
+    if (!this._isValidUrl(validatedUrl)) {
+      app.showMessage('❌ 올바른 URL 형식을 입력해주세요.', 'error');
       return;
     }
 
-    // URL 유효성 검사
-    if (!this._isValidUrl(url)) {
-      app.showMessage('❌ 올바른 URL 형식을 입력해주세요. (https://...)', 'error');
-      this.urlInput?.focus();
-      return;
-    }
+    logger.log(`[UrlLinkManager] URL 저장 시도: ${name} (${editId ? '수정' : '추가'})`);
+    app.showMessage('💾 저장 중...', 'info');
 
     try {
       const linksRef = window.firebaseCollection(
@@ -218,7 +253,7 @@ export class UrlLinkManager {
         await window.firebaseUpdateDoc(docRef, {
           name,
           description,
-          url,
+          url: validatedUrl,
           updatedAt: window.firebaseServerTimestamp()
         });
         app.showMessage('✅ URL 링크가 수정되었습니다.', 'success');
@@ -227,7 +262,7 @@ export class UrlLinkManager {
         await window.firebaseAddDoc(linksRef, {
           name,
           description,
-          url,
+          url: validatedUrl,
           createdAt: window.firebaseServerTimestamp(),
           order: this.urlLinks.length
         });
@@ -238,8 +273,21 @@ export class UrlLinkManager {
       await this.loadUrlLinks();
 
     } catch (error) {
-      console.error('[UrlLinkManager] URL 링크 저장 실패:', error?.message || error);
-      app.showMessage('❌ URL 링크 저장에 실패했습니다.', 'error');
+       // ===== [iOS Patch] 권한 오류 자동 재시도 =====
+       if (error.code === "permission-denied" && isFirstAttempt) {
+         logger.warn("[UrlLinkManager] 저장 권한 부족 감지. 1초 후 재시도합니다...");
+         app.showMessage("ℹ️ 인증 상태를 확인 중입니다. 잠시만 기다려주세요...", "info");
+         await new Promise((resolve) => setTimeout(resolve, 1000));
+         return this.saveUrlLink(retryCount + 1);
+       }
+
+      logger.error('[UrlLinkManager] URL 링크 저장 실패:', error?.message || error);
+      
+      if (error.code === "permission-denied") {
+          app.showMessage('❌ 저장 권한이 없습니다. Firestore Rules를 확인해주세요.', 'error');
+      } else {
+          app.showMessage('❌ URL 링크 저장에 실패했습니다.', 'error');
+      }
     }
   }
 

@@ -19,13 +19,52 @@ export class AuthManager {
     }
 
     /* ============================================================
-     * [Phase 1-2 Hotfix] 2025-12-07
-     * Firebase 초기화 대기 로직 강화
-     * - Promise 기반으로 변경하여 명확한 성공/실패 반환
-     * - 타임아웃 시 사용자에게 재시도 옵션 안내
-     * - 디버깅을 위한 상세 로그 추가
+     * [iOS Patch] 2026-01-18: iOS/WebKit 환경 최적화 패치
+     * - 아이폰/아이패드 환경의 인증 지연 및 IndexedDB 이슈 대응
+     * - 명시적 세션 유지 설정 및 토큰 준비 상태 가드 추가
      * ============================================================ */
-    
+
+    /**
+     * iOS/iPadOS 플랫폼 여부 확인
+     * @returns {boolean} iOS 환경 여부
+     */
+    isIOS() {
+        return (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+    }
+
+    /**
+     * ID 토큰 준비 상태 대기
+     * iOS 환경에서 인증 직후 Firestore 접근 시 권한 오류(Permission Denied) 방지용
+     * @param {number} maxAttempts - 최대 시도 횟수
+     * @returns {Promise<boolean>} 토큰 유효성 여부
+     */
+    async waitForToken(maxAttempts = 10) {
+        if (!this.auth) return false;
+        
+        logger.log('[AuthManager] [iOS Patch] ID 토큰 동기화 대기 시작...');
+        
+        for (let i = 0; i < maxAttempts; i++) {
+            const user = this.auth.currentUser;
+            if (user) {
+                try {
+                    // forceRefresh=true로 최신 토큰 강제 수신
+                    const token = await user.getIdToken(true);
+                    if (token) {
+                        logger.log('[AuthManager] [iOS Patch] ✅ ID 토큰 준비 완료');
+                        return true;
+                    }
+                } catch (e) {
+                    logger.warn(`[AuthManager] [iOS Patch] 토큰 갱신 시도 중 (${i+1}/${maxAttempts}):`, e.message);
+                }
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        logger.error('[AuthManager] [iOS Patch] ❌ ID 토큰 준비 타임아웃');
+        return false;
+    }
+
     /**
      * Firebase 초기화 대기
      * @returns {Promise<boolean>} 초기화 성공 여부
@@ -52,6 +91,20 @@ export class AuthManager {
                 this.isFirebaseReady = true;
                 
                 logger.log(`[AuthManager] ✅ Firebase 초기화 완료 (${attempt * POLL_INTERVAL_MS}ms 소요)`);
+
+                /* ============================================================
+                 * [iOS Patch] 2026-01-18: iOS 환경 명시적 세션 유지 설정
+                 * - WebKit 계열 브라우저에서 세션 데이터가 증발하는 현상 방지
+                 * ============================================================ */
+                if (this.isIOS() && window.firebaseSetPersistence) {
+                    try {
+                        await window.firebaseSetPersistence(this.auth, window.firebaseBrowserLocalPersistence);
+                        logger.log('[AuthManager] [iOS Patch] ✅ iOS 세션 영속성 설정 완료 (LOCAL)');
+                    } catch (e) {
+                        logger.warn('[AuthManager] [iOS Patch] ⚠️ 세션 설정 실패:', e.message);
+                    }
+                }
+
                 /* ============================================================
                  * [P1-01] 2026-01-18: setupAuthStateListener() 호출을 InitManager로 이동
                  * - 사유: 타이밍 문제 해결 (Race Condition)
