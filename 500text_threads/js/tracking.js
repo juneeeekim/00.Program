@@ -472,29 +472,43 @@ export class TrackingManager {
 
       console.log(`✅ [TrackingManager] ${this.trackingPosts.length}개의 트래킹 포스트 로드 완료`);
 
-      // 데이터 무결성 검증: sourceTextId 유효성 확인
-      if (this.app.validateSourceTexts) {
-        await this.app.validateSourceTexts();
-      }
+      // ===== [2026-01-18] 후속 처리는 별도 try-catch로 분리 =====
+      // 데이터 로드는 성공했는데 UI 갱신 에러로 실패 처리되는 문제 방지
+      try {
+        // 데이터 무결성 검증: sourceTextId 유효성 확인
+        if (this.app.validateSourceTexts) {
+          await this.app.validateSourceTexts();
+        }
 
-      // 포스트 선택 드롭다운 업데이트 (개별 포스트 모드일 때)
-      if (this.chartMode === "individual" && this.app.populatePostSelector) {
-        this.app.populatePostSelector();
-      }
+        // 포스트 선택 드롭다운 업데이트 (개별 포스트 모드일 때)
+        if (this.chartMode === "individual" && this.app.populatePostSelector) {
+          this.app.populatePostSelector();
+        }
 
-      // UI 새로고침 (메인 앱에 위임)
-      if (this.app.refreshUI) {
-        this.app.refreshUI({
-          trackingPosts: true,
-          trackingSummary: true,
-          trackingChart: true,
-          force: true,
-        });
+        // UI 새로고침 (메인 앱에 위임)
+        if (this.app.refreshUI) {
+          this.app.refreshUI({
+            trackingPosts: true,
+            trackingSummary: true,
+            trackingChart: true,
+            force: true,
+          });
+        }
+      } catch (postLoadError) {
+        // 후속 처리 에러는 경고로만 출력 (데이터 로드 자체는 성공)
+        console.warn('[TrackingManager] 후속 처리 중 오류 (데이터 로드는 성공):', 
+          postLoadError?.message || postLoadError);
       }
     } catch (error) {
-      // Firebase 데이터 로드 실패 시 에러 처리
-      console.error("[TrackingManager] loadTrackingPosts 실패:", error);
-      this.trackingPosts = [];
+      // ===== [2026-01-18] 에러 로깅 개선: error 객체 직렬화 문제 해결 =====
+      // Error 객체는 JSON.stringify로 직렬화 시 빈 객체 {}로 표시됨
+      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      const errorStack = error?.stack || '';
+      console.error("[TrackingManager] loadTrackingPosts 실패:", errorMessage);
+      if (errorStack) {
+        console.error("[TrackingManager] Stack trace:", errorStack);
+      }
+      this.trackingPosts = [];  // 에러 시 빈 배열로 초기화
 
       // 사용자에게 에러 메시지 표시
       if (this.app.showMessage) {
