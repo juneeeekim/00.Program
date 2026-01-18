@@ -373,4 +373,46 @@ export class FilterManager {
       this._trackingSearchDebounce = null;
     }
   }
+
+  // ==================== [2026-01-18] 함수 형태 Getter/Setter 추가 ====================
+  // script.js에서 getXxx()/setXxx() 패턴으로 호출하므로 함수 별칭 제공
+
+  getCurrentTopicFilter() { return this._currentTopicFilter; }
+  setCurrentTopicFilter(value) { this._currentTopicFilter = value; }
+
+  getCurrentSourceFilter() { return this._currentSourceFilter; }
+  setCurrentSourceFilter(value) { this._currentSourceFilter = value; }
+
+  getCurrentSnsFilterMode() { return this._currentSnsFilterMode; }
+  setCurrentSnsFilterMode(value) { this._currentSnsFilterMode = value; }
+
+  getCurrentSnsFilterPlatform() { return this._currentSnsFilterPlatform; }
+  setCurrentSnsFilterPlatform(value) { this._currentSnsFilterPlatform = value; }
+
+  getTrackingSort() { return this._trackingSort; }
+  setTrackingSort(value) { 
+    this._trackingSort = value;
+    localStorage.setItem(Constants.STORAGE_KEYS.TRACKING_SORT, value);
+  }
+
+  getTrackingStatusFilter() { return this._trackingStatusFilter; }
+  setTrackingStatusFilter(value) { 
+    this._trackingStatusFilter = value;
+    localStorage.setItem(Constants.STORAGE_KEYS.TRACKING_STATUS, value);
+  }
+
+  getTrackingSearch() { return this._trackingSearch; }
+  setTrackingSearch(value) { 
+    this._trackingSearch = value;
+    localStorage.setItem(Constants.STORAGE_KEYS.TRACKING_SEARCH, value);
+  }
+
+  getRangeFilters() { return this._rangeFilters; }
+  setRangeFilters(value) { 
+    this._rangeFilters = value;
+    localStorage.setItem(Constants.STORAGE_KEYS.TRACKING_RANGES, JSON.stringify(value));
+  }
+
+  getTrackingSearchDebounce() { return this._trackingSearchDebounce; }
+  setTrackingSearchDebounce(value) { this._trackingSearchDebounce = value; }
 }
