@@ -77,6 +77,46 @@ export function formatDate(dateObj) {
  * @param {number} maxRetries - 최대 재시도 횟수 (기본값: 3)
  * @param {number} baseDelayMs - 기본 대기 시간 (기본값: 1000ms)
  */
+
+// ==================== ???? ?? ???? ====================
+
+export function saveToLocalStorage(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.warn("?? ???? ?? ??:", error);
+        return false;
+    }
+}
+
+export function loadFromLocalStorage(key) {
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+    } catch (error) {
+        console.warn("?? ???? ?? ??:", error);
+        return null;
+    }
+}
+
+export function isOnline() {
+    return navigator.onLine;
+}
+
+export function showOfflineNotification(showMessage) {
+    if (!isOnline()) {
+        if (typeof showMessage === "function") {
+            showMessage(
+                "?? ???? ?????. ?? ??? ??? ? ????.",
+                "warning"
+            );
+        } else {
+            console.warn("showOfflineNotification: showMessage ??? ????.");
+        }
+    }
+}
+
 export async function withRetry(fn, maxRetries = 3, baseDelayMs = 1000) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
