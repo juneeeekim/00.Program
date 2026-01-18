@@ -524,6 +524,11 @@ class DualTextWriter {
       showMessage: (msg, type) => this.showMessage(msg, type),
     });
 
+    // [Fix] 2026-01-18: AuthManager 위임 메서드 추가
+    this.login = (username) => this.authManager.login(username);
+    this.logout = () => this.authManager.logout();
+    this.googleLogin = () => this.authManager.googleLogin();
+
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
 
