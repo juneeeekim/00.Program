@@ -25,6 +25,7 @@ export class UrlLinkManager {
     this.urlLinks = [];
     this.isLoading = false;
     this.editingId = null;
+    this.initialized = false; // [2026-01-18] 초기화 여부 플래그
 
     // DOM 요소 캐싱
     this.listContainer = null;
@@ -32,16 +33,28 @@ export class UrlLinkManager {
     this.form = null;
     this.addBtn = null;
 
-    console.log('✅ [UrlLinkManager] 초기화 완료');
+    console.log('✅ [UrlLinkManager] 인스턴스 생성 완료 (초기화 대기)');
   }
 
   /**
    * DOM 요소 캐싱 및 이벤트 바인딩
+   * @returns {boolean} 초기화 성공 여부
    */
   init() {
+    if (this.initialized) return true; // 이미 초기화됨
+
     this._cacheDOM();
+    
+    // 필수 요소 확인
+    if (!this.addBtn || !this.listContainer) {
+      console.warn('[UrlLinkManager] 필수 DOM 요소를 찾을 수 없습니다. (URL 연결 탭이 아직 렌더링되지 않았을 수 있음)');
+      return false;
+    }
+
     this._bindEvents();
-    console.log('✅ [UrlLinkManager] DOM 바인딩 완료');
+    this.initialized = true;
+    console.log('✅ [UrlLinkManager] DOM 바인딩 및 이벤트 초기화 완료');
+    return true;
   }
 
   /**
@@ -86,6 +99,11 @@ export class UrlLinkManager {
    * Firebase에서 URL 링크 로드
    */
   async loadUrlLinks() {
+    // [2026-01-18] 아직 초기화 전이라면 초기화 시도
+    if (!this.initialized) {
+      if (!this.init()) return; 
+    }
+
     if (this.isLoading) {
       console.log('[UrlLinkManager] 이미 로딩 중, 스킵');
       return;
@@ -93,7 +111,7 @@ export class UrlLinkManager {
 
     const app = this.mainApp;
     if (!app.currentUser || !app.isFirebaseReady) {
-      console.warn('[UrlLinkManager] Firebase 미준비 또는 미로그인');
+      console.warn('[UrlLinkManager] Firebase 미준비 또는 미로그인 (데이터 로드를 위해 로그인이 필요합니다)');
       this._showEmptyState();
       return;
     }
