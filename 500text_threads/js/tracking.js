@@ -712,8 +712,7 @@ export class TrackingManager {
         });
 
     const metricsCount = Array.isArray(post.metrics) ? post.metrics.length : 0;
-    const title = (post.content || '').split('
-')[0].trim();
+    const title = (post.content || '').split('\n')[0].trim();
 
     return `
       <div class="tracking-manage-card" data-post-id="${post.id}">
