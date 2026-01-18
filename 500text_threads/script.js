@@ -3,6 +3,10 @@ import {
   escapeHtml,
   debounce,
   formatDate,
+  saveToLocalStorage,
+  loadFromLocalStorage,
+  isOnline,
+  showOfflineNotification,
 } from "./js/utils.js";
 import { AuthManager } from "./js/auth.js";
 import { Constants } from "./js/constants.js";
@@ -1003,8 +1007,18 @@ class DualTextWriter {
     console.log('[DualTextWriter] bindEvents() - InitManager로 위임됨');
   }
 
-  // [Refactoring] AuthManager로 위임
+  // ============================================================================
+  // [P1-01 FIX] 2026-01-19: AuthManager로 위임 + 방어 코드 추가
+  // - authManager 존재 여부 확인 후 호출
+  // - TypeError: Cannot read properties of undefined 방지
+  // ============================================================================
   async waitForFirebase() {
+    // [FIX] authManager 존재 여부 확인
+    if (!this.authManager || typeof this.authManager.waitForFirebase !== 'function') {
+      console.error('[DualTextWriter] authManager.waitForFirebase()를 찾을 수 없습니다.');
+      throw new Error('AuthManager 초기화 실패: waitForFirebase 메서드를 찾을 수 없습니다.');
+    }
+    
     await this.authManager.waitForFirebase();
     this.auth = this.authManager.auth;
     this.db = this.authManager.db;
@@ -4377,38 +4391,21 @@ class DualTextWriter {
 
   // 오프라인 지원 함수들
   saveToLocalStorage(key, data) {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-      return true;
-    } catch (error) {
-      console.warn("로컬 스토리지 저장 실패:", error);
-      return false;
-    }
+    return saveToLocalStorage(key, data);
   }
 
   loadFromLocalStorage(key) {
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.warn("로컬 스토리지 로드 실패:", error);
-      return null;
-    }
+    return loadFromLocalStorage(key);
   }
 
   // 오프라인 상태 감지
   isOnline() {
-    return navigator.onLine;
+    return isOnline();
   }
 
   // 오프라인 알림 표시
   showOfflineNotification() {
-    if (!this.isOnline()) {
-      this.showMessage(
-        "📡 오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.",
-        "warning"
-      );
-    }
+    return showOfflineNotification(this.showMessage?.bind(this));
   }
 
   // 언어 감지 함수
@@ -10228,8 +10225,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const articleDetailPanel = document.getElementById("article-detail-panel");
   const detailPanelClose = document.getElementById("detail-panel-close");
 
+  // ============================================================================
+  // [P2-01 FIX] 2026-01-19: 요소 미존재 시 조용히 종료
+  // - 모든 페이지에서 확대 모드가 필요하지 않으므로 warn 대신 silent return
+  // - 디버그 필요 시 주석 해제: console.log("[ExpandMode] 필수 요소 미존재, 초기화 스킵");
+  // ============================================================================
   if (!detailExpandBtn || !articleDetailPanel) {
-    console.warn("글 상세 패널 확대 모드: 필수 요소를 찾을 수 없습니다.");
+    // console.log("[ExpandMode] 필수 요소 미존재, 초기화 스킵");
     return;
   }
 
