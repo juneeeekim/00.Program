@@ -52,7 +52,12 @@ export class AuthManager {
                 this.isFirebaseReady = true;
                 
                 logger.log(`[AuthManager] ✅ Firebase 초기화 완료 (${attempt * POLL_INTERVAL_MS}ms 소요)`);
-                this.setupAuthStateListener();
+                /* ============================================================
+                 * [P1-01] 2026-01-18: setupAuthStateListener() 호출을 InitManager로 이동
+                 * - 사유: 타이밍 문제 해결 (Race Condition)
+                 * - 변경: DualTextWriter 속성 동기화 완료 후 호출되도록 함
+                 * - 호출 위치: js/init.js > InitManager.initialize()
+                 * ============================================================ */
                 return true;
             }
             

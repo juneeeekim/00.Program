@@ -90,10 +90,20 @@ export class TabManager {
 
         switch (tabName) {
             case Constants.TABS.SAVED:
-                // 저장된 글 탭: 목록 새로고침
-                if (typeof app.loadSavedTexts === 'function') {
-                    app.loadSavedTexts();
-                }
+                // ===== [2026-01-18] T4-02 빠른 탭 전환 중복 호출 방지 =====
+                // Debounce: 연속 클릭 시 마지막 클릭만 실행
+                clearTimeout(this._savedTabDebounce);
+                this._savedTabDebounce = setTimeout(() => {
+                    // 이미 로딩 중이면 스킵
+                    if (app._isLoadingSavedTexts) {
+                        logger.log('[TabManager] loadSavedTexts 이미 로딩 중, 스킵');
+                        return;
+                    }
+                    if (typeof app.loadSavedTexts === 'function') {
+                        app.loadSavedTexts();
+                    }
+                }, 150); // 150ms debounce
+
                 if (typeof app.initSavedFilters === 'function') {
                     app.initSavedFilters();
                 }
@@ -131,6 +141,7 @@ export class TabManager {
                 break;
         }
     }
+
 
     /**
      * 현재 활성 탭 가져오기
@@ -176,8 +187,20 @@ export class InitManager {
             // 2. Firebase 초기화 대기
             await this.app.waitForFirebase();
 
-            // 3. 인증 상태 리스너 설정
-            this.app.setupAuthStateListener();
+            /* ============================================================
+             * [P2-01] 2026-01-18: 인증 상태 리스너 설정 - AuthManager에 직접 호출
+             * - 사유: 타이밍 문제 해결 (Race Condition)
+             * - 변경: waitForFirebase() 완료 후 DualTextWriter 속성 동기화가
+             *         완료된 상태에서 Auth 리스너를 등록
+             * - 이전: this.app.setupAuthStateListener() (빈 메서드)
+             * ============================================================ */
+            // 3. 인증 상태 리스너 설정 (AuthManager에 직접 호출)
+            if (this.app.authManager) {
+                this.app.authManager.setupAuthStateListener();
+                logger.log('[InitManager] Auth 상태 리스너 설정 완료');
+            } else {
+                logger.warn('[InitManager] authManager가 없습니다. Auth 리스너 설정 스킵');
+            }
 
             // 4. UI 컴포넌트 초기화
             this._initUIComponents();
