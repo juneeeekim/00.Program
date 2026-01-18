@@ -18,6 +18,7 @@ import { ExpandModeManager } from "./js/expand-mode.js";
 import { TextCrudManager } from "./js/text-crud.js";
 import { FilterManager } from "./js/filters.js";
 import { UrlLinkManager } from "./js/url-link.js";  // [2026-01-18] URL 연결 기능
+import { BackupManager } from "./js/backup.js";     // [2026-01-18] 백업 기능
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
 import { logger } from "./js/logger.js";
 
@@ -207,6 +208,10 @@ class DualTextWriter {
     // ==================== UrlLinkManager 인스턴스 생성 [2026-01-18] ====================
     // [Feature] URL 바로가기 관리 기능
     this.urlLinkManager = new UrlLinkManager(this);
+
+    // ==================== BackupManager 인스턴스 생성 [2026-01-18] ====================
+    // [Feature] 데이터 백업 및 복원 기능
+    this.backupManager = new BackupManager(this);
 
     // ========================================================================
     // SECTION 3: 프로퍼티 위임 (API 호환성 유지)
