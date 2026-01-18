@@ -1340,9 +1340,7 @@ export class TrackingManager {
                 return t >= firstDate && t <= lastDate;
               });
               if (!hasAnyInRange && this.chartRange !== "all") {
-                this.setChartRange("all"); else {
-                  this.chartRange = "all";
-                }
+                this.setChartRange("all");
                 return;
               }
             }
