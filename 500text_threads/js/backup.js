@@ -5,12 +5,12 @@
  * [역할]
  * - Firebase Firestore 데이터를 JSON으로 내보내기
  * - JSON 파일에서 데이터 복원 (가져오기)
- * - texts, trackingPosts, urlLinks 컬렉션 지원
+ * - texts, posts, urlLinks 컬렉션 지원
  *
  * [컬렉션 구조]
- * - users/{userId}/texts       - 저장된 글
- * - users/{userId}/trackingPosts - 트래킹 포스트 (posts -> trackingPosts로 변경)
- * - users/{userId}/urlLinks    - URL 바로가기
+ * - users/{userId}/texts - 저장된 글
+ * - users/{userId}/posts - 트래킹 포스트
+ * - users/{userId}/urlLinks - URL 바로가기
  *
  * [생성일] 2026-01-18
  */
@@ -166,10 +166,10 @@ export class BackupManager {
                 throw new Error('Firestore 연결이 없습니다.');
             }
 
-            // 각 컬렉션에서 데이터 로드
+            // 각 컬렉션에서 데이터 로드 (Firestore 컬렉션명: texts, posts, urlLinks)
             const [textsData, trackingPostsData, urlLinksData] = await Promise.all([
                 this._fetchCollection(db, userId, 'texts'),
-                this._fetchCollection(db, userId, 'trackingPosts'),
+                this._fetchCollection(db, userId, 'posts'),  // Firestore에서는 'posts' 컬렉션
                 this._fetchCollection(db, userId, 'urlLinks')
             ]);
 
@@ -350,10 +350,10 @@ export class BackupManager {
             const userId = this.mainApp.currentUser.uid;
             const db = this.mainApp.db;
 
-            // 각 컬렉션에 데이터 저장
+            // 각 컬렉션에 데이터 저장 (Firestore 컬렉션명: texts, posts, urlLinks)
             const results = await Promise.all([
                 this._importCollection(db, userId, 'texts', backupData.data.texts || []),
-                this._importCollection(db, userId, 'trackingPosts', backupData.data.trackingPosts || []),
+                this._importCollection(db, userId, 'posts', backupData.data.trackingPosts || []),  // Firestore에서는 'posts' 컬렉션
                 this._importCollection(db, userId, 'urlLinks', backupData.data.urlLinks || [])
             ]);
 
