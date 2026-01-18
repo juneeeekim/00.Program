@@ -17,6 +17,7 @@ import { ModalManager } from "./js/modals.js";
 import { ExpandModeManager } from "./js/expand-mode.js";
 import { TextCrudManager } from "./js/text-crud.js";
 import { FilterManager } from "./js/filters.js";
+import { UrlLinkManager } from "./js/url-link.js";  // [2026-01-18] URL 연결 기능
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
 
 /**
@@ -201,6 +202,10 @@ class DualTextWriter {
     // ==================== FilterManager 인스턴스 생성 (Phase 9) ====================
     // [Refactoring] 필터/검색 관련 상태를 FilterManager로 위임
     this.filterManager = new FilterManager(this);
+
+    // ==================== UrlLinkManager 인스턴스 생성 [2026-01-18] ====================
+    // [Feature] URL 바로가기 관리 기능
+    this.urlLinkManager = new UrlLinkManager(this);
 
     // ========================================================================
     // SECTION 3: 프로퍼티 위임 (API 호환성 유지)
@@ -3919,6 +3924,7 @@ class DualTextWriter {
       await Promise.all([
         this.loadSavedTextsFromFirestore(),
         this.loadTrackingPosts ? this.loadTrackingPosts() : Promise.resolve(),
+        this.urlLinkManager ? this.urlLinkManager.loadUrlLinks() : Promise.resolve(), // [2026-01-18] URL 링크 로드 추가
       ]);
 
       // UI 업데이트 (동기)
