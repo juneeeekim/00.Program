@@ -4020,7 +4020,16 @@ class DualTextWriter {
    * @param {boolean} forceReload - true면 Firestore에서 다시 불러옵니다.
    */
   async loadSavedTexts(forceReload = false) {
+    // ===== [2026-01-18] T4-02 빠른 탭 전환 중복 호출 방지 =====
+    // 이미 로딩 중이면 스킵 (debounce와 함께 이중 보호)
+    if (this._isLoadingSavedTexts) {
+      // 중복 호출 방지 - 이미 로딩 중이면 스킵
+      return;
+    }
+    this._isLoadingSavedTexts = true;  // 로딩 시작 플래그
+
     try {
+
       const hasCachedData =
         Array.isArray(this.savedTexts) && this.savedTexts.length > 0;
       if (!forceReload && hasCachedData) {
@@ -4037,10 +4046,13 @@ class DualTextWriter {
       await this.loadSavedTextsFromFirestore();
       await this.renderSavedTexts();
     } catch (error) {
-      console.error("loadSavedTexts ����:", error);
-      this.showMessage("❌ ����� �� �ҷ����� �� �����߽��ϴ�.", "error");
+      console.error("loadSavedTexts 오류:", error);
+      this.showMessage("❌ 저장된 글 불러오기에 실패했습니다.", "error");
+    } finally {
+      this._isLoadingSavedTexts = false;  // 로딩 완료 플래그 해제
     }
   }
+
 
   // Firestore에서 저장된 텍스트들 불러오기
   // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
