@@ -3924,12 +3924,13 @@ class DualTextWriter {
     if (!this.currentUser) return;
 
     /* ============================================================
-     * [iOS Patch] 2026-01-18: iOS/WebKit용 토큰 동기화 가드
-     * - 아이폰/아이패드에서 인증 직후 Firestore 요청 시 
+     * [Mobile Patch] 2026-01-18: 모바일 환경용 토큰 동기화 가드
+     * - iOS/Android 모바일에서 인증 직후 Firestore 요청 시 
      *   토큰 미준비로 인한 'Permission Denied' 에러 방지
+     * - 기존 iOS 전용에서 모든 모바일로 확장
      * ============================================================ */
-    if (this.authManager && this.authManager.isIOS()) {
-      logger.log("[iOS Patch] iOS 환경 감지: 토큰 준비 상태를 확인합니다.");
+    if (this.authManager && this.authManager.isMobile()) {
+      logger.log("[Mobile Patch] 모바일 환경 감지: 토큰 준비 상태를 확인합니다.");
       await this.authManager.waitForToken();
     }
 
