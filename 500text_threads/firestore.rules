@@ -95,6 +95,19 @@ service cloud.firestore {
         // 삭제: 소유자 + 비익명 사용자
         allow delete: if isOwner(userId) && isNotAnonymous();
       }
+      
+      // ============================================================
+      // User URL links subcollection (2026-01-18)
+      // - URL 바로가기 기능 지원
+      // - 익명 사용자는 읽기만 가능, 쓰기 불가
+      // ============================================================
+      match /urlLinks/{linkId} {
+        // 읽기: 소유자만 허용
+        allow read: if isOwner(userId);
+        
+        // 쓰기: 소유자 + 비익명 사용자
+        allow create, update, delete: if isOwner(userId) && isNotAnonymous();
+      }
     }
     
     // Deny all other access
