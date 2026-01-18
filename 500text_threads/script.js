@@ -19,6 +19,7 @@ import { TextCrudManager } from "./js/text-crud.js";
 import { FilterManager } from "./js/filters.js";
 import { UrlLinkManager } from "./js/url-link.js";  // [2026-01-18] URL 연결 기능
 import { BackupManager } from "./js/backup.js";     // [2026-01-18] 백업 기능
+import { ThreadsManager } from "./js/threads.js";   // [2026-01-18] Phase 1: Threads 포스팅 관리
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
 import { logger } from "./js/logger.js";
 
@@ -212,6 +213,10 @@ class DualTextWriter {
     // ==================== BackupManager 인스턴스 생성 [2026-01-18] ====================
     // [Feature] 데이터 백업 및 복원 기능
     this.backupManager = new BackupManager(this);
+
+    // ==================== ThreadsManager 인스턴스 생성 [2026-01-18] ====================
+    // [Phase 1] Threads 포스팅 관리 기능 (script.js 리팩토링)
+    this.threadsManager = new ThreadsManager(this);
 
     // ========================================================================
     // SECTION 3: 프로퍼티 위임 (API 호환성 유지)
@@ -4359,1016 +4364,11 @@ class DualTextWriter {
     return true;
   }
 
-  // 안전한 텍스트 처리 함수
-  sanitizeText(text) {
-    this.validateUserInput(text);
+  // ============================================================================
+  // [P1-08] Threads-related methods moved to ThreadsManager (js/threads.js)
+  // - sanitizeText, optimizeContentForThreads, clipboard helpers, modals
+  // ============================================================================
 
-    // HTML 태그 제거
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = text;
-    const cleanText = tempDiv.textContent || tempDiv.innerText || "";
-
-    // 특수 문자 정리
-    return cleanText
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // 제어 문자 제거
-      .replace(/\s+/g, " ") // 연속 공백 정리
-      .trim();
-  }
-
-  // 내용 최적화 엔진 (보안 강화 버전)
-  optimizeContentForThreads(content) {
-    try {
-      // 1단계: 입력 검증 및 정화
-      const sanitizedContent = this.sanitizeText(content);
-
-      // 2단계: 성능 최적화 - 대용량 텍스트 처리
-      if (sanitizedContent.length > 10000) {
-        console.warn(
-          "매우 긴 텍스트가 감지되었습니다. 처리 시간이 오래 걸릴 수 있습니다."
-        );
-      }
-
-      const optimized = {
-        original: sanitizedContent,
-        optimized: "",
-        hashtags: [],
-        characterCount: 0,
-        suggestions: [],
-        warnings: [],
-        securityChecks: {
-          xssBlocked: false,
-          maliciousContentRemoved: false,
-          inputValidated: true,
-        },
-      };
-
-      // 3단계: 글자 수 최적화 (Threads는 500자 제한)
-      if (sanitizedContent.length > 500) {
-        // 단어 단위로 자르기 (더 자연스러운 자르기)
-        const words = sanitizedContent.substring(0, 500).split(" ");
-        words.pop(); // 마지막 불완전한 단어 제거
-        optimized.optimized = words.join(" ") + "...";
-        optimized.suggestions.push(
-          "글이 500자를 초과하여 단어 단위로 잘렸습니다."
-        );
-        optimized.warnings.push("원본보다 짧아졌습니다.");
-      } else {
-        optimized.optimized = sanitizedContent;
-      }
-
-      // 4단계: 해시태그 자동 추출/추가 (보안 검증 포함)
-      const hashtags = this.extractHashtags(optimized.optimized);
-      if (hashtags.length === 0) {
-        // 사용자 정의 해시태그 사용 (선택적)
-        const userHashtags = this.getUserHashtags();
-        if (userHashtags && userHashtags.length > 0) {
-          optimized.hashtags = userHashtags;
-          optimized.suggestions.push("해시태그를 추가했습니다.");
-        } else {
-          optimized.hashtags = [];
-          optimized.suggestions.push("해시태그 없이 포스팅됩니다.");
-        }
-      } else {
-        // 해시태그 보안 검증
-        optimized.hashtags = hashtags.filter((tag) => {
-          // 위험한 해시태그 필터링
-          const dangerousTags = [
-            "#script",
-            "#javascript",
-            "#eval",
-            "#function",
-          ];
-          return !dangerousTags.some((dangerous) =>
-            tag.toLowerCase().includes(dangerous)
-          );
-        });
-      }
-
-      // 5단계: 최종 포맷팅 적용 (보안 강화)
-      optimized.optimized = this.formatForThreads(optimized.optimized);
-      optimized.characterCount = optimized.optimized.length;
-
-      // 6단계: 보안 검증 완료 표시
-      optimized.securityChecks.inputValidated = true;
-
-      return optimized;
-    } catch (error) {
-      console.error("내용 최적화 중 오류 발생:", error);
-
-      // 보안 오류인 경우 특별 처리
-      if (
-        error.message.includes("위험한") ||
-        error.message.includes("유효하지 않은")
-      ) {
-        throw new Error(
-          "보안상의 이유로 내용을 처리할 수 없습니다. 입력을 확인해주세요."
-        );
-      }
-
-      throw new Error("내용 최적화에 실패했습니다.");
-    }
-  }
-
-  // 폴백 클립보드 복사 함수
-  fallbackCopyToClipboard(text) {
-    console.log("🔄 폴백 클립보드 복사 시작");
-    console.log("📝 폴백 복사할 텍스트:", text);
-    console.log("📝 폴백 텍스트 길이:", text ? text.length : "undefined");
-
-    return new Promise((resolve, reject) => {
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
-        textArea.style.top = "-999999px";
-        textArea.style.opacity = "0";
-        textArea.setAttribute("readonly", "");
-        textArea.setAttribute("aria-hidden", "true");
-
-        document.body.appendChild(textArea);
-        console.log("✅ textarea 생성 및 DOM 추가 완료");
-
-        // 모바일 지원을 위한 선택 범위 설정
-        if (textArea.setSelectionRange) {
-          textArea.setSelectionRange(0, text.length);
-          console.log("✅ setSelectionRange 사용");
-        } else {
-          textArea.select();
-          console.log("✅ select() 사용");
-        }
-
-        const successful = document.execCommand("copy");
-        document.body.removeChild(textArea);
-        console.log("✅ textarea 제거 완료");
-        console.log("📋 execCommand 결과:", successful);
-
-        if (successful) {
-          console.log("✅ 폴백 복사 성공");
-          resolve(true);
-        } else {
-          console.error("❌ execCommand 복사 실패");
-          reject(new Error("execCommand 복사 실패"));
-        }
-      } catch (error) {
-        console.error("❌ 폴백 복사 중 오류:", error);
-        reject(error);
-      }
-    });
-  }
-
-  // 로딩 상태 관리 함수
-  showLoadingState(element, isLoading) {
-    if (isLoading) {
-      element.disabled = true;
-      element.innerHTML = "⏳ 처리 중...";
-      element.classList.add("loading");
-    } else {
-      element.disabled = false;
-      element.innerHTML = "🚀 반자동 포스팅";
-      element.classList.remove("loading");
-    }
-  }
-
-  // 클립보드 자동화 (완전한 에러 처리 및 폴백)
-  async copyToClipboardWithFormat(content) {
-    console.log("🔍 copyToClipboardWithFormat 시작");
-    console.log("📝 입력 내용:", content);
-    console.log("📝 입력 타입:", typeof content);
-
-    const button = document.getElementById("semi-auto-post-btn");
-
-    try {
-      // 로딩 상태 표시
-      if (button) {
-        this.showLoadingState(button, true);
-      }
-
-      // 1단계: 입력 검증 강화
-      if (!content || typeof content !== "string") {
-        console.error("❌ 유효하지 않은 내용:", content);
-        throw new Error("유효하지 않은 내용입니다.");
-      }
-
-      console.log("✅ 1단계: 입력 검증 통과");
-
-      // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
-      console.log("📝 원본 내용 사용 (줄바꿈 보존):", content);
-
-      if (!content || content.length === 0) {
-        console.error("❌ 내용이 비어있음");
-        throw new Error("내용이 비어있습니다.");
-      }
-
-      console.log("✅ 2단계: 검증 완료");
-
-      // 클립보드 API 지원 확인
-      console.log("🔄 3단계: 클립보드 API 확인...");
-      console.log("📋 navigator.clipboard 존재:", !!navigator.clipboard);
-      console.log("🔒 isSecureContext:", window.isSecureContext);
-
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          console.log("📋 클립보드 API로 복사 시도...");
-          await navigator.clipboard.writeText(content);
-          console.log("✅ 클립보드 API 복사 성공");
-          this.showMessage("✅ 내용이 클립보드에 복사되었습니다!", "success");
-          return true;
-        } catch (clipboardError) {
-          console.warn(
-            "❌ Clipboard API 실패, 폴백 방법 사용:",
-            clipboardError
-          );
-          throw clipboardError;
-        }
-      } else {
-        console.warn("❌ Clipboard API 미지원");
-        throw new Error("Clipboard API 미지원");
-      }
-    } catch (error) {
-      console.error("❌ 클립보드 복사 실패:", error);
-      console.error("❌ 오류 상세:", error.stack);
-
-      try {
-        // 폴백 방법 시도
-        console.log("🔄 폴백 방법 시도...");
-        await this.fallbackCopyToClipboard(content);
-        console.log("✅ 폴백 방법 복사 성공");
-        this.showMessage(
-          "✅ 내용이 클립보드에 복사되었습니다! (폴백 방법)",
-          "success"
-        );
-        return true;
-      } catch (fallbackError) {
-        console.error("❌ 폴백 복사도 실패:", fallbackError);
-        this.showMessage(
-          "❌ 클립보드 복사에 실패했습니다. 수동으로 복사해주세요.",
-          "error"
-        );
-
-        // 수동 복사를 위한 텍스트 영역 표시
-        console.log("🔄 수동 복사 모달 표시...");
-        this.showManualCopyModal(formattedContent);
-        return false;
-      }
-    } finally {
-      // 로딩 상태 해제
-      if (button) {
-        this.showLoadingState(button, false);
-      }
-      console.log("✅ 로딩 상태 해제 완료");
-    }
-  }
-
-  // 수동 복사 모달 표시 함수
-  showManualCopyModal(content) {
-    const modal = document.createElement("div");
-    modal.className = "manual-copy-modal";
-    modal.innerHTML = `
-            <div class="modal-content">
-                <h3>📋 수동 복사</h3>
-                <p>클립보드 복사에 실패했습니다. 아래 텍스트를 수동으로 복사해주세요:</p>
-                <textarea readonly class="copy-textarea" aria-label="복사할 텍스트">${content}</textarea>
-                <div class="modal-actions">
-                    <button class="btn-primary" onclick="this.parentElement.parentElement.parentElement.remove()">확인</button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(modal);
-
-    // 텍스트 영역 자동 선택
-    const textarea = modal.querySelector(".copy-textarea");
-    textarea.focus();
-    textarea.select();
-  }
-  // 최적화 모달 표시 함수 (접근성 강화)
-  showOptimizationModal(optimized, originalContent) {
-    // 원본 텍스트 저장 (줄바꿈 보존)
-    optimized.originalContent = originalContent;
-
-    const modal = document.createElement("div");
-    modal.className = "optimization-modal";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-labelledby", "modal-title");
-    modal.setAttribute("aria-describedby", "modal-description");
-
-    // 현재 언어 감지
-    const currentLang = this.detectLanguage();
-    console.log("🌍 감지된 언어:", currentLang);
-    console.log("📝 원본 텍스트 저장:", originalContent);
-
-    modal.innerHTML = `
-            <div class="optimization-content" lang="${currentLang}">
-                <h3 id="modal-title">${this.t("optimizationTitle")}</h3>
-                <div id="modal-description" class="sr-only">포스팅 내용이 최적화되었습니다. 결과를 확인하고 진행하세요.</div>
-                
-                <div class="optimization-stats" role="region" aria-label="최적화 통계">
-                    <div class="stat-item">
-                        <span class="stat-label">${this.t(
-                          "originalLength"
-                        )}</span>
-                        <span class="stat-value" aria-label="${
-                          optimized.original.length
-                        }${this.t("characters")}">${
-      optimized.original.length
-    }${this.t("characters")}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">${this.t(
-                          "optimizedLength"
-                        )}</span>
-                        <span class="stat-value" aria-label="${
-                          optimized.characterCount
-                        }${this.t("characters")}">${
-      optimized.characterCount
-    }${this.t("characters")}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">${this.t("hashtags")}</span>
-                        <span class="stat-value" aria-label="해시태그 ${
-                          optimized.hashtags.length
-                        }${this.t("hashtagCount")}">${optimized.hashtags.join(
-      " "
-    )}</span>
-                    </div>
-                </div>
-                
-                ${
-                  optimized.suggestions.length > 0
-                    ? `
-                    <div class="suggestions" role="region" aria-label="최적화 제안사항">
-                        <h4>${this.t("optimizationSuggestions")}</h4>
-                        <ul>
-                            ${optimized.suggestions
-                              .map(
-                                (suggestion) =>
-                                  `<li>${this.escapeHtml(suggestion)}</li>`
-                              )
-                              .join("")}
-                        </ul>
-                    </div>
-                `
-                    : ""
-                }
-                
-                <div class="preview-section" role="region" aria-label="포스팅 내용 미리보기">
-                    <div class="hashtag-toggle-section">
-                        <label class="hashtag-toggle-label">
-                            <input type="checkbox" id="hashtag-toggle" checked aria-label="해시태그 자동 추가">
-                            <span class="toggle-text">해시태그 자동 추가</span>
-                        </label>
-                    </div>
-                    <h4>${this.t("previewTitle")}</h4>
-                    <div class="preview-content" role="textbox" aria-label="포스팅 내용" tabindex="0" id="preview-content-display">
-                        ${this.escapeHtml(originalContent)}
-                        ${
-                          optimized.hashtags.length > 0
-                            ? `<br><br>${this.escapeHtmlOnly(
-                                optimized.hashtags.join(" ")
-                              )}`
-                            : ""
-                        }
-                    </div>
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="btn-primary btn-copy-only" 
-                            id="copy-only-btn"
-                            lang="${currentLang}"
-                            aria-label="클립보드에만 복사">
-                        📋 클립보드 복사
-                    </button>
-                    <button class="btn-primary btn-threads-only" 
-                            id="threads-only-btn"
-                            lang="${currentLang}"
-                            aria-label="Threads 페이지만 열기">
-                        🚀 Threads 열기
-                    </button>
-                    <button class="btn-success btn-both" 
-                            id="both-btn"
-                            lang="${currentLang}"
-                            aria-label="클립보드 복사하고 Threads 페이지 열기">
-                        📋🚀 둘 다 실행
-                    </button>
-                    <button class="btn-secondary" 
-                            id="cancel-btn"
-                            lang="${currentLang}"
-                            aria-label="모달 닫기">
-                        ${this.t("cancelButton")}
-                    </button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(modal);
-
-    // 버튼 클릭 이벤트 직접 바인딩 (동적 생성된 모달)
-    setTimeout(() => {
-      // 해시태그 토글 스위치
-      const hashtagToggle = modal.querySelector("#hashtag-toggle");
-      const previewDisplay = modal.querySelector("#preview-content-display");
-
-      if (hashtagToggle && previewDisplay) {
-        hashtagToggle.addEventListener("change", () => {
-          console.log("🔄 해시태그 토글 변경:", hashtagToggle.checked);
-
-          // 미리보기 업데이트
-          if (hashtagToggle.checked) {
-            previewDisplay.innerHTML =
-              this.escapeHtml(originalContent) +
-              (optimized.hashtags.length > 0
-                ? "<br><br>" + this.escapeHtmlOnly(optimized.hashtags.join(" "))
-                : "");
-          } else {
-            previewDisplay.innerHTML = this.escapeHtml(originalContent);
-          }
-        });
-      }
-
-      // 클립보드 복사 버튼
-      const copyBtn = modal.querySelector("#copy-only-btn");
-      if (copyBtn) {
-        copyBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          // 토글 상태에 따라 해시태그 포함 여부 결정
-          const includeHashtags = hashtagToggle ? hashtagToggle.checked : true;
-          const content =
-            originalContent +
-            (includeHashtags && optimized.hashtags.length > 0
-              ? "\n\n" + optimized.hashtags.join(" ")
-              : "");
-          console.log("🔍 클립보드 복사 버튼 클릭 감지");
-          console.log("📝 원본 텍스트 직접 사용:", content);
-          this.copyToClipboardOnly(content, e);
-        });
-      }
-
-      // Threads 열기 버튼
-      const threadsBtn = modal.querySelector("#threads-only-btn");
-      if (threadsBtn) {
-        threadsBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          console.log("🔍 Threads 열기 버튼 클릭 감지");
-          this.openThreadsOnly();
-        });
-      }
-
-      // 둘 다 실행 버튼
-      const bothBtn = modal.querySelector("#both-btn");
-      if (bothBtn) {
-        bothBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          // 토글 상태에 따라 해시태그 포함 여부 결정
-          const includeHashtags = hashtagToggle ? hashtagToggle.checked : true;
-          const content =
-            originalContent +
-            (includeHashtags && optimized.hashtags.length > 0
-              ? "\n\n" + optimized.hashtags.join(" ")
-              : "");
-          console.log("🔍 둘 다 실행 버튼 클릭 감지");
-          console.log("📝 원본 텍스트 직접 사용:", content);
-          this.proceedWithPosting(content, e);
-        });
-      }
-
-      // 취소 버튼
-      const cancelBtn = modal.querySelector("#cancel-btn");
-      if (cancelBtn) {
-        cancelBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          console.log("🔍 취소 버튼 클릭 감지");
-          modal.remove();
-        });
-      }
-    }, 10);
-
-    // 접근성 강화: 포커스 관리
-    const firstBtn = modal.querySelector("#copy-only-btn");
-
-    // 첫 번째 버튼에 포커스
-    setTimeout(() => {
-      if (firstBtn) {
-        firstBtn.focus();
-      }
-    }, 150);
-
-    // ESC 키로 모달 닫기
-    const handleEscape = (e) => {
-      if (e.key === "Escape") {
-        modal.remove();
-        document.removeEventListener("keydown", handleEscape);
-      }
-    };
-    document.addEventListener("keydown", handleEscape);
-
-    // Tab 키 순환 제한 (모달 내에서만)
-    const focusableElements = modal.querySelectorAll(
-      'button, [tabindex]:not([tabindex="-1"])'
-    );
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    if (firstElement && lastElement) {
-      const handleTabKey = (e) => {
-        if (e.key === "Tab") {
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
-              e.preventDefault();
-              lastElement.focus();
-            }
-          } else {
-            if (document.activeElement === lastElement) {
-              e.preventDefault();
-              firstElement.focus();
-            }
-          }
-        }
-      };
-
-      modal.addEventListener("keydown", handleTabKey);
-    }
-
-    // 모달이 제거될 때 이벤트 리스너 정리 (간단한 방식)
-    const cleanup = () => {
-      document.removeEventListener("keydown", handleEscape);
-      console.log("✅ 모달 이벤트 리스너 정리됨");
-    };
-
-    // 모달 DOM 제거 시 자동 정리
-    const observer = new MutationObserver(() => {
-      if (!document.body.contains(modal)) {
-        cleanup();
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.body, { childList: true });
-  }
-
-  // 포스팅 진행 함수 (이벤트 컨텍스트 보존)
-  async proceedWithPosting(formattedContent, event = null) {
-    console.log("📋🚀 둘 다 실행 시작");
-    console.log("🎯 이벤트 컨텍스트:", event ? "보존됨" : "없음");
-
-    try {
-      // 클립보드에 복사 (이벤트 컨텍스트 보존)
-      let success = false;
-
-      if (event) {
-        console.log("🚀 이벤트 컨텍스트에서 즉시 복사 시도");
-        success = await this.copyToClipboardImmediate(formattedContent);
-      } else {
-        console.log("🔄 기존 방법으로 복사 시도");
-        success = await this.copyToClipboardWithFormat(formattedContent);
-      }
-
-      if (success) {
-        console.log("✅ 클립보드 복사 성공");
-      } else {
-        console.warn("⚠️ 클립보드 복사 실패, Threads는 계속 열기");
-      }
-
-      // Threads 새 탭 열기 (클립보드 복사 성공 여부와 관계없이)
-      const threadsUrl = this.getThreadsUrl();
-      console.log("🔗 Threads URL:", threadsUrl);
-      window.open(threadsUrl, "_blank", "noopener,noreferrer");
-
-      // 사용자 가이드 표시
-      this.showPostingGuide();
-
-      // 모달 닫기
-      const modal = document.querySelector(".optimization-modal");
-      if (modal) {
-        modal.remove();
-      }
-    } catch (error) {
-      console.error("포스팅 진행 중 오류:", error);
-      this.showMessage("포스팅 진행 중 오류가 발생했습니다.", "error");
-    }
-  }
-
-  // 클립보드 복사만 실행하는 함수 (이벤트 컨텍스트 보존)
-  async copyToClipboardOnly(formattedContent, event = null) {
-    console.log("📋 클립보드 복사만 실행");
-    console.log("📝 받은 내용:", formattedContent);
-    console.log("📝 내용 타입:", typeof formattedContent);
-    console.log(
-      "📝 내용 길이:",
-      formattedContent ? formattedContent.length : "undefined"
-    );
-    console.log("🎯 이벤트 컨텍스트:", event ? "보존됨" : "없음");
-
-    try {
-      // 이벤트가 있으면 즉시 클립보드 복사 시도
-      if (event) {
-        console.log("🚀 이벤트 컨텍스트에서 즉시 복사 시도");
-        const success = await this.copyToClipboardImmediate(formattedContent);
-
-        if (success) {
-          this.showMessage("✅ 텍스트가 클립보드에 복사되었습니다!", "success");
-          console.log("✅ 클립보드 복사 완료");
-          return;
-        }
-      }
-
-      // 이벤트가 없거나 즉시 복사 실패 시 기존 방법 사용
-      console.log("🔄 기존 방법으로 복사 시도");
-      const success = await this.copyToClipboardWithFormat(formattedContent);
-
-      if (success) {
-        this.showMessage("✅ 텍스트가 클립보드에 복사되었습니다!", "success");
-        console.log("✅ 클립보드 복사 완료");
-      } else {
-        this.showMessage("❌ 클립보드 복사에 실패했습니다.", "error");
-        console.error("❌ 클립보드 복사 실패");
-      }
-    } catch (error) {
-      console.error("❌ 클립보드 복사 중 오류:", error);
-      this.showMessage(
-        "클립보드 복사 중 오류가 발생했습니다: " + error.message,
-        "error"
-      );
-    }
-  }
-
-  // 즉시 클립보드 복사 (이벤트 컨텍스트 보존)
-  async copyToClipboardImmediate(content) {
-    console.log("🚀 즉시 클립보드 복사 시작");
-
-    try {
-      // 1단계: 입력 검증
-      if (!content || typeof content !== "string") {
-        throw new Error("유효하지 않은 내용입니다.");
-      }
-
-      // 2단계: 원본 텍스트 그대로 사용 (줄바꿈 보존)
-      console.log("📝 원본 내용 (줄바꿈 보존):", content);
-
-      // 3단계: 클립보드 API 시도 (이벤트 컨텍스트 내에서)
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          console.log("📋 클립보드 API로 즉시 복사 시도...");
-          await navigator.clipboard.writeText(content);
-          console.log("✅ 클립보드 API 즉시 복사 성공");
-          return true;
-        } catch (clipboardError) {
-          console.warn("❌ 클립보드 API 즉시 복사 실패:", clipboardError);
-          // 폴백으로 execCommand 시도
-          return await this.fallbackCopyToClipboard(content);
-        }
-      } else {
-        console.log("🔄 클립보드 API 미지원, 폴백 방법 사용");
-        return await this.fallbackCopyToClipboard(content);
-      }
-    } catch (error) {
-      console.error("❌ 즉시 클립보드 복사 실패:", error);
-      return false;
-    }
-  }
-
-  // Threads 열기만 실행하는 함수
-  openThreadsOnly() {
-    console.log("🚀 Threads 열기만 실행");
-
-    try {
-      const threadsUrl = this.getThreadsUrl();
-      console.log("🔗 Threads URL:", threadsUrl);
-
-      window.open(threadsUrl, "_blank", "noopener,noreferrer");
-
-      this.showMessage("✅ Threads 페이지가 열렸습니다!", "success");
-      console.log("✅ Threads 페이지 열기 완료");
-
-      // 간단한 가이드 표시
-      this.showSimpleThreadsGuide();
-    } catch (error) {
-      console.error("❌ Threads 열기 중 오류:", error);
-      this.showMessage(
-        "Threads 열기 중 오류가 발생했습니다: " + error.message,
-        "error"
-      );
-    }
-  }
-
-  // 간단한 Threads 가이드 표시
-  showSimpleThreadsGuide() {
-    const currentLang = this.detectLanguage();
-
-    const guide = document.createElement("div");
-    guide.className = "simple-threads-guide";
-    guide.setAttribute("lang", currentLang);
-
-    guide.innerHTML = `
-            <div class="guide-content">
-                <h3>✅ Threads 페이지가 열렸습니다!</h3>
-                <div class="guide-steps">
-                    <h4>📝 다음 단계:</h4>
-                    <ol>
-                        <li>Threads 새 탭으로 이동하세요</li>
-                        <li>"새 글 작성" 버튼을 클릭하세요</li>
-                        <li>작성한 텍스트를 입력하세요</li>
-                        <li>"게시" 버튼을 클릭하세요</li>
-                    </ol>
-                </div>
-                <div class="guide-actions">
-                    <button class="btn-primary" lang="${currentLang}" onclick="this.closest('.simple-threads-guide').remove()">✅ 확인</button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(guide);
-
-    // 언어 최적화 적용
-    this.applyLanguageOptimization(guide, currentLang);
-
-    // 5초 후 자동으로 사라지게 하기
-    setTimeout(() => {
-      if (guide.parentNode) {
-        guide.remove();
-      }
-    }, 8000);
-  }
-
-  // Threads URL 가져오기 함수
-  getThreadsUrl() {
-    // 사용자 설정에서 프로필 URL 확인
-    const userProfileUrl = localStorage.getItem("threads_profile_url");
-
-    if (userProfileUrl && this.isValidThreadsUrl(userProfileUrl)) {
-      console.log("✅ 사용자 프로필 URL 사용:", userProfileUrl);
-      return userProfileUrl;
-    }
-
-    // 기본 Threads 메인 페이지
-    console.log("✅ 기본 Threads 메인 페이지 사용");
-    return "https://www.threads.com/";
-  }
-
-  // Threads URL 유효성 검사
-  isValidThreadsUrl(url) {
-    try {
-      const urlObj = new URL(url);
-      return (
-        urlObj.hostname.includes("threads.com") ||
-        urlObj.hostname.includes("threads.net")
-      );
-    } catch (error) {
-      return false;
-    }
-  }
-
-  // 사용자 프로필 URL 설정 함수
-  setThreadsProfileUrl(url) {
-    if (this.isValidThreadsUrl(url)) {
-      localStorage.setItem("threads_profile_url", url);
-      this.showMessage("✅ Threads 프로필 URL이 설정되었습니다!", "success");
-      return true;
-    } else {
-      this.showMessage(
-        "❌ 올바른 Threads URL을 입력해주세요. (예: https://www.threads.com/@username)",
-        "error"
-      );
-      return false;
-    }
-  }
-
-  // 포스팅 가이드 표시 함수
-  showPostingGuide() {
-    const guide = document.createElement("div");
-    guide.className = "posting-guide";
-    guide.innerHTML = `
-            <div class="guide-content">
-                <h3>✅ 성공! Threads 페이지가 열렸습니다</h3>
-                <div class="guide-steps">
-                    <h4>📝 다음 단계를 따라해주세요:</h4>
-                    <ol>
-                        <li>Threads 새 탭으로 이동하세요</li>
-                        <li>"새 글 작성" 버튼을 클릭하세요</li>
-                        <li>텍스트 입력창에 Ctrl+V로 붙여넣기하세요</li>
-                        <li>"게시" 버튼을 클릭하여 포스팅하세요</li>
-                    </ol>
-                </div>
-                <div class="guide-tip">
-                    <p>💡 팁: 붙여넣기 후 내용을 한 번 더 확인해보세요!</p>
-                </div>
-                <div class="guide-actions">
-                    <button class="btn-primary" onclick="this.closest('.posting-guide').remove()">✅ 확인</button>
-                    <button class="btn-secondary" onclick="dualTextWriter.showThreadsProfileSettings()">⚙️ 프로필 설정</button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(guide);
-
-    // 5초 후 자동으로 사라지게 하기
-    setTimeout(() => {
-      if (guide.parentNode) {
-        guide.remove();
-      }
-    }, 10000);
-  }
-  // Threads 프로필 설정 모달 표시
-  showThreadsProfileSettings() {
-    const currentLang = this.detectLanguage();
-
-    const modal = document.createElement("div");
-    modal.className = "threads-profile-modal";
-    modal.setAttribute("lang", currentLang);
-
-    modal.innerHTML = `
-            <div class="modal-content">
-                <h3>⚙️ Threads 프로필 설정</h3>
-                <p>포스팅 시 열릴 Threads 페이지를 설정하세요.</p>
-                
-                <div class="profile-url-section">
-                    <label for="threads-profile-url">프로필 URL:</label>
-                    <input type="url" id="threads-profile-url" 
-                           placeholder="https://www.threads.com/@username"
-                           value="${
-                             localStorage.getItem("threads_profile_url") || ""
-                           }">
-                    <small>예: https://www.threads.com/@username</small>
-                </div>
-                
-                <div class="url-options">
-                    <h4>빠른 선택:</h4>
-                    <button class="btn-option" lang="${currentLang}" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/')">
-                        🏠 Threads 메인 페이지
-                    </button>
-                    <button class="btn-option" lang="${currentLang}" onclick="dualTextWriter.setThreadsProfileUrl('https://www.threads.com/new')">
-                        ✏️ 새 글 작성 페이지
-                    </button>
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="btn-primary" lang="${currentLang}" onclick="dualTextWriter.saveThreadsProfileUrl()">💾 저장</button>
-                    <button class="btn-secondary" lang="${currentLang}" onclick="this.closest('.threads-profile-modal').remove()">❌ 취소</button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(modal);
-
-    // 언어 최적화 적용
-    this.applyLanguageOptimization(modal, currentLang);
-
-    // 입력 필드에 포커스
-    setTimeout(() => {
-      const input = modal.querySelector("#threads-profile-url");
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    }, 100);
-  }
-
-  // Threads 프로필 URL 저장
-  saveThreadsProfileUrl() {
-    const input = document.getElementById("threads-profile-url");
-    if (input) {
-      const url = input.value.trim();
-      if (url) {
-        this.setThreadsProfileUrl(url);
-      } else {
-        // 빈 값이면 기본 URL로 설정
-        localStorage.removeItem("threads_profile_url");
-        this.showMessage(
-          "✅ 기본 Threads 메인 페이지로 설정되었습니다!",
-          "success"
-        );
-      }
-
-      // 모달 닫기
-      const modal = document.querySelector(".threads-profile-modal");
-      if (modal) {
-        modal.remove();
-      }
-    }
-  }
-
-  // 해시태그 설정 모달 표시
-  showHashtagSettings() {
-    const currentLang = this.detectLanguage();
-    const currentHashtags = this.getUserHashtags();
-
-    const modal = document.createElement("div");
-    modal.className = "hashtag-settings-modal";
-    modal.setAttribute("lang", currentLang);
-
-    modal.innerHTML = `
-            <div class="modal-content">
-                <h3>📌 해시태그 설정</h3>
-                <p>반자동 포스팅 시 사용될 기본 해시태그를 설정하세요.</p>
-                
-                <div class="hashtag-input-section">
-                    <label for="hashtag-input">해시태그 (쉼표로 구분):</label>
-                    <input type="text" id="hashtag-input" 
-                           placeholder="예: #writing, #content, #threads"
-                           value="${currentHashtags.join(", ")}">
-                    <small>예: #writing, #content, #threads</small>
-                </div>
-                
-                <div class="hashtag-examples">
-                    <h4>추천 해시태그:</h4>
-                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#writing, #content, #threads'">
-                        📝 일반 글 작성
-                    </button>
-                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#생각, #일상, #daily'">
-                        💭 일상 글
-                    </button>
-                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#경제, #투자, #finance'">
-                        💰 경제/투자
-                    </button>
-                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value='#기술, #개발, #tech'">
-                        🚀 기술/개발
-                    </button>
-                    <button class="btn-option" lang="${currentLang}" onclick="document.getElementById('hashtag-input').value=''" style="background: #f8f9fa; color: #6c757d;">
-                        ❌ 해시태그 없이 사용
-                    </button>
-                </div>
-                
-                <div class="modal-actions">
-                    <button class="btn-primary" lang="${currentLang}" onclick="dualTextWriter.saveHashtagSettings()">💾 저장</button>
-                    <button class="btn-secondary" lang="${currentLang}" onclick="this.closest('.hashtag-settings-modal').remove()">❌ 취소</button>
-                </div>
-            </div>
-        `;
-
-    document.body.appendChild(modal);
-
-    // 언어 최적화 적용
-    this.applyLanguageOptimization(modal, currentLang);
-
-    // 입력 필드에 포커스
-    setTimeout(() => {
-      const input = modal.querySelector("#hashtag-input");
-      if (input) {
-        input.focus();
-        input.select();
-      }
-    }, 100);
-  }
-
-  // 해시태그 설정 저장
-  saveHashtagSettings() {
-    const input = document.getElementById("hashtag-input");
-    if (input) {
-      const inputValue = input.value.trim();
-
-      // 빈 값 허용 (해시태그 없이 사용)
-      if (!inputValue) {
-        this.saveUserHashtags([]);
-        this.showMessage(
-          "✅ 해시태그 없이 포스팅하도록 설정되었습니다!",
-          "success"
-        );
-        this.updateHashtagsDisplay();
-
-        // 모달 닫기
-        const modal = document.querySelector(".hashtag-settings-modal");
-        if (modal) {
-          modal.remove();
-        }
-        return;
-      }
-
-      // 쉼표로 분리하여 배열로 변환
-      const hashtags = inputValue
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-
-      if (this.saveUserHashtags(hashtags)) {
-        this.showMessage("✅ 해시태그가 저장되었습니다!", "success");
-        this.updateHashtagsDisplay();
-
-        // 모달 닫기
-        const modal = document.querySelector(".hashtag-settings-modal");
-        if (modal) {
-          modal.remove();
-        }
-      } else {
-        this.showMessage(
-          "❌ 해시태그 저장에 실패했습니다. 형식을 확인해주세요.",
-          "error"
-        );
-      }
-    }
-  }
-  // 해시태그 표시 업데이트
-  updateHashtagsDisplay() {
-    const display = document.getElementById("current-hashtags-display");
-    if (display) {
-      const hashtags = this.getUserHashtags();
-      if (hashtags && hashtags.length > 0) {
-        display.textContent = hashtags.join(" ");
-      } else {
-        display.textContent = "해시태그 없음";
-        display.style.color = "#6c757d";
-      }
-    }
-  }
 
   // 오프라인 지원 함수들
   saveToLocalStorage(key, data) {
@@ -8057,6 +7057,136 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 });
+
+// ============================================================================
+// [P1-07] Threads delegation wrappers (compatibility layer)
+// - Preserve original implementations for fallback usage
+// - Route Threads-related calls to ThreadsManager when available
+// ============================================================================
+
+if (!DualTextWriter.prototype._sanitizeTextImpl) {
+  DualTextWriter.prototype._sanitizeTextImpl =
+    DualTextWriter.prototype.sanitizeText;
+}
+if (!DualTextWriter.prototype._optimizeContentForThreadsImpl) {
+  DualTextWriter.prototype._optimizeContentForThreadsImpl =
+    DualTextWriter.prototype.optimizeContentForThreads;
+}
+if (!DualTextWriter.prototype._copyToClipboardWithFormatImpl) {
+  DualTextWriter.prototype._copyToClipboardWithFormatImpl =
+    DualTextWriter.prototype.copyToClipboardWithFormat;
+}
+if (!DualTextWriter.prototype._showOptimizationModalImpl) {
+  DualTextWriter.prototype._showOptimizationModalImpl =
+    DualTextWriter.prototype.showOptimizationModal;
+}
+if (!DualTextWriter.prototype._getThreadsUrlImpl) {
+  DualTextWriter.prototype._getThreadsUrlImpl =
+    DualTextWriter.prototype.getThreadsUrl;
+}
+if (!DualTextWriter.prototype._setThreadsProfileUrlImpl) {
+  DualTextWriter.prototype._setThreadsProfileUrlImpl =
+    DualTextWriter.prototype.setThreadsProfileUrl;
+}
+if (!DualTextWriter.prototype._showProfileSettingsModalImpl) {
+  DualTextWriter.prototype._showProfileSettingsModalImpl =
+    DualTextWriter.prototype.showThreadsProfileSettings;
+}
+if (!DualTextWriter.prototype._showHashtagSettingsModalImpl) {
+  DualTextWriter.prototype._showHashtagSettingsModalImpl =
+    DualTextWriter.prototype.showHashtagSettings;
+}
+
+DualTextWriter.prototype.sanitizeText = function (text) {
+  if (this.threadsManager) {
+    return this.threadsManager.sanitizeText(text);
+  }
+  if (this._sanitizeTextImpl) {
+    return this._sanitizeTextImpl(text);
+  }
+  return "";
+};
+
+DualTextWriter.prototype.optimizeContentForThreads = function (content) {
+  if (this.threadsManager) {
+    return this.threadsManager.optimizeContentForThreads(content);
+  }
+  if (this._optimizeContentForThreadsImpl) {
+    return this._optimizeContentForThreadsImpl(content);
+  }
+  return null;
+};
+
+DualTextWriter.prototype.copyToClipboardWithFormat = async function (content) {
+  if (this.threadsManager) {
+    return this.threadsManager.copyToClipboardWithFormat(content);
+  }
+  if (this._copyToClipboardWithFormatImpl) {
+    return this._copyToClipboardWithFormatImpl(content);
+  }
+  return false;
+};
+
+DualTextWriter.prototype.showOptimizationModal = function (
+  optimized,
+  original,
+) {
+  if (this.threadsManager) {
+    return this.threadsManager.showOptimizationModal(optimized, original);
+  }
+  if (this._showOptimizationModalImpl) {
+    return this._showOptimizationModalImpl(optimized, original);
+  }
+  return undefined;
+};
+
+DualTextWriter.prototype.getThreadsUrl = function () {
+  if (this.threadsManager) {
+    return this.threadsManager.getThreadsUrl();
+  }
+  if (this._getThreadsUrlImpl) {
+    return this._getThreadsUrlImpl();
+  }
+  return "https://www.threads.net/";
+};
+
+DualTextWriter.prototype.setThreadsProfileUrl = function (url) {
+  if (this.threadsManager) {
+    return this.threadsManager.setThreadsProfileUrl(url);
+  }
+  if (this._setThreadsProfileUrlImpl) {
+    return this._setThreadsProfileUrlImpl(url);
+  }
+  return false;
+};
+
+DualTextWriter.prototype.showThreadsProfileSettings = function () {
+  if (this.threadsManager?.showProfileSettingsModal) {
+    return this.threadsManager.showProfileSettingsModal();
+  }
+  if (this._showProfileSettingsModalImpl) {
+    return this._showProfileSettingsModalImpl();
+  }
+  return undefined;
+};
+
+DualTextWriter.prototype.showHashtagSettings = function () {
+  if (this.threadsManager?.showHashtagSettingsModal) {
+    return this.threadsManager.showHashtagSettingsModal();
+  }
+  if (this._showHashtagSettingsModalImpl) {
+    return this._showHashtagSettingsModalImpl();
+  }
+  return undefined;
+};
+
+DualTextWriter.prototype.updateHashtagsDisplay = function () {
+  if (this.threadsManager?.updateHashtagsDisplay) {
+    return this.threadsManager.updateHashtagsDisplay();
+  }
+  return undefined;
+};
+
 // ==================== 바텀시트 메서드 위임 (Phase 6-02) ====================
 // 실제 구현은 js/modals.js의 ModalManager 클래스에 있음
 
