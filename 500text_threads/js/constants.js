@@ -32,7 +32,9 @@ export const Constants = {
         WRITING: 'writing',
         SAVED: 'saved',
         TRACKING: 'tracking',
-        MANAGEMENT: 'management'
+        MANAGEMENT: 'management',
+        URLLINK: 'urllink',    // [2026-01-18] URL 연결 탭 추가
+        BACKUP: 'backup'       // [2026-01-18] 백업 탭 추가
     },
 
     // 데이터 타입
