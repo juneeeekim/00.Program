@@ -4144,11 +4144,13 @@ class DualTextWriter {
 
       console.log(`${this.savedTexts.length}개의 텍스트를 불러왔습니다.`);
 
-      // 주제 필터 옵션 업데이트 (데이터 로드 후)
-      this.updateTopicFilterOptions();
-
-      // 해시 미보유 레퍼런스 안내 (접근성: 토스트는 aria-live로 표시됨)
+      // ===== [2026-01-18] 후속 처리는 별도 try-catch로 분리 =====
+      // 데이터 로드 성공 후 UI 갱신 에러가 실패로 처리되는 문제 방지
       try {
+        // 주제 필터 옵션 업데이트 (데이터 로드 후)
+        this.updateTopicFilterOptions();
+
+        // 해시 미보유 레퍼런스 안내 (접근성: 토스트는 aria-live로 표시됨)
         const missingHashCount = this.savedTexts.filter(
           (t) => (t.type || "edit") === "reference" && !t.contentHash
         ).length;
@@ -4158,11 +4160,15 @@ class DualTextWriter {
             "info"
           );
         }
-      } catch (e) {
-        // 무시
+      } catch (postLoadError) {
+        // 후속 처리 에러는 경고로만 출력 (데이터 로드 자체는 성공)
+        console.warn('[loadSavedTextsFromFirestore] 후속 처리 중 오류 (데이터 로드는 성공):', 
+          postLoadError?.message || postLoadError);
       }
     } catch (error) {
-      console.error("Firestore에서 텍스트 불러오기 실패:", error);
+      // ===== [2026-01-18] 에러 로깅 개선: error 객체 직렬화 문제 해결 =====
+      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      console.error("Firestore에서 텍스트 불러오기 실패:", errorMessage);
       // 복합 인덱스 오류인 경우 안내 메시지
       if (error.code === "failed-precondition") {
         console.warn(
