@@ -7536,84 +7536,16 @@ DualTextWriter.prototype.exportTrackingCsv = function () {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-};
-// 원본 텍스트 존재 여부 검증
+};// ============================================================================
+// [P2-02] Source text validation delegated to TrackingManager
+// ============================================================================
 DualTextWriter.prototype.validateSourceTexts = async function () {
-  if (!this.currentUser || !this.isFirebaseReady || !this.trackingPosts) return;
-
-  try {
-    // sourceTextId가 있는 포스트들만 검증
-    const postsToValidate = this.trackingPosts.filter(
-      (post) => post.sourceTextId
-    );
-
-    if (postsToValidate.length === 0) {
-      // sourceTextId가 없는 포스트들은 orphan으로 표시
-      this.trackingPosts.forEach((post) => {
-        if (!post.sourceTextId) {
-          post.sourceTextExists = false;
-          post.isOrphan = true;
-        }
-      });
-      return;
-    }
-
-    // 모든 sourceTextId 수집
-    const sourceTextIds = [
-      ...new Set(postsToValidate.map((post) => post.sourceTextId)),
-    ];
-
-    // 원본 텍스트 존재 여부 일괄 확인
-    const validationPromises = sourceTextIds.map(async (textId) => {
-      try {
-        const textRef = window.firebaseDoc(
-          this.db,
-          "users",
-          this.currentUser.uid,
-          "texts",
-          textId
-        );
-        const textDoc = await window.firebaseGetDoc(textRef);
-        return { textId, exists: textDoc.exists() };
-      } catch (error) {
-        console.error(`원본 텍스트 검증 실패 (${textId}):`, error);
-        return { textId, exists: false };
-      }
-    });
-
-    const validationResults = await Promise.all(validationPromises);
-    const validationMap = new Map(
-      validationResults.map((r) => [r.textId, r.exists])
-    );
-
-    // 각 포스트에 검증 결과 적용
-    this.trackingPosts.forEach((post) => {
-      if (post.sourceTextId) {
-        post.sourceTextExists = validationMap.get(post.sourceTextId) || false;
-        post.isOrphan = !post.sourceTextExists;
-      } else {
-        // sourceTextId가 없으면 orphan으로 표시 (업그레이드 전 데이터)
-        post.sourceTextExists = false;
-        post.isOrphan = true;
-      }
-    });
-
-    const orphanCount = this.trackingPosts.filter((p) => p.isOrphan).length;
-    if (orphanCount > 0) {
-      console.log(`⚠️ ${orphanCount}개의 orphan 포스트가 발견되었습니다.`);
-    }
-  } catch (error) {
-    console.error("원본 텍스트 검증 실패:", error);
-    // 에러 발생 시 모든 포스트를 검증 실패로 표시하지 않고, sourceTextId가 없는 것만 orphan으로 표시
-    this.trackingPosts.forEach((post) => {
-      if (!post.sourceTextId) {
-        post.isOrphan = true;
-        post.sourceTextExists = false;
-      }
-    });
+  if (this.trackingManager) {
+    return await this.trackingManager.validateSourceTexts();
   }
+  console.warn('[validateSourceTexts] TrackingManager? ????? ?????.');
 };
-// 트래킹 포스트 렌더링
+
 DualTextWriter.prototype.renderTrackingPosts = function () {
   if (!this.trackingPostsList) return;
 
@@ -8875,6 +8807,16 @@ DualTextWriter.prototype.manageMetrics = async function (postId) {
   console.warn('[DualTextWriter] trackingManager.manageMetrics를 찾을 수 없습니다.');
 };
 
+// ============================================================================
+// [P2-03] 트래킹 관리 리스트 렌더링 - TrackingManager로 위임
+// ============================================================================
+DualTextWriter.prototype.renderTrackingPostsForManage = function () {
+  if (this.trackingManager && this.trackingManager.renderTrackingPostsForManage) {
+    return this.trackingManager.renderTrackingPostsForManage();
+  }
+  console.warn('[DualTextWriter] trackingManager.renderTrackingPostsForManage를 찾을 수 없습니다.');
+};
+
 // renderMetricsListForManage - TrackingManager로 위임
 DualTextWriter.prototype.renderMetricsListForManage = function (
   metrics,
@@ -9464,50 +9406,16 @@ DualTextWriter.prototype.setChartRange = function (range) {
   }
   console.warn('[setChartRange] TrackingManager가 초기화되지 않았습니다.');
 };
-
-// 포스트 선택 드롭다운 채우기 (검색 가능한 커스텀 드롭다운)
+// ============================================================================
+// [P2-04] Chart post selector population - TrackingManager delegation
+// ============================================================================
 DualTextWriter.prototype.populatePostSelector = function () {
-  if (!this.trackingPosts || this.trackingPosts.length === 0) return;
-
-  // 전체 포스트 목록 저장 (검색 필터링용)
-  this.allTrackingPostsForSelector = [...this.trackingPosts].sort((a, b) => {
-    // 최근 포스트 우선 정렬
-    const dateA =
-      a.postedAt instanceof Date
-        ? a.postedAt
-        : a.postedAt?.toDate
-        ? a.postedAt.toDate()
-        : new Date(0);
-    const dateB =
-      b.postedAt instanceof Date
-        ? b.postedAt
-        : b.postedAt?.toDate
-        ? b.postedAt.toDate()
-        : new Date(0);
-    return dateB.getTime() - dateA.getTime();
-  });
-
-  // 드롭다운 렌더링
-  this.renderPostSelectorDropdown("");
-
-  // 선택된 포스트가 있으면 검색 입력창에 표시
-  if (this.selectedChartPostId) {
-    const selectedPost = this.trackingPosts.find(
-      (p) => p.id === this.selectedChartPostId
-    );
-    if (selectedPost) {
-      const searchInput = document.getElementById("chart-post-search");
-      if (searchInput) {
-        const contentPreview =
-          selectedPost.content.length > 50
-            ? selectedPost.content.substring(0, 50) + "..."
-            : selectedPost.content;
-        searchInput.value = contentPreview;
-      }
-    }
+  if (this.trackingManager && this.trackingManager.populatePostSelector) {
+    return this.trackingManager.populatePostSelector();
   }
+  console.warn('[populatePostSelector] TrackingManager? ????? ?????.');
 };
-// 포스트 선택 드롭다운 렌더링
+
 DualTextWriter.prototype.renderPostSelectorDropdown = function (
   searchTerm = ""
 ) {
