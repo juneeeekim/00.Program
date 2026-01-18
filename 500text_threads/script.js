@@ -5469,6 +5469,44 @@ class DualTextWriter {
       });
     }
 
+    // [P2-06] 듀얼 패널 닫기 버튼 이벤트 연결
+    const detailPanelClose1 = document.getElementById('detail-panel-close-1');
+    const detailPanelClose2 = document.getElementById('detail-panel-close-2');
+
+    if (detailPanelClose1) {
+      detailPanelClose1.addEventListener('click', () => {
+        this.closeScriptDetailPanel(0);
+      });
+    }
+
+    if (detailPanelClose2) {
+      detailPanelClose2.addEventListener('click', () => {
+        this.closeScriptDetailPanel(1);
+      });
+    }
+
+    // [P2-07] ESC 키 처리 (전역) - 패널 닫기
+    this._handleEscapeKey = (event) => {
+      if (event.key === 'Escape') {
+        // 패널 2 먼저 닫기 (열려있는 경우)
+        const panel2 = document.getElementById('article-detail-panel-2');
+        if (panel2 && panel2.style.display !== 'none' && panel2.style.display !== '') {
+          this.closeScriptDetailPanel(1);
+          return;
+        }
+
+        // 그 다음 패널 1 닫기 (열려있는 경우)
+        const panel1 = document.getElementById('article-detail-panel-1');
+        if (panel1 && panel1.style.display !== 'none' && panel1.style.display !== '') {
+          this.closeScriptDetailPanel(0);
+        }
+      }
+    };
+
+    // 중복 바인딩 방지
+    document.removeEventListener('keydown', this._handleEscapeKey);
+    document.addEventListener('keydown', this._handleEscapeKey);
+
     if (this.detailEditBtn) {
       this.detailEditBtn.addEventListener("click", () => {
         this.enterEditMode();
@@ -5656,6 +5694,9 @@ class DualTextWriter {
 
     // 카테고리 드롭다운 업데이트
     this.updateCategoryDropdown();
+
+    // [P2-03] 카드 클릭 이벤트 핸들러 바인딩 (이벤트 위임 방식)
+    this.bindScriptCardClickEvents();
   }
 
   /**
@@ -5997,78 +6038,135 @@ class DualTextWriter {
   }
 
   /**
-   * 글 카드 렌더링
+   * ============================================================================
+   * [P2-01] 스크립트(글) 카드 렌더링
+   * - article-cards-grid에 스크립트 목록을 동적으로 렌더링
+   * - Safety: scripts/grid null 체크, try-catch 오류 처리
+   * ============================================================================
    */
   renderArticleCards(filterCategory = "") {
-    if (!this.articleCardsGrid) return;
-
-    // 필터링
-    let filteredArticles = this.managementArticles;
-    if (filterCategory) {
-      filteredArticles = this.managementArticles.filter(
-        (article) => (article.category || "미분류") === filterCategory
-      );
-    }
-
-    // 카테고리별로 그룹화 및 정렬
-    const articlesByCategory = {};
-    filteredArticles.forEach((article) => {
-      const category = article.category || "미분류";
-      if (!articlesByCategory[category]) {
-        articlesByCategory[category] = [];
-      }
-      articlesByCategory[category].push(article);
-    });
-
-    // 각 카테고리별로 order 기준 정렬 (내림차순: 큰 값이 위로)
-    Object.keys(articlesByCategory).forEach((category) => {
-      articlesByCategory[category].sort((a, b) => {
-        return (b.order || 0) - (a.order || 0);
-      });
-    });
-
-    // 빈 상태 처리
-    if (filteredArticles.length === 0) {
-      this.articleCardsGrid.innerHTML = "";
-      if (this.managementEmptyState) {
-        this.managementEmptyState.style.display = "block";
-        this.managementEmptyState.textContent = filterCategory
-          ? `${filterCategory} 카테고리에 글이 없습니다.`
-          : "표시할 글이 없습니다.";
-      }
+    // [P2-01] Safety Check: grid DOM 요소 null 체크
+    if (!this.articleCardsGrid) {
+      console.error('[renderArticleCards] article-cards-grid not found');
       return;
     }
 
-    if (this.managementEmptyState) {
-      this.managementEmptyState.style.display = "none";
-    }
+    try {
+      // [P2-01] Safety Check: scripts(managementArticles) null 체크
+      if (!this.managementArticles) {
+        console.warn('[renderArticleCards] managementArticles is null or undefined');
+        this.articleCardsGrid.innerHTML = "";
+        if (this.managementEmptyState) {
+          this.managementEmptyState.style.display = "block";
+          this.managementEmptyState.textContent = "표시할 글이 없습니다.";
+        }
+        return;
+      }
 
-    // 카드 렌더링
-    this.articleCardsGrid.innerHTML = "";
-    let globalOrder = 1;
-
-    Object.keys(articlesByCategory).forEach((category) => {
-      articlesByCategory[category].forEach((article) => {
-        const card = this.createArticleCard(
-          article,
-          globalOrder++,
-          filterCategory
+      // 필터링
+      let filteredArticles = this.managementArticles;
+      if (filterCategory) {
+        filteredArticles = this.managementArticles.filter(
+          (article) => (article.category || "미분류") === filterCategory
         );
-        this.articleCardsGrid.appendChild(card);
+      }
+
+      // 카테고리별로 그룹화 및 정렬
+      const articlesByCategory = {};
+      filteredArticles.forEach((article) => {
+        const category = article.category || "미분류";
+        if (!articlesByCategory[category]) {
+          articlesByCategory[category] = [];
+        }
+        articlesByCategory[category].push(article);
       });
-    });
+
+      // 각 카테고리별로 order 기준 정렬 (내림차순: 큰 값이 위로)
+      Object.keys(articlesByCategory).forEach((category) => {
+        articlesByCategory[category].sort((a, b) => {
+          return (b.order || 0) - (a.order || 0);
+        });
+      });
+
+      // 빈 상태 처리 (필터링 후 결과가 없는 경우)
+      if (filteredArticles.length === 0) {
+        this.articleCardsGrid.innerHTML = "";
+        if (this.managementEmptyState) {
+          this.managementEmptyState.style.display = "block";
+          this.managementEmptyState.textContent = filterCategory
+            ? `${filterCategory} 카테고리에 글이 없습니다.`
+            : "표시할 글이 없습니다.";
+        }
+        return;
+      }
+
+      if (this.managementEmptyState) {
+        this.managementEmptyState.style.display = "none";
+      }
+
+      // 카드 렌더링 (그리드 초기화 후 카드 추가)
+      this.articleCardsGrid.innerHTML = "";
+      let globalOrder = 1;
+
+      Object.keys(articlesByCategory).forEach((category) => {
+        articlesByCategory[category].forEach((article) => {
+          const card = this.createArticleCard(
+            article,
+            globalOrder++,
+            filterCategory
+          );
+          // [P2-02] Safety: createArticleCard가 null 반환 시 스킵
+          if (card) {
+            this.articleCardsGrid.appendChild(card);
+          }
+        });
+      });
+
+      // [P2-01] 이벤트 바인딩은 createArticleCard 내에서 처리됨
+
+    } catch (error) {
+      // [P2-01] Safety: 렌더링 오류 처리
+      console.error('[renderArticleCards] 렌더링 오류:', error);
+      if (this.articleCardsGrid) {
+        this.articleCardsGrid.innerHTML = "";
+      }
+      if (this.managementEmptyState) {
+        this.managementEmptyState.style.display = "block";
+        this.managementEmptyState.textContent = "글 목록을 불러오는 중 오류가 발생했습니다.";
+      }
+    }
   }
 
   /**
-   * 글 카드 생성
+   * ============================================================================
+   * [P2-02] 스크립트(글) 카드 DOM 생성
+   * - Safety: script/id null 체크, escapeHtml XSS 방지
+   * - Optional Chaining 사용으로 안전한 속성 접근
+   * ============================================================================
    */
   createArticleCard(article, orderNumber, filterCategory = "") {
+    // [P2-02] Safety Check: article null 체크
+    if (!article) {
+      console.warn('[createArticleCard] article is null or undefined');
+      return null;
+    }
+
+    // [P2-02] Safety Check: article.id 없으면 카드 생성 스킵
+    if (!article.id) {
+      console.warn('[createArticleCard] article.id is missing, skipping card creation');
+      return null;
+    }
+
     const card = document.createElement("div");
     card.className = "article-card";
+
+    // [P2-02] 기존 속성 유지 + 새 속성 추가
     card.setAttribute("data-article-id", article.id);
+    card.dataset.itemId = article.id;           // [P2-02] 신규: 통합 ID 속성
+    card.dataset.postType = "script";           // [P2-02] 신규: 포스트 타입 구분
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
-    card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title}`);
+    card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title || '제목 없음'}`);
 
     // 키보드 접근성
     card.addEventListener("click", () => {
@@ -6081,10 +6179,10 @@ class DualTextWriter {
       }
     });
 
-    // 내용 미리보기 (3줄)
+    // [P2-02] 내용 미리보기 - Optional Chaining 사용
     const contentPreview = this.getContentPreview(article.content, 3);
 
-    // 날짜 포맷
+    // [P2-02] 날짜 포맷 - Optional Chaining 사용
     const dateStr = article.createdAt
       ? this.formatDateFromFirestore(article.createdAt)
       : "날짜 없음";
@@ -6093,27 +6191,31 @@ class DualTextWriter {
     const canMoveUp = this.canMoveUp(article, filterCategory);
     const canMoveDown = this.canMoveDown(article, filterCategory);
 
+    // [P2-02] escapeHtml로 XSS 방지, Optional Chaining으로 안전한 접근
+    const safeTitle = this.escapeHtml(article.title || "제목 없음");
+    const safeCategory = this.escapeHtml(article.category || "미분류");
+    const safeContentPreview = this.escapeHtml(contentPreview);
+    const contentLength = article.content?.length || 0;
+
     card.innerHTML = `
             <div class="article-card-header">
                 <div class="article-card-order">
                     <span class="article-order-badge" aria-label="순서 ${orderNumber}">${orderNumber}</span>
-                    <h4 class="article-card-title" title="${this.escapeHtml(
-                      article.title
-                    )}">${this.escapeHtml(article.title)}</h4>
+                    <h4 class="article-card-title" title="${safeTitle}">${safeTitle}</h4>
                 </div>
                 <div class="article-card-actions">
-                    <button 
-                        class="order-button" 
-                        data-action="up" 
+                    <button
+                        class="order-button"
+                        data-action="up"
                         data-article-id="${article.id}"
                         aria-label="위로 이동"
                         title="위로 이동"
                         ${canMoveUp ? "" : "disabled"}>
                         ▲
                     </button>
-                    <button 
-                        class="order-button" 
-                        data-action="down" 
+                    <button
+                        class="order-button"
+                        data-action="down"
                         data-article-id="${article.id}"
                         aria-label="아래로 이동"
                         title="아래로 이동"
@@ -6122,15 +6224,11 @@ class DualTextWriter {
                     </button>
                 </div>
             </div>
-            <div class="article-card-content">${this.escapeHtml(
-              contentPreview
-            )}</div>
+            <div class="article-card-content">${safeContentPreview}</div>
             <div class="article-card-meta">
                 <span class="article-card-date">📅 ${dateStr}</span>
-                <span class="article-card-count">📝 ${article.content ? article.content.length : 0}자</span>
-                <span class="article-card-category">📁 ${this.escapeHtml(
-                  article.category || "미분류"
-                )}</span>
+                <span class="article-card-count">📝 ${contentLength}자</span>
+                <span class="article-card-category">📁 ${safeCategory}</span>
             </div>
         `;
 
@@ -6234,6 +6332,287 @@ class DualTextWriter {
           block: "nearest",
         });
       }
+    }
+  }
+
+  /**
+   * ============================================================================
+   * [P2-03] 카드 클릭 이벤트 핸들러 바인딩 (이벤트 위임 방식)
+   * - 성능 최적화를 위해 grid에 단일 이벤트 리스너 사용
+   * - Ctrl+클릭: 패널 2에 표시
+   * ============================================================================
+   */
+  bindScriptCardClickEvents() {
+    const grid = document.getElementById('article-cards-grid');
+
+    // [P2-03] Safety Check: grid null 체크
+    if (!grid) {
+      console.warn('[bindScriptCardClickEvents] article-cards-grid not found');
+      return;
+    }
+
+    // 이벤트 위임 방식 사용 (성능 최적화)
+    // 중복 바인딩 방지를 위해 기존 리스너 제거 후 추가
+    grid.removeEventListener('click', this._handleCardClick);
+    this._handleCardClick = (event) => {
+      // 순서 버튼 클릭은 무시 (기존 이벤트 처리)
+      if (event.target.closest('.order-button')) {
+        return;
+      }
+
+      // [P2-03] Safety Check: closest() null 체크
+      const card = event.target.closest('.article-card');
+      if (!card) {
+        return;
+      }
+
+      // [P2-03] Safety Check: itemId 유효성 검증
+      const itemId = card.dataset.itemId || card.getAttribute('data-article-id');
+      if (!itemId) {
+        console.warn('[bindScriptCardClickEvents] itemId is null or empty');
+        return;
+      }
+
+      // Ctrl+클릭: 패널 2에 표시 (panelIndex = 1)
+      const panelIndex = event.ctrlKey ? 1 : 0;
+
+      // 카드 선택 상태 업데이트
+      this.updateCardSelection(card, panelIndex);
+
+      // 상세 패널 표시
+      this.showScriptDetailPanel(itemId, panelIndex);
+    };
+
+    grid.addEventListener('click', this._handleCardClick);
+  }
+
+  /**
+   * ============================================================================
+   * [P2-03] 카드 선택 상태 업데이트
+   * - panelIndex에 따라 다른 선택 클래스 적용
+   * ============================================================================
+   */
+  updateCardSelection(card, panelIndex = 0) {
+    if (!card) return;
+
+    // 해당 패널의 기존 선택 해제
+    // [P2-03] CSS 클래스명: selected-panel-1, selected-panel-2 (하이픈 포함)
+    const selectionClass = panelIndex === 0 ? 'selected-panel-1' : 'selected-panel-2';
+    document.querySelectorAll(`.article-card.${selectionClass}`).forEach((c) => {
+      c.classList.remove(selectionClass);
+    });
+
+    // 선택한 카드에 클래스 추가
+    card.classList.add(selectionClass);
+
+    // [P2-03] 선택된 카드 정보 저장
+    if (panelIndex === 0) {
+      this.selectedArticleId = card.dataset.itemId || card.getAttribute('data-article-id');
+    } else {
+      this.selectedArticleIdPanel2 = card.dataset.itemId || card.getAttribute('data-article-id');
+    }
+  }
+
+  /**
+   * ============================================================================
+   * [P2-04] 스크립트 상세 패널 표시
+   * - panelIndex: 0 = 패널1, 1 = 패널2
+   * - Safety: 전체 함수 Try-Catch 처리, DOM/데이터 Null Check
+   * ============================================================================
+   */
+  async showScriptDetailPanel(itemId, panelIndex = 0) {
+    try {
+      // [P2-04] Safety Check: itemId 유효성 검증
+      if (!itemId) {
+        console.warn('[showScriptDetailPanel] itemId 없음');
+        return;
+      }
+
+      // [P2-04] 스크립트 데이터 조회 (managementArticles = scriptList)
+      const script = this.managementArticles.find((s) => s.id === itemId);
+      if (!script) {
+        console.warn('[showScriptDetailPanel] 스크립트를 찾을 수 없음:', itemId);
+        this.showMessage('❌ 스크립트를 찾을 수 없습니다.', 'error');
+        return;
+      }
+
+      // [P2-04] 패널 요소 ID 결정
+      const panelSuffix = panelIndex === 1 ? '-2' : '-1';
+      const panelId = `article-detail-panel${panelSuffix}`;
+      const panel = document.getElementById(panelId);
+
+      // [P2-04] Safety Check: 패널 DOM 요소 null 체크
+      if (!panel) {
+        console.error(`[showScriptDetailPanel] 패널을 찾을 수 없음: ${panelId}`);
+        // 패널이 없으면 기존 방식으로 폴백 (패널 1만)
+        if (panelIndex === 0) {
+          this.selectedArticleId = itemId;
+          this.renderDetailPanel(script);
+        }
+        return;
+      }
+
+      // [P2-04] 패널 내용 채우기 (populateDetailPanel 역할)
+      this.renderDetailPanelById(script, panelSuffix);
+
+      // [P2-04] 패널 표시
+      panel.style.display = 'block';
+
+      // [P2-04] 읽기 모드로 설정
+      const readMode = document.getElementById(`detail-read-mode${panelSuffix}`);
+      const editMode = document.getElementById(`detail-edit-mode${panelSuffix}`);
+      if (readMode) readMode.style.display = 'block';
+      if (editMode) editMode.style.display = 'none';
+
+      // [P2-04] 듀얼 모드 처리 (두 패널 모두 표시 중인 경우)
+      if (panelIndex === 1) {
+        const divider = document.getElementById('detail-dual-divider');
+        if (divider) divider.style.display = 'block';
+      }
+
+      // [P2-04] 선택된 ID 저장
+      if (panelIndex === 0) {
+        this.selectedArticleId = itemId;
+      } else {
+        this.selectedArticleIdPanel2 = itemId;
+      }
+
+      // [P2-04] 패널로 스크롤
+      panel.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+
+      console.log(`✅ 스크립트 상세 패널 표시: ${itemId}, 패널 ${panelIndex + 1}`);
+
+    } catch (error) {
+      // [P2-04] Safety: 전체 함수 오류 처리
+      console.error('[showScriptDetailPanel] 오류:', error);
+      this.showMessage('❌ 상세 정보를 표시할 수 없습니다.', 'error');
+    }
+  }
+
+  /**
+   * ============================================================================
+   * [P2-05] 패널 내용 채우기 (populateDetailPanel 역할)
+   * - panelSuffix: '-1' 또는 '-2'
+   * - Safety: 모든 DOM 요소 Null Check, escapeHtml XSS 방지
+   * ============================================================================
+   */
+  renderDetailPanelById(script, panelSuffix) {
+    // [P2-05] Safety Check: script null 체크
+    if (!script) {
+      console.warn('[renderDetailPanelById] script is null or undefined');
+      return;
+    }
+
+    // [P2-05] 제목 설정
+    const titleEl = document.getElementById(`detail-title${panelSuffix}`);
+    if (titleEl) {
+      titleEl.textContent = script.title || '제목 없음';
+    }
+
+    // [P2-05] 내용 설정 (줄바꿈 보존 - escapeHtml + <br>)
+    const contentEl = document.getElementById(`detail-content${panelSuffix}`);
+    if (contentEl) {
+      const safeContent = this.escapeHtml(script.content || '');
+      contentEl.innerHTML = safeContent.replace(/\n/g, '<br>');
+    }
+
+    // [P2-05] 카테고리 설정
+    const categoryEl = document.getElementById(`detail-category${panelSuffix}`);
+    if (categoryEl) {
+      categoryEl.textContent = script.category || '미분류';
+    }
+
+    // [P2-05] 날짜 설정
+    const dateEl = document.getElementById(`detail-date${panelSuffix}`);
+    if (dateEl) {
+      dateEl.textContent = script.createdAt
+        ? this.formatDateFromFirestore(script.createdAt)
+        : script.updatedAt
+          ? this.formatDateFromFirestore(script.updatedAt)
+          : '날짜 없음';
+    }
+
+    // [P2-05] 글자 수 설정
+    const charCountEl = document.getElementById(`detail-char-count${panelSuffix}`);
+    if (charCountEl) {
+      const contentLength = (script.content || '').length;
+      charCountEl.textContent = `${contentLength}자`;
+    }
+
+    // [P2-05] 현재 편집 중인 스크립트 ID 저장 (수정/삭제용)
+    this.currentEditingScriptId = script.id;
+    this.currentEditingPanelIndex = panelSuffix === '-2' ? 1 : 0;
+  }
+
+  /**
+   * [P2-05] populateDetailPanel 별칭 (Pseudo 코드 호환)
+   */
+  populateDetailPanel(script, panelSuffix) {
+    this.renderDetailPanelById(script, panelSuffix);
+  }
+
+  /**
+   * ============================================================================
+   * [P2-06] 스크립트 상세 패널 닫기
+   * - panelIndex: 0 = 패널1, 1 = 패널2
+   * - Safety: DOM Null Check
+   * ============================================================================
+   */
+  closeScriptDetailPanel(panelIndex = 0) {
+    // [P2-06] 패널 suffix 결정
+    const panelSuffix = panelIndex === 1 ? '-2' : '-1';
+    const panel = document.getElementById(`article-detail-panel${panelSuffix}`);
+
+    // [P2-06] Safety Check: 패널 DOM 존재 시 숨김
+    if (panel) {
+      panel.style.display = 'none';
+    }
+
+    // [P2-06] 듀얼 모드 해제 (패널 2를 닫은 경우)
+    if (panelIndex === 1) {
+      const divider = document.getElementById('detail-dual-divider');
+      if (divider) {
+        divider.style.display = 'none';
+      }
+    }
+
+    // [P2-06] 카드 선택 해제
+    this.clearCardSelection(panelIndex);
+
+    // [P2-06] 상태 초기화
+    if (panelIndex === 0) {
+      this.currentEditingScriptId = null;
+      this.selectedArticleId = null;
+    } else {
+      this.selectedArticleIdPanel2 = null;
+    }
+
+    console.log(`✅ 스크립트 상세 패널 닫기: 패널 ${panelIndex + 1}`);
+  }
+
+  /**
+   * ============================================================================
+   * [P2-06] 카드 선택 해제
+   * - panelIndex에 따라 해당 패널의 선택 클래스만 제거
+   * ============================================================================
+   */
+  clearCardSelection(panelIndex = 0) {
+    // [P2-06] 패널별 선택 클래스 결정
+    const selectionClass = panelIndex === 0 ? 'selected-panel-1' : 'selected-panel-2';
+
+    // [P2-06] 해당 패널의 선택 클래스만 제거
+    document.querySelectorAll(`.article-card.${selectionClass}`).forEach((card) => {
+      card.classList.remove(selectionClass);
+    });
+
+    // [P2-06] 기존 'selected' 클래스도 호환성 위해 제거 (패널 1인 경우)
+    if (panelIndex === 0) {
+      document.querySelectorAll('.article-card.selected').forEach((card) => {
+        card.classList.remove('selected');
+      });
     }
   }
 

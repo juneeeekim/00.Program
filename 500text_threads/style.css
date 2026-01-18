@@ -9804,3 +9804,93 @@ body.offline-mode {
   }
 }
 
+/* ========================================
+   [2026-01-18] URL 링크 카드 추가 스타일 (UrlLinkManager용)
+   ======================================== */
+
+.url-link-card-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.url-link-card-main:hover {
+  opacity: 0.9;
+}
+
+.url-link-card-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.url-link-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.url-link-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.url-link-card-desc {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.url-link-card-url {
+  font-size: 0.8rem;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.url-link-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.url-link-card-actions button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  background: #f0f0f0;
+}
+
+.url-link-open-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+.url-link-open-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.url-link-edit-btn:hover {
+  background: rgba(102, 126, 234, 0.15) !important;
+  color: #667eea;
+}
+
+.url-link-delete-btn:hover {
+  background: rgba(220, 53, 69, 0.15) !important;
+  color: #dc3545;
+}
