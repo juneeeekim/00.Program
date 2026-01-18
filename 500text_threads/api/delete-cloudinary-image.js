@@ -1,5 +1,27 @@
 const cloudinary = require('cloudinary').v2;
 
+// ============================================================
+// CORS 허용 도메인 설정 (P2-01)
+// - 프로덕션: text-threads 도메인만 허용
+// - 개발 환경: localhost도 추가 허용
+// ============================================================
+const ALLOWED_ORIGINS = [
+  'https://text-threads.web.app',
+  'https://text-threads.firebaseapp.com',
+];
+
+// 개발 환경에서만 localhost 허용
+if (process.env.NODE_ENV !== 'production') {
+  ALLOWED_ORIGINS.push('http://localhost:8000');
+  ALLOWED_ORIGINS.push('http://127.0.0.1:8000');
+}
+
+// 안전성 검증: 허용 도메인 배열이 비어있지 않은지 확인
+if (ALLOWED_ORIGINS.length === 0) {
+  console.error('[SECURITY] ALLOWED_ORIGINS 배열이 비어있습니다. 기본 도메인을 추가합니다.');
+  ALLOWED_ORIGINS.push('https://text-threads.web.app');
+}
+
 // Cloudinary 설정
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,8 +30,19 @@ cloudinary.config({
 });
 
 module.exports = async (req, res) => {
-  // CORS 설정
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // ============================================================
+  // CORS 헤더 설정 (P2-02)
+  // - 허용된 도메인만 Access-Control-Allow-Origin 헤더 설정
+  // - origin이 undefined인 경우 (서버-서버 호출) CORS 헤더 미설정
+  // ============================================================
+  const origin = req.headers.origin;
+  
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  // else: CORS 헤더 없음 → 브라우저가 자동 차단
+  
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
