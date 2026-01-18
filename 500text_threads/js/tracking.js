@@ -215,6 +215,49 @@ export class TrackingManager {
     }
   }
 
+
+  // ========================================
+  // [P2-04] Chart post selector population
+  // ========================================
+
+  populatePostSelector() {
+    if (!this.trackingPosts || this.trackingPosts.length === 0) return;
+
+    this.allTrackingPostsForSelector = [...this.trackingPosts].sort((a, b) => {
+      const dateA = a.postedAt instanceof Date
+        ? a.postedAt
+        : a.postedAt?.toDate
+        ? a.postedAt.toDate()
+        : new Date(0);
+      const dateB = b.postedAt instanceof Date
+        ? b.postedAt
+        : b.postedAt?.toDate
+        ? b.postedAt.toDate()
+        : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    if (this.app && this.app.renderPostSelectorDropdown) {
+      this.app.renderPostSelectorDropdown("");
+    }
+
+    if (this.selectedChartPostId) {
+      const selectedPost = this.trackingPosts.find(
+        (post) => post.id === this.selectedChartPostId
+      );
+      if (selectedPost) {
+        const searchInput = document.getElementById("chart-post-search");
+        if (searchInput) {
+          const contentPreview =
+            selectedPost.content.length > 50
+              ? selectedPost.content.substring(0, 50) + "..."
+              : selectedPost.content;
+          searchInput.value = contentPreview;
+        }
+      }
+    }
+  }
+
   /**
    * 일괄 선택 모드 상태 반환
    * @returns {boolean} 일괄 선택 모드 활성화 여부
@@ -479,13 +522,13 @@ export class TrackingManager {
       // 데이터 로드는 성공했는데 UI 갱신 에러로 실패 처리되는 문제 방지
       try {
         // 데이터 무결성 검증: sourceTextId 유효성 확인
-        if (this.app.validateSourceTexts) {
-          await this.app.validateSourceTexts();
+        if (this.validateSourceTexts) {
+          await this.validateSourceTexts();
         }
 
         // 포스트 선택 드롭다운 업데이트 (개별 포스트 모드일 때)
-        if (this.chartMode === "individual" && this.app.populatePostSelector) {
-          this.app.populatePostSelector();
+        if (this.chartMode === "individual") {
+          this.populatePostSelector();
         }
 
         // UI 새로고침 (메인 앱에 위임)
@@ -556,6 +599,156 @@ export class TrackingManager {
    * 의존성:
    * - this.app.totalPostsElement, totalViewsElement 등 DOM 요소
    */
+
+  // ========================================
+  // [P2-02] Source text validation (moved from script.js)
+  // ========================================
+
+  async validateSourceTexts() {
+    if (!this.app.currentUser || !this.app.isFirebaseReady) return;
+    if (!this.trackingPosts || this.trackingPosts.length == 0) return;
+
+    const postsToValidate = this.trackingPosts.filter(
+      (post) => post.sourceTextId && post.sourceTextExists === null
+    );
+
+    if (postsToValidate.length == 0) return;
+
+    try {
+      const textIds = postsToValidate.map((post) => post.sourceTextId);
+      const existsMap = await this._checkTextsExist(textIds);
+
+      this.trackingPosts.forEach((post) => {
+        if (post.sourceTextId) {
+          post.sourceTextExists = existsMap[post.sourceTextId] ?? false;
+          post.isOrphan = !post.sourceTextExists;
+        }
+      });
+
+      logger.log(`[TrackingManager] ${postsToValidate.length}? ??? ?? ??`);
+    } catch (error) {
+      logger.error('[TrackingManager] validateSourceTexts ??:', error);
+    }
+  }
+
+  async _checkTextsExist(textIds) {
+    const existsMap = {};
+    const textsRef = window.firebaseCollection(
+      this.app.db,
+      'users',
+      this.app.currentUser.uid,
+      'texts'
+    );
+
+    for (const textId of textIds) {
+      try {
+        const docRef = window.firebaseDoc(textsRef, textId);
+        const docSnap = await window.firebaseGetDoc(docRef);
+        existsMap[textId] = docSnap.exists();
+      } catch {
+        existsMap[textId] = false;
+      }
+    }
+
+    return existsMap;
+  }
+
+
+  // ========================================
+  // [P2-03] Tracking manage list render (moved from script.js)
+  // ========================================
+
+  renderTrackingPostsForManage() {
+    const container = document.getElementById('tracking-manage-list');
+    if (!container) {
+      if (typeof logger !== 'undefined') {
+        logger.warn('[TrackingManager] tracking-manage-list ?? ??');
+      } else {
+        console.warn('[TrackingManager] tracking-manage-list ?? ??');
+      }
+      return;
+    }
+
+    if (!this.trackingPosts || this.trackingPosts.length === 0) {
+      container.innerHTML = this._getEmptyStateHTML();
+      return;
+    }
+
+    const sortedPosts = [...this.trackingPosts].sort((a, b) => {
+      const aTime = a.postedAt instanceof Date ? a.postedAt.getTime() : new Date(a.postedAt || 0).getTime();
+      const bTime = b.postedAt instanceof Date ? b.postedAt.getTime() : new Date(b.postedAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+    container.innerHTML = sortedPosts
+      .map((post) => this._renderTrackingPostCard(post))
+      .join('');
+
+    this._bindTrackingPostEvents(container);
+  }
+
+  _getEmptyStateHTML() {
+    return `
+      <div class="tracking-post-no-data">
+        <span class="no-data-icon">??</span>
+        <span class="no-data-text">??? ?? ???? ????.</span>
+      </div>
+    `;
+  }
+
+  _renderTrackingPostCard(post) {
+    const postedAt = post.postedAt instanceof Date
+      ? post.postedAt
+      : post.postedAt?.toDate
+      ? post.postedAt.toDate()
+      : new Date(post.postedAt || Date.now());
+
+    const dateText = Number.isNaN(postedAt.getTime())
+      ? '-'
+      : postedAt.toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+
+    const metricsCount = Array.isArray(post.metrics) ? post.metrics.length : 0;
+    const title = (post.content || '').split('
+')[0].trim();
+
+    return `
+      <div class="tracking-manage-card" data-post-id="${post.id}">
+        <div class="tracking-manage-header">
+          <div class="tracking-manage-title">${this._escapeHtml(title || '(?? ??)')}</div>
+          <div class="tracking-manage-meta">${dateText} ? ??? ${metricsCount}?</div>
+        </div>
+        <div class="tracking-manage-actions">
+          <button class="btn btn-secondary" data-action="manage-metrics" data-post-id="${post.id}">?? ??? ??</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _bindTrackingPostEvents(container) {
+    if (container._trackingManageEventsBound) return;
+    container._trackingManageEventsBound = true;
+
+    container.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+
+      const action = button.getAttribute('data-action');
+      const postId = button.getAttribute('data-post-id');
+      if (!postId) return;
+
+      if (action === 'manage-metrics') {
+        event.preventDefault();
+        if (this.manageMetrics) {
+          this.manageMetrics(postId);
+        }
+      }
+    });
+  }
+
   updateTrackingSummary() {
     const totalPosts = this.trackingPosts.length;
 
@@ -1298,9 +1491,7 @@ export class TrackingManager {
       }
       
       // 포스트 선택 드롭다운 채우기
-      if (this.app && this.app.populatePostSelector) {
-        this.app.populatePostSelector();
-      }
+      this.populatePostSelector();
     }
 
     // 차트 업데이트
