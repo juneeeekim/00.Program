@@ -19,7 +19,15 @@
  * - DualTextWriter.CONFIG (메인 클래스 설정 상수)
  * - Chart.js (차트 라이브러리)
  * - Firebase Firestore (데이터 저장소)
+ * - logger (로깅 유틸리티)
  */
+
+// ============================================================================
+// [P1-02 FIX] 2026-01-19: logger 모듈 import 추가
+// - 'logger is not defined' 오류 수정
+// ============================================================================
+import { logger } from './logger.js';
+
 
 /**
  * TrackingManager 클래스
