@@ -3586,7 +3586,63 @@
       </div>
     </div>
 
+    <!-- ============================================================
+         [2026-01-18] 프로덕션 디버그 진단 패널
+         - 프론트엔드/백엔드 문제 즉시 확인용
+         - 우측 하단 고정 버튼 클릭 시 패널 표시
+         ============================================================ -->
+    <button id="debug-toggle-btn" class="debug-toggle-btn" aria-label="진단 패널 열기" title="진단 패널 열기">
+      🔧
+    </button>
+
+    <div id="debug-panel" class="debug-panel" aria-hidden="true">
+      <div class="debug-panel-header">
+        <h3>🔧 시스템 진단</h3>
+        <button id="debug-close-btn" class="debug-close-btn" aria-label="닫기">&times;</button>
+      </div>
+
+      <div class="debug-panel-content">
+        <!-- 진단 상태 항목 -->
+        <div class="debug-status-section">
+          <h4>연결 상태</h4>
+          <div class="debug-status-item">
+            <span class="debug-label">Firebase Auth:</span>
+            <span id="debug-firebase-auth" class="debug-value">⏳ 확인 중...</span>
+          </div>
+          <div class="debug-status-item">
+            <span class="debug-label">Firestore DB:</span>
+            <span id="debug-firestore" class="debug-value">⏳ 확인 중...</span>
+          </div>
+          <div class="debug-status-item">
+            <span class="debug-label">인증 상태:</span>
+            <span id="debug-auth-state" class="debug-value">⏳ 확인 중...</span>
+          </div>
+          <div class="debug-status-item">
+            <span class="debug-label">데이터 로드:</span>
+            <span id="debug-data-load" class="debug-value">⏳ 확인 중...</span>
+          </div>
+          <div class="debug-status-item">
+            <span class="debug-label">마지막 에러:</span>
+            <span id="debug-last-error" class="debug-value debug-value--small">없음</span>
+          </div>
+        </div>
+
+        <!-- 새로고침 버튼 -->
+        <button id="debug-refresh-btn" class="debug-refresh-btn">🔄 상태 새로고침</button>
+
+        <!-- 실시간 콘솔 로그 -->
+        <div class="debug-logs-section">
+          <h4>실시간 로그 <span id="debug-log-count">(0)</span></h4>
+          <div id="debug-logs" class="debug-logs" role="log" aria-live="polite">
+            <!-- 로그가 여기에 표시됩니다 -->
+          </div>
+          <button id="debug-clear-logs" class="debug-clear-btn">로그 지우기</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Chart.js CDN -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Main Script (ES Module) -->

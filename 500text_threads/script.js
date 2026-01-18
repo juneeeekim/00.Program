@@ -11844,3 +11844,265 @@ function setCurrentEditingArticle(articleId) {
 // ============================================================================
 window.setCurrentEditingArticle = setCurrentEditingArticle;
 window.loadArticleReferences = loadArticleReferences;
+
+// ============================================================================
+// [2026-01-18] DiagnosticManager: 프로덕션 디버그 진단 패널
+// 프론트엔드/백엔드 문제 즉시 확인용
+// ============================================================================
+
+/**
+ * DiagnosticManager - 프로덕션 환경 진단 도구
+ * 
+ * 기능:
+ * - Firebase/Firestore 연결 상태 확인
+ * - 인증 상태 확인
+ * - 데이터 로드 상태 확인
+ * - 실시간 콘솔 로그 캡처 (최대 50개)
+ */
+class DiagnosticManager {
+  constructor() {
+    this.logs = [];
+    this.maxLogs = 50;
+    this.lastError = null;
+    this.isOpen = false;
+    
+    // DOM 요소 참조
+    this.toggleBtn = null;
+    this.panel = null;
+    this.logsContainer = null;
+    
+    // 원본 콘솔 함수 저장
+    this._originalLog = console.log;
+    this._originalWarn = console.warn;
+    this._originalError = console.error;
+    this._originalInfo = console.info;
+    
+    this.init();
+  }
+  
+  init() {
+    // DOMContentLoaded 이후 초기화
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this._setup());
+    } else {
+      this._setup();
+    }
+  }
+  
+  _setup() {
+    this._cacheDOM();
+    this._bindEvents();
+    this._hookConsole();
+    this._log('info', '[DiagnosticManager] 진단 도구 초기화 완료');
+  }
+  
+  _cacheDOM() {
+    this.toggleBtn = document.getElementById('debug-toggle-btn');
+    this.panel = document.getElementById('debug-panel');
+    this.logsContainer = document.getElementById('debug-logs');
+    this.logCount = document.getElementById('debug-log-count');
+    
+    // 상태 표시 요소
+    this.statusFirebaseAuth = document.getElementById('debug-firebase-auth');
+    this.statusFirestore = document.getElementById('debug-firestore');
+    this.statusAuthState = document.getElementById('debug-auth-state');
+    this.statusDataLoad = document.getElementById('debug-data-load');
+    this.statusLastError = document.getElementById('debug-last-error');
+  }
+  
+  _bindEvents() {
+    if (this.toggleBtn) {
+      this.toggleBtn.addEventListener('click', () => this.toggle());
+    }
+    
+    const closeBtn = document.getElementById('debug-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.close());
+    }
+    
+    const refreshBtn = document.getElementById('debug-refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.refreshStatus());
+    }
+    
+    const clearBtn = document.getElementById('debug-clear-logs');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => this.clearLogs());
+    }
+  }
+  
+  /**
+   * 콘솔 함수 후킹 - 모든 로그를 캡처
+   */
+  _hookConsole() {
+    const self = this;
+    
+    console.log = function(...args) {
+      self._captureLog('log', args);
+      self._originalLog.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+      self._captureLog('warn', args);
+      self._originalWarn.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+      self._captureLog('error', args);
+      self.lastError = args.join(' ');
+      self._originalError.apply(console, args);
+    };
+    
+    console.info = function(...args) {
+      self._captureLog('info', args);
+      self._originalInfo.apply(console, args);
+    };
+  }
+  
+  /**
+   * 로그 캡처 및 저장
+   */
+  _captureLog(level, args) {
+    const timestamp = new Date().toLocaleTimeString('ko-KR');
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+    
+    this.logs.unshift({ level, message, timestamp });
+    
+    // 최대 로그 수 제한
+    if (this.logs.length > this.maxLogs) {
+      this.logs.pop();
+    }
+    
+    // 패널이 열려있으면 실시간 업데이트
+    if (this.isOpen) {
+      this._renderLogs();
+    }
+  }
+  
+  /**
+   * 패널 토글
+   */
+  toggle() {
+    this.isOpen ? this.close() : this.open();
+  }
+  
+  open() {
+    if (this.panel) {
+      this.panel.setAttribute('aria-hidden', 'false');
+      this.isOpen = true;
+      this.refreshStatus();
+      this._renderLogs();
+    }
+  }
+  
+  close() {
+    if (this.panel) {
+      this.panel.setAttribute('aria-hidden', 'true');
+      this.isOpen = false;
+    }
+  }
+  
+  /**
+   * 상태 새로고침
+   */
+  refreshStatus() {
+    // Firebase Auth 상태
+    const hasFirebaseAuth = !!window.firebaseAuth;
+    this._updateStatus(this.statusFirebaseAuth, hasFirebaseAuth, 
+      hasFirebaseAuth ? '✅ 연결됨' : '❌ 없음');
+    
+    // Firestore 상태
+    const hasFirestore = !!window.firebaseDb;
+    this._updateStatus(this.statusFirestore, hasFirestore,
+      hasFirestore ? '✅ 연결됨' : '❌ 없음');
+    
+    // 인증 상태
+    const app = window.dualTextWriter;
+    if (app) {
+      const currentUser = app.currentUser;
+      const isLoggedIn = !!currentUser;
+      this._updateStatus(this.statusAuthState, isLoggedIn,
+        isLoggedIn ? `✅ ${currentUser.displayName || currentUser.email || 'Anonymous'}` : '❌ 미로그인');
+      
+      // 데이터 로드 상태
+      const savedTexts = app.savedTexts || [];
+      const hasData = savedTexts.length > 0;
+      this._updateStatus(this.statusDataLoad, hasData,
+        `${savedTexts.length}개 로드됨`);
+    } else {
+      this._updateStatus(this.statusAuthState, false, '⏳ 앱 초기화 중...');
+      this._updateStatus(this.statusDataLoad, false, '⏳ 대기 중...');
+    }
+    
+    // 마지막 에러
+    if (this.statusLastError) {
+      this.statusLastError.textContent = this.lastError || '없음';
+      this.statusLastError.className = 'debug-value debug-value--small' + 
+        (this.lastError ? ' debug-value--error' : '');
+    }
+  }
+  
+  _updateStatus(element, isSuccess, text) {
+    if (!element) return;
+    element.textContent = text;
+    element.className = 'debug-value ' + 
+      (isSuccess ? 'debug-value--success' : 'debug-value--error');
+  }
+  
+  /**
+   * 로그 렌더링
+   */
+  _renderLogs() {
+    if (!this.logsContainer) return;
+    
+    this.logsContainer.innerHTML = this.logs.map(log => {
+      const levelClass = `debug-log-entry debug-log-entry--${log.level}`;
+      return `<div class="${levelClass}">
+        <span class="debug-log-time">${log.timestamp}</span>
+        ${this._escapeHtml(log.message)}
+      </div>`;
+    }).join('');
+    
+    if (this.logCount) {
+      this.logCount.textContent = `(${this.logs.length})`;
+    }
+  }
+  
+  /**
+   * 로그 지우기
+   */
+  clearLogs() {
+    this.logs = [];
+    this.lastError = null;
+    this._renderLogs();
+    this.refreshStatus();
+  }
+  
+  /**
+   * HTML 이스케이프
+   */
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  /**
+   * 커스텀 로그 추가
+   */
+  _log(level, message) {
+    this._captureLog(level, [message]);
+  }
+}
+
+// DiagnosticManager 자동 초기화
+window.diagnosticManager = new DiagnosticManager();
