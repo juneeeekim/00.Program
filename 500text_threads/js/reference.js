@@ -860,6 +860,282 @@ export class ReferenceManager {
    * @param {Array<string>} referenceTextIds - 레퍼런스 텍스트 ID 배열
    * @returns {Promise<Object>} 사용 횟수 객체: `{ textId1: count1, textId2: count2, ... }`
    */
+
+  // ========================================
+  // [P3-01] ?? ???? ?? ?? ?? (posts ??? ??)
+  // ========================================
+
+  async checkReferenceUsage(referenceTextId) {
+    const app = this.mainApp;
+
+    if (!app.currentUser || !referenceTextId) return 0;
+
+    try {
+      const postsRef = window.firebaseCollection(
+        app.db,
+        'users',
+        app.currentUser.uid,
+        'posts'
+      );
+      const q = window.firebaseQuery(
+        postsRef,
+        window.firebaseWhere('sourceType', '==', 'reference'),
+        window.firebaseWhere('sourceTextId', '==', referenceTextId)
+      );
+      const snapshot = await window.firebaseGetDocs(q);
+      return snapshot.size;
+    } catch (error) {
+      console.error('[ReferenceManager] checkReferenceUsage ??:', error);
+      return 0;
+    }
+  }
+
+
+  // ========================================
+  // [P3-02] ???? ??/?? ?? (posts ??? ??)
+  // ========================================
+
+  async markReferenceAsUsed(referenceTextId) {
+    const app = this.mainApp;
+
+    if (!referenceTextId || typeof referenceTextId !== "string") {
+      console.warn("markReferenceAsUsed: ??? referenceTextId:", referenceTextId);
+      app.showMessage("? ???? ID? ?? ? ????.", "error");
+      return;
+    }
+
+    if (!app.isFirebaseReady) {
+      console.warn("markReferenceAsUsed: Firebase? ???? ?????.");
+      app.showMessage("? Firebase ??? ???? ?????.", "error");
+      return;
+    }
+
+    if (!app.currentUser) {
+      console.warn("markReferenceAsUsed: ???? ????? ?????.");
+      app.showMessage("? ???? ?????.", "error");
+      return;
+    }
+
+    try {
+      const textRef = window.firebaseDoc(
+        app.db,
+        "users",
+        app.currentUser.uid,
+        "texts",
+        referenceTextId
+      );
+      const textDoc = await window.firebaseGetDoc(textRef);
+
+      if (!textDoc.exists()) {
+        console.error("markReferenceAsUsed: ???? ???? ?? ? ????.");
+        app.showMessage("? ???? ???? ?? ? ????.", "error");
+        return;
+      }
+
+      const textData = textDoc.data();
+      if ((textData.type || "edit") !== "reference") {
+        console.warn("markReferenceAsUsed: ????? ?? ??????.");
+        app.showMessage("? ???? ???? ?? ??? ? ????.", "error");
+        return;
+      }
+
+      const existingUsageCount = await this.checkReferenceUsage(referenceTextId);
+      if (existingUsageCount > 0) {
+        console.log("?? ??? ???????. ?? ??:", existingUsageCount);
+        await app.refreshSavedTextsUI();
+        return;
+      }
+
+      const postsRef = window.firebaseCollection(
+        app.db,
+        "users",
+        app.currentUser.uid,
+        "posts"
+      );
+      const referencePostData = {
+        content: textData.content,
+        type: "reference",
+        postedAt: window.firebaseServerTimestamp(),
+        trackingEnabled: false,
+        metrics: [],
+        analytics: {},
+        sourceTextId: referenceTextId,
+        sourceType: "reference",
+        createdAt: window.firebaseServerTimestamp(),
+        updatedAt: window.firebaseServerTimestamp(),
+      };
+
+      await window.firebaseAddDoc(postsRef, referencePostData);
+
+      app.showMessage("? ????? ????? ???????.", "success");
+      app.setSavedFilter("reference-used");
+      await app.refreshSavedTextsUI();
+    } catch (error) {
+      console.error("[ReferenceManager] markReferenceAsUsed ??:", error);
+      app.showMessage("? ?? ? ??? ??????.", "error");
+    }
+  }
+
+  async unmarkReferenceAsUsed(referenceTextId) {
+    const app = this.mainApp;
+
+    if (!referenceTextId || typeof referenceTextId !== "string") {
+      console.warn("unmarkReferenceAsUsed: ??? referenceTextId:", referenceTextId);
+      app.showMessage("? ???? ID? ?? ? ????.", "error");
+      return;
+    }
+
+    if (!app.isFirebaseReady) {
+      console.warn("unmarkReferenceAsUsed: Firebase? ???? ?????.");
+      app.showMessage("? Firebase ??? ???? ?????.", "error");
+      return;
+    }
+
+    if (!app.currentUser) {
+      console.warn("unmarkReferenceAsUsed: ???? ????? ?????.");
+      app.showMessage("? ???? ?????.", "error");
+      return;
+    }
+
+    try {
+      const textRef = window.firebaseDoc(
+        app.db,
+        "users",
+        app.currentUser.uid,
+        "texts",
+        referenceTextId
+      );
+      const textDoc = await window.firebaseGetDoc(textRef);
+
+      if (!textDoc.exists()) {
+        console.error("unmarkReferenceAsUsed: ???? ???? ?? ? ????.");
+        app.showMessage("? ???? ???? ?? ? ????.", "error");
+        return;
+      }
+
+      const textData = textDoc.data();
+      if ((textData.type || "edit") !== "reference") {
+        console.warn("unmarkReferenceAsUsed: ????? ?? ??????.");
+        app.showMessage("? ???? ???? ?? ??? ? ????.", "error");
+        return;
+      }
+
+      const existingUsageCount = await this.checkReferenceUsage(referenceTextId);
+      if (existingUsageCount == 0) {
+        console.log("?? ??? ?? ???????.");
+        await app.refreshSavedTextsUI();
+        return;
+      }
+
+      const postsRef = window.firebaseCollection(
+        app.db,
+        "users",
+        app.currentUser.uid,
+        "posts"
+      );
+      const q = window.firebaseQuery(
+        postsRef,
+        window.firebaseWhere("sourceTextId", "==", referenceTextId),
+        window.firebaseWhere("sourceType", "==", "reference")
+      );
+      const querySnapshot = await window.firebaseGetDocs(q);
+
+      if (querySnapshot.empty) {
+        console.warn("unmarkReferenceAsUsed: ???? ?? ???? ?? ? ????.");
+        await app.refreshSavedTextsUI();
+        return;
+      }
+
+      const deletePromises = querySnapshot.docs.map((doc) =>
+        window.firebaseDeleteDoc(
+          window.firebaseDoc(app.db, "users", app.currentUser.uid, "posts", doc.id)
+        )
+      );
+      await Promise.all(deletePromises);
+
+      app.showMessage("? ???? ?? ??? ???????.", "success");
+      app.setSavedFilter("reference");
+      await app.refreshSavedTextsUI();
+    } catch (error) {
+      console.error("[ReferenceManager] unmarkReferenceAsUsed ??:", error);
+      app.showMessage("? ?? ? ??? ??????.", "error");
+    }
+  }
+
+
+  // ========================================
+  // [P3-03] Orphan ??? ?? (tracking posts cleanup)
+  // ========================================
+
+  async cleanupOrphanPosts() {
+    const app = this.mainApp;
+
+    if (!app.currentUser) return;
+    if (!app.isFirebaseReady) {
+      app.showMessage("? Firebase ??? ???? ?????.", "error");
+      return;
+    }
+
+    const orphanPosts = app.trackingPosts?.filter((post) => post.isOrphan) || [];
+
+    if (orphanPosts.length === 0) {
+      app.showMessage("? ??? ?? ???? ????.", "info");
+      return;
+    }
+
+    const confirmed = confirm(
+      `${orphanPosts.length}?? ?? ???? ?????????
+` +
+      '(?? ?? ??? ??? ??????)'
+    );
+    if (!confirmed) return;
+
+    try {
+      if (window.firebaseWriteBatch) {
+        const batch = window.firebaseWriteBatch(app.db);
+        const postsRef = window.firebaseCollection(
+          app.db,
+          'users',
+          app.currentUser.uid,
+          'posts'
+        );
+
+        for (const post of orphanPosts) {
+          const docRef = window.firebaseDoc(postsRef, post.id);
+          batch.delete(docRef);
+        }
+
+        await batch.commit();
+      } else {
+        const deletePromises = orphanPosts.map((post) =>
+          window.firebaseDeleteDoc(
+            window.firebaseDoc(
+              app.db,
+              'users',
+              app.currentUser.uid,
+              'posts',
+              post.id
+            )
+          )
+        );
+        await Promise.all(deletePromises);
+      }
+
+      if (app.trackingManager) {
+        app.trackingManager.trackingPosts =
+          app.trackingManager.trackingPosts.filter((post) => !post.isOrphan);
+      } else {
+        app.trackingPosts = app.trackingPosts.filter((post) => !post.isOrphan);
+      }
+
+      app.showMessage(`? ${orphanPosts.length}? ???? ???????.`, "success");
+      app.refreshUI({ trackingPosts: true, trackingSummary: true, trackingChart: true, force: true });
+    } catch (error) {
+      console.error('[ReferenceManager] cleanupOrphanPosts ??:', error);
+      app.showMessage('? ?? ? ??? ??????.', 'error');
+    }
+  }
+
   async checkMultipleReferenceUsage(referenceTextIds) {
     const app = this.mainApp;
 

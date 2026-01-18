@@ -152,11 +152,78 @@ export class TrackingManager {
    * @param {string} mode - 차트 모드 ('total' | 'individual')
    */
   setChartMode(mode) {
-    if (mode === 'total' || mode === 'individual') {
-      this.chartMode = mode;
-    } else {
-      console.warn(`[TrackingManager] 유효하지 않은 차트 모드: ${mode}`);
+    if (mode !== 'total' && mode !== 'individual') {
+      console.warn(`[TrackingManager] ?????? ??? ??? ???: ${mode}`);
+      return;
     }
+
+    this.chartMode = mode;
+
+    const totalBtn = document.getElementById("chart-mode-total");
+    const individualBtn = document.getElementById("chart-mode-individual");
+    const postSelectorContainer = document.getElementById("post-selector-container");
+
+    if (mode === "total") {
+      if (totalBtn) {
+        totalBtn.classList.add("active");
+        totalBtn.style.background = "white";
+        totalBtn.style.color = "#667eea";
+        totalBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+        totalBtn.setAttribute("aria-pressed", "true");
+      }
+
+      if (individualBtn) {
+        individualBtn.classList.remove("active");
+        individualBtn.style.background = "transparent";
+        individualBtn.style.color = "#666";
+        individualBtn.style.boxShadow = "none";
+        individualBtn.setAttribute("aria-pressed", "false");
+      }
+
+      if (postSelectorContainer) {
+        postSelectorContainer.style.display = "none";
+      }
+
+      this.selectedChartPostId = null;
+
+      const searchInput = document.getElementById("chart-post-search");
+      if (searchInput) {
+        searchInput.value = "";
+      }
+      const dropdown = document.getElementById("post-selector-dropdown");
+      if (dropdown) {
+        dropdown.style.display = "none";
+      }
+
+      if (this.app && this.app.handlePostSelectorClickOutside) {
+        document.removeEventListener("click", this.app.handlePostSelectorClickOutside);
+      }
+    } else {
+      if (individualBtn) {
+        individualBtn.classList.add("active");
+        individualBtn.style.background = "white";
+        individualBtn.style.color = "#667eea";
+        individualBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+        individualBtn.setAttribute("aria-pressed", "true");
+      }
+
+      if (totalBtn) {
+        totalBtn.classList.remove("active");
+        totalBtn.style.background = "transparent";
+        totalBtn.style.color = "#666";
+        totalBtn.style.boxShadow = "none";
+        totalBtn.setAttribute("aria-pressed", "false");
+      }
+
+      if (postSelectorContainer) {
+        postSelectorContainer.style.display = "block";
+      }
+
+      this.populatePostSelector();
+    }
+
+    this.updateTrackingChart();
+
   }
 
   /**
@@ -188,11 +255,34 @@ export class TrackingManager {
    * @param {string} range - 차트 범위 ('7d' | '30d' | 'all')
    */
   setChartRange(range) {
-    if (['7d', '30d', 'all'].includes(range)) {
-      this.chartRange = range;
-    } else {
-      console.warn(`[TrackingManager] 유효하지 않은 차트 범위: ${range}`);
+    if (![ '7d', '30d', 'all' ].includes(range)) {
+      console.warn(`[TrackingManager] ?????? ??? ??? ???: ${range}`);
+      return;
     }
+
+    this.chartRange = range;
+
+    const ranges = ["7d", "30d", "all"];
+    ranges.forEach((r) => {
+      const btn = document.getElementById(`chart-range-${r}`);
+      if (!btn) return;
+      if (r === range) {
+        btn.classList.add("active");
+        btn.style.background = "white";
+        btn.style.color = "#667eea";
+        btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+        btn.setAttribute("aria-pressed", "true");
+      } else {
+        btn.classList.remove("active");
+        btn.style.background = "transparent";
+        btn.style.color = "#666";
+        btn.style.boxShadow = "none";
+        btn.setAttribute("aria-pressed", "false");
+      }
+    });
+
+    this.updateTrackingChart();
+
   }
 
   /**
@@ -208,11 +298,44 @@ export class TrackingManager {
    * @param {string} mode - 스케일 모드 ('combined' | 'split')
    */
   setScaleMode(mode) {
-    if (mode === 'combined' || mode === 'split') {
-      this.scaleMode = mode;
-    } else {
-      console.warn(`[TrackingManager] 유효하지 않은 스케일 모드: ${mode}`);
+    if (mode !== 'combined' && mode !== 'split') {
+      if (typeof logger !== 'undefined') {
+        logger.warn(`[TrackingManager] ?????? ??? ????????: ${mode}`);
+      } else {
+        console.warn(`[TrackingManager] ?????? ??? ????????: ${mode}`);
+      }
+      return;
     }
+
+    this.scaleMode = mode;
+
+    const combinedBtn = document.getElementById("chart-scale-combined");
+    const splitBtn = document.getElementById("chart-scale-split");
+
+    if (combinedBtn && splitBtn) {
+      if (mode === "combined") {
+        combinedBtn.classList.add("active");
+        combinedBtn.style.background = "white";
+        combinedBtn.style.color = "#667eea";
+        combinedBtn.setAttribute("aria-pressed", "true");
+        splitBtn.classList.remove("active");
+        splitBtn.style.background = "transparent";
+        splitBtn.style.color = "#666";
+        splitBtn.setAttribute("aria-pressed", "false");
+      } else {
+        splitBtn.classList.add("active");
+        splitBtn.style.background = "white";
+        splitBtn.style.color = "#667eea";
+        splitBtn.setAttribute("aria-pressed", "true");
+        combinedBtn.classList.remove("active");
+        combinedBtn.style.background = "transparent";
+        combinedBtn.style.color = "#666";
+        combinedBtn.setAttribute("aria-pressed", "false");
+      }
+    }
+
+    this.updateTrackingChart();
+
   }
 
 
@@ -1217,9 +1340,7 @@ export class TrackingManager {
                 return t >= firstDate && t <= lastDate;
               });
               if (!hasAnyInRange && this.chartRange !== "all") {
-                if (this.app.setChartRange) {
-                  this.app.setChartRange("all");
-                } else {
+                this.setChartRange("all"); else {
                   this.chartRange = "all";
                 }
                 return;
@@ -1379,37 +1500,8 @@ export class TrackingManager {
    * @returns {void}
    */
   setScaleModeWithUI(mode) {
-    // 스케일 모드 설정
     this.setScaleMode(mode);
 
-    // UI 버튼 스타일 업데이트
-    const combinedBtn = document.getElementById("chart-scale-combined");
-    const splitBtn = document.getElementById("chart-scale-split");
-    
-    if (combinedBtn && splitBtn) {
-      if (mode === "combined") {
-        combinedBtn.classList.add("active");
-        combinedBtn.style.background = "white";
-        combinedBtn.style.color = "#667eea";
-        combinedBtn.setAttribute("aria-pressed", "true");
-        splitBtn.classList.remove("active");
-        splitBtn.style.background = "transparent";
-        splitBtn.style.color = "#666";
-        splitBtn.setAttribute("aria-pressed", "false");
-      } else {
-        splitBtn.classList.add("active");
-        splitBtn.style.background = "white";
-        splitBtn.style.color = "#667eea";
-        splitBtn.setAttribute("aria-pressed", "true");
-        combinedBtn.classList.remove("active");
-        combinedBtn.style.background = "transparent";
-        combinedBtn.style.color = "#666";
-        combinedBtn.setAttribute("aria-pressed", "false");
-      }
-    }
-
-    // 차트 업데이트
-    this.updateTrackingChart();
   }
 
   /**
@@ -1423,78 +1515,8 @@ export class TrackingManager {
    * @returns {void}
    */
   setChartModeWithUI(mode) {
-    // 차트 모드 설정
     this.setChartMode(mode);
 
-    // UI 버튼 스타일 업데이트
-    const totalBtn = document.getElementById("chart-mode-total");
-    const individualBtn = document.getElementById("chart-mode-individual");
-    const postSelectorContainer = document.getElementById("post-selector-container");
-
-    if (mode === "total") {
-      if (totalBtn) {
-        totalBtn.classList.add("active");
-        totalBtn.style.background = "white";
-        totalBtn.style.color = "#667eea";
-        totalBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-        totalBtn.setAttribute("aria-pressed", "true");
-      }
-
-      if (individualBtn) {
-        individualBtn.classList.remove("active");
-        individualBtn.style.background = "transparent";
-        individualBtn.style.color = "#666";
-        individualBtn.style.boxShadow = "none";
-        individualBtn.setAttribute("aria-pressed", "false");
-      }
-
-      if (postSelectorContainer) {
-        postSelectorContainer.style.display = "none";
-      }
-      
-      this.selectedChartPostId = null;
-      
-      // 전체 총합 모드로 전환 시 검색 입력창 초기화
-      const searchInput = document.getElementById("chart-post-search");
-      if (searchInput) {
-        searchInput.value = "";
-      }
-      const dropdown = document.getElementById("post-selector-dropdown");
-      if (dropdown) {
-        dropdown.style.display = "none";
-      }
-      
-      // 외부 클릭 이벤트 리스너 제거
-      if (this.app && this.app.handlePostSelectorClickOutside) {
-        document.removeEventListener("click", this.app.handlePostSelectorClickOutside);
-      }
-    } else {
-      if (individualBtn) {
-        individualBtn.classList.add("active");
-        individualBtn.style.background = "white";
-        individualBtn.style.color = "#667eea";
-        individualBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-        individualBtn.setAttribute("aria-pressed", "true");
-      }
-
-      if (totalBtn) {
-        totalBtn.classList.remove("active");
-        totalBtn.style.background = "transparent";
-        totalBtn.style.color = "#666";
-        totalBtn.style.boxShadow = "none";
-        totalBtn.setAttribute("aria-pressed", "false");
-      }
-
-      if (postSelectorContainer) {
-        postSelectorContainer.style.display = "block";
-      }
-      
-      // 포스트 선택 드롭다운 채우기
-      this.populatePostSelector();
-    }
-
-    // 차트 업데이트
-    this.updateTrackingChart();
   }
 
   /**
@@ -1509,29 +1531,8 @@ export class TrackingManager {
    * @returns {void}
    */
   setChartRangeWithUI(range) {
-    // 차트 범위 설정
     this.setChartRange(range);
 
-    // UI 버튼 스타일 업데이트
-    const ranges = ["7d", "30d", "all"];
-    ranges.forEach((r) => {
-      const btn = document.getElementById(`chart-range-${r}`);
-      if (!btn) return;
-      if (r === range) {
-        btn.classList.add("active");
-        btn.style.background = "white";
-        btn.style.color = "#667eea";
-        btn.setAttribute("aria-pressed", "true");
-      } else {
-        btn.classList.remove("active");
-        btn.style.background = "transparent";
-        btn.style.color = "#666";
-        btn.setAttribute("aria-pressed", "false");
-      }
-    });
-
-    // 차트 업데이트
-    this.updateTrackingChart();
   }
 
 
