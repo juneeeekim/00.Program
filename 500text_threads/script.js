@@ -19,6 +19,7 @@ import { TextCrudManager } from "./js/text-crud.js";
 import { FilterManager } from "./js/filters.js";
 import { UrlLinkManager } from "./js/url-link.js";  // [2026-01-18] URL 연결 기능
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
+import { logger } from "./js/logger.js";
 
 /**
  * 500 Text Threads - Main Script
@@ -3917,6 +3918,16 @@ class DualTextWriter {
   async loadUserData() {
     if (!this.currentUser) return;
 
+    /* ============================================================
+     * [iOS Patch] 2026-01-18: iOS/WebKit용 토큰 동기화 가드
+     * - 아이폰/아이패드에서 인증 직후 Firestore 요청 시 
+     *   토큰 미준비로 인한 'Permission Denied' 에러 방지
+     * ============================================================ */
+    if (this.authManager && this.authManager.isIOS()) {
+      logger.log("[iOS Patch] iOS 환경 감지: 토큰 준비 상태를 확인합니다.");
+      await this.authManager.waitForToken();
+    }
+
     try {
       // ✅ Phase 3.1.1: 필수 데이터 병렬 로드 (30-50% 단축)
       // loadSavedTextsFromFirestore()와 loadTrackingPosts()는 서로 독립적이므로
@@ -4062,8 +4073,11 @@ class DualTextWriter {
 
   // Firestore에서 저장된 텍스트들 불러오기
   // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
-  async loadSavedTextsFromFirestore(filterOptions = {}) {
+  async loadSavedTextsFromFirestore(filterOptions = {}, retryCount = 0) {
     if (!this.currentUser || !this.isFirebaseReady) return;
+
+    // [P1-04] retryCount 변수 사용 확인
+    const isFirstAttempt = retryCount === 0;
 
     try {
       const textsRef = window.firebaseCollection(
@@ -4072,6 +4086,7 @@ class DualTextWriter {
         this.currentUser.uid,
         "texts"
       );
+
 
       // 서버 사이드 필터링 구성 (성능 최적화)
       // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
@@ -4172,9 +4187,23 @@ class DualTextWriter {
           postLoadError?.message || postLoadError);
       }
     } catch (error) {
+      // ===== [iOS Patch] 2026-01-18: iOS용 권한 오류 자동 재시도 =====
+      if (error.code === "permission-denied" && isFirstAttempt) {
+        logger.warn("[iOS Patch] 권한 부족(Permission Denied) 감지. 1초 후 재시도합니다...");
+        this.showMessage("ℹ️ 인증 정보를 동기화 중입니다. 잠시만 기다려주세요...", "info"); // [UX] 친절한 메시지 추가
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return this.loadSavedTextsFromFirestore(filterOptions, retryCount + 1);
+      }
+
       // ===== [2026-01-18] 에러 로깅 개선: error 객체 직렬화 문제 해결 =====
-      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      const errorMessage = error?.message || error?.toString() || "Unknown error";
       console.error("Firestore에서 텍스트 불러오기 실패:", errorMessage);
+      
+      // [UX] 권한 에러 시 사용자 친절 문구
+      if (error.code === "permission-denied") {
+          this.showMessage("⚠️ 데이터 접근 권한을 확인 중입니다. 잠시 후 페이지를 새로고침 해주세요.", "warning");
+      }
+
       // 복합 인덱스 오류인 경우 안내 메시지
       if (error.code === "failed-precondition") {
         console.warn(
@@ -8104,10 +8133,10 @@ document.head.appendChild(style);
 // ==================== 트래킹 기능 메서드들 ====================
 
 // [P1-02] 트래킹 포스트 로드 - TrackingManager로 위임
-DualTextWriter.prototype.loadTrackingPosts = async function () {
+DualTextWriter.prototype.loadTrackingPosts = async function (retryCount = 0) {
   // TrackingManager로 위임 (Firebase 의존성 주입 패턴)
   if (this.trackingManager) {
-    return await this.trackingManager.loadTrackingPosts();
+    return await this.trackingManager.loadTrackingPosts(retryCount);
   }
   console.warn('[loadTrackingPosts] TrackingManager가 초기화되지 않았습니다.');
 };

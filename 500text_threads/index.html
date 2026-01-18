@@ -3004,21 +3004,25 @@
       // 전역 변수로 iOS 감지 결과 노출 (다른 스크립트에서 활용 가능)
       window.isIOSDevice = isIOS;
       
-      /* ========================================
-       * [P1-03] Firestore 초기화 - iOS LTE/5G 환경 데이터 로드 문제 해결
-       * - experimentalForceLongPolling: WebSocket 대신 Long Polling 사용 (통신사 NAT 우회)
-       * - persistentLocalCache: 오프라인 캐시 활성화 (50MB 제한)
-       * - 수정일: 2026-01-13
-       * ======================================== */
-      const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,  // 🔴 LTE/5G 필수 설정
-        localCache: persistentLocalCache({
-          cacheSizeBytes: 50 * 1024 * 1024  // 50MB
-        })
-      });
+      /* ============================================================
+       * [iOS Patch] 2026-01-18: iOS WebKit용 오프라인 지속성 최적화
+       * - iOS/Safari 환경의 IndexedDB 불안정성(QuotaExceededError 등) 대응
+       * - 비 iOS 기기에서만 IndexedDB 캐시 활성화
+       * ============================================================ */
+      const firestoreSettings = {
+        experimentalForceLongPolling: true // 🔴 LTE/5G 필수 설정
+      };
 
-      // 오프라인 지속성 코드는 초기화 문제를 일으켜 잠시 비활성화함
-      // enableIndexedDbPersistence(db)...
+      if (!isIOS) {
+        firestoreSettings.localCache = persistentLocalCache({
+          cacheSizeBytes: 50 * 1024 * 1024 // 50MB
+        });
+        console.log('✅ [Persistence] Offline cache enabled (IndexedDB)');
+      } else {
+        console.info("🍎 [iOS Patch] iOS WebKit detected: Using memory cache for stability");
+      }
+
+      const db = initializeFirestore(app, firestoreSettings);
 
       // 전역 변수로 설정
       window.firebaseAuth = auth;
