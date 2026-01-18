@@ -201,4 +201,33 @@ export class AuthManager {
             return false;
         }
     }
+
+    /**
+     * Google 로그인 처리
+     */
+    async googleLogin() {
+        if (!this.isFirebaseReady) {
+            this.showMessage('Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
+            return;
+        }
+
+        try {
+            const provider = new window.firebaseGoogleAuthProvider();
+            // 팝업으로 로그인 시도
+            const result = await window.firebaseSignInWithPopup(this.auth, provider);
+            const user = result.user;
+            
+            logger.log('[AuthManager] Google 로그인 성공:', user.email);
+            return { success: true, user };
+        } catch (error) {
+            logger.error('[AuthManager] Google 로그인 실패:', error);
+            
+            if (error.code === 'auth/popup-closed-by-user') {
+                this.showMessage('로그인이 취소되었습니다.', 'info');
+            } else {
+                this.showMessage(`Google 로그인 실패: ${error.message}`, 'error');
+            }
+            return { success: false, error };
+        }
+    }
 }
