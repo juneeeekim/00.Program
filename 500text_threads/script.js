@@ -345,8 +345,13 @@ class DualTextWriter {
     // SECTION 4: Firebase 초기화 및 설정
     // ========================================================================
 
-    // Firebase 초기화 대기
-    this.waitForFirebase();
+    // ============================================================================
+    // [P1-01 HOTFIX] 2026-01-19: 조기 waitForFirebase() 호출 제거
+    // - 문제: waitForFirebase()가 AuthManager 생성(line 517) 전에 호출됨
+    // - 해결: InitManager.initialize()에서 await this.app.waitForFirebase() 수행
+    // - 참조: js/init.js line 203
+    // ============================================================================
+    // this.waitForFirebase(); // REMOVED - InitManager에서 처리
 
     // Firebase 설정 안내
     this.showFirebaseSetupNotice();
