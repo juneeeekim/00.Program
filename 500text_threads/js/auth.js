@@ -34,6 +34,16 @@ export class AuthManager {
     }
 
     /**
+     * 모바일 플랫폼 여부 확인 (iOS + Android + 기타 모바일)
+     * [2026-01-18] Android 모바일에서도 토큰 동기화 지연 문제 발생으로 확장
+     * @returns {boolean} 모바일 환경 여부
+     */
+    isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    /**
      * ID 토큰 준비 상태 대기
      * iOS 환경에서 인증 직후 Firestore 접근 시 권한 오류(Permission Denied) 방지용
      * @param {number} maxAttempts - 최대 시도 횟수
