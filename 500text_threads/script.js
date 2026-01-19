@@ -1795,42 +1795,12 @@ class DualTextWriter {
     return this.referenceManager.showDuplicateConfirmModal(duplicate);
   }
 
-  // Firebase 기반 인증으로 대체됨
-  // Firebase Google 로그인 처리
-  // Firebase Google 로그인 처리
-  async googleLogin() {
-    if (!this.isFirebaseReady) {
-      this.showMessage(
-        "Firebase가 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.",
-        "error"
-      );
-      return;
-    }
-
-    try {
-      const provider = new window.firebaseGoogleAuthProvider();
-      const result = await window.firebaseSignInWithPopup(this.auth, provider);
-      const user = result.user;
-
-      // 기존 로컬 데이터 마이그레이션 확인
-      await this.checkAndMigrateLocalData(user.uid);
-
-      this.showMessage(
-        `${user.displayName || user.email}님, Google 로그인으로 환영합니다!`,
-        "success"
-      );
-    } catch (error) {
-      console.error("Google 로그인 실패:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        this.showMessage("로그인이 취소되었습니다.", "info");
-      } else {
-        this.showMessage(
-          "Google 로그인에 실패했습니다. 기존 방식으로 로그인해주세요.",
-          "error"
-        );
-      }
-    }
-  }
+  // ============================================================================
+  // [P1-01] 2026-01-20: 구버전 googleLogin() 클래스 메서드 삭제됨
+  // - 사유: constructor (line 552)에서 AuthManager로 위임 완료
+  // - 참조: this.googleLogin = () => this.authManager.googleLogin();
+  // - 실제 구현: js/auth.js > AuthManager.googleLogin()
+  // ============================================================================
 
   /**
    * 사용자명을 Firestore에 저장
@@ -7030,10 +7000,26 @@ class DualTextWriter {
   }
 }
 
+// ============================================================================
+// [P1-03] 2026-01-20: ES Module 초기화 타이밍 버그 수정
+// - 문제: type="module"로 로드되면 자동 defer되어 DOMContentLoaded가 이미 발생한 후 실행됨
+// - 해결: document.readyState 체크하여 이미 로드 완료 시 즉시 초기화
+// ============================================================================
+
 // Initialize the application
 let dualTextWriter;
 
-document.addEventListener("DOMContentLoaded", () => {
+/**
+ * 앱 초기화 함수
+ * DOMContentLoaded 이벤트와 무관하게 호출 가능
+ */
+function initApp() {
+  // 중복 초기화 방지
+  if (window.dualTextWriter) {
+    logger.warn('[initApp] 이미 초기화됨, 스킵');
+    return;
+  }
+
   dualTextWriter = new DualTextWriter();
   window.dualTextWriter = dualTextWriter;
   window.app = dualTextWriter;
@@ -7044,61 +7030,73 @@ document.addEventListener("DOMContentLoaded", () => {
     mainContent.style.display = "block";
   }
 
-  // ============================================================================
-  // [Phase 10-03] 전역 디버깅 함수 등록
-  // 개발 모드(localhost)에서만 노출되어 프로덕션 보안 강화
-  // ============================================================================
-  const isDevelopmentMode =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1" ||
-    new URLSearchParams(window.location.search).get("debug") === "true";
+  logger.log('[initApp] ✅ 앱 초기화 완료');
+}
 
-  if (isDevelopmentMode) {
-    // 저장된 글 목록 디버깅
-    window.debugSavedItems = () => dualTextWriter.debugSavedItems();
+// DOM 상태에 따른 초기화 분기
+if (document.readyState === 'loading') {
+  // DOM이 아직 로드 중이면 이벤트 대기
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  // DOM이 이미 로드되었으면 즉시 실행
+  initApp();
+}
 
-    // LLM 특성 검증
-    window.verifyLLMCharacteristics = () =>
-      dualTextWriter.verifyLLMCharacteristics();
+// ============================================================================
+// [Phase 10-03] 전역 디버깅 함수 등록
+// 개발 모드(localhost)에서만 노출되어 프로덕션 보안 강화
+// [P1-03] 2026-01-20: DOMContentLoaded 콜백에서 분리하여 독립 실행
+// ============================================================================
+const isDevelopmentMode =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  new URLSearchParams(window.location.search).get("debug") === "true";
 
-    // 편집 버튼 테스트 (인덱스 지정 가능)
-    window.testEditButton = (index = 0) => {
-      const editButtons = document.querySelectorAll(".btn-edit");
-      if (editButtons[index]) {
-        editButtons[index].click();
-      } else {
-        console.log("편집 버튼을 찾을 수 없습니다.");
-      }
-    };
+if (isDevelopmentMode) {
+  // 저장된 글 목록 디버깅
+  window.debugSavedItems = () => dualTextWriter?.debugSavedItems?.();
 
-    // 삭제 버튼 테스트 (인덱스 지정 가능)
-    window.testDeleteButton = (index = 0) => {
-      const deleteButtons = document.querySelectorAll(".btn-delete");
-      if (deleteButtons[index]) {
-        deleteButtons[index].click();
-      } else {
-        console.log("삭제 버튼을 찾을 수 없습니다.");
-      }
-    };
+  // LLM 특성 검증
+  window.verifyLLMCharacteristics = () =>
+    dualTextWriter?.verifyLLMCharacteristics?.();
 
-    // LLM 검증 버튼 테스트 (서비스 및 인덱스 지정 가능)
-    window.testLLMValidation = (llmService = "chatgpt", index = 0) => {
-      const llmButtons = document.querySelectorAll(
-        `[data-llm="${llmService}"]`
-      );
-      if (llmButtons[index]) {
-        llmButtons[index].click();
-      } else {
-        console.log(`${llmService} 검증 버튼을 찾을 수 없습니다.`);
-      }
-    };
+  // 편집 버튼 테스트 (인덱스 지정 가능)
+  window.testEditButton = (index = 0) => {
+    const editButtons = document.querySelectorAll(".btn-edit");
+    if (editButtons[index]) {
+      editButtons[index].click();
+    } else {
+      console.log("편집 버튼을 찾을 수 없습니다.");
+    }
+  };
 
-    console.log(
-      "🔧 [DEV MODE] 디버깅 함수 등록 완료:",
-      "debugSavedItems, verifyLLMCharacteristics, testEditButton, testDeleteButton, testLLMValidation"
+  // 삭제 버튼 테스트 (인덱스 지정 가능)
+  window.testDeleteButton = (index = 0) => {
+    const deleteButtons = document.querySelectorAll(".btn-delete");
+    if (deleteButtons[index]) {
+      deleteButtons[index].click();
+    } else {
+      console.log("삭제 버튼을 찾을 수 없습니다.");
+    }
+  };
+
+  // LLM 검증 버튼 테스트 (서비스 및 인덱스 지정 가능)
+  window.testLLMValidation = (llmService = "chatgpt", index = 0) => {
+    const llmButtons = document.querySelectorAll(
+      `[data-llm="${llmService}"]`
     );
-  }
-});
+    if (llmButtons[index]) {
+      llmButtons[index].click();
+    } else {
+      console.log(`${llmService} 검증 버튼을 찾을 수 없습니다.`);
+    }
+  };
+
+  console.log(
+    "🔧 [DEV MODE] 디버깅 함수 등록 완료:",
+    "debugSavedItems, verifyLLMCharacteristics, testEditButton, testDeleteButton, testLLMValidation"
+  );
+}
 
 // ============================================================================
 // [P1-07] Threads delegation wrappers (compatibility layer)
