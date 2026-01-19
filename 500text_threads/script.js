@@ -7,6 +7,9 @@ import {
   loadFromLocalStorage,
   isOnline,
   showOfflineNotification,
+  ensureFirebaseReady,
+  requireElement,
+  withErrorHandler,
 } from "./js/utils.js";
 import { AuthManager } from "./js/auth.js";
 import { Constants } from "./js/constants.js";
@@ -17,6 +20,7 @@ import { LLMValidationManager } from "./js/llm-validation.js";
 import { ReferenceManager } from "./js/reference.js";
 import { SNSManager } from "./js/sns.js";
 import { SavedTextsManager } from "./js/saved-texts.js";
+import { CardRenderer } from "./js/card-renderer.js";
 import { ModalManager } from "./js/modals.js";
 import { ExpandModeManager } from "./js/expand-mode.js";
 import { TextCrudManager } from "./js/text-crud.js";
@@ -25,6 +29,7 @@ import { UrlLinkManager } from "./js/url-link.js";  // [2026-01-18] URL 연결 �
 import { BackupManager } from "./js/backup.js";     // [2026-01-18] 백업 기능
 import { ThreadsManager } from "./js/threads.js";   // [2026-01-18] Phase 1: Threads 포스팅 관리
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
+import { OrderManager } from "./js/order-manager.js"; // [2026-01-19] Phase 2: 순서 관리
 import { logger } from "./js/logger.js";
 
 /**
@@ -194,6 +199,10 @@ class DualTextWriter {
     // [Refactoring] 저장된 글 관련 상태를 SavedTextsManager로 위임
     this.savedTextsManager = new SavedTextsManager(this);
 
+    // ==================== CardRenderer 인스턴스 생성 (Phase C) ====================
+    // [Refactoring] 저장된 글 카드 렌더링 전담
+    this.cardRenderer = new CardRenderer(this);
+
     // ==================== ModalManager 인스턴스 생성 (Phase 6) ====================
     // [Refactoring] 모달/바텀시트 관련 기능을 ModalManager로 위임
     this.modalManager = new ModalManager(this);
@@ -221,6 +230,10 @@ class DualTextWriter {
     // ==================== ThreadsManager 인스턴스 생성 [2026-01-18] ====================
     // [Phase 1] Threads 포스팅 관리 기능 (script.js 리팩토링)
     this.threadsManager = new ThreadsManager(this);
+
+    // ==================== OrderManager 인스턴스 생성 [2026-01-19] ====================
+    // [Phase 2] 스크립트 순서 관리 기능 (script.js 리팩토링)
+    this.orderManager = new OrderManager(this);
 
     // ========================================================================
     // SECTION 3: 프로퍼티 위임 (API 호환성 유지)
@@ -1152,24 +1165,24 @@ class DualTextWriter {
 
     // 레퍼런스 글 이벤트
     this.refTextInput.addEventListener("input", () => {
-      this.updateCharacterCount("ref");
+      this.textCrudManager.updateCharacterCount("ref");
       this.scheduleTempSave();
     });
-    this.refClearBtn.addEventListener("click", () => this.clearText("ref"));
-    this.refSaveBtn.addEventListener("click", () => this.saveText("ref"));
+    this.refClearBtn.addEventListener("click", () => this.textCrudManager.clearText("ref"));
+    this.refSaveBtn.addEventListener("click", () => this.textCrudManager.saveText("ref"));
     this.refDownloadBtn.addEventListener("click", () =>
-      this.downloadAsTxt("ref")
+      this.textCrudManager.downloadAsTxt("ref")
     );
 
     // 수정/작성 글 이벤트
     this.editTextInput.addEventListener("input", () => {
-      this.updateCharacterCount("edit");
+      this.textCrudManager.updateCharacterCount("edit");
       this.scheduleTempSave();
     });
-    this.editClearBtn.addEventListener("click", () => this.clearText("edit"));
-    this.editSaveBtn.addEventListener("click", () => this.saveText("edit"));
+    this.editClearBtn.addEventListener("click", () => this.textCrudManager.clearText("edit"));
+    this.editSaveBtn.addEventListener("click", () => this.textCrudManager.saveText("edit"));
     this.editDownloadBtn.addEventListener("click", () =>
-      this.downloadAsTxt("edit")
+      this.textCrudManager.downloadAsTxt("edit")
     );
 
     // 반자동화 포스팅 이벤트
@@ -1442,8 +1455,8 @@ class DualTextWriter {
     if (refMax) refMax.textContent = String(value);
     if (editMax) editMax.textContent = String(value);
     // 진행바/버튼 상태 재계산
-    this.updateCharacterCount("ref");
-    this.updateCharacterCount("edit");
+    this.textCrudManager.updateCharacterCount("ref");
+    this.textCrudManager.updateCharacterCount("edit");
   }
 
   // ==================== 필터 메서드 위임 (Phase 5-03) ====================
@@ -1531,25 +1544,6 @@ class DualTextWriter {
     const show =
       this.savedFilter === "reference" || this.savedFilter === "reference-used";
     this.referenceTypeFilterContainer.style.display = show ? "flex" : "none";
-  }
-
-  // ==================== 글자 수 관리 Wrapper 메서드 (Phase 8) ====================
-  // [Refactoring] 실제 구현은 js/text-crud.js > TextCrudManager 클래스로 이동
-
-  /**
-   * 글자 수 카운터 업데이트 (Wrapper)
-   * @see TextCrudManager.updateCharacterCount
-   */
-  updateCharacterCount(panel) {
-    return this.textCrudManager.updateCharacterCount(panel);
-  }
-
-  /**
-   * 한글 글자 수 계산 (Wrapper)
-   * @see TextCrudManager.getKoreanCharacterCount
-   */
-  getKoreanCharacterCount(text) {
-    return this.textCrudManager.getKoreanCharacterCount(text);
   }
 
   /**
@@ -1734,10 +1728,11 @@ class DualTextWriter {
    */
   showMigrationProgressModal(total) {
     const modal = document.getElementById("migration-progress-modal");
-    if (modal) {
-      modal.style.display = "flex";
-      this.updateMigrationProgress(0, total);
+    if (!requireElement(modal, "migration-progress-modal", { warn: false })) {
+      return;
     }
+    modal.style.display = "flex";
+    this.updateMigrationProgress(0, total);
   }
 
   /**
@@ -1770,9 +1765,10 @@ class DualTextWriter {
    */
   hideMigrationProgressModal() {
     const modal = document.getElementById("migration-progress-modal");
-    if (modal) {
-      modal.style.display = "none";
+    if (!requireElement(modal, "migration-progress-modal", { warn: false })) {
+      return;
     }
+    modal.style.display = "none";
   }
 
   /**
@@ -1959,36 +1955,9 @@ class DualTextWriter {
     // 캐시 무효화 (데이터 변경 시)
     this.renderSavedTextsCache = null;
     this.renderSavedTextsCacheKey = null;
-    this.updateCharacterCount("ref");
-    this.updateCharacterCount("edit");
+    this.textCrudManager.updateCharacterCount("ref");
+    this.textCrudManager.updateCharacterCount("edit");
     this.renderSavedTexts();
-  }
-
-  // ==================== 글 관리 (CRUD) Wrapper 메서드 (Phase 8) ====================
-  // [Refactoring] 실제 구현은 js/text-crud.js > TextCrudManager 클래스로 이동
-
-  /**
-   * 입력 필드 초기화 (Wrapper)
-   * @see TextCrudManager.clearText
-   */
-  clearText(panel) {
-    return this.textCrudManager.clearText(panel);
-  }
-
-  /**
-   * Firestore에 텍스트 저장 (Wrapper)
-   * @see TextCrudManager.saveText
-   */
-  async saveText(panel) {
-    return this.textCrudManager.saveText(panel);
-  }
-
-  /**
-   * 텍스트를 TXT 파일로 다운로드 (Wrapper)
-   * @see TextCrudManager.downloadAsTxt
-   */
-  downloadAsTxt(panel) {
-    return this.textCrudManager.downloadAsTxt(panel);
   }
 
   // ==================== 렌더링 메서드 위임 (Phase 5-02) ====================
@@ -2041,7 +2010,7 @@ class DualTextWriter {
    * - 레퍼런스 카드의 "이 레퍼런스를 참고한 글 N개" 배지 클릭 이벤트
    */
   bindLinkedReferenceBadgeEvents() {
-    try {
+    return withErrorHandler(() => {
       // 작성글 카드의 "참고 레퍼런스 N개" 배지 클릭
       const linkedRefBadges = document.querySelectorAll(".linked-ref-badge");
       linkedRefBadges.forEach((badge) => {
@@ -2071,247 +2040,9 @@ class DualTextWriter {
       });
 
       console.log("✅ 배지 클릭 이벤트 바인딩 완료");
-    } catch (error) {
-      console.error("배지 이벤트 바인딩 실패:", error);
-    }
+    }, { context: "bindLinkedReferenceBadgeEvents" });
   }
 
-  // 저장된 항목 카드 렌더링 함수 (재사용 가능하게 분리)
-  renderSavedItemCard(item, postData, index) {
-    const metaText = `${
-      (item.type || "edit") === "reference" ? "📖 레퍼런스" : "✏️ 작성"
-    } · ${item.date} · ${item.characterCount}자`;
-    // 통일된 스키마: card:{itemId}:expanded
-    const expanded = localStorage.getItem(`card:${item.id}:expanded`) === "1";
-    // 타임라인 HTML 생성
-    const timelineHtml = this.renderTrackingTimeline(
-      postData?.metrics || [],
-      item.id
-    );
-
-    // 레퍼런스 글인 경우 사용 여부 배지 및 유형 배지 생성
-    const isReference = (item.type || "edit") === "reference";
-    // usageCount가 undefined일 경우 0으로 설정 (레퍼런스 글은 항상 사용 여부 배지 표시)
-    const usageCount = isReference
-      ? item.usageCount !== undefined
-        ? item.usageCount
-        : 0
-      : 0;
-    const usageBadgeHtml = isReference
-      ? this.renderReferenceUsageBadge(usageCount)
-      : "";
-    const refType = item.referenceType || "unspecified";
-    const refTypeBadgeHtml = isReference
-      ? this.renderReferenceTypeBadge(refType)
-      : "";
-
-    // ✅ Phase 1.6.1: 작성글-레퍼런스 연동 배지 생성
-    // 작성글 카드: 연결된 레퍼런스 개수 표시
-    let linkedRefBadge = "";
-    const isEdit = (item.type || "edit") === "edit";
-    if (isEdit && Array.isArray(item.linkedReferences)) {
-      const refCount = item.linkedReferences.length;
-      if (refCount > 0) {
-        linkedRefBadge = `
-                    <button 
-                        class="linked-ref-badge" 
-                        data-edit-id="${item.id}"
-                        aria-label="${refCount}개의 참고 레퍼런스 보기"
-                        title="이 글이 참고한 레퍼런스 목록">
-                        📚 참고 레퍼런스 ${refCount}개
-                    </button>
-                `;
-      }
-    }
-
-    // 레퍼런스 카드: 이 레퍼런스를 참고한 작성글 개수 표시 (역방향)
-    let usedInEditsBadge = "";
-    if (isReference) {
-      const usedEdits = this.getEditsByReference(item.id);
-      const editCount = usedEdits.length;
-      if (editCount > 0) {
-        usedInEditsBadge = `
-                    <button 
-                        class="used-in-edits-badge" 
-                        data-ref-id="${item.id}"
-                        aria-label="이 레퍼런스를 참고한 글 ${editCount}개 보기"
-                        title="이 레퍼런스를 참고한 작성글 목록">
-                        📝 이 레퍼런스를 참고한 글 ${editCount}개
-                    </button>
-                `;
-      }
-    }
-
-    // ✅ SNS 플랫폼 배지 생성 (작성 글용)
-    let snsPlatformsHtml = "";
-    if (isEdit && Array.isArray(item.platforms) && item.platforms.length > 0) {
-      // 유효한 플랫폼 ID만 필터링
-      const validPlatformIds = DualTextWriter.SNS_PLATFORMS.map((p) => p.id);
-      const validPlatforms = item.platforms
-        .filter((platformId) => validPlatformIds.includes(platformId))
-        .map((platformId) => {
-          const platform = DualTextWriter.SNS_PLATFORMS.find(
-            (p) => p.id === platformId
-          );
-          return platform
-            ? { id: platformId, name: platform.name, icon: platform.icon }
-            : null;
-        })
-        .filter(Boolean);
-
-      if (validPlatforms.length > 0) {
-        const platformsList = validPlatforms
-          .map(
-            (p) =>
-              `<span class="sns-platform-badge" role="listitem" aria-label="${this.escapeHtml(
-                p.name
-              )} 플랫폼">${p.icon} ${this.escapeHtml(p.name)}</span>`
-          )
-          .join("");
-        snsPlatformsHtml = `
-                    <div class="saved-item-platforms" role="list" aria-label="SNS 플랫폼 목록">
-                        ${platformsList}
-                    </div>
-                `;
-      }
-    }
-
-    // 검색어 가져오기
-    const searchTerm = this.savedSearchInput?.value.toLowerCase().trim() || "";
-
-    // 하이라이팅 적용
-    const highlightedTopic = item.topic
-      ? this.highlightText(item.topic, searchTerm)
-      : "";
-    const highlightedContent = this.highlightText(item.content, searchTerm);
-
-    return `
-        <div class="saved-item ${index === 0 ? "new" : ""}" data-item-id="${
-      item.id
-    }" role="article" aria-labelledby="item-header-${item.id}">
-            <div class="saved-item-header" id="item-header-${item.id}">
-                <div class="saved-item-header-left">
-                    <span class="saved-item-type" aria-label="${
-                      (item.type || "edit") === "reference"
-                        ? "레퍼런스 글"
-                        : "작성 글"
-                    }">${
-      (item.type || "edit") === "reference" ? "📖 레퍼런스" : "✏️ 작성"
-    }</span>
-                    ${refTypeBadgeHtml}
-                    ${usageBadgeHtml}
-                </div>
-            </div>
-            <div class="saved-item-meta" aria-label="메타 정보: ${metaText}">
-                ${metaText}
-                ${
-                  linkedRefBadge
-                    ? `<span class="meta-separator">·</span>${linkedRefBadge}`
-                    : ""
-                }
-                ${
-                  usedInEditsBadge
-                    ? `<span class="meta-separator">·</span>${usedInEditsBadge}`
-                    : ""
-                }
-            </div>
-            ${
-              item.topic
-                ? `<div class="saved-item-topic" aria-label="주제: ${this.escapeHtml(
-                    item.topic
-                  )}">🏷️ ${highlightedTopic}</div>`
-                : ""
-            }
-            ${snsPlatformsHtml}
-            <div class="saved-item-content ${
-              expanded ? "expanded" : ""
-            }" aria-label="본문 내용">${highlightedContent}</div>
-            <button class="saved-item-toggle" data-action="toggle" data-item-id="${
-              item.id
-            }" aria-expanded="${expanded ? "true" : "false"}" aria-label="${
-      expanded ? "내용 접기" : "내용 더보기"
-    }">${expanded ? "접기" : "더보기"}</button>
-            ${
-              timelineHtml
-                ? `<div class="saved-item-tracking" role="region" aria-label="트래킹 기록">${timelineHtml}</div>`
-                : ""
-            }
-            <div class="saved-item-actions actions--primary" role="group" aria-label="카드 작업 버튼">
-                <button class="action-button btn-primary" data-action="edit" data-type="${
-                  item.type || "edit"
-                }" data-item-id="${item.id}" aria-label="${
-      (item.type || "edit") === "reference"
-        ? "레퍼런스 글 편집"
-        : "작성 글 편집"
-    }">편집</button>
-                <button class="action-button btn-tracking" data-action="add-tracking" data-item-id="${
-                  item.id
-                }" aria-label="트래킹 데이터 입력">📊 데이터 입력</button>
-                <div class="llm-validation-dropdown" style="position: relative; display: inline-block;">
-                    <button class="action-button btn-llm-main" data-action="llm-validation" data-item-id="${
-                      item.id
-                    }" aria-label="LLM 검증 메뉴">🔍 LLM 검증</button>
-                    <div class="llm-dropdown-menu">
-                        <button class="llm-option" data-llm="chatgpt" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🤖</span>
-                                    <span class="llm-name">ChatGPT</span>
-                                    <span class="llm-description">SNS 후킹 분석</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="gemini" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🧠</span>
-                                    <span class="llm-name">Gemini</span>
-                                    <span class="llm-description">심리적 후킹 분석</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="perplexity" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🔎</span>
-                                    <span class="llm-name">Perplexity</span>
-                                    <span class="llm-description">트렌드 검증</span>
-                                </div>
-                            </div>
-                        </button>
-                        <button class="llm-option" data-llm="grok" data-item-id="${
-                          item.id
-                        }">
-                            <div class="llm-option-content">
-                                <div class="llm-option-header">
-                                    <span class="llm-icon">🚀</span>
-                                    <span class="llm-name">Grok</span>
-                                    <span class="llm-description">임팩트 최적화</span>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-                <div class="more-menu actions--more">
-                    <button class="more-menu-btn" data-action="more" data-item-id="${
-                      item.id
-                    }" aria-haspopup="true" aria-expanded="false" aria-label="기타 작업 메뉴 열기">⋯</button>
-                    <div class="more-menu-list" role="menu" aria-label="기타 작업">
-                        <button class="more-menu-item" role="menuitem" data-action="delete" data-item-id="${
-                          item.id
-                        }" aria-label="글 삭제">삭제</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        `;
-  }
   // 미트래킹 글 개수 확인 및 일괄 트래킹 버튼 업데이트
   /**
    * 미트래킹 글 확인 및 일괄 마이그레이션 버튼 업데이트
@@ -2324,10 +2055,12 @@ class DualTextWriter {
    * @returns {void}
    */
   updateBatchMigrationButton() {
-    if (!this.batchMigrationBtn || !this.currentUser || !this.isFirebaseReady)
+    if (!requireElement(this.batchMigrationBtn, "batchMigrationBtn", { warn: false })) {
       return;
+    }
+    if (!ensureFirebaseReady(this)) return;
 
-    try {
+    return withErrorHandler(() => {
       // ✅ 성능 최적화: 메모리 데이터만 사용 (Firebase 쿼리 없음)
       // Set을 사용하여 O(1) 검색 구현
       const trackedTextIds = new Set(
@@ -2365,20 +2098,18 @@ class DualTextWriter {
       console.log(
         `✅ 미트래킹 글 확인 완료: ${untrackedTexts.length}개 (메모리 검색, Firebase 쿼리 없음)`
       );
-    } catch (error) {
-      console.error("❌ 미트래킹 글 확인 실패:", error);
-
-      // 에러 발생 시 버튼 숨김
-      if (this.batchMigrationBtn) {
-        this.batchMigrationBtn.style.display = "none";
-      }
-
-      // 사용자 알림 (UX 개선)
-      this.showMessage(
-        "⚠️ 미트래킹 글 확인 중 오류가 발생했습니다.",
-        "warning"
-      );
-    }
+    }, {
+      context: "updateBatchMigrationButton",
+      onError: () => {
+        if (this.batchMigrationBtn) {
+          this.batchMigrationBtn.style.display = "none";
+        }
+        this.showMessage(
+          "⚠️ 미트래킹 글 확인 중 오류가 발생했습니다.",
+          "warning"
+        );
+      },
+    });
   }
 
   // 트래킹 타임라인 렌더링
@@ -3058,7 +2789,7 @@ class DualTextWriter {
       } else if (action === "edit") {
         const type = button.getAttribute("data-type");
         console.log("편집 액션 실행:", { itemId, type });
-        this.editText(itemId, type);
+        this.textCrudManager.editText(itemId, type);
       } else if (action === "delete") {
         console.log("삭제 액션 실행:", { itemId });
         // 이벤트 전파 제어: outsideClickHandler가 메뉴를 닫기 전에 삭제 실행
@@ -3077,7 +2808,7 @@ class DualTextWriter {
           }
         }
         // 삭제 실행
-        this.deleteText(itemId);
+        this.textCrudManager.deleteText(itemId);
       } else if (action === "track") {
         console.log("트래킹 액션 실행:", { itemId });
         this.startTrackingFromSaved(itemId);
@@ -3402,7 +3133,7 @@ class DualTextWriter {
         e.preventDefault();
         e.stopPropagation();
         console.log("직접 편집 버튼 클릭:", { itemId, type });
-        this.editText(itemId, type);
+        this.textCrudManager.editText(itemId, type);
       };
 
       button.addEventListener("click", button._editHandler);
@@ -3421,7 +3152,7 @@ class DualTextWriter {
         e.preventDefault();
         e.stopPropagation();
         console.log("직접 삭제 버튼 클릭:", { itemId });
-        this.deleteText(itemId);
+        this.textCrudManager.deleteText(itemId);
       };
 
       button.addEventListener("click", button._deleteHandler);
@@ -3494,41 +3225,6 @@ class DualTextWriter {
     );
 
     console.log("=== 디버깅 정보 끝 ===");
-  }
-
-  // ==================== 글 편집/삭제/복원 Wrapper 메서드 (Phase 8) ====================
-  // [Refactoring] 실제 구현은 js/text-crud.js > TextCrudManager 클래스로 이동
-
-  /**
-   * 저장된 글을 편집 영역으로 불러오기 (Wrapper)
-   * @see TextCrudManager.editText
-   */
-  editText(id, type) {
-    return this.textCrudManager.editText(id, type);
-  }
-
-  /**
-   * Firestore에서 텍스트 삭제 - Soft Delete (Wrapper)
-   * @see TextCrudManager.deleteText
-   */
-  async deleteText(id) {
-    return this.textCrudManager.deleteText(id);
-  }
-
-  /**
-   * 휴지통에서 글 복원 (Wrapper)
-   * @see TextCrudManager.restoreText
-   */
-  async restoreText(id) {
-    return this.textCrudManager.restoreText(id);
-  }
-
-  /**
-   * 글 영구 삭제 (Wrapper)
-   * @see TextCrudManager.permanentlyDeleteText
-   */
-  async permanentlyDeleteText(id) {
-    return this.textCrudManager.permanentlyDeleteText(id);
   }
 
   // [Refactoring] Utils 모듈 사용
@@ -3892,8 +3588,8 @@ class DualTextWriter {
           refText: refText,
           editText: editText,
           timestamp: Date.now(),
-          refCharacterCount: this.getKoreanCharacterCount(refText),
-          editCharacterCount: this.getKoreanCharacterCount(editText),
+          refCharacterCount: this.textCrudManager.getKoreanCharacterCount(refText),
+          editCharacterCount: this.textCrudManager.getKoreanCharacterCount(editText),
         };
 
         const userTempKey = `dualTextWriter_tempSave_${this.currentUser}`;
@@ -3931,11 +3627,11 @@ class DualTextWriter {
           if (confirm("임시 저장된 글이 있습니다. 복원하시겠습니까?")) {
             if (data.refText) {
               this.refTextInput.value = data.refText;
-              this.updateCharacterCount("ref");
+              this.textCrudManager.updateCharacterCount("ref");
             }
             if (data.editText) {
               this.editTextInput.value = data.editText;
-              this.updateCharacterCount("edit");
+              this.textCrudManager.updateCharacterCount("edit");
             }
             this.showMessage("임시 저장된 글이 복원되었습니다.", "success");
           }
@@ -3974,8 +3670,8 @@ class DualTextWriter {
       ]);
 
       // UI 업데이트 (동기)
-      this.updateCharacterCount("ref");
-      this.updateCharacterCount("edit");
+      this.textCrudManager.updateCharacterCount("ref");
+      this.textCrudManager.updateCharacterCount("edit");
       await this.renderSavedTexts();
       this.startTempSave();
       this.restoreTempSave();
@@ -4020,8 +3716,8 @@ class DualTextWriter {
       ]);
 
       // UI 업데이트
-      this.updateCharacterCount("ref");
-      this.updateCharacterCount("edit");
+      this.textCrudManager.updateCharacterCount("ref");
+      this.textCrudManager.updateCharacterCount("edit");
       await this.renderSavedTexts();
 
       // 미트래킹 글 버튼 상태 업데이트 (동기, Phase 2에서 최적화됨)
@@ -4101,10 +3797,9 @@ class DualTextWriter {
       console.error("loadSavedTexts 오류:", error);
       this.showMessage("❌ 저장된 글 불러오기에 실패했습니다.", "error");
     } finally {
-      this._isLoadingSavedTexts = false;  // 로딩 완료 플래그 해제
+      this._isLoadingSavedTexts = false; // 로딩 완료 플래그 해제
     }
   }
-
 
   // Firestore에서 저장된 텍스트들 불러오기
   // 성능 최적화: 서버 사이드 필터링 지원 (선택적)
@@ -4121,7 +3816,6 @@ class DualTextWriter {
         this.currentUser.uid,
         "texts"
       );
-
 
       // 서버 사이드 필터링 구성 (성능 최적화)
       // 참고: Firestore 복합 인덱스 필요 시 Firebase Console에서 생성 필요
@@ -4392,7 +4086,6 @@ class DualTextWriter {
   // [P1-08] Threads-related methods moved to ThreadsManager (js/threads.js)
   // - sanitizeText, optimizeContentForThreads, clipboard helpers, modals
   // ============================================================================
-
 
   // 오프라인 지원 함수들
   saveToLocalStorage(key, data) {
@@ -4730,7 +4423,7 @@ class DualTextWriter {
             const referenceData = {
               content: referenceContent,
               type: "reference",
-              characterCount: this.getKoreanCharacterCount(referenceContent),
+              characterCount: this.textCrudManager.getKoreanCharacterCount(referenceContent),
               createdAt: window.firebaseServerTimestamp(),
               updatedAt: window.firebaseServerTimestamp(),
             };
@@ -4753,7 +4446,7 @@ class DualTextWriter {
               id: referenceTextId,
               content: referenceContent,
               date: new Date().toLocaleString("ko-KR"),
-              characterCount: this.getKoreanCharacterCount(referenceContent),
+              characterCount: this.textCrudManager.getKoreanCharacterCount(referenceContent),
               type: "reference",
             };
             if (!this.savedTexts) {
@@ -4775,7 +4468,7 @@ class DualTextWriter {
           const textData = {
             content: content, // 원본 내용 (최적화 전)
             type: "edit",
-            characterCount: this.getKoreanCharacterCount(content),
+            characterCount: this.textCrudManager.getKoreanCharacterCount(content),
             createdAt: window.firebaseServerTimestamp(),
             updatedAt: window.firebaseServerTimestamp(),
           };
@@ -5110,7 +4803,7 @@ class DualTextWriter {
         if (item) {
           const type =
             (item.type || "edit") === "reference" ? "reference" : "edit";
-          this.editText(itemId, type);
+          this.textCrudManager.editText(itemId, type);
           this.showMessage("📝 편집 화면으로 전환했습니다.", "info");
         } else {
           this.showMessage("❌ 글을 찾을 수 없습니다.", "error");
@@ -5789,7 +5482,8 @@ class DualTextWriter {
       }
 
       // order 필드가 없는 경우 초기화
-      await this.initializeArticleOrders();
+      // [R3-03] OrderManager로 위임
+      await this.orderManager.initialize();
 
       // 카테고리 드롭다운 업데이트 (렌더링 전에 업데이트)
       this.updateCategoryDropdown();
@@ -5852,112 +5546,11 @@ class DualTextWriter {
     }
   }
 
-  /**
-   * order 필드 초기화 및 중복 정리
-   * - order가 없거나, 중복된 order가 있는 경우 실행
-   * - createdAt 기준으로 재정렬하여 타임스탬프 기반 order 할당
-   */
-  async initializeArticleOrders() {
-    if (!this.currentUser || !this.isFirebaseReady) return;
-
-    // 카테고리별로 그룹화
-    const articlesByCategory = {};
-    this.managementArticles.forEach((article) => {
-      const category = article.category || "미분류";
-      if (!articlesByCategory[category]) {
-        articlesByCategory[category] = [];
-      }
-      articlesByCategory[category].push(article);
-    });
-
-    try {
-      const batch = window.firebaseWriteBatch(this.db);
-      let batchCount = 0;
-      let hasUpdates = false;
-
-      for (const [category, articles] of Object.entries(articlesByCategory)) {
-        // 중복 체크
-        const orders = articles.map((a) => a.order);
-        const hasDuplicates = new Set(orders).size !== orders.length;
-        const hasMissingOrder = articles.some(
-          (a) => a.order === undefined || a.order === null
-        );
-        // [Fix] characterCount 누락 확인
-        const hasMissingCharCount = articles.some(
-          (a) => typeof a.characterCount !== "number"
-        );
-
-        if (hasDuplicates || hasMissingOrder || hasMissingCharCount) {
-          console.log(
-            `[Order/Data Fix] ${category}: 데이터 보정(순서/글자수)을 시작합니다.`
-          );
-
-          // createdAt 오름차순 정렬 (과거 -> 최신)
-          articles.sort((a, b) => {
-            const dateA = a.createdAt?.toDate?.() || new Date(0);
-            const dateB = b.createdAt?.toDate?.() || new Date(0);
-            return dateA - dateB;
-          });
-
-          // order 재할당 및 characterCount 보정
-          for (let i = 0; i < articles.length; i++) {
-            const article = articles[i];
-            const date = article.createdAt?.toDate?.() || new Date();
-            let newOrder = date.getTime();
-
-            // 이전 글보다 작거나 같으면 1ms 증가 (정렬 순서 유지)
-            if (i > 0) {
-              const prevOrder = articles[i - 1].order;
-              if (newOrder <= prevOrder) {
-                newOrder = prevOrder + 1;
-              }
-            }
-
-            // 업데이트가 필요한지 확인
-            const needsOrderUpdate = article.order !== newOrder;
-            const needsCharCountUpdate =
-              typeof article.characterCount !== "number";
-
-            if (needsOrderUpdate || needsCharCountUpdate) {
-              const updateData = {};
-              
-              if (needsOrderUpdate) {
-                article.order = newOrder;
-                updateData.order = newOrder;
-              }
-              
-              if (needsCharCountUpdate) {
-                const count = (article.content || "").length;
-                article.characterCount = count;
-                updateData.characterCount = count;
-              }
-
-              const articleRef = window.firebaseDoc(
-                this.db,
-                "users",
-                this.currentUser.uid,
-                "texts",
-                article.id
-              );
-              batch.update(articleRef, updateData);
-              batchCount++;
-              hasUpdates = true;
-            }
-          }
-          console.log(`[Order/Data Fix] ${category}: 보정 완료`);
-        }
-      }
-
-      if (hasUpdates) {
-        await batch.commit();
-        console.log(
-          `[Order Fix] 총 ${batchCount}개의 글 순서가 업데이트되었습니다.`
-        );
-      }
-    } catch (error) {
-      console.error("order 필드 초기화 실패:", error);
-    }
-  }
+  // ============================================================================
+  // [Refactoring 2026-01-19] initializeArticleOrders() 함수 제거됨
+  // - 대체 함수: OrderManager.initialize()
+  // - 위치: js/order-manager.js
+  // ============================================================================
 
   // [Refactoring] Utils 모듈 사용
   extractTitleFromContent(content) {
@@ -6189,8 +5782,9 @@ class DualTextWriter {
       : "날짜 없음";
 
     // 순서 조정 버튼 활성화 여부 확인
-    const canMoveUp = this.canMoveUp(article, filterCategory);
-    const canMoveDown = this.canMoveDown(article, filterCategory);
+    // [R3-03] OrderManager로 위임
+    const canMoveUp = this.orderManager.canMoveUp(article, filterCategory);
+    const canMoveDown = this.orderManager.canMoveDown(article, filterCategory);
 
     // [P2-02] escapeHtml로 XSS 방지, Optional Chaining으로 안전한 접근
     const safeTitle = this.escapeHtml(article.title || "제목 없음");
@@ -6240,14 +5834,16 @@ class DualTextWriter {
     if (upBtn) {
       upBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.moveArticleOrder(article.id, "up");
+        // [R3-03] OrderManager로 위임
+        this.orderManager.move(article.id, "up");
       });
     }
 
     if (downBtn) {
       downBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.moveArticleOrder(article.id, "down");
+        // [R3-03] OrderManager로 위임
+        this.orderManager.move(article.id, "down");
       });
     }
 
@@ -6267,46 +5863,10 @@ class DualTextWriter {
     return preview;
   }
 
-  /**
-   * 위로 이동 가능 여부
-   */
-  canMoveUp(article, filterCategory = "") {
-    const filtered = filterCategory
-      ? this.managementArticles.filter(
-          (a) => (a.category || "미분류") === filterCategory
-        )
-      : this.managementArticles;
-
-    const sameCategory = filtered.filter(
-      (a) => (a.category || "미분류") === (article.category || "미분류")
-    );
-    sameCategory.sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
-
-    return sameCategory[0]?.id !== article.id;
-  }
-
-  /**
-   * 아래로 이동 가능 여부
-   */
-  canMoveDown(article, filterCategory = "") {
-    const filtered = filterCategory
-      ? this.managementArticles.filter(
-          (a) => (a.category || "미분류") === filterCategory
-        )
-      : this.managementArticles;
-
-    const sameCategory = filtered.filter(
-      (a) => (a.category || "미분류") === (article.category || "미분류")
-    );
-    sameCategory.sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
-
-    return sameCategory[sameCategory.length - 1]?.id !== article.id;
-  }
-
   // ============================================================================
-  // [Refactoring 2026-01-19] selectArticle() 함수 제거됨
-  // - 대체 함수: showScriptDetailPanel(itemId, panelIndex)
-  // - 호출부: createArticleCard() 내 click/keydown 핸들러
+  // [Refactoring 2026-01-19] 순서/선택 관련 함수 제거됨 → OrderManager, showScriptDetailPanel
+  // - canMoveUp(), canMoveDown() → OrderManager.canMoveUp/Down()
+  // - selectArticle() → showScriptDetailPanel()
   // ============================================================================
 
   /**
@@ -6793,77 +6353,10 @@ class DualTextWriter {
     this.selectedArticleId = null;
   }
 
-  /**
-   * 순서 변경
-   */
-  async moveArticleOrder(articleId, direction) {
-    if (!this.currentUser || !this.isFirebaseReady) return;
-
-    try {
-      const article = this.managementArticles.find((a) => a.id === articleId);
-      if (!article) return;
-
-      const category = article.category || "미분류";
-      const sameCategoryArticles = this.managementArticles
-        .filter((a) => (a.category || "미분류") === category)
-        .sort((a, b) => (b.order || 0) - (a.order || 0)); // 내림차순 정렬
-
-      const currentIndex = sameCategoryArticles.findIndex(
-        (a) => a.id === articleId
-      );
-      if (currentIndex === -1) return;
-
-      let targetIndex;
-      if (direction === "up") {
-        if (currentIndex === 0) return; // 이미 첫 번째
-        targetIndex = currentIndex - 1;
-      } else {
-        if (currentIndex === sameCategoryArticles.length - 1) return; // 이미 마지막
-        targetIndex = currentIndex + 1;
-      }
-
-      const targetArticle = sameCategoryArticles[targetIndex];
-      const currentOrder = article.order || 0;
-      const targetOrder = targetArticle.order || 0;
-
-      // 순서 교환
-      const articleRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        articleId
-      );
-      const targetRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        targetArticle.id
-      );
-
-      await Promise.all([
-        window.firebaseUpdateDoc(articleRef, { order: targetOrder }),
-        window.firebaseUpdateDoc(targetRef, { order: currentOrder }),
-      ]);
-
-      // 로컬 데이터 업데이트
-      article.order = targetOrder;
-      targetArticle.order = currentOrder;
-
-      // UI 리렌더링
-      const currentCategory = this.categorySelect?.value || "";
-      this.renderArticleCards(currentCategory);
-    } catch (error) {
-      console.error("순서 변경 실패:", error);
-      this.showMessage("❌ 순서 변경 중 오류가 발생했습니다.", "error");
-    }
-  }
-
   // ============================================================================
-  // [Phase 10-02] 중복 메서드 제거됨
-  // - formatDateFromFirestore() → 2404줄에서 정의됨
-  // - escapeHtml() → 3422줄에서 정의됨 (utils.js 위임)
+  // [Refactoring] 이동된/중복 메서드 → OrderManager, utils.js
+  // - moveArticleOrder() → OrderManager.move()
+  // - formatDateFromFirestore(), escapeHtml() → 기존 정의 사용
   // ============================================================================
 
   // ===== 새 스크립트 작성 기능 =====
