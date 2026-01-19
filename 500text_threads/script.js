@@ -6169,13 +6169,14 @@ class DualTextWriter {
     card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title || '제목 없음'}`);
 
     // 키보드 접근성
+    // [Refactoring] selectArticle() -> showScriptDetailPanel()로 통합
     card.addEventListener("click", () => {
-      this.selectArticle(article.id);
+      this.showScriptDetailPanel(article.id, 0);
     });
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        this.selectArticle(article.id);
+        this.showScriptDetailPanel(article.id, 0);
       }
     });
 
@@ -6302,38 +6303,11 @@ class DualTextWriter {
     return sameCategory[sameCategory.length - 1]?.id !== article.id;
   }
 
-  /**
-   * 글 선택
-   */
-  selectArticle(articleId) {
-    // 모든 카드 선택 해제
-    document.querySelectorAll(".article-card").forEach((card) => {
-      card.classList.remove("selected");
-    });
-
-    // 선택한 카드 하이라이트
-    const selectedCard = document.querySelector(
-      `[data-article-id="${articleId}"]`
-    );
-    if (selectedCard) {
-      selectedCard.classList.add("selected");
-    }
-
-    // 상세 패널 표시
-    const article = this.managementArticles.find((a) => a.id === articleId);
-    if (article) {
-      this.selectedArticleId = articleId;
-      this.renderDetailPanel(article);
-
-      // 상세 패널로 스크롤
-      if (this.articleDetailPanel) {
-        this.articleDetailPanel.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
-  }
+  // ============================================================================
+  // [Refactoring 2026-01-19] selectArticle() 함수 제거됨
+  // - 대체 함수: showScriptDetailPanel(itemId, panelIndex)
+  // - 호출부: createArticleCard() 내 click/keydown 핸들러
+  // ============================================================================
 
   /**
    * ============================================================================
@@ -6616,47 +6590,11 @@ class DualTextWriter {
     }
   }
 
-  /**
-   * 상세 패널 렌더링
-   */
-  renderDetailPanel(article) {
-    if (!this.articleDetailPanel) return;
-
-    // 읽기 모드 표시
-    const readMode = document.getElementById("detail-read-mode");
-    const editMode = document.getElementById("detail-edit-mode");
-
-    if (readMode) readMode.style.display = "block";
-    if (editMode) editMode.style.display = "none";
-
-    // 데이터 채우기
-    const categoryEl = document.getElementById("detail-category");
-    const dateEl = document.getElementById("detail-date");
-    const charCountEl = document.getElementById("detail-char-count");
-    const titleEl = document.getElementById("detail-title");
-    const contentEl = document.getElementById("detail-content");
-
-    if (categoryEl) {
-      categoryEl.textContent = article.category || "미분류";
-    }
-    if (dateEl) {
-      dateEl.textContent = article.createdAt
-        ? this.formatDateFromFirestore(article.createdAt)
-        : "날짜 없음";
-    }
-    if (charCountEl) {
-      charCountEl.textContent = `📝 ${article.content ? article.content.length : 0}자`;
-    }
-    if (titleEl) {
-      titleEl.textContent = article.title;
-    }
-    if (contentEl) {
-      contentEl.textContent = article.content;
-    }
-
-    // 상세 패널 표시
-    this.articleDetailPanel.style.display = "block";
-  }
+  // ============================================================================
+  // [Refactoring 2026-01-19] renderDetailPanel() 함수 제거됨
+  // - 대체 함수: renderDetailPanelById(script, panelSuffix)
+  // - 제거 사유: 유일한 호출부 selectArticle() 제거로 더 이상 사용되지 않음
+  // ============================================================================
 
   /**
    * 수정 모드 진입
