@@ -1,0 +1,69 @@
+{
+  "indexes": [
+    {
+      "__comment": "[P3-01] 2026-01-19: texts 컬렉션 복합 인덱스 (type + createdAt)",
+      "collectionGroup": "texts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "__comment": "posts 컬렉션 복합 인덱스 (sourceType + sourceTextId)",
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sourceType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sourceTextId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "__comment": "posts 컬렉션 복합 인덱스 (trackingEnabled + postedAt)",
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "trackingEnabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "postedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "__comment": "[P3-01] 2026-01-19: texts composite index (type + referenceType + createdAt)",
+      "collectionGroup": "texts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referenceType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
