@@ -22,6 +22,7 @@
  */
 
 import { Constants } from "./constants.js";
+import { ensureFirebaseReady } from "./utils.js";
 
 export class TextCrudManager {
   /**
@@ -442,10 +443,7 @@ export class TextCrudManager {
     const app = this.mainApp;
     console.log("삭제 버튼 클릭 (Soft Delete):", { id });
 
-    if (!app.currentUser || !app.isFirebaseReady) {
-      app.showMessage("로그인이 필요합니다.", "error");
-      return;
-    }
+    if (!ensureFirebaseReady(app, { notify: true })) return;
 
     try {
       const targetIndex = app.savedTexts.findIndex((saved) => saved.id === id);
@@ -548,7 +546,7 @@ export class TextCrudManager {
     const app = this.mainApp;
     console.log("복원 버튼 클릭:", { id });
 
-    if (!app.currentUser || !app.isFirebaseReady) return;
+    if (!ensureFirebaseReady(app)) return;
 
     try {
       const targetIndex = app.savedTexts.findIndex((saved) => saved.id === id);
@@ -613,7 +611,7 @@ export class TextCrudManager {
     const app = this.mainApp;
     console.log("영구 삭제 버튼 클릭:", { id });
 
-    if (!app.currentUser || !app.isFirebaseReady) return;
+    if (!ensureFirebaseReady(app)) return;
 
     try {
       const targetIndex = app.savedTexts.findIndex((saved) => saved.id === id);

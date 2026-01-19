@@ -636,7 +636,7 @@ export class SavedTextsManager {
       const firstBatch = filteredItemsWithTracking.slice(0, batchSize);
       app.savedList.innerHTML = firstBatch
         .map(({ item, postData, index }) => {
-          return app.renderSavedItemCard(item, postData, index);
+          return app.cardRenderer.renderSavedItemCard(item, postData, index);
         })
         .join("");
 
@@ -651,7 +651,7 @@ export class SavedTextsManager {
         );
         const batchHtml = batch
           .map(({ item, postData, index }) => {
-            return app.renderSavedItemCard(item, postData, index);
+            return app.cardRenderer.renderSavedItemCard(item, postData, index);
           })
           .join("");
 
@@ -677,7 +677,7 @@ export class SavedTextsManager {
       // 소량 렌더링: 즉시 렌더링
       app.savedList.innerHTML = filteredItemsWithTracking
         .map(({ item, postData, index }) => {
-          return app.renderSavedItemCard(item, postData, index);
+          return app.cardRenderer.renderSavedItemCard(item, postData, index);
         })
         .join("");
     }
@@ -750,12 +750,12 @@ export class SavedTextsManager {
             </div>
             <div class="saved-item-content">${app.escapeHtml(preview)}</div>
             <div class="saved-item-actions">
-              <button class="btn-restore" onclick="window.dualTextWriter.restoreText('${
+              <button class="btn-restore" onclick="window.dualTextWriter.textCrudManager.restoreText('${
                 item.id
               }')" aria-label="글 복원">
                 ♻️ 복원
               </button>
-              <button class="btn-delete-permanent" onclick="window.dualTextWriter.permanentlyDeleteText('${
+              <button class="btn-delete-permanent" onclick="window.dualTextWriter.textCrudManager.permanentlyDeleteText('${
                 item.id
               }')" aria-label="영구 삭제">
                 🔥 영구 삭제

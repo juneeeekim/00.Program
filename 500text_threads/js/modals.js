@@ -793,7 +793,7 @@ export class ModalManager {
         const importBtn = modal.querySelector(".reference-import-btn");
         if (importBtn) {
           importBtn.addEventListener("click", () => {
-            app.editText(referenceId, "reference");
+            app.textCrudManager.editText(referenceId, "reference");
             modal.remove();
             document.body.style.overflow = "";
           });

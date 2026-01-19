@@ -365,38 +365,39 @@ export class InitManager {
     _bindTextInputEvents() {
         const app = this.app;
 
+        // ==================== TextCrudManager 직접 바인딩 (Phase B) ====================
         // 레퍼런스 글 이벤트
         if (app.refTextInput) {
             app.refTextInput.addEventListener('input', () => {
-                app.updateCharacterCount('ref');
+                app.textCrudManager.updateCharacterCount('ref');
                 app.scheduleTempSave();
             });
         }
         if (app.refClearBtn) {
-            app.refClearBtn.addEventListener('click', () => app.clearText('ref'));
+            app.refClearBtn.addEventListener('click', () => app.textCrudManager.clearText('ref'));
         }
         if (app.refSaveBtn) {
-            app.refSaveBtn.addEventListener('click', () => app.saveText('ref'));
+            app.refSaveBtn.addEventListener('click', () => app.textCrudManager.saveText('ref'));
         }
         if (app.refDownloadBtn) {
-            app.refDownloadBtn.addEventListener('click', () => app.downloadAsTxt('ref'));
+            app.refDownloadBtn.addEventListener('click', () => app.textCrudManager.downloadAsTxt('ref'));
         }
 
         // 수정/작성 글 이벤트
         if (app.editTextInput) {
             app.editTextInput.addEventListener('input', () => {
-                app.updateCharacterCount('edit');
+                app.textCrudManager.updateCharacterCount('edit');
                 app.scheduleTempSave();
             });
         }
         if (app.editClearBtn) {
-            app.editClearBtn.addEventListener('click', () => app.clearText('edit'));
+            app.editClearBtn.addEventListener('click', () => app.textCrudManager.clearText('edit'));
         }
         if (app.editSaveBtn) {
-            app.editSaveBtn.addEventListener('click', () => app.saveText('edit'));
+            app.editSaveBtn.addEventListener('click', () => app.textCrudManager.saveText('edit'));
         }
         if (app.editDownloadBtn) {
-            app.editDownloadBtn.addEventListener('click', () => app.downloadAsTxt('edit'));
+            app.editDownloadBtn.addEventListener('click', () => app.textCrudManager.downloadAsTxt('edit'));
         }
 
         logger.log('[InitManager] 텍스트 입력 이벤트 바인딩 완료');

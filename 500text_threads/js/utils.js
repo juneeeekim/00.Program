@@ -146,3 +146,67 @@ export async function withRetry(fn, maxRetries = 3, baseDelayMs = 1000) {
     }
   }
 }
+
+// ==================== Guard Helpers ====================
+
+export function ensureFirebaseReady(app, options = {}) {
+    const {
+        requireUser = true,
+        requireReady = true,
+        notify = false,
+        message = "로그인이 필요합니다.",
+        type = "error",
+        logPrefix = "Firebase guard",
+    } = options;
+
+    if (!app) {
+        console.warn(`[${logPrefix}] app is missing`);
+        return false;
+    }
+    if (requireUser && !app.currentUser) {
+        if (notify && typeof app.showMessage === "function") {
+            app.showMessage(message, type);
+        }
+        return false;
+    }
+    if (requireReady && !app.isFirebaseReady) {
+        if (notify && typeof app.showMessage === "function") {
+            app.showMessage(message, type);
+        }
+        return false;
+    }
+    return true;
+}
+
+export function requireElement(element, name, options = {}) {
+    const { warn = true, logPrefix = "DOM guard" } = options;
+    if (!element) {
+        if (warn) {
+            console.warn(`[${logPrefix}] missing element: ${name}`);
+        }
+        return false;
+    }
+    return true;
+}
+
+export function withErrorHandler(fn, options = {}) {
+    const { context = "Unknown", onError } = options;
+    try {
+        return fn();
+    } catch (error) {
+        console.error(`[${context}]`, error);
+        if (typeof onError === "function") onError(error);
+        return null;
+    }
+}
+
+export async function withAsyncErrorHandler(fn, options = {}) {
+    const { context = "Unknown", onError } = options;
+    try {
+        return await fn();
+    } catch (error) {
+        console.error(`[${context}]`, error);
+        if (typeof onError === "function") onError(error);
+        return null;
+    }
+}
