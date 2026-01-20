@@ -5406,35 +5406,10 @@ class DualTextWriter {
     document.removeEventListener('keydown', this._handleEscapeKey);
     document.addEventListener('keydown', this._handleEscapeKey);
 
-    if (this.detailEditBtn) {
-      this.detailEditBtn.addEventListener("click", () => {
-        this.enterEditMode();
-      });
-    }
-
-    if (this.detailDeleteBtn) {
-      this.detailDeleteBtn.addEventListener("click", () => {
-        this.deleteArticle();
-      });
-    }
-
-    if (this.detailCopyBtn) {
-      this.detailCopyBtn.addEventListener("click", () => {
-        this.copyArticleContent();
-      });
-    }
-
-    if (this.editSaveBtn) {
-      this.editSaveBtn.addEventListener("click", () => {
-        this.saveArticleEdit();
-      });
-    }
-
-    if (this.editCancelBtn) {
-      this.editCancelBtn.addEventListener("click", () => {
-        this.cancelArticleEdit();
-      });
-    }
+    // [Phase 1] P1-02: Update Initialization Logic for Dual Panels
+    // 기존 단일 패널용 이벤트 바인딩 제거하고 듀얼 패널용 헬퍼 호출
+    this.bindDetailPanelEvents(0); // 패널 1
+    this.bindDetailPanelEvents(1); // 패널 2
 
     // 새 스크립트 작성 폼 이벤트
     if (this.newScriptToggleBtn) {
@@ -6125,6 +6100,46 @@ class DualTextWriter {
       this.showScriptDetailPanel(itemId, panelIndex);
     };
 
+  /**
+   * [P1-01] 듀얼 패널 이벤트 바인딩 헬퍼
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
+   */
+  bindDetailPanelEvents(panelIndex) {
+    // HTML ID Format: detail-edit-btn-1, detail-edit-btn-2
+    const suffix = panelIndex === 0 ? '-1' : '-2';
+    
+    // 버튼 참조 획득
+    const editBtn = document.getElementById(`detail-edit-btn${suffix}`);
+    const deleteBtn = document.getElementById(`detail-delete-btn${suffix}`);
+    const copyBtn = document.getElementById(`detail-copy-btn${suffix}`);
+    const saveBtn = document.getElementById(`edit-article-save-btn${suffix}`);
+    const cancelBtn = document.getElementById(`edit-article-cancel-btn${suffix}`);
+    
+    // 이벤트 리스너 추가 (중복 방지를 위해 기존 리스너 제거는 어려우므로, 초기화 시 1회만 호출 보장 필요)
+    if (editBtn) {
+      // 익명 함수로 래핑하여 인자 전달
+      editBtn.onclick = () => this.enterEditMode(panelIndex);
+    }
+
+    if (deleteBtn) {
+      deleteBtn.onclick = () => this.deleteArticle(panelIndex);
+    }
+
+    if (copyBtn) {
+      copyBtn.onclick = () => this.copyArticleContent(panelIndex);
+    }
+
+    if (saveBtn) {
+      saveBtn.onclick = () => this.saveArticleEdit(panelIndex);
+    }
+
+    if (cancelBtn) {
+      cancelBtn.onclick = () => this.cancelArticleEdit(panelIndex);
+    }
+    
+    console.log(`✅ 패널 ${panelIndex + 1} 이벤트 바인딩 완료`);
+  }
+
     grid.addEventListener('click', this._handleCardClick);
   }
 
@@ -6365,50 +6380,77 @@ class DualTextWriter {
   // ============================================================================
 
   /**
-   * 수정 모드 진입
+   * [P2-01] 수정 모드 진입 (듀얼 패널 지원)
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
    */
-  enterEditMode() {
-    if (!this.selectedArticleId) return;
+  enterEditMode(panelIndex = 0) {
+    const suffix = panelIndex === 0 ? '-1' : '-2';
+    
+    // 선택된 아이디 가져오기
+    const articleId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+    
+    if (!articleId) {
+       console.warn(`[enterEditMode] Panel ${panelIndex} has no selected article`);
+       return;
+    }
 
     const article = this.managementArticles.find(
-      (a) => a.id === this.selectedArticleId
+      (a) => a.id === articleId
     );
     if (!article) return;
 
     // 읽기 모드 숨기기, 수정 모드 표시
-    const readMode = document.getElementById("detail-read-mode");
-    const editMode = document.getElementById("detail-edit-mode");
+    const readMode = document.getElementById(`detail-read-mode${suffix}`);
+    const editMode = document.getElementById(`detail-edit-mode${suffix}`);
 
     if (readMode) readMode.style.display = "none";
     if (editMode) editMode.style.display = "block";
 
     // 입력 필드에 값 설정
-    if (this.editTitleInput) {
-      this.editTitleInput.value = article.title;
+    const editTitle = document.getElementById(`edit-title-input${suffix}`);
+    const editContent = document.getElementById(`edit-content-textarea${suffix}`);
+    const editCategory = document.getElementById(`edit-category-select${suffix}`);
+    
+    if (editTitle) {
+      editTitle.value = article.title;
     }
-    if (this.editContentTextarea) {
-      this.editContentTextarea.value = article.content;
+    if (editContent) {
+      editContent.value = article.content;
     }
-    if (this.editCategorySelect) {
-      this.editCategorySelect.value = article.category || "미분류";
+    if (editCategory) {
+      editCategory.value = article.category || "미분류";
     }
 
     // 현재 편집 중인 글 ID 설정 (레퍼런스 로드용)
     if (window.setCurrentEditingArticle) {
-      window.setCurrentEditingArticle(this.selectedArticleId);
+      window.setCurrentEditingArticle(articleId);
     }
+    
+    // 현재 편집 중인 패널 인덱스 설정
+    this.currentEditingPanelIndex = panelIndex;
+    this.currentEditingScriptId = articleId;
   }
 
   /**
-   * 글 수정 저장
+   * [P2-02] 글 수정 저장 (듀얼 패널 지원)
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
    */
-  async saveArticleEdit() {
-    if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady)
-      return;
+  async saveArticleEdit(panelIndex = 0) {
+    const suffix = panelIndex === 0 ? '-1' : '-2';
+    
+    // 현재 편집 중인 ID
+    const articleId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+    
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
 
-    const title = this.editTitleInput?.value.trim() || "";
-    const content = this.editContentTextarea?.value.trim() || "";
-    const category = this.editCategorySelect?.value || "미분류";
+    // 입력 필드 참조
+    const titleInput = document.getElementById(`edit-title-input${suffix}`);
+    const contentInput = document.getElementById(`edit-content-textarea${suffix}`);
+    const categorySelect = document.getElementById(`edit-category-select${suffix}`);
+
+    const title = titleInput?.value.trim() || "";
+    const content = contentInput?.value.trim() || "";
+    const category = categorySelect?.value || "미분류";
 
     // 검증
     if (!title && !content) {
@@ -6422,13 +6464,13 @@ class DualTextWriter {
         "users",
         this.currentUser.uid,
         "texts",
-        this.selectedArticleId
+        articleId
       );
       // 제목 검증: 제목이 비어있으면 저장 불가
       if (!title || title.trim() === "") {
         this.showMessage("❌ 제목을 입력해주세요.", "error");
-        if (this.editTitleInput) {
-          this.editTitleInput.focus();
+        if (titleInput) {
+          titleInput.focus();
         }
         return;
       }
@@ -6443,7 +6485,7 @@ class DualTextWriter {
 
       // 로컬 데이터 업데이트
       const article = this.managementArticles.find(
-        (a) => a.id === this.selectedArticleId
+        (a) => a.id === articleId
       );
       if (article) {
         article.title = title.trim();
@@ -6454,11 +6496,13 @@ class DualTextWriter {
       // UI 업데이트
       this.showMessage("✅ 글이 수정되었습니다.", "success");
       await this.loadArticlesForManagement();
-      this.selectArticle(this.selectedArticleId);
+      
+      // 다시 상세 패널 열어서 변경사항 반영 (패널 상태 유지)
+      this.showScriptDetailPanel(articleId, panelIndex);
 
       // 읽기 모드로 전환
-      const readMode = document.getElementById("detail-read-mode");
-      const editMode = document.getElementById("detail-edit-mode");
+      const readMode = document.getElementById(`detail-read-mode${suffix}`);
+      const editMode = document.getElementById(`detail-edit-mode${suffix}`);
       if (readMode) readMode.style.display = "block";
       if (editMode) editMode.style.display = "none";
     } catch (error) {
@@ -6468,79 +6512,94 @@ class DualTextWriter {
   }
 
   /**
-   * 수정 취소
+   * [P2-03] 수정 취소 (듀얼 패널 지원)
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
    */
-  cancelArticleEdit() {
-    if (!this.selectedArticleId) return;
+  cancelArticleEdit(panelIndex = 0) {
+    const articleId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+    if (!articleId) return;
 
     if (confirm("수정을 취소하시겠습니까?")) {
+      const suffix = panelIndex === 0 ? '-1' : '-2';
       // 읽기 모드로 전환
-      const readMode = document.getElementById("detail-read-mode");
-      const editMode = document.getElementById("detail-edit-mode");
+      const readMode = document.getElementById(`detail-read-mode${suffix}`);
+      const editMode = document.getElementById(`detail-edit-mode${suffix}`);
 
       if (readMode) readMode.style.display = "block";
       if (editMode) editMode.style.display = "none";
 
       // 상세 패널 다시 렌더링
       const article = this.managementArticles.find(
-        (a) => a.id === this.selectedArticleId
+        (a) => a.id === articleId
       );
       if (article) {
-        this.renderDetailPanel(article);
+        // [Refactoring] renderDetailPanel -> renderDetailPanelById
+        this.renderDetailPanelById(article, suffix);
       }
     }
   }
 
   /**
-   * 글 삭제
+   * [P2-04] 글 삭제 (듀얼 패널 지원)
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
    */
-  async deleteArticle() {
-    if (!this.selectedArticleId || !this.currentUser || !this.isFirebaseReady)
-      return;
+  async deleteArticle(panelIndex = 0) {
+    // 삭제 대상 ID 식별
+    const articleId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+    
+    if (!articleId || !this.currentUser || !this.isFirebaseReady) return;
 
-    if (!confirm("정말 이 글을 삭제하시겠습니까?")) return;
+    if (confirm("정말로 이 글을 삭제하시겠습니까? 삭제된 글은 복구할 수 없습니다.")) {
+      try {
+        await window.firebaseDeleteDoc(
+          window.firebaseDoc(
+            this.db,
+            "users",
+            this.currentUser.uid,
+            "texts",
+            articleId
+          )
+        );
 
-    try {
-      const articleRef = window.firebaseDoc(
-        this.db,
-        "users",
-        this.currentUser.uid,
-        "texts",
-        this.selectedArticleId
-      );
-      await window.firebaseDeleteDoc(articleRef);
+        this.showMessage("🗑️ 글이 삭제되었습니다.", "success");
+        await this.loadArticlesForManagement();
+        
+        // 삭제 후 패널 닫기
+        this.closeScriptDetailPanel(panelIndex);
+        
+        // 만약 삭제된 글이 다른 패널에도 열려있다면 닫아야 함
+        if (panelIndex === 0 && this.selectedArticleIdPanel2 === articleId) {
+             this.closeScriptDetailPanel(1);
+        } else if (panelIndex === 1 && this.selectedArticleId === articleId) {
+             this.closeScriptDetailPanel(0);
+        }
 
-      // 로컬 데이터에서 제거
-      this.managementArticles = this.managementArticles.filter(
-        (a) => a.id !== this.selectedArticleId
-      );
-
-      // UI 업데이트
-      this.showMessage("✅ 글이 삭제되었습니다.", "success");
-      this.closeDetailPanel();
-      await this.loadArticlesForManagement();
-    } catch (error) {
-      console.error("글 삭제 실패:", error);
-      this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
+      } catch (error) {
+        console.error("글 삭제 실패:", error);
+        this.showMessage("❌ 글 삭제 중 오류가 발생했습니다.", "error");
+      }
     }
   }
 
   /**
-   * 글 내용 복사
+   * [P2-05] 글 내용 복사 (듀얼 패널 지원)
+   * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
    */
-  async copyArticleContent() {
-    if (!this.selectedArticleId) return;
+  async copyArticleContent(panelIndex = 0) {
+    const articleId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+    
+    if (!articleId) return;
 
     const article = this.managementArticles.find(
-      (a) => a.id === this.selectedArticleId
+      (a) => a.id === articleId
     );
-    if (!article) return;
+    if (!article || !article.content) return;
 
     try {
       await navigator.clipboard.writeText(article.content);
-      this.showMessage("✅ 클립보드에 복사되었습니다!", "success");
+      this.showMessage("📋 글 내용이 복사되었습니다.", "success");
     } catch (error) {
-      console.error("복사 실패:", error);
+      console.error("클립보드 복사 실패:", error);
       this.showMessage("❌ 복사 중 오류가 발생했습니다.", "error");
     }
   }
