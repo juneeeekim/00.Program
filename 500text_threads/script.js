@@ -6100,6 +6100,9 @@ class DualTextWriter {
       this.showScriptDetailPanel(itemId, panelIndex);
     };
 
+    grid.addEventListener('click', this._handleCardClick);
+  }
+
   /**
    * [P1-01] 듀얼 패널 이벤트 바인딩 헬퍼
    * @param {number} panelIndex 패널 인덱스 (0: 패널1, 1: 패널2)
@@ -6138,9 +6141,6 @@ class DualTextWriter {
     }
     
     console.log(`✅ 패널 ${panelIndex + 1} 이벤트 바인딩 완료`);
-  }
-
-    grid.addEventListener('click', this._handleCardClick);
   }
 
   /**
