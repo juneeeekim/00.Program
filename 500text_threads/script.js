@@ -18,7 +18,6 @@ import { UIManager } from "./js/ui.js";
 import { TrackingManager } from "./js/tracking.js";
 import { LLMValidationManager } from "./js/llm-validation.js";
 import { ReferenceManager } from "./js/reference.js";
-import { SNSManager } from "./js/sns.js";
 import { SavedTextsManager } from "./js/saved-texts.js";
 import { CardRenderer } from "./js/card-renderer.js";
 import { ModalManager } from "./js/modals.js";
@@ -126,8 +125,6 @@ class DualTextWriter {
     // Firebase 설정
     this.auth = null;
 
-    // 사용자 정의 해시태그 설정 (기본값)
-    this.defaultHashtags = ["#writing", "#content", "#threads"];
     this.db = null;
     this.currentUser = null;
     this.isFirebaseReady = false;
@@ -190,10 +187,6 @@ class DualTextWriter {
     // ==================== ReferenceManager 인스턴스 생성 ====================
     // [Refactoring] 레퍼런스 관련 상태를 ReferenceManager로 위임
     this.referenceManager = new ReferenceManager(this);
-
-    // ==================== SNSManager 인스턴스 생성 ====================
-    // [Refactoring] SNS 플랫폼 관련 기능을 SNSManager로 위임
-    this.snsManager = new SNSManager(this);
 
     // ==================== SavedTextsManager 인스턴스 생성 ====================
     // [Refactoring] 저장된 글 관련 상태를 SavedTextsManager로 위임
@@ -398,18 +391,6 @@ class DualTextWriter {
     // 수정/작성 글 관련 요소들
     this.editTextInput = document.getElementById("edit-text-input");
     this.editTopicInput = document.getElementById("edit-topic-input");
-    this.editSnsPlatformGroup = document.getElementById(
-      "edit-sns-platform-group"
-    );
-    this.editSnsPlatformTags = document.getElementById(
-      "edit-sns-platform-tags"
-    );
-    this.snsPlatformCollapseToggle = document.getElementById(
-      "sns-platform-collapse-toggle"
-    );
-    this.snsPlatformContent = document.getElementById("sns-platform-content");
-    this.snsPlatformCount = document.getElementById("sns-platform-count");
-    this.selectedSnsPlatforms = []; // 선택된 SNS 플랫폼 ID 배열
     this.editCurrentCount = document.getElementById("edit-current-count");
     this.editMaxCount = document.getElementById("edit-max-count");
 
@@ -694,48 +675,6 @@ class DualTextWriter {
    *
    * @throws {Error} 필수 DOM 요소가 없을 경우 에러 로깅
    */
-  // ==================== SNS Platform 위임 메서드 (SNSManager로 이동됨) ====================
-
-  /**
-   * SNS 플랫폼 선택 기능 초기화
-   * [Refactoring] SNSManager로 위임
-   */
-  initSnsPlatformSelection() {
-    this.snsManager.initSnsPlatformSelection();
-  }
-
-  /**
-   * SNS 플랫폼 선택 패널 토글
-   * [Refactoring] SNSManager로 위임
-   */
-  toggleSnsPlatformCollapse() {
-    this.snsManager.toggleSnsPlatformCollapse();
-  }
-
-  /**
-   * SNS 플랫폼 태그 렌더링
-   * [Refactoring] SNSManager로 위임
-   */
-  renderSnsPlatformTags() {
-    this.snsManager.renderSnsPlatformTags();
-  }
-
-  /**
-   * SNS 플랫폼 선택/해제 토글
-   * [Refactoring] SNSManager로 위임
-   * @param {string} platformId - 플랫폼 ID
-   */
-  toggleSnsPlatform(platformId) {
-    this.snsManager.toggleSnsPlatform(platformId);
-  }
-
-  /**
-   * SNS 플랫폼 선택 개수 업데이트
-   * [Refactoring] SNSManager로 위임
-   */
-  updateSnsPlatformCount() {
-    this.snsManager.updateSnsPlatformCount();
-  }
 
   /**
    * 레퍼런스 불러오기 패널 초기화 (Wrapper)
@@ -1365,23 +1304,6 @@ class DualTextWriter {
       }
     }, 0);
 
-    // 해시태그 설정 버튼 이벤트 바인딩
-    const hashtagSettingsBtn = document.getElementById("hashtag-settings-btn");
-    if (hashtagSettingsBtn) {
-      hashtagSettingsBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        this.showHashtagSettings();
-      });
-
-      // 초기 해시태그 표시 업데이트
-      setTimeout(() => {
-        this.updateHashtagsDisplay();
-      }, 100);
-
-      console.log("✅ 해시태그 설정 버튼 이벤트 바인딩 완료");
-    } else {
-      console.error("❌ 해시태그 설정 버튼을 찾을 수 없습니다!");
-    }
 
     // 일괄 마이그레이션 버튼 이벤트 바인딩
     if (this.batchMigrationBtn) {
@@ -4170,65 +4092,9 @@ class DualTextWriter {
     }
   }
 
+
   // ===== 반자동화 포스팅 시스템 =====
 
-  // 해시태그 추출 함수
-  extractHashtags(content) {
-    const hashtagRegex = /#[\w가-힣]+/g;
-    const hashtags = content.match(hashtagRegex) || [];
-    return hashtags.map((tag) => tag.toLowerCase());
-  }
-
-  // 사용자 정의 해시태그 가져오기
-  getUserHashtags() {
-    try {
-      const saved = localStorage.getItem("userHashtags");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // 빈 배열도 유효한 값으로 처리
-        return Array.isArray(parsed) ? parsed : this.defaultHashtags;
-      }
-    } catch (error) {
-      console.error("해시태그 불러오기 실패:", error);
-    }
-    return this.defaultHashtags;
-  }
-
-  // 사용자 정의 해시태그 저장
-  saveUserHashtags(hashtags) {
-    try {
-      // 빈 배열 허용 (해시태그 없이 사용)
-      if (!Array.isArray(hashtags)) {
-        console.warn("유효하지 않은 해시태그 배열");
-        return false;
-      }
-
-      // 해시태그가 없는 경우
-      if (hashtags.length === 0) {
-        localStorage.setItem("userHashtags", JSON.stringify([]));
-        console.log("해시태그 없이 사용하도록 설정됨");
-        return true;
-      }
-
-      // 해시태그 형식 검증
-      const validHashtags = hashtags
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.startsWith("#") && tag.length > 1)
-        .filter((tag) => tag.length <= 50); // 길이 제한
-
-      if (validHashtags.length === 0) {
-        console.warn("유효한 해시태그가 없습니다");
-        return false;
-      }
-
-      localStorage.setItem("userHashtags", JSON.stringify(validHashtags));
-      console.log("해시태그 저장 완료:", validHashtags);
-      return true;
-    } catch (error) {
-      console.error("해시태그 저장 실패:", error);
-      return false;
-    }
-  }
   // Threads 포맷팅 함수 (XSS 방지 포함, 줄바꿈 보존)
   formatForThreads(content) {
     // XSS 방지를 위한 HTML 이스케이프 (줄바꿈은 보존)
@@ -5629,19 +5495,43 @@ class DualTextWriter {
       );
 
       // 인덱스 오류를 대비하여 orderBy 없이 먼저 시도
+      let needClientSideSort = false;
       let querySnapshot;
+
       // Upgrade: enforce server-side orderBy to avoid client-side sorting
-      // [Tab Separation] 'script' ??? ?? (? ?? ?? 'edit' ?? ??)
+      // [Tab Separation] 'script' 타입 글만 조회 (레퍼런스 'reference' 타입 제외)
       const q = window.firebaseQuery(
         textsRef,
         window.firebaseWhere("type", "==", "script"),
+        window.firebaseWhere("isDeleted", "==", false), // 삭제된 글 제외 (필요 시)
         window.firebaseOrderBy("createdAt", "desc")
       );
+
       try {
         querySnapshot = await window.firebaseGetDocs(q);
       } catch (error) {
-        console.warn("loadArticlesForManagement query failed", error);
-        throw error;
+        // [P1-01] 인덱스 오류 발생 시 클라이언트 사이드 정렬로 Fallback
+        if (error.code === 'failed-precondition') {
+            console.warn("loadArticlesForManagement: Index error detected, switching to client-side sorting fallback.");
+            
+            // Fallback: 정렬(orderBy) 제거하고 필터링만 수행
+            const fallbackQ = window.firebaseQuery(
+                textsRef,
+                window.firebaseWhere("type", "==", "script"),
+                window.firebaseWhere("isDeleted", "==", false)
+            );
+            
+            try {
+                querySnapshot = await window.firebaseGetDocs(fallbackQ);
+                needClientSideSort = true; // 클라이언트 사이드 정렬 필요 플래그 설정
+            } catch (fallbackError) {
+                console.error("loadArticlesForManagement: Fallback query also failed", fallbackError);
+                throw fallbackError;
+            }
+        } else {
+            console.warn("loadArticlesForManagement query failed", error);
+            throw error;
+        }
       }
 
       this.managementArticles = [];
@@ -5661,18 +5551,16 @@ class DualTextWriter {
       });
 
       // orderBy 없이 로드한 경우 클라이언트 사이드에서 정렬
-      if (
-        this.managementArticles.length > 0 &&
-        this.managementArticles[0].createdAt
-      ) {
+      // [P1-01] 인덱스 오류 발생 시 클라이언트 사이드 정렬 수행
+      if (needClientSideSort && this.managementArticles.length > 0) {
         this.managementArticles.sort((a, b) => {
-          const dateA = a.createdAt?.toDate
-            ? a.createdAt.toDate().getTime()
+          const dateA = a.createdAt && a.createdAt.toDate 
+            ? a.createdAt.toDate().getTime() 
             : 0;
-          const dateB = b.createdAt?.toDate
-            ? b.createdAt.toDate().getTime()
+          const dateB = b.createdAt && b.createdAt.toDate 
+            ? b.createdAt.toDate().getTime() 
             : 0;
-          return dateB - dateA; // 내림차순 (최신순)
+          return dateB - dateA; // 내림차순 정렬 (최신순)
         });
       }
 
@@ -7132,10 +7020,6 @@ if (!DualTextWriter.prototype._showProfileSettingsModalImpl) {
   DualTextWriter.prototype._showProfileSettingsModalImpl =
     DualTextWriter.prototype.showThreadsProfileSettings;
 }
-if (!DualTextWriter.prototype._showHashtagSettingsModalImpl) {
-  DualTextWriter.prototype._showHashtagSettingsModalImpl =
-    DualTextWriter.prototype.showHashtagSettings;
-}
 
 DualTextWriter.prototype.sanitizeText = function (text) {
   if (this.threadsManager) {
@@ -7207,24 +7091,6 @@ DualTextWriter.prototype.showThreadsProfileSettings = function () {
   if (this._showProfileSettingsModalImpl) {
     return this._showProfileSettingsModalImpl();
   }
-  return undefined;
-};
-
-DualTextWriter.prototype.showHashtagSettings = function () {
-  if (this.threadsManager?.showHashtagSettingsModal) {
-    return this.threadsManager.showHashtagSettingsModal();
-  }
-  if (this._showHashtagSettingsModalImpl) {
-    return this._showHashtagSettingsModalImpl();
-  }
-  return undefined;
-};
-
-DualTextWriter.prototype.updateHashtagsDisplay = function () {
-  if (this.threadsManager?.updateHashtagsDisplay) {
-    return this.threadsManager.updateHashtagsDisplay();
-  }
-  return undefined;
 };
 
 // ==================== 바텀시트 메서드 위임 (Phase 6-02) ====================
