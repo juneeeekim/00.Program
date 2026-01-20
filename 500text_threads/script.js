@@ -5628,21 +5628,34 @@ class DualTextWriter {
         "texts"
       );
 
-      // 인덱스 오류를 대비하여 orderBy 없이 먼저 시도
-      let querySnapshot;
-      // Upgrade: enforce server-side orderBy to avoid client-side sorting
-      // [Tab Separation] 'script' ??? ?? (? ?? ?? 'edit' ?? ??)
+      // [Phase 1] P1-01: Implement Fallback Query for Missing Index
+    // 시도 1: 인덱스 기반 서버 사이드 정렬 시도 (type, createdAt)
+    let querySnapshot;
+    try {
       const q = window.firebaseQuery(
         textsRef,
         window.firebaseWhere("type", "==", "script"),
         window.firebaseOrderBy("createdAt", "desc")
       );
-      try {
-        querySnapshot = await window.firebaseGetDocs(q);
-      } catch (error) {
+      querySnapshot = await window.firebaseGetDocs(q);
+    } catch (error) {
+      // 시도 2: 인덱스 오류 발생 시 폴백 (클라이언트 사이드 정렬)
+      if (error.code === "failed-precondition") {
+        console.warn(
+          "Firebase 인덱스 오류: 인덱스가 생성될 때까지 클라이언트 사이드 정렬을 사용합니다."
+        );
+        // orderBy 제거하고 필터링만 수행
+        const fallbackQ = window.firebaseQuery(
+          textsRef,
+          window.firebaseWhere("type", "==", "script")
+        );
+        querySnapshot = await window.firebaseGetDocs(fallbackQ);
+      } else {
+        // 그 외 에러는 상위 핸들러로 전파
         console.warn("loadArticlesForManagement query failed", error);
         throw error;
       }
+    }
 
       this.managementArticles = [];
       querySnapshot.forEach((doc) => {
