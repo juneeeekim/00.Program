@@ -770,87 +770,7 @@ header h1 {
 }
 
 /* SNS 플랫폼 선택 그룹 (아코디언 방식) - 글자 제한과 같은 행 배치 */
-.sns-platform-collapsible {
-  margin: 0; /* 마진 제거 (toolbar-row에서 gap으로 간격 처리) */
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #dee2e6;
-  background: #fff;
-  flex-shrink: 0; /* 공간이 부족해도 축소되지 않도록 설정 */
-  flex: 1; /* 남은 공간 차지 */
-  max-width: 600px; /* 적절한 최대 너비 설정 */
-  min-width: 300px; /* 최소 너비 보장 */
-}
-
-/* SNS 플랫폼 섹션 (접힌 콘텐츠 내부) */
-.sns-platform-section {
-  padding: 16px;
-  background: #f8f9fa;
-}
-
-.sns-platform-tags {
-  display: grid;
-  grid-template-columns: repeat(
-    3,
-    1fr
-  ); /* 3열 그리드로 9개 버튼을 3줄로 깔끔하게 배치 */
-  gap: 10px; /* 간격 조정 */
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sns-platform-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 2px solid #e1e5e9;
-  border-radius: 20px;
-  background: white;
-  color: #333;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 44px;
-  box-sizing: border-box;
-}
-
-.sns-platform-tag:hover {
-  border-color: #667eea;
-  background: #f0f4ff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-}
-
-.sns-platform-tag:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.sns-platform-tag.selected {
-  background: #667eea;
-  border-color: #667eea;
-  color: white;
-}
-
-.sns-platform-tag.selected:hover {
-  background: #5568d3;
-  border-color: #5568d3;
-}
-
-.sns-platform-icon {
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.sns-platform-name {
-  line-height: 1.2;
-}
-
-/* 二쇱젣 ?꾪꽣 ?ㅽ???*/
+/* 주제 필터 스타일 */
 .topic-filter-group {
   display: flex;
   align-items: center;
@@ -5667,6 +5587,42 @@ header h1 {
   }
 }
 
+/* -------------------------------------------------------------
+ * 오프라인 상태 감지 UI
+ * ------------------------------------------------------------- */
+.offline-indicator {
+  background-color: #dc3545; /* 경고 빨간색 */
+  color: white;
+  text-align: center;
+  padding: 8px 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  display: none; /* 기본적으로 숨김 */
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: transform 0.3s ease;
+}
+
+.offline-indicator.visible {
+  display: flex !important; /* JS에서 visible 클래스 추가 시 보이게 함 */
+  transform: translateY(0);
+}
+
+.offline-indicator__icon {
+  font-size: 1.1rem;
+}
+
+.offline-indicator__text {
+  margin: 0;
+}
+
 /* ============================================================
    Phase 1.6.2: 而ㅼ뒪? 紐⑤떖 ?ㅽ???   ============================================================ */
 
@@ -9698,4 +9654,5 @@ body.offline-mode {
 .url-link-delete-btn:hover {
   background: rgba(220, 53, 69, 0.15) !important;
   color: #dc3545;
+}
 }
