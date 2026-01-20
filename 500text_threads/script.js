@@ -3935,9 +3935,6 @@ class DualTextWriter {
       this.refreshUI({
         savedTexts: true,
         trackingPosts: true,
-        trackingSummary: true,
-        trackingChart: true,
-        force: true,
       });
 
       // 성공 메시지
@@ -6122,6 +6119,9 @@ class DualTextWriter {
     const expandBtn = document.getElementById(`detail-expand-btn${suffix}`);
     const closeBtn = document.getElementById(`detail-panel-close${suffix}`);
 
+    // [P2-Ref] 레퍼런스 추가 버튼 (사용자가 추가 요청한 기능)
+    const loadRefBtn = document.getElementById(`detail-load-reference-btn${suffix}`);
+
     // 이벤트 리스너 추가 (중복 방지를 위해 기존 리스너 제거는 어려우므로, 초기화 시 1회만 호출 보장 필요)
     if (editBtn) {
       // 익명 함수로 래핑하여 인자 전달
@@ -6142,6 +6142,15 @@ class DualTextWriter {
 
     if (cancelBtn) {
       cancelBtn.onclick = () => this.cancelArticleEdit(panelIndex);
+    }
+
+    if (loadRefBtn) {
+        loadRefBtn.onclick = () => {
+             // 레퍼런스 로드 로직 (임시: 알림 표시)
+             // 추후 loadReferencesForArticle(articleId, panelIndex) 구현 필요
+             this.showMessage("🚧 레퍼런스 추가 기능은 준비 중입니다.", "info");
+             console.log(`[Panel ${panelIndex}] Load Reference Button Clicked`);
+        };
     }
 
     // 확장/축소 버튼 이벤트
