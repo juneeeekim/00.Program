@@ -1503,39 +1503,6 @@ header h1 {
   text-align: left !important;
 }
 
-/* ?댁떆?쒓렇 ?좉? ?뱀뀡 */
-.hashtag-toggle-section {
-  margin-bottom: 15px;
-  padding: 10px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.hashtag-toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-
-#hashtag-toggle {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.toggle-text {
-  font-weight: 500;
-  color: #333;
-  font-size: 0.95rem;
-}
-
-.hashtag-toggle-label:hover .toggle-text {
-  color: #667eea;
-}
-
 .preview-content::before {
   content: "";
   position: absolute;
@@ -3556,30 +3523,6 @@ header h1 {
     font-size: 15px;
     }
     
-    /* ?댁떆?쒓렇 ?ㅼ젙 諛?紐⑤컮??理쒖쟻??*/
-    .hashtag-settings-bar {
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-    text-align: center;
-    }
-    
-    .hashtag-label {
-    font-size: 0.85rem;
-    }
-    
-    .hashtags-display {
-    font-size: 0.9rem;
-    word-break: break-all;
-    }
-    
-    .btn-hashtag-settings {
-    width: 100%;
-    padding: 12px;
-    font-size: 14px;
-    }
-    }
-    
     /* Animation for new saved items */
     @keyframes slideIn {
     from {
@@ -3596,145 +3539,7 @@ header h1 {
     animation: slideIn 0.3s ease;
     }
     
-    /* ?댁떆?쒓렇 ?ㅼ젙 諛??ㅽ???*/
-    .hashtag-settings-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 12px 20px;
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border-radius: 8px;
-    margin: 15px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
-    
-    .hashtag-label {
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.9rem;
-    }
-    
-    .hashtags-display {
-    font-size: 0.95rem;
-    color: #667eea;
-    font-weight: 600;
-    font-family: '
-    Courier New
-    ", monospace;
-}
-
-.hashtags-display:empty::after {
-  content: "해시태그 없음";
-  color: #6c757d;
-}
-
-.btn-hashtag-settings {
-    padding: 6px 12px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.85rem;
-    }
-    
-    .btn-hashtag-settings:hover {
-    background: linear-gradient(135deg, #5a6fd8, #6a4190);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    /* ?댁떆?쒓렇 ?ㅼ젙 紐⑤떖 ?ㅽ???*/
-    .hashtag-settings-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-    }
-    
-    .hashtag-settings-modal .modal-content {
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-    
-    .hashtag-input-section {
-    margin: 20px 0;
-    }
-    
-    .hashtag-input-section label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
-    }
-    
-    .hashtag-input-section input {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-    }
-    
-    .hashtag-input-section input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    .hashtag-input-section small {
-    display: block;
-    margin-top: 6px;
-    color: #666;
-    font-size: 0.85rem;
-    }
-    
-    .hashtag-examples {
-    margin: 20px 0;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    }
-    
-    .hashtag-examples h4 {
-    margin: 0 0 10px 0;
-    color: #333;
-    }
-    
-    .hashtag-examples .btn-option {
-    display: block;
-    width: 100%;
-    margin-bottom: 8px;
-    padding: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
-    }
-    
-    .hashtag-examples .btn-option:hover {
-    background: #667eea;
-    color: white;
-    border-color: #667eea;
-    }
-    
-    /* ?⑤꼸 而⑦듃濡??곸뿭 媛쒖꽑???덉씠?꾩썐 */
+    /* 패널 컨트롤 영역 개선된 레이아웃 */
     .panel-controls {
     display: flex;
     flex-direction: column;
