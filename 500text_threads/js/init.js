@@ -266,11 +266,6 @@ export class InitManager {
             app.initReferenceSelection();
         }
 
-        // SNS 플랫폼 선택 기능 초기화
-        if (typeof app.initSnsPlatformSelection === 'function') {
-            app.initSnsPlatformSelection();
-        }
-
         // 레퍼런스 불러오기 패널 초기화
         if (typeof app.initReferenceLoader === 'function') {
             app.initReferenceLoader();
@@ -615,26 +610,6 @@ export class InitManager {
      */
     _bindMiscEvents() {
         const app = this.app;
-
-        // 해시태그 설정 버튼
-        const hashtagSettingsBtn = document.getElementById('hashtag-settings-btn');
-        if (hashtagSettingsBtn) {
-            hashtagSettingsBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (typeof app.showHashtagSettings === 'function') {
-                    app.showHashtagSettings();
-                }
-            });
-
-            // 초기 해시태그 표시 업데이트
-            setTimeout(() => {
-                if (typeof app.updateHashtagsDisplay === 'function') {
-                    app.updateHashtagsDisplay();
-                }
-            }, 100);
-
-            logger.log('[InitManager] 해시태그 설정 버튼 바인딩 완료');
-        }
 
         // 일괄 마이그레이션 버튼
         if (app.batchMigrationBtn) {
