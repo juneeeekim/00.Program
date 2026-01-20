@@ -6146,10 +6146,14 @@ class DualTextWriter {
 
     if (loadRefBtn) {
         loadRefBtn.onclick = () => {
-             // 레퍼런스 로드 로직 (임시: 알림 표시)
-             // 추후 loadReferencesForArticle(articleId, panelIndex) 구현 필요
-             this.showMessage("🚧 레퍼런스 추가 기능은 준비 중입니다.", "info");
-             console.log(`[Panel ${panelIndex}] Load Reference Button Clicked`);
+             // [P2-Ref] 레퍼런스 선택 모달 열기
+             // 현재 패널 컨텍스트 설정
+             this.currentEditingPanelIndex = panelIndex;
+             this.currentEditingScriptId = panelIndex === 0 ? this.selectedArticleId : this.selectedArticleIdPanel2;
+             
+             // 모달 열기
+             this.openReferenceSelectionModal();
+             console.log(`[Panel ${panelIndex}] Reference Selection Modal Opened`);
         };
     }
 
