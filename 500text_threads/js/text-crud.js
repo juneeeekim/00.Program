@@ -106,6 +106,12 @@ export class TextCrudManager {
       if (panel === "ref" && app.refTopicInput) {
         app.refTopicInput.value = "";
       }
+      // SNS 플랫폼 선택 초기화
+      if (panel === "edit") {
+        app.selectedSnsPlatforms = [];
+        app.renderSnsPlatformTags();
+        app.updateSnsPlatformCount();
+      }
       this.updateCharacterCount(panel);
       textInput.focus();
     }
@@ -238,6 +244,29 @@ export class TextCrudManager {
         } else {
           textData.linkedReferences = [];
         }
+
+        // SNS 플랫폼 저장
+        if (
+          app.selectedSnsPlatforms &&
+          Array.isArray(app.selectedSnsPlatforms)
+        ) {
+          const validPlatformIds = app.constructor.SNS_PLATFORMS.map(
+            (p) => p.id
+          );
+          const validPlatforms = app.selectedSnsPlatforms.filter(
+            (platformId) => validPlatformIds.includes(platformId)
+          );
+          textData.platforms = validPlatforms;
+
+          if (validPlatforms.length > 0) {
+            console.log(
+              `📱 ${validPlatforms.length}개 SNS 플랫폼 저장됨:`,
+              validPlatforms
+            );
+          }
+        } else {
+          textData.platforms = [];
+        }
       }
 
       // 레퍼런스 글 저장 시 주제 추가 (선택사항)
@@ -310,6 +339,7 @@ export class TextCrudManager {
         linkedReferences:
           panel === "edit" ? textData.linkedReferences : undefined,
         referenceMeta: panel === "edit" ? textData.referenceMeta : undefined,
+        platforms: panel === "edit" ? textData.platforms || [] : undefined,
       };
 
       // Optimistic UI
@@ -338,6 +368,11 @@ export class TextCrudManager {
           app.selectedRefCount.textContent = "(0개 선택됨)";
         }
         console.log("✅ 레퍼런스 선택 초기화 완료");
+
+        app.selectedSnsPlatforms = [];
+        app.renderSnsPlatformTags();
+        app.updateSnsPlatformCount();
+        console.log("✅ SNS 플랫폼 선택 초기화 완료");
       }
 
       this.updateCharacterCount(panel);
@@ -375,6 +410,14 @@ export class TextCrudManager {
         if (app.editTopicInput) {
           app.editTopicInput.value = item.topic || "";
         }
+        // SNS 플랫폼 로드
+        if (item.platforms && Array.isArray(item.platforms)) {
+          app.selectedSnsPlatforms = [...item.platforms];
+        } else {
+          app.selectedSnsPlatforms = [];
+        }
+        app.renderSnsPlatformTags();
+        app.updateSnsPlatformCount();
         this.updateCharacterCount("edit");
         app.editTextInput.focus();
         app.showMessage("수정 글을 편집 영역으로 불러왔습니다.", "success");
