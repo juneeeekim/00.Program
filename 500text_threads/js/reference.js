@@ -569,7 +569,7 @@ export class ReferenceManager {
    * - 모달 닫기
    * - 선택 개수 버튼 업데이트
    */
-  confirmReferenceSelection() {
+  async confirmReferenceSelection() {
     const app = this.mainApp;
 
     try {
@@ -584,6 +584,45 @@ export class ReferenceManager {
       // 토글 버튼 카운트 업데이트
       if (app.collapseRefCount) {
         app.collapseRefCount.textContent = `(${this._selectedReferences.length}개 선택됨)`;
+      }
+
+      // [P3-04] 레퍼런스 연결 모드 확인 (Detail Panel에서 호출된 경우)
+      if (app.currentEditingScriptId && this._selectedReferences.length > 0) {
+        console.log(`🔗 레퍼런스 연결 시도: Article ${app.currentEditingScriptId} <- References ${this._selectedReferences.length}`);
+        
+        // 1. Firebase 업데이트
+        if (app.currentUser && app.db) {
+             const articleRef = window.firebaseDoc(
+                app.db,
+                "users",
+                app.currentUser.uid,
+                "texts",
+                app.currentEditingScriptId
+              );
+              
+              await window.firebaseUpdateDoc(articleRef, {
+                linkedReferences: this._selectedReferences,
+                updatedAt: window.firebaseServerTimestamp() // timestamp update
+              });
+        }
+        
+        // 2. 로컬 상태 업데이트
+        const article = app.savedTexts.find(t => t.id === app.currentEditingScriptId);
+        if (article) {
+            article.linkedReferences = [...this._selectedReferences];
+        }
+
+        // 3. UI 업데이트 (상세 패널)
+        // 현재 열려있는 패널 인덱스 확인 (Dual Panel)
+        const panelIndex = app.currentEditingPanelIndex !== undefined ? app.currentEditingPanelIndex : 0;
+        
+        // 상세 패널에 레퍼런스 목록 다시 그리기
+        // window.loadArticleReferences 가 script.js에 전역으로 노출되어 있음 (Line 10696)
+        if (window.loadArticleReferences) {
+            window.loadArticleReferences(app.currentEditingScriptId);
+        }
+        
+         app.showMessage("✅ 레퍼런스가 연결되었습니다.", "success");
       }
 
       // 모달 닫기
