@@ -6118,6 +6118,10 @@ class DualTextWriter {
     const saveBtn = document.getElementById(`edit-article-save-btn${suffix}`);
     const cancelBtn = document.getElementById(`edit-article-cancel-btn${suffix}`);
     
+    // [P2-06] 추가 버튼: 확장/축소, 닫기
+    const expandBtn = document.getElementById(`detail-expand-btn${suffix}`);
+    const closeBtn = document.getElementById(`detail-panel-close${suffix}`);
+
     // 이벤트 리스너 추가 (중복 방지를 위해 기존 리스너 제거는 어려우므로, 초기화 시 1회만 호출 보장 필요)
     if (editBtn) {
       // 익명 함수로 래핑하여 인자 전달
@@ -6138,6 +6142,24 @@ class DualTextWriter {
 
     if (cancelBtn) {
       cancelBtn.onclick = () => this.cancelArticleEdit(panelIndex);
+    }
+
+    // 확장/축소 버튼 이벤트
+    if (expandBtn) {
+      expandBtn.onclick = () => {
+        // TODO: 확장 기능 구현 필요 (현재 UI만 있음)
+        // 임시로 토글 기능 구현
+        const panel = document.getElementById(`article-detail-panel${suffix}`);
+        if (panel) {
+            panel.classList.toggle('expanded');
+            expandBtn.setAttribute('aria-expanded', panel.classList.contains('expanded'));
+        }
+      };
+    }
+
+    // 닫기 버튼 이벤트
+    if (closeBtn) {
+        closeBtn.onclick = () => this.closeScriptDetailPanel(panelIndex);
     }
     
     console.log(`✅ 패널 ${panelIndex + 1} 이벤트 바인딩 완료`);
