@@ -5600,7 +5600,7 @@ header h1 {
   left: 0;
   width: 100%;
   z-index: 9999;
-  display: none; /* 기본적으로 숨김 */
+  display: none !important; /* 강제로 숨김 */
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -9656,3 +9656,7 @@ body.offline-mode {
   color: #dc3545;
 }
 }
+
+/* 모달 바텀 시트 스타일 추가 */
+.modal.bottom-sheet { display: none !important; align-items: flex-end; }
+.modal.bottom-sheet.visible { display: flex !important; }
