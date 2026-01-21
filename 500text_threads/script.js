@@ -31,6 +31,7 @@ import { ThreadsManager } from "./js/threads.js";   // [2026-01-18] Phase 1: Thr
 import { InitManager } from "./js/init.js"; // Phase 10: 초기화 관리
 import { OrderManager } from "./js/order-manager.js"; // [2026-01-19] Phase 2: 순서 관리
 import { logger } from "./js/logger.js";
+import { CacheManager } from "./js/cache-manager.js"; // [2026-01-21] Phase 1: Firebase 비용 최적화
 
 /**
  * 500 Text Threads - Main Script
@@ -553,6 +554,15 @@ class DualTextWriter {
 
     // DataManager: 데이터 영속성 처리
     this.dataManager = new DataManager(this.authManager);
+
+    // ==================== CacheManager 인스턴스 생성 [2026-01-21] ====================
+    // [Phase 1] Firebase 비용 최적화 - 세션 내 메모리 캐싱
+    // - TTL: 5분 (300000ms)
+    // - MaxSize: 100개 항목 (LRU 정책)
+    this.cacheManager = new CacheManager({
+        ttlMs: 300000,  // 5분
+        maxSize: 100    // 최대 100개 항목
+    });
 
     // ==================== InitManager 인스턴스 생성 (Phase 10) ====================
     // [Refactoring] 초기화 및 이벤트 바인딩을 InitManager로 위임
@@ -3980,7 +3990,21 @@ class DualTextWriter {
     this._isLoadingSavedTexts = true;  // 로딩 시작 플래그
 
     try {
+      // ===== [2026-01-21] P1-03: CacheManager 캐시 우선 조회 =====
+      const cacheKey = `texts_${this.currentUser?.uid}`;
+      
+      // 1. CacheManager 캐시 우선 확인 (신규)
+      if (!forceReload && this.cacheManager) {
+        const cachedData = this.cacheManager.get(cacheKey);
+        if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+          logger.log('[Cache] 캐시된 텍스트 사용:', cachedData.length, '개');
+          this.savedTexts = cachedData;
+          await this.renderSavedTexts();
+          return;
+        }
+      }
 
+      // 2. 기존 메모리 캐시 확인 (폴백)
       const hasCachedData =
         Array.isArray(this.savedTexts) && this.savedTexts.length > 0;
       if (!forceReload && hasCachedData) {
@@ -3994,7 +4018,16 @@ class DualTextWriter {
         return;
       }
 
+      // 4. Firebase에서 데이터 로드
       await this.loadSavedTextsFromFirestore();
+      
+      // ===== [2026-01-21] P1-03: CacheManager에 저장 =====
+      // 5. 로드된 데이터를 CacheManager에 캐싱
+      if (this.cacheManager && this.savedTexts && this.savedTexts.length > 0) {
+        this.cacheManager.set(cacheKey, this.savedTexts);
+        logger.log('[Cache] 텍스트 캐싱 완료:', this.savedTexts.length, '개');
+      }
+      
       await this.renderSavedTexts();
     } catch (error) {
       console.error("loadSavedTexts 오류:", error);
