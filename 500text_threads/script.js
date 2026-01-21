@@ -5774,34 +5774,50 @@ class DualTextWriter {
    * 카테고리 드롭다운 업데이트
    */
   updateCategoryDropdown() {
-    if (!this.categorySelect || !this.editCategorySelect) return;
-
+    // [2026-01-21] 버그 수정: editCategorySelect가 null이어도 categorySelect는 업데이트
+    // HTML에서 edit-category-select 대신 edit-category-select-1, -2를 사용하므로
+    // 각 요소를 개별적으로 체크
+    
     // 고유한 카테고리 목록 추출
     const categories = new Set(["미분류"]);
-    this.managementArticles.forEach((article) => {
-      if (article.category) {
-        categories.add(article.category);
-      }
-    });
+    if (this.managementArticles) {
+      this.managementArticles.forEach((article) => {
+        if (article.category) {
+          categories.add(article.category);
+        }
+      });
+    }
 
     const sortedCategories = Array.from(categories).sort();
 
-    // 카테고리 선택 드롭다운 업데이트
-    this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
-    sortedCategories.forEach((category) => {
-      const option = document.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      this.categorySelect.appendChild(option);
-    });
+    // 카테고리 선택 드롭다운 업데이트 (필터링용)
+    if (this.categorySelect) {
+      this.categorySelect.innerHTML = '<option value="">전체 글 보기</option>';
+      sortedCategories.forEach((category) => {
+        const option = document.createElement("option");
+        option.value = category;
+        option.textContent = category;
+        this.categorySelect.appendChild(option);
+      });
+    }
 
-    // 수정 모드 카테고리 드롭다운 업데이트
-    this.editCategorySelect.innerHTML = "";
-    sortedCategories.forEach((category) => {
-      const option = document.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      this.editCategorySelect.appendChild(option);
+    // 수정 모드 카테고리 드롭다운 업데이트 (듀얼 패널용)
+    // edit-category-select-1, edit-category-select-2 둘 다 업데이트
+    const editCategorySelects = [
+      document.getElementById("edit-category-select-1"),
+      document.getElementById("edit-category-select-2")
+    ];
+    
+    editCategorySelects.forEach((editSelect) => {
+      if (editSelect) {
+        editSelect.innerHTML = "";
+        sortedCategories.forEach((category) => {
+          const option = document.createElement("option");
+          option.value = category;
+          option.textContent = category;
+          editSelect.appendChild(option);
+        });
+      }
     });
   }
 
