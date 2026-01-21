@@ -351,6 +351,10 @@ export class TextCrudManager {
 
       app.showMessage(`${panelName}이 저장되었습니다!`, "success");
 
+      // ===== [2026-01-21] P1-04: 텍스트 저장 후 캐시 무효화 =====
+      app.cacheManager?.invalidate(`texts_${app.currentUser?.uid}`);
+      console.log('[Cache] 텍스트 저장 후 캐시 무효화');
+
       // Clear input
       textInput.value = "";
       if (panel === "edit" && app.editTopicInput) {
@@ -510,6 +514,10 @@ export class TextCrudManager {
 
         app.showMessage("휴지통으로 이동되었습니다.", "success");
         console.log("Soft Delete 완료", { id });
+
+        // ===== [2026-01-21] P1-06: 텍스트 삭제 후 캐시 무효화 =====
+        app.cacheManager?.invalidate(`texts_${app.currentUser?.uid}`);
+        console.log('[Cache] 텍스트 삭제 후 캐시 무효화');
       } catch (error) {
         console.error("텍스트 삭제 실패:", error);
 
@@ -586,6 +594,10 @@ export class TextCrudManager {
         });
 
         app.showMessage("글이 복원되었습니다.", "success");
+
+        // ===== [2026-01-21] P1-06: 텍스트 복원 후 캐시 무효화 =====
+        app.cacheManager?.invalidate(`texts_${app.currentUser?.uid}`);
+        console.log('[Cache] 텍스트 복원 후 캐시 무효화');
       } catch (error) {
         console.error("복원 실패:", error);
         // 롤백
@@ -687,6 +699,10 @@ export class TextCrudManager {
         ]);
 
         app.showMessage("영구 삭제되었습니다.", "success");
+
+        // ===== [2026-01-21] P1-06: 영구 삭제 후 캐시 무효화 =====
+        app.cacheManager?.invalidate(`texts_${app.currentUser?.uid}`);
+        console.log('[Cache] 영구 삭제 후 캐시 무효화');
       } catch (error) {
         console.error("영구 삭제 실패:", error);
         app.showMessage(
