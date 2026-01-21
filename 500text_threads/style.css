@@ -9894,3 +9894,10 @@ body.offline-mode {
   background: rgba(220, 53, 69, 0.15) !important;
   color: #dc3545;
 }
+
+/* ========================================
+   레퍼런스 선택 모달 - 최상단 레이어
+   ======================================== */
+#reference-selection-modal {
+  z-index: 100000 !important; /* 모든 다른 모달/오버레이 위에 표시 */
+}
