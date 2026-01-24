@@ -152,4 +152,35 @@ export class UIManager {
             element.value = value;
         }
     }
+
+    /**
+     * 로딩 상태 표시/해제
+     * @param {HTMLElement} element - 대상 요소 (버튼 등)
+     * @param {boolean} isLoading - 로딩 여부
+     */
+    showLoadingState(element, isLoading) {
+        if (!element) return;
+        
+        if (isLoading) {
+            // 기존 내용 저장 (HTML 포함)
+            if (!element.hasAttribute('data-original-html')) {
+                element.setAttribute('data-original-html', element.innerHTML);
+            }
+            element.disabled = true;
+            element.classList.add('loading');
+            
+            // 버튼인 경우 텍스트 변경 (아이콘 포함 가능)
+            // [UX] 로딩 스피너와 텍스트 표시
+            element.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 처리 중...';
+        } else {
+            element.disabled = false;
+            element.classList.remove('loading');
+            
+            // 내용 복원
+            if (element.hasAttribute('data-original-html')) {
+                element.innerHTML = element.getAttribute('data-original-html');
+                element.removeAttribute('data-original-html');
+            }
+        }
+    }
 }
