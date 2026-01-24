@@ -411,29 +411,34 @@ export class InitManager {
         const semiAutoPostBtn = document.getElementById('semi-auto-post-btn');
 
         if (!semiAutoPostBtn) {
-            logger.warn('[InitManager] 반자동화 포스팅 버튼을 찾을 수 없습니다');
+            logger.warn('[InitManager] 반자동화 포스팅 버튼을 찾을 수 없습니다. UI 렌더링 지연 가능성 있음.');
             return;
         }
 
-        // 클릭 이벤트
-        semiAutoPostBtn.addEventListener('click', (e) => {
+        // 클릭 이벤트 핸들러
+        const handleClick = async (e) => {
             e.preventDefault();
             e.stopPropagation();
+            
+            // [Fix] 클릭 시점에 함수 존재 여부 체크
             if (typeof app.handleSemiAutoPost === 'function') {
-                app.handleSemiAutoPost();
+                try {
+                    await app.handleSemiAutoPost();
+                } catch (err) {
+                    logger.error('[InitManager] handleSemiAutoPost 실행 중 오류:', err);
+                }
             } else {
-                logger.error('[InitManager] handleSemiAutoPost 함수가 없습니다');
+                logger.error('[InitManager] handleSemiAutoPost 함수가 없습니다. script.js 로딩 상태를 확인하세요.');
             }
-        });
+        };
+
+        // 클릭 이벤트
+        semiAutoPostBtn.addEventListener('click', handleClick);
 
         // 키보드 접근성
         semiAutoPostBtn.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof app.handleSemiAutoPost === 'function') {
-                    app.handleSemiAutoPost();
-                }
+                handleClick(e);
             }
         });
 

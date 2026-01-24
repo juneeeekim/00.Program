@@ -438,23 +438,29 @@ export class ThreadsManager {
         
         // mainApp의 showOptimizationModal 호출 (위임)
         // 복잡한 DOM 생성 및 이벤트 바인딩은 mainApp에서 처리
+        
+        // 1. mainApp에 _showOptimizationModalImpl(원본 구현)이 있는 경우 -> 그거 호출
         if (this.mainApp._showOptimizationModalImpl) {
-            // 향후 분리된 구현체가 있을 경우
             return this.mainApp._showOptimizationModalImpl(optimized, originalContent);
-        } else if (this.mainApp.showOptimizationModal && this.mainApp.showOptimizationModal !== this.showOptimizationModal.bind(this)) {
-            // 순환 호출 방지: mainApp에 원본 구현이 있는 경우에만 호출
-            // ThreadsManager와 mainApp이 동일한 함수를 가리키는 경우 건너뜀
-            try {
-                // 직접 모달 생성 로직 실행 (script.js의 구현 참조)
-                this._createAndShowModal(optimized, originalContent);
+        } 
+        
+        // 2. mainApp.showOptimizationModal이 존재하고, 이것이 ThreadsManager의 이 함수와 다른 경우 -> 그거 호출
+        // (단, 바인딩된 함수 비교는 까다로우므로, 이름이나 속성으로 체크하는 것이 안전하지만 여기선 단순 비교)
+        // [Fix] 순환 호출 방지 로직 개선
+        const isSelf = this.mainApp.showOptimizationModal === this.showOptimizationModal || 
+                       (this.mainApp.threadsManager && this.mainApp.showOptimizationModal === this.mainApp.threadsManager.showOptimizationModal);
+
+        if (typeof this.mainApp.showOptimizationModal === 'function' && !isSelf) {
+             try {
+                this.mainApp.showOptimizationModal(optimized, originalContent);
+                return;
             } catch (error) {
-                logger.error('[ThreadsManager] 모달 생성 실패:', error);
-                this.mainApp.showMessage('모달 생성에 실패했습니다.', 'error');
+                logger.warn('[ThreadsManager] mainApp.showOptimizationModal 호출 실패, 폴백 사용:', error);
             }
-        } else {
-            // 폴백: 직접 모달 생성
-            this._createAndShowModal(optimized, originalContent);
         }
+        
+        // 3. 폴백: 직접 모달 생성
+        this._createAndShowModal(optimized, originalContent);
     }
     
     /**
