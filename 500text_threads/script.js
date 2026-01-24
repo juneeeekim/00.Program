@@ -7205,7 +7205,7 @@ function initApp() {
     return;
   }
 
-  dualTextWriter = new DualTextWriter();
+  const dualTextWriter = new DualTextWriter();
   window.dualTextWriter = dualTextWriter;
   window.app = dualTextWriter;
 
@@ -11038,3 +11038,11 @@ class DiagnosticManager {
 
 // DiagnosticManager 자동 초기화
 window.diagnosticManager = new DiagnosticManager();
+
+// [Phase 10] 앱 초기화 실행
+// DOM이 로드되면 initApp을 호출하여 앱을 시작합니다.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
