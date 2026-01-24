@@ -3512,6 +3512,23 @@ class DualTextWriter {
     }
   }
 
+  // UI 로딩 상태 표시 위임
+  showLoadingState(element, isLoading) {
+    if (this.uiManager && typeof this.uiManager.showLoadingState === 'function') {
+      this.uiManager.showLoadingState(element, isLoading);
+    } else {
+        // Fallback implementation
+        if (!element) return;
+        if (isLoading) {
+            element.disabled = true;
+            element.classList.add('loading');
+        } else {
+            element.disabled = false;
+            element.classList.remove('loading');
+        }
+    }
+  }
+
   /**
    * 스크린 리더 사용자를 위한 알림
    * aria-live 영역을 사용하여 스크린 리더에 메시지를 전달합니다.
