@@ -4883,7 +4883,17 @@ class DualTextWriter {
 
       // 최적화 완료 후 모달 표시 (원본 텍스트 전달)
       console.log("🔄 7. 최적화 모달 표시 시작...");
-      this.showOptimizationModal(optimized, content);
+      
+      // [Fix] 모달 표시 위임 로직 강화
+      if (this.threadsManager) {
+          console.log("✅ ThreadsManager를 통해 모달 표시");
+          this.threadsManager.showOptimizationModal(optimized, content);
+      } else {
+          // Fallback if threadsManager is missing
+          console.warn("⚠️ ThreadsManager가 없어 script.js에서 직접 모달 표시 시도");
+          this.showOptimizationModal(optimized, content);
+      }
+      
       console.log("✅ 8. 최적화 모달 표시 완료");
     } catch (error) {
       console.error("❌ 반자동화 포스팅 처리 중 오류:", error);
