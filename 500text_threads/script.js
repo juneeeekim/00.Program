@@ -5991,14 +5991,16 @@ class DualTextWriter {
     card.setAttribute("aria-label", `글 ${orderNumber}: ${article.title || '제목 없음'}`);
 
     // 키보드 접근성
-    // [Refactoring] selectArticle() -> showScriptDetailPanel()로 통합
-    card.addEventListener("click", () => {
-      this.showScriptDetailPanel(article.id, 0);
-    });
+    // [Refactoring] 클릭 이벤트는 이벤트 위임으로 처리 (bindScriptCardClickEvents)
+    // [BugFix 2026-01-24] 개별 클릭 이벤트 제거 - Ctrl+클릭 지원을 위해 이벤트 위임 방식으로 통합
+    // 기존 코드: card.addEventListener("click", ...) 제거됨
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        this.showScriptDetailPanel(article.id, 0);
+        // [BugFix] Ctrl+Enter/Space도 패널 2에 표시되도록 수정
+        const panelIndex = e.ctrlKey ? 1 : 0;
+        this.updateCardSelection(card, panelIndex);
+        this.showScriptDetailPanel(article.id, panelIndex);
       }
     });
 
